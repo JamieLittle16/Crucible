@@ -53,12 +53,12 @@ mod tests {
     use super::{CapabilityId, CostClass, Fidelity, SwapClass, TrustClass};
 
     #[test]
-    fn component_vocabulary_is_explicit() {
+    fn component_vocabulary_distinguishes_policy_classes() {
         let section_store = CapabilityId::new("world.section-store/1");
         assert_eq!(section_store.0, "world.section-store/1");
-        assert_eq!(CostClass::Hot, CostClass::Hot);
-        assert_eq!(SwapClass::Static, SwapClass::Static);
-        assert_eq!(TrustClass::EngineNative, TrustClass::EngineNative);
-        assert_eq!(Fidelity::Strict, Fidelity::Strict);
+        assert_ne!(CostClass::Hot, CostClass::Cold);
+        assert_ne!(SwapClass::Static, SwapClass::LiveReversible);
+        assert_ne!(TrustClass::Sandboxed, TrustClass::EngineNative);
+        assert_ne!(Fidelity::Strict, Fidelity::Relaxed);
     }
 }
