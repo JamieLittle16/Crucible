@@ -19,7 +19,7 @@ env:
 
 jobs:
   quality:
-    name: Rust quality
+    name: Rust and tooling quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -37,6 +37,7 @@ jobs:
           cargo --version
           rustfmt --version
           cargo clippy --version
+          python3 --version
 
       - name: Format
         run: cargo fmt --all -- --check
@@ -47,8 +48,14 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
-      - name: Tests
+      - name: Rust tests
         run: cargo test --workspace --all-features --locked
+
+      - name: Vanilla Atlas tests
+        run: python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
+
+      - name: Python syntax
+        run: python3 -m py_compile tools/vanilla_atlas.py tools/tests/test_vanilla_atlas.py
 
       - name: Rustdoc
         env:
