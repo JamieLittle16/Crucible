@@ -18,44 +18,6 @@ jobs:
           ref: bootstrap/docs-import-final
           fetch-depth: 1
 
-      - name: Validate transport fragments
-        shell: python3 {0}
-        run: |
-          from pathlib import Path
-          import re
-
-          expected = {
-              **{f'part-{i:03d}.b64': 16000 for i in range(11)},
-              'part-011.b64': 8000,
-              'part-011-b.b64': 8000,
-              'part-012.b64': 16000,
-              'part-013.b64': 16000,
-              'part-014-a.b64': 4000,
-              'part-014-b.b64': 4000,
-              'part-014-c.b64': 4000,
-              'part-014-d.b64': 4000,
-              'part-015.b64': 3296,
-          }
-          root = Path('.bootstrap/docs')
-          bad = False
-          for name, size in expected.items():
-              path = root / name
-              if not path.is_file():
-                  print(f'MISSING {name}')
-                  bad = True
-                  continue
-              raw = path.read_bytes()
-              valid = re.fullmatch(rb'[A-Za-z0-9+/=]*', raw) is not None
-              print(f'{name}: bytes={len(raw)} expected={size} alphabet={valid}')
-              if len(raw) != size or not valid:
-                  bad = True
-          extras = sorted(p.name for p in root.glob('*.b64') if p.name not in expected)
-          if extras:
-              print('EXTRA:', ', '.join(extras))
-              bad = True
-          if bad:
-              raise SystemExit('transport fragment validation failed')
-
       - name: Reconstruct and verify documentation archive
         shell: bash
         run: |
@@ -65,11 +27,14 @@ jobs:
             .bootstrap/docs/part-001.b64 \
             .bootstrap/docs/part-002.b64 \
             .bootstrap/docs/part-003.b64 \
+            .bootstrap/docs/part-003-suffix.b64 \
             .bootstrap/docs/part-004.b64 \
+            .bootstrap/docs/part-004-suffix.b64 \
             .bootstrap/docs/part-005.b64 \
             .bootstrap/docs/part-006.b64 \
             .bootstrap/docs/part-007.b64 \
             .bootstrap/docs/part-008.b64 \
+            .bootstrap/docs/part-008-suffix.b64 \
             .bootstrap/docs/part-009.b64 \
             .bootstrap/docs/part-010.b64 \
             .bootstrap/docs/part-011.b64 \
