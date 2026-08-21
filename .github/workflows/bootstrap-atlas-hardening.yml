@@ -70,11 +70,15 @@ jobs:
           }
           root = Path.cwd().resolve()
           with tarfile.open('/tmp/atlas-hardening.tar.gz', 'r:gz') as tf:
-              files = {m.name for m in tf.getmembers() if m.isfile()}
-              if files != expected:
-                  raise SystemExit(f'archive file set mismatch: {sorted(files)}')
-              for member in tf.getmembers():
-                  rel = PurePosixPath(member.name)
+              members = tf.getmembers()
+              normalized_files = {
+                  m.name.removeprefix('./') for m in members if m.isfile()
+              }
+              if normalized_files != expected:
+                  raise SystemExit(f'archive file set mismatch: {sorted(normalized_files)}')
+              for member in members:
+                  name = member.name.removeprefix('./')
+                  rel = PurePosixPath(name)
                   if rel.is_absolute() or '..' in rel.parts:
                       raise SystemExit(f'unsafe archive path: {member.name}')
                   if not (member.isfile() or member.isdir()):
