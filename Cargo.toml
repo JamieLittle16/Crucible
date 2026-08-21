@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
     "crates/crucible-types",
     "crates/crucible-component",
@@ -14,13 +14,13 @@ default-members = [
 [workspace.package]
 edition = "2024"
 rust-version = "1.97.1"
-license = "UNLICENSED"
 repository = "https://github.com/JamieLittle16/Crucible"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
 missing_debug_implementations = "warn"
 unreachable_pub = "warn"
+unused_must_use = "deny"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

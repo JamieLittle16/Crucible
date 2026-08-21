@@ -1,6 +1,6 @@
 //! Small semantic identities shared by Crucible contracts.
 //!
-//! This crate must remain boring. Storage topology, workers, packet formats and implementation
+//! This crate must remain boring. Storage topology, workers, packet formats, and implementation
 //! details do not belong here.
 
 #![forbid(unsafe_code)]
@@ -38,8 +38,14 @@ mod tests {
 
     #[test]
     fn semantic_ids_are_plain_values() {
-        assert_eq!(BlockPos { x: 1, y: -2, z: 3 }, BlockPos { x: 1, y: -2, z: 3 });
-        assert_eq!(ChunkPos { x: -1, z: 4 }, ChunkPos { x: -1, z: 4 });
+        let block = BlockPos { x: 1, y: -2, z: 3 };
+        let same_block = block;
+        assert_eq!(block, same_block);
+
+        let chunk = ChunkPos { x: -1, z: 4 };
+        let same_chunk = chunk;
+        assert_eq!(chunk, same_chunk);
+
         assert!(TickEpoch(4) > TickEpoch(3));
         assert_ne!(ChunkGeneration(1), ChunkGeneration(2));
         assert_ne!(ComponentGeneration(1), ComponentGeneration(2));
