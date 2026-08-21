@@ -1,0 +1,108 @@
+name: Bootstrap Atlas Hardening Import
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  import-atlas-hardening:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout hardening staging branch
+        uses: actions/checkout@v6
+        with:
+          ref: m0/vanilla-atlas-hardening
+          fetch-depth: 1
+
+      - name: Verify transport fragments
+        shell: python3 {0}
+        run: |
+          from pathlib import Path
+          import hashlib
+
+          expected = {
+              'part-00.b64': (7000, 'df72c669bcd597f886be8c6f4fcd05d37148dd6c929170792893f63554482c24'),
+              'part-01.b64': (7000, '0411097c616381293d8ab0a852675f27679bbba1ebd0fdff0e45a0e9d75bff4e'),
+              'part-02.b64': (7000, 'fdbc8e9ddbdf75f11c6747e54b8d378abc387ed7689b5e3c5275ebb04cf18e80'),
+              'part-03.b64': (7000, 'c0319da52455690ba0b2b69f624de07c85d00adb7e7d35cece584a67d64e7df2'),
+              'part-04.b64': (7000, '3ed4f7d2adfbc10409588ca46c89f86553035bcdcc7e7579280c6fcaa8e8ddf1'),
+              'part-05.b64': (3688, 'c80e72991e579abd0800137fa5ccfc0f4be0734b752a22c088f3f8d83ba4a0ec'),
+          }
+          root = Path('.bootstrap/atlas-hardening')
+          found = {p.name for p in root.glob('part-*.b64')}
+          if found != set(expected):
+              raise SystemExit(f'transport fragment set mismatch: {sorted(found)}')
+          for name, (size, digest) in expected.items():
+              data = (root / name).read_bytes()
+              actual = hashlib.sha256(data).hexdigest()
+              if len(data) != size or actual != digest:
+                  raise SystemExit(f'{name}: size/hash mismatch ({len(data)}, {actual})')
+              print(f'{name}: verified')
+
+      - name: Reconstruct and verify patch archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .bootstrap/atlas-hardening/part-*.b64 > /tmp/atlas-hardening.b64
+          echo 'a9774dcbc3472785f08a97a6ab605c3acf8c51bd0d694acbb176f38fbabe1946  /tmp/atlas-hardening.b64' | sha256sum --check --strict
+          base64 --decode /tmp/atlas-hardening.b64 > /tmp/atlas-hardening.tar.gz
+          echo 'd6f0292470eb591056aac781a221624ac1993f0f035bed99b7bd817768f9940e  /tmp/atlas-hardening.tar.gz' | sha256sum --check --strict
+
+      - name: Extract exact hardening tree safely
+        shell: python3 {0}
+        run: |
+          from pathlib import Path, PurePosixPath
+          import tarfile
+
+          expected = {
+              'tools/vanilla_atlas.py',
+              'tools/tests/test_vanilla_atlas.py',
+              'vanilla/atlas/README.md',
+              'vanilla/atlas/RECORD_SCHEMA.md',
+              'vanilla/atlas/SCHEMA.md',
+              'vanilla/reports/26.2-source-audit.json',
+              'vanilla/reports/26.2-source-audit.md',
+              'vanilla/vanilla.lock.toml',
+          }
+          root = Path.cwd().resolve()
+          with tarfile.open('/tmp/atlas-hardening.tar.gz', 'r:gz') as tf:
+              files = {m.name for m in tf.getmembers() if m.isfile()}
+              if files != expected:
+                  raise SystemExit(f'archive file set mismatch: {sorted(files)}')
+              for member in tf.getmembers():
+                  rel = PurePosixPath(member.name)
+                  if rel.is_absolute() or '..' in rel.parts:
+                      raise SystemExit(f'unsafe archive path: {member.name}')
+                  if not (member.isfile() or member.isdir()):
+                      raise SystemExit(f'unsupported archive entry: {member.name}')
+                  target = (root / Path(*rel.parts)).resolve()
+                  if target != root and root not in target.parents:
+                      raise SystemExit(f'archive path escapes repository: {member.name}')
+              tf.extractall(root, filter='data')
+
+      - name: Remove transport and validate hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .bootstrap
+          python3 -m py_compile tools/vanilla_atlas.py tools/tests/test_vanilla_atlas.py
+          python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
+          grep -q 'java-token-v2-literal-sensitive' vanilla/vanilla.lock.toml
+          grep -q 'java-token-v2-literal-sensitive' vanilla/reports/26.2-source-audit.json
+          cargo xtask guard
+
+      - name: Commit hardened Atlas to staging branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git diff --cached --quiet && { echo 'nothing to commit'; exit 1; }
+          git commit -m 'fix: harden Vanilla Atlas provenance tracking'
+          git push origin HEAD:m0/vanilla-atlas-hardening
