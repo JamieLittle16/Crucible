@@ -1,5 +1,6 @@
 {
-  "atlas_version": "0.1.0",
+  "atlas_version": "0.1.1",
+  "fingerprint_algorithm": "java-token-v2-literal-sensitive",
   "hazards": {
     "CHUNK_ACCESS": 161,
     "CHUNK_REALIZATION_CANDIDATE": 27,

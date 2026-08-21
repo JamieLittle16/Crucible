@@ -69,6 +69,16 @@ class LexicalTests(unittest.TestCase):
         self.assertTrue(any(kind == "RNG" for kind, _, _ in hazards))
 
 
+    def test_normalized_fingerprint_ignores_layout_but_preserves_literals(self) -> None:
+        a = atlas.tokenize_java('void x(){ int n = 48; String s = "alpha"; }')
+        b = atlas.tokenize_java('void x() { /* layout only */ int n=48; String s="alpha"; }')
+        changed_number = atlas.tokenize_java('void x(){ int n = 64; String s = "alpha"; }')
+        changed_string = atlas.tokenize_java('void x(){ int n = 48; String s = "beta"; }')
+        self.assertEqual(atlas.normalized_fingerprint(a), atlas.normalized_fingerprint(b))
+        self.assertNotEqual(atlas.normalized_fingerprint(a), atlas.normalized_fingerprint(changed_number))
+        self.assertNotEqual(atlas.normalized_fingerprint(a), atlas.normalized_fingerprint(changed_string))
+
+
 class IndexTests(unittest.TestCase):
     def _archive(self, root: Path) -> Path:
         archive = root / "source.zip"
@@ -112,6 +122,88 @@ class IndexTests(unittest.TestCase):
                 atlas.index_archive(archive, db, report_json, report_md)
                 outputs.append((report_json.read_bytes(), report_md.read_bytes()))
             self.assertEqual(outputs[0], outputs[1])
+
+
+class RecordSyncTests(unittest.TestCase):
+    _archive = IndexTests._archive
+    def test_sync_is_idempotent_and_record_removals_propagate(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            archive = self._archive(root)
+            db = root / "atlas.sqlite"
+            atlas.index_archive(archive, db, None, None)
+            conn = sqlite3.connect(db)
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                """SELECT m.signature,m.normalized_sha256,m.body_sha256,t.qualified_name
+                   FROM methods m JOIN types t ON t.id=m.type_id WHERE m.name='mutate'"""
+            ).fetchone()
+            algorithm = dict(conn.execute("SELECT key,value FROM meta"))["fingerprint_algorithm"]
+            conn.close()
+            records = root / "records"
+            records.mkdir()
+            record_path = records / "mutate.json"
+            record = {
+                "schema": 1,
+                "id": "VAR-TEST-001",
+                "status": "VAR_REVIEWED",
+                "source": {
+                    "type": row["qualified_name"],
+                    "signature": row["signature"],
+                    "fingerprint_algorithm": algorithm,
+                    "normalized_sha256": row["normalized_sha256"],
+                    "body_sha256": row["body_sha256"],
+                },
+                "classifications": ["SEMANTIC_GAMEPLAY"],
+                "semantic_rules": ["SEM-TEST-001"],
+                "evidence": ["EQUIV-TEST-001"],
+                "hazards_reviewed": ["RNG"],
+                "notes": [],
+            }
+            record_path.write_text(json.dumps(record), encoding="utf-8")
+            self.assertEqual(atlas.cmd_sync_records(db, records), 0)
+            self.assertEqual(atlas.cmd_sync_records(db, records), 0)
+            conn = sqlite3.connect(db)
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM semantic_edges WHERE var_id='VAR-TEST-001'").fetchone()[0], 2)
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM classifications WHERE source='manual' AND reason='VAR-TEST-001'").fetchone()[0], 1)
+            conn.close()
+
+            record["classifications"] = []
+            record["semantic_rules"] = []
+            record["evidence"] = []
+            record_path.write_text(json.dumps(record), encoding="utf-8")
+            self.assertEqual(atlas.cmd_sync_records(db, records), 0)
+            conn = sqlite3.connect(db)
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM semantic_edges WHERE var_id='VAR-TEST-001'").fetchone()[0], 0)
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM classifications WHERE source='manual' AND reason='VAR-TEST-001'").fetchone()[0], 0)
+            conn.close()
+
+    def test_stale_records_are_prioritized_by_next(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            archive = self._archive(root)
+            db = root / "atlas.sqlite"
+            atlas.index_archive(archive, db, None, None)
+            conn = sqlite3.connect(db)
+            mutate_id = conn.execute("SELECT id FROM methods WHERE name='mutate'").fetchone()[0]
+            conn.execute("UPDATE tracking SET review_status='STALE', var_id='VAR-TEST-STALE' WHERE method_id=?", (mutate_id,))
+            conn.commit()
+            conn.close()
+            frontier = root / "frontier.json"
+            frontier.write_text(json.dumps({
+                "schema": 1,
+                "description": "test",
+                "max_depth": 1,
+                "include_package_prefixes": ["net.minecraft.test"],
+                "root_queries": ["net.minecraft.test.Sample"],
+            }), encoding="utf-8")
+            import contextlib, io
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(atlas.cmd_next(db, "test", frontier, 10), 0)
+            lines = [line for line in out.getvalue().splitlines() if "net.minecraft.test.Sample#" in line]
+            self.assertTrue(lines)
+            self.assertIn("STALE", lines[0])
 
 
 if __name__ == "__main__":
