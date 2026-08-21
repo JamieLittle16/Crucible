@@ -1,0 +1,419 @@
+{
+  "atlas_version": "0.1.0",
+  "hazards": {
+    "CHUNK_ACCESS": 161,
+    "CHUNK_REALIZATION_CANDIDATE": 27,
+    "CLIENT_OBSERVABLE": 1401,
+    "CODEC": 824,
+    "CONCURRENCY": 328,
+    "NEIGHBOR_UPDATE": 182,
+    "NETWORK_SEND": 38,
+    "ORDERING": 229,
+    "PERSISTENCE": 404,
+    "REGISTRY": 1439,
+    "RNG": 1509,
+    "SCHEDULED_TICK": 165,
+    "WALL_TIME": 47
+  },
+  "index": {
+    "call_resolution": {
+      "ambiguous": 5054,
+      "resolved": 53647,
+      "resolved_field-import": 1942,
+      "resolved_field-unique-type": 1263,
+      "resolved_imported-type": 16338,
+      "resolved_same-type": 30773,
+      "resolved_unique-simple-type": 3331,
+      "unresolved": 159413
+    },
+    "field_accesses": 42646,
+    "fields": 11777,
+    "heuristic_classifications": 27907,
+    "methods": 42590,
+    "syntactic_calls": 218114,
+    "types": 6476
+  },
+  "notes": [
+    "Call sites are recorded syntactically; only conservatively provable targets receive resolved_method_id in schema v1.",
+    "Heuristic classifications are candidates and never assert IMPLEMENTATION_ONLY.",
+    "The generated SQLite database contains fingerprints and structural metadata, not source bodies."
+  ],
+  "schema_version": 1,
+  "source": {
+    "archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+    "java_files": 4849,
+    "java_lines": 539573,
+    "java_nonblank_lines": 469738,
+    "minecraft_version": "26.2",
+    "protocol_version": 776,
+    "world_version": 4903
+  },
+  "top_call_sites": [
+    {
+      "symbol": "net.minecraft.data.recipes.packs.VanillaRecipeProvider#buildRecipes()",
+      "value": 3014
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.fixes.BlockStateData#bootstrap3_2()",
+      "value": 2868
+    },
+    {
+      "symbol": "net.minecraft.data.loot.packs.VanillaChestLoot#generate(final BiConsumer < ResourceKey < LootTable > , LootTable . Builder > output)",
+      "value": 2704
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.fixes.BlockStateData#bootstrap8()",
+      "value": 1593
+    },
+    {
+      "symbol": "net.minecraft.data.loot.packs.VanillaEntityLoot#generate()",
+      "value": 1559
+    },
+    {
+      "symbol": "net.minecraft.world.item.CreativeModeTabs#bootstrap(final Registry < CreativeModeTab > registry)",
+      "value": 1497
+    },
+    {
+      "symbol": "net.minecraft.data.loot.packs.VanillaBlockLoot#generate()",
+      "value": 1419
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.DataFixers#addFixers(final DataFixerBuilder fixerUpper , final FileFixerUpper . Builder fileFixerUpper)",
+      "value": 1384
+    },
+    {
+      "symbol": "net.minecraft.world.item.trading.VillagerTrades#bootstrap(final BootstrapContext < VillagerTrade > context)",
+      "value": 1240
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.fixes.BlockStateData#bootstrap3_1()",
+      "value": 1093
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.fixes.BlockStateData#bootstrapA()",
+      "value": 971
+    },
+    {
+      "symbol": "net.minecraft.world.item.enchantment.Enchantments#bootstrap(final BootstrapContext < Enchantment > context)",
+      "value": 788
+    },
+    {
+      "symbol": "net.minecraft.data.tags.VanillaBlockTagsProvider#addTags(final HolderLookup . Provider registries)",
+      "value": 741
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.fixes.BlockStateData#bootstrapC()",
+      "value": 707
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.fixes.BlockStateData#bootstrap6()",
+      "value": 706
+    },
+    {
+      "symbol": "net.minecraft.data.worldgen.ProcessorLists#bootstrap(final BootstrapContext < StructureProcessorList > context)",
+      "value": 687
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.fixes.BlockStateData#bootstrap9()",
+      "value": 632
+    },
+    {
+      "symbol": "net.minecraft.util.datafix.fixes.BlockStateData#bootstrapB()",
+      "value": 600
+    },
+    {
+      "symbol": "net.minecraft.data.advancements.packs.VanillaAdventureAdvancements#generate(final HolderLookup . Provider registries , final Consumer < AdvancementHolder > output)",
+      "value": 579
+    },
+    {
+      "symbol": "net.minecraft.world.item.trading.TradeRebalanceVillagerTrades#bootstrap(final BootstrapContext < VillagerTrade > context)",
+      "value": 565
+    }
+  ],
+  "top_field_mutators": [
+    {
+      "symbol": "net.minecraft.server.MinecraftServer#MinecraftServer(final Thread serverThread , final LevelStorageSource . LevelStorageAccess storageSource , final PackRepository packRepository , final WorldStem worldStem , final Optional < GameRules > gameRules , final Proxy proxy , final DataFixer fixerUpper , final Services services , final LevelLoadListener levelLoadListener , final boolean propagatesCrashes , final NotificationManager notificationManager)",
+      "value": 30
+    },
+    {
+      "symbol": "net.minecraft.world.damagesource.DamageSources#DamageSources(final RegistryAccess registries)",
+      "value": 26
+    },
+    {
+      "symbol": "net.minecraft.world.level.block.state.BlockBehaviour$Properties#ofLegacyCopy(final BlockBehaviour block)",
+      "value": 25
+    },
+    {
+      "symbol": "net.minecraft.commands.arguments.selector.EntitySelectorParser#parseSelector()",
+      "value": 23
+    },
+    {
+      "symbol": "net.minecraft.world.level.levelgen.NoiseChunk#NoiseChunk(final int cellCountXZ , final RandomState randomState , final int chunkMinBlockX , final int chunkMinBlockZ , final NoiseSettings noiseSettings , final DensityFunctions . BeardifierOrMarker beardifier , final NoiseGeneratorSettings settings , final Aquifer . FluidPicker globalFluidPicker , final Blender blender)",
+      "value": 23
+    },
+    {
+      "symbol": "net.minecraft.world.entity.animal.equine.AbstractHorse#tick()",
+      "value": 22
+    },
+    {
+      "symbol": "net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase#BlockStateBase(final Block owner , final Property < ? > [ ] propertyKeys , final Comparable < ? > [ ] propertyValues)",
+      "value": 19
+    },
+    {
+      "symbol": "net.minecraft.world.entity.animal.squid.Squid#aiStep()",
+      "value": 17
+    },
+    {
+      "symbol": "net.minecraft.world.level.block.entity.EnchantingTableBlockEntity#bookAnimationTick(final Level level , final BlockPos worldPosition , final BlockState state , final EnchantingTableBlockEntity entity)",
+      "value": 17
+    },
+    {
+      "symbol": "net.minecraft.world.level.levelgen.Aquifer$NoiseBasedAquifer#NoiseBasedAquifer(final NoiseChunk noiseChunk , final ChunkPos pos , final NoiseRouter router , final PositionalRandomFactory positionalRandomFactory , final int minBlockY , final int yBlockSize , final Aquifer . FluidPicker globalFluidPicker)",
+      "value": 17
+    },
+    {
+      "symbol": "net.minecraft.server.network.ServerGamePacketListenerImpl#tickPlayer()",
+      "value": 16
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ServerboundSetStructureBlockPacket#ServerboundSetStructureBlockPacket(final BlockPos pos , final StructureBlockEntity . UpdateType updateType , final StructureMode mode , final String name , final BlockPos offset , final Vec3i size , final Mirror mirror , final Rotation rotation , final String data , final boolean ignoreEntities , final boolean strict , final boolean showAir , final boolean showBoundingBox , final float integrity , final long seed)",
+      "value": 15
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ServerboundSetStructureBlockPacket#ServerboundSetStructureBlockPacket(final FriendlyByteBuf input)",
+      "value": 15
+    },
+    {
+      "symbol": "net.minecraft.server.level.ServerLevel#ServerLevel(final MinecraftServer server , final Executor executor , final LevelStorageSource . LevelStorageAccess levelStorage , final ServerLevelData levelData , final ResourceKey < Level > dimension , final LevelStem levelStem , final boolean isDebug , final long biomeZoomSeed , final List < CustomSpawner > customSpawners , final boolean tickTime)",
+      "value": 15
+    },
+    {
+      "symbol": "net.minecraft.world.entity.EntityType#EntityType(final EntityType . EntityFactory < T > factory , final MobCategory category , final boolean serialize , final boolean summon , final boolean fireImmune , final boolean canSpawnFarFromPlayer , final TagKey < Block > immuneTo , final EntityDimensions dimensions , final float spawnDimensionsScale , final int clientTrackingRange , final int updateInterval , final String descriptionId , final Optional < ResourceKey < LootTable >> lootTable , final FeatureFlagSet requiredFeatures , final boolean allowedInPeaceful)",
+      "value": 15
+    },
+    {
+      "symbol": "net.minecraft.commands.CommandSourceStack#CommandSourceStack(final CommandSource source , final Vec3 position , final Vec2 rotation , final ServerLevel level , final PermissionSet permissions , final String textName , final Component displayName , final MinecraftServer server , final @ Nullable Entity entity , final boolean silent , final CommandResultCallback resultCallback , final EntityAnchorArgument . Anchor anchor , final CommandSigningContext signingContext , final TaskChainer chatMessageChainer)",
+      "value": 14
+    },
+    {
+      "symbol": "net.minecraft.server.level.ChunkMap#ChunkMap(final ServerLevel level , final LevelStorageSource . LevelStorageAccess levelStorage , final DataFixer dataFixer , final StructureTemplateManager structureManager , final Executor executor , final BlockableEventLoop < Runnable > mainThreadExecutor , final LightChunkGetter chunkGetter , final ChunkGenerator generator , final ChunkStatusUpdateListener chunkStatusListener , final Supplier < SavedDataStorage > overworldDataStorage , final TicketStorage ticketStorage , final int serverViewDistance , final boolean syncWrites)",
+      "value": 14
+    },
+    {
+      "symbol": "net.minecraft.server.rcon.thread.QueryThreadGs4#QueryThreadGs4(final ServerInterface serverInterface , final int port)",
+      "value": 14
+    },
+    {
+      "symbol": "net.minecraft.world.level.block.entity.StructureBlockEntity#loadAdditional(final ValueInput input)",
+      "value": 14
+    },
+    {
+      "symbol": "net.minecraft.commands.arguments.selector.EntitySelector#EntitySelector(final int maxResults , final boolean includesEntities , final boolean worldLimited , final List < Predicate < Entity >> contextFreePredicates , final MinMaxBounds . @ Nullable Doubles range , final Function < Vec3 , Vec3 > position , final @ Nullable AABB aabb , final BiConsumer < Vec3 , List < ? extends Entity >> order , final boolean currentEntity , final @ Nullable String playerName , final @ Nullable UUID entityUUID , final @ Nullable EntityType < ? > type , final boolean usesSelector)",
+      "value": 13
+    }
+  ],
+  "top_hazard_methods": [
+    {
+      "symbol": "net.minecraft.world.level.chunk.ChunkGenerator#applyBiomeDecoration(final WorldGenLevel level , final ChunkAccess chunk , final StructureManager structureManager)",
+      "value": 5
+    },
+    {
+      "symbol": "net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator#applyCarvers(final WorldGenRegion region , final long seed , final RandomState randomState , final BiomeManager biomeManager , final StructureManager structureManager , final ChunkAccess chunk)",
+      "value": 4
+    },
+    {
+      "symbol": "net.minecraft.advancements.AdvancementRewards#grant(final ServerPlayer player)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.data.loot.LootTableProvider#run(final CachedOutput cache , final HolderLookup . Provider registries)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ClientboundAddEntityPacket#ClientboundAddEntityPacket(final RegistryFriendlyByteBuf input)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ClientboundAddEntityPacket#write(final RegistryFriendlyByteBuf output)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ClientboundBlockEventPacket#ClientboundBlockEventPacket(final RegistryFriendlyByteBuf input)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ClientboundBlockEventPacket#write(final RegistryFriendlyByteBuf output)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData$BlockEntityInfo#BlockEntityInfo(final RegistryFriendlyByteBuf input)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData$BlockEntityInfo#write(final RegistryFriendlyByteBuf output)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.network.protocol.game.ServerboundSetGameRulePacket#Entry(ResourceKey < GameRule < ? >> gameRuleKey , String value)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.resources.NetworkRegistryLoadTask#load(final RegistryOps . RegistryInfoLookup context , final Executor executor)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.resources.ResourceManagerRegistryLoadTask#load(final RegistryOps . RegistryInfoLookup context , final Executor executor)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.server.ReloadableServerRegistries#scheduleRegistryLoad(final LootDataType < T > type , final RegistryOps < JsonElement > ops , final ResourceManager manager , final Executor taskExecutor)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.server.level.ChunkMap#saveChunksEagerly(final BooleanSupplier haveTime)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.server.level.ChunkMap#resendBiomesForChunks(final List < ChunkAccess > chunks)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.server.level.DistanceManager#runAllUpdates(final ChunkMap scheduler)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.server.level.ServerChunkCache#getChunk(final int x , final int z , final ChunkStatus targetStatus , final boolean loadOrGenerate)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.util.filefix.fixes.LegacyStructureFileFix#extractAndStoreLegacyStructureData(final Dynamic < Tag > levelData , final List < LegacyStructureFileFix . DimensionFixEntry > dimensionFixEntries , final UpgradeProgress upgradeProgress)",
+      "value": 3
+    },
+    {
+      "symbol": "net.minecraft.world.entity.ai.behavior.AcquirePoi#create(final Predicate < Holder < PoiType >> poiType , final MemoryModuleType < GlobalPos > memoryToValidate , final MemoryModuleType < GlobalPos > memoryToAcquire , final boolean onlyIfAdult , final Optional < Byte > onPoiAcquisitionEvent , final BiPredicate < ServerLevel , BlockPos > validPoi)",
+      "value": 3
+    }
+  ],
+  "top_package_roots": [
+    {
+      "java_files": 1312,
+      "package": "net.minecraft.world.level"
+    },
+    {
+      "java_files": 716,
+      "package": "net.minecraft.world.entity"
+    },
+    {
+      "java_files": 396,
+      "package": "net.minecraft.util.datafix"
+    },
+    {
+      "java_files": 314,
+      "package": "net.minecraft.world.item"
+    },
+    {
+      "java_files": 293,
+      "package": "net.minecraft.network.protocol"
+    },
+    {
+      "java_files": 102,
+      "package": "net.minecraft.server.commands"
+    },
+    {
+      "java_files": 91,
+      "package": "net.minecraft.util"
+    },
+    {
+      "java_files": 71,
+      "package": "net.minecraft.commands.arguments"
+    },
+    {
+      "java_files": 70,
+      "package": "net.minecraft.util.profiling"
+    },
+    {
+      "java_files": 65,
+      "package": "net.minecraft.server.jsonrpc"
+    },
+    {
+      "java_files": 64,
+      "package": "net.minecraft.world.inventory"
+    },
+    {
+      "java_files": 63,
+      "package": "net.minecraft.network.chat"
+    },
+    {
+      "java_files": 57,
+      "package": "net.minecraft.util.filefix"
+    },
+    {
+      "java_files": 56,
+      "package": "net.minecraft.data.worldgen"
+    },
+    {
+      "java_files": 55,
+      "package": "net.minecraft.server.packs"
+    },
+    {
+      "java_files": 54,
+      "package": "net.minecraft.advancements.predicates"
+    },
+    {
+      "java_files": 49,
+      "package": "net.minecraft.advancements.triggers"
+    },
+    {
+      "java_files": 45,
+      "package": "net.minecraft.gametest.framework"
+    },
+    {
+      "java_files": 42,
+      "package": "net.minecraft.network"
+    },
+    {
+      "java_files": 42,
+      "package": "net.minecraft.server.level"
+    },
+    {
+      "java_files": 38,
+      "package": "net.minecraft.core"
+    },
+    {
+      "java_files": 36,
+      "package": "net.minecraft.nbt"
+    },
+    {
+      "java_files": 35,
+      "package": "net.minecraft.server.dialog"
+    },
+    {
+      "java_files": 30,
+      "package": "net.minecraft.core.component"
+    },
+    {
+      "java_files": 29,
+      "package": "net.minecraft.data.tags"
+    },
+    {
+      "java_files": 29,
+      "package": "net.minecraft.tags"
+    },
+    {
+      "java_files": 29,
+      "package": "net.minecraft.util.parsing"
+    },
+    {
+      "java_files": 28,
+      "package": "net.minecraft.server.network"
+    },
+    {
+      "java_files": 28,
+      "package": "net.minecraft.world.attribute"
+    },
+    {
+      "java_files": 28,
+      "package": "net.minecraft.world.phys"
+    }
+  ]
+}
