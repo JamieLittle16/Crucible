@@ -18,6 +18,61 @@ jobs:
           ref: bootstrap/docs-import-final
           fetch-depth: 1
 
+      - name: Verify logical transport segments
+        shell: python3 {0}
+        run: |
+          from pathlib import Path
+          import hashlib
+
+          root = Path('.bootstrap/docs')
+          segments = {
+              0: ['part-000.b64'],
+              1: ['part-001.b64'],
+              2: ['part-002.b64'],
+              3: ['part-003.b64', 'part-003-suffix.b64'],
+              4: ['part-004.b64', 'part-004-suffix.b64'],
+              5: ['part-005.b64'],
+              6: ['part-006.b64'],
+              7: ['part-007.b64'],
+              8: ['part-008.b64', 'part-008-suffix.b64'],
+              9: ['part-009.b64'],
+              10: ['part-010.b64'],
+              11: ['part-011.b64', 'part-011-b.b64'],
+              12: ['part-012.b64'],
+              13: ['part-013.b64'],
+              14: ['part-014-a.b64', 'part-014-b.b64', 'part-014-c.b64', 'part-014-d.b64'],
+              15: ['part-015.b64'],
+          }
+          expected = {
+              0: '4f3f59bb24c5b698abb0ca4fd0a2ad60b90c52535216d5d4cfcb7ed7ca4cd166',
+              1: 'aa3699504ab80b0adc1a8cc13f70520f191c2009956d27cf139b8ba54a130766',
+              2: 'a924779c590b7ff9378d356c62c617e9dc05f7bdac54c1285a3930e515f1b6f9',
+              3: 'bfdcc8d968c08beb7595eb885346cd9d84a7fd7fb88897d697a2f882ee11d0db',
+              4: '460f97b34a80ce3169d02cf3e96c5f48c70751cb3994ffba5c360e191b4c1810',
+              5: '29227025f58b22f126fd4fcf8c96e07f8572dc820640aed6fc2a7dbf6d1baa9d',
+              6: 'fc8ddf1c53677706d1f6ca90d55e84e38944c7c31acbc1b9a06dd5754c862db1',
+              7: 'd2565214826314fa879b8a1276fdd09dca96a19c9b085915e18f0187085d8e05',
+              8: '3411321ee07df1176491c0536bd1e22de1cf5d735baae12b9157f17e2e01efb9',
+              9: '99570e415e28f15cdb0f39b1bf861b898232bd9e42b35592e86c13e29b99233e',
+              10: '8d4495776ba99f497f1e04a07d3372696c61545440602802d76a22fd5436a35b',
+              11: 'a2d92835ffa7273103329077d912ea03579517a23684da1c5ded5cad31abdf7b',
+              12: '00c298bee0cc6427c5924710b80021c1dc63e91c7bcc0def261e83f4fd913547',
+              13: '9fb86e5bb96997d5d9b7b0806a874098d07d2393b6dbabedcd6b3a23fd8bd5ee',
+              14: '3e0290f27078489c2909fedd4868d136902202077b3f1e1f5a46af19b8c98dc5',
+              15: 'a424ed1cdc792017a01fcc0cad937ea15425486664b7dabde9c3b499c4306d8a',
+          }
+
+          bad = []
+          for index, names in segments.items():
+              data = b''.join((root / name).read_bytes() for name in names)
+              digest = hashlib.sha256(data).hexdigest()
+              ok = digest == expected[index]
+              print(f'{index:02d}: bytes={len(data):5d} sha256={digest} ok={ok}')
+              if not ok:
+                  bad.append(index)
+          if bad:
+              raise SystemExit(f'mismatched logical transport segments: {bad}')
+
       - name: Reconstruct and verify documentation archive
         shell: bash
         run: |
