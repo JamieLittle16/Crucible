@@ -12,7 +12,9 @@ Example:
   "source": {
     "type": "net.minecraft.world.level.chunk.LevelChunkSection",
     "signature": "setBlockState(...) ",
-    "normalized_sha256": "..."
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "...",
+    "body_sha256": "..."
   },
   "classifications": ["SEMANTIC_GAMEPLAY"],
   "hazards_reviewed": ["ORDERING"],
@@ -22,6 +24,10 @@ Example:
 }
 ```
 
-The fingerprint is mandatory once a record reaches semantic review. `sync-records` reports missing methods and marks changed fingerprints `STALE`.
+The fingerprint algorithm and normalized fingerprint are mandatory. The normalized fingerprint ignores comments/formatting while preserving literal values. `body_sha256` is diagnostic provenance for the exact pinned body and may change for non-semantic formatting edits without invalidating a normalized review.
 
-Review prose can remain in Markdown VAR documents; this JSON is the tracker sidecar that keeps the evidence graph machine-readable.
+`sync-records` rejects duplicate record IDs and multiple records claiming the same exact source method. It is idempotent: manual classifications and semantic/evidence edges are projected from the current record contents rather than appended forever.
+
+A fingerprint or fingerprint-algorithm mismatch marks the source record `STALE`.
+
+Review prose can remain in Markdown VAR documents; this JSON is the tracker sidecar that keeps status, provenance, staleness and evidence links queryable.

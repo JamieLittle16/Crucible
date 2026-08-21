@@ -4,11 +4,15 @@ The SQLite database is generated under `.crucible/` and must not be committed. I
 
 ## Identity
 
-`meta` records Atlas/schema versions, Minecraft/protocol/world versions and the exact official source archive SHA-256.
+`meta` records Atlas/schema versions, the fingerprint algorithm, Minecraft/protocol/world versions and the exact official source archive SHA-256.
 
 `source_files` records path, package, file digest and line/byte counts.
 
 `types`, `methods`, and `fields` provide stable structural inventory. Method identity combines the owning qualified type, source signature and normalized token fingerprint. Line numbers are navigation hints, not identity.
+
+The v1 fingerprint algorithm is `java-token-v2-literal-sensitive`: comments and formatting are discarded, while identifiers, operators and literal values are retained. This allows harmless layout edits to remain stable without masking semantically relevant constant changes.
+
+`methods.body_sha256` records the exact raw source body digest as secondary provenance. Human review records use the normalized fingerprint for staleness.
 
 ## Dependency data
 
@@ -26,8 +30,10 @@ The SQLite database is generated under `.crucible/` and must not be committed. I
 
 `tracking` is the generated projection of version-controlled records under `vanilla/records/`.
 
-`semantic_edges` links a source method/VAR to SEM and evidence identifiers. Later Atlas schemas may normalize SEM/EQUIV/benchmark artifacts into dedicated tables, but v1 intentionally keeps the source tracker small.
+`semantic_edges` links a source method/VAR to SEM and evidence identifiers. `sync-records` rebuilds each record's manual projection idempotently so removed classifications/edges do not linger.
+
+Later Atlas schemas may normalize SEM/EQUIV/benchmark artifacts into dedicated tables, but v1 intentionally keeps the source tracker small.
 
 ## Upgrade law
 
-Schema changes require an explicit `SCHEMA_VERSION` increment. The database is rebuilt from source rather than migrated in place unless a future use case demonstrates that migration has value.
+Database schema changes require an explicit `SCHEMA_VERSION` increment. Fingerprint-algorithm changes require a new named algorithm and will intentionally stale records pinned to the previous algorithm. The database is rebuilt from source rather than migrated in place unless a future use case demonstrates that migration has value.

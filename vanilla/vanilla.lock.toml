@@ -11,7 +11,8 @@ java_files = 4849
 
 [atlas]
 schema = 1
-version = "0.1.0"
+version = "0.1.1"
+fingerprint_algorithm = "java-token-v2-literal-sensitive"
 database = ".crucible/vanilla/atlas.sqlite"
 source_audit_json = "vanilla/reports/26.2-source-audit.json"
 source_audit_markdown = "vanilla/reports/26.2-source-audit.md"
