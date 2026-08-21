@@ -79,7 +79,11 @@ fn check_forbidden_tracked_files(root: &Path, failures: &mut Vec<String>) {
         return;
     }
 
-    for raw in output.stdout.split(|byte| *byte == 0).filter(|path| !path.is_empty()) {
+    for raw in output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+    {
         let path = String::from_utf8_lossy(raw);
         let forbidden = path == "mc-src.zip"
             || path.ends_with(".jar")
