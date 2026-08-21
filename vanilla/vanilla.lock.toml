@@ -1,0 +1,14 @@
+schema = 1
+minecraft = "26.2"
+protocol = 776
+data_version = 4903
+
+[source]
+kind = "local-official-source-corpus"
+archive_sha256 = "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750"
+java_files = 4849
+# The source archive itself is intentionally not committed.
+
+[status]
+index = "not-built"
+world_frontier = "needs-excavation"

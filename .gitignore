@@ -1,0 +1,13 @@
+/target/
+/.idea/
+/.vscode/
+.DS_Store
+*.profraw
+*.profdata
+*.flamegraph.svg
+/benchmark-results/local/
+/vanilla/source/
+/vanilla/artifacts/
+/vanilla/private/
+*.jar
+mc-src.zip

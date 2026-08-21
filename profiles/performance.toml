@@ -1,0 +1,11 @@
+minecraft = "26.2"
+
+[profile]
+name = "performance"
+fidelity = "strict"
+optimize = "performance"
+
+[security]
+allow_unqualified = false
+allow_third_party_native = false
+allow_semantic_deviations = false

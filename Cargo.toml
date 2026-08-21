@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/crucible-types",
+    "crates/crucible-component",
+    "tools/xtask",
+]
+default-members = [
+    "crates/crucible-types",
+    "crates/crucible-component",
+    "tools/xtask",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.97.1"
+license = "UNLICENSED"
+repository = "https://github.com/JamieLittle16/Crucible"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+alloc_instead_of_core = "warn"
+allow_attributes_without_reason = "warn"
+clone_on_ref_ptr = "warn"
+rc_buffer = "warn"
+undocumented_unsafe_blocks = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"
+
+[profile.bench]
+debug = 1
