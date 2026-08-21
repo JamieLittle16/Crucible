@@ -135,7 +135,9 @@ fn check_vanilla_pin_consistency(root: &Path, failures: &mut Vec<String>) {
             lock.contains(expected) && report.contains(expected)
         };
         if !present {
-            failures.push(format!("vanilla pin/audit consistency marker missing: {expected}"));
+            failures.push(format!(
+                "vanilla pin/audit consistency marker missing: {expected}"
+            ));
         }
     }
 }
@@ -160,7 +162,9 @@ fn vanilla(args: Vec<OsString>) -> ExitCode {
 
     match status {
         Ok(status) if status.success() => ExitCode::SUCCESS,
-        Ok(status) => ExitCode::from(u8::try_from(status.code().unwrap_or(1).clamp(1, 255)).unwrap_or(1)),
+        Ok(status) => {
+            ExitCode::from(u8::try_from(status.code().unwrap_or(1).clamp(1, 255)).unwrap_or(1))
+        }
         Err(error) => failure(&format!("could not launch Vanilla Atlas: {error}")),
     }
 }
@@ -182,7 +186,10 @@ fn find_python() -> Option<OsString> {
 
 fn python_works(executable: &OsStr) -> bool {
     Command::new(executable)
-        .args(["-c", "import sys; raise SystemExit(sys.version_info < (3, 11))"])
+        .args([
+            "-c",
+            "import sys; raise SystemExit(sys.version_info < (3, 11))",
+        ])
         .status()
         .is_ok_and(|status| status.success())
 }
