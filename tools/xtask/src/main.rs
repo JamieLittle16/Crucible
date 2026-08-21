@@ -149,9 +149,8 @@ fn vanilla(args: Vec<OsString>) -> ExitCode {
         return failure("tools/vanilla_atlas.py is missing");
     }
 
-    let python = match find_python() {
-        Some(python) => python,
-        None => return failure("Python 3 is required for Vanilla Atlas tooling"),
+    let Some(python) = find_python() else {
+        return failure("Python 3 is required for Vanilla Atlas tooling");
     };
 
     let status = Command::new(python)
@@ -170,10 +169,10 @@ fn vanilla(args: Vec<OsString>) -> ExitCode {
 }
 
 fn find_python() -> Option<OsString> {
-    if let Some(explicit) = env::var_os("PYTHON") {
-        if python_works(&explicit) {
-            return Some(explicit);
-        }
+    if let Some(explicit) = env::var_os("PYTHON")
+        && python_works(&explicit)
+    {
+        return Some(explicit);
     }
     for candidate in ["python3", "python"] {
         let candidate = OsString::from(candidate);
