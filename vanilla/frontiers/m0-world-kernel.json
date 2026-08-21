@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "description": "Initial official-source dependency frontier for M0 World Kernel qualification. Roots intentionally match complete source types; deep semantic review narrows them into VAR/SEM records.",
+  "max_depth": 8,
+  "include_package_prefixes": ["net.minecraft"],
+  "exclude_package_prefixes": ["net.minecraft.data", "net.minecraft.gametest"],
+  "root_queries": [
+    "net.minecraft.world.level.chunk.LevelChunkSection",
+    "net.minecraft.world.level.chunk.PalettedContainer",
+    "net.minecraft.world.level.chunk.ChunkAccess",
+    "net.minecraft.world.level.chunk.LevelChunk",
+    "net.minecraft.world.level.levelgen.Heightmap",
+    "net.minecraft.world.level.chunk.storage.SerializableChunkData",
+    "net.minecraft.server.level.ServerChunkCache",
+    "net.minecraft.server.level.ChunkMap",
+    "net.minecraft.world.level.TicketStorage",
+    "net.minecraft.server.level.DistanceManager",
+    "net.minecraft.world.level.chunk.status.ChunkStatus",
+    "net.minecraft.world.ticks.LevelChunkTicks",
+    "net.minecraft.server.network.PlayerChunkSender",
+    "net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData",
+    "net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket"
+  ]
+}

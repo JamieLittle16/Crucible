@@ -9,6 +9,15 @@ archive_sha256 = "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df7
 java_files = 4849
 # The source archive itself is intentionally not committed.
 
+[atlas]
+schema = 1
+version = "0.1.0"
+database = ".crucible/vanilla/atlas.sqlite"
+source_audit_json = "vanilla/reports/26.2-source-audit.json"
+source_audit_markdown = "vanilla/reports/26.2-source-audit.md"
+
 [status]
-index = "not-built"
-world_frontier = "needs-excavation"
+index_tooling = "implemented"
+whole_source_structural_audit = "generated"
+world_frontier = "indexed-unreviewed"
+semantic_review = "not-started"
