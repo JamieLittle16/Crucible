@@ -9,7 +9,7 @@ use crate::model::{
 };
 use crate::workloads::{make_positions, make_state_stream, pos, prepare, state_id};
 
-use super::{CONTROL_WORKLOAD, TargetSyntheticSettings};
+use super::{CONTROL_WORKLOAD, REPLACEMENT_WORKLOADS, TargetSyntheticSettings};
 
 const POSITION_SEED: u64 = 0x5359_4E54_4850_4F53;
 const HIGH_STATE_SEED: u64 = 0x5359_4E54_4849_4748;
@@ -54,13 +54,14 @@ fn measure_replacements<C: BenchSection>(
     let churn_states = (0..operations)
         .map(|operation| state_id(5_000 + operation % 512))
         .collect::<Vec<_>>();
+    let state_streams = [
+        same_states.as_slice(),
+        low_states.as_slice(),
+        high_states.as_slice(),
+        churn_states.as_slice(),
+    ];
 
-    for (workload, states) in [
-        ("same-state-replace", same_states.as_slice()),
-        ("low-entropy-replace", low_states.as_slice()),
-        ("high-entropy-replace", high_states.as_slice()),
-        ("palette-churn", churn_states.as_slice()),
-    ] {
+    for (workload, states) in REPLACEMENT_WORKLOADS.into_iter().zip(state_streams) {
         let (timing, final_representation) =
             measure_replace_checked(&prepared.section, &positions, states, settings, workload)?;
         timings.push(TimingRecord {
@@ -275,7 +276,7 @@ fn percentile(sorted: &[u128], percentile: usize) -> u128 {
 }
 
 pub(super) fn expected_timing_records(case_count: usize) -> usize {
-    case_count * 4 + PROMOTION_TARGETS.len()
+    case_count * REPLACEMENT_WORKLOADS.len() + PROMOTION_TARGETS.len()
 }
 
 pub(super) const fn control_workload_name() -> &'static str {
