@@ -6,7 +6,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from dataclasses import dataclass
 from pathlib import Path
+
+import vanilla_dimensions
 
 POLICY_ID = "vanilla-section-representative-v1"
 SCHEMA = 1
@@ -16,51 +19,91 @@ DATA_VERSION = 4903
 SEED_COUNT = 4
 CHUNKS_PER_DIMENSION = 64
 SEED_DOMAIN = "Crucible|Minecraft-Java-26.2|section-representative-v1"
-DIMENSIONS = (
-    "minecraft:overworld",
-    "minecraft:the_nether",
-    "minecraft:the_end",
+
+
+@dataclass(frozen=True, slots=True)
+class RepresentativeDimensionDescriptor:
+    """Sampling policy for one vanilla dimension.
+
+    Target/save identity comes from ``vanilla_dimensions``.  This descriptor owns only
+    the representative sampling policy, keeping generation/extraction mechanisms free
+    of dimension-name branches.
+    """
+
+    vanilla: vanilla_dimensions.VanillaDimensionDescriptor
+    anchors: tuple[tuple[int, int], ...]
+    radius_chunks: int
+    coordinate_policy: str
+    minimum_chebyshev_radius: int = 0
+
+    @property
+    def key(self) -> str:
+        return self.vanilla.key
+
+    def accepts_candidate(self, candidate: tuple[int, int]) -> bool:
+        return max(abs(candidate[0]), abs(candidate[1])) >= self.minimum_chebyshev_radius
+
+
+REPRESENTATIVE_DIMENSIONS: tuple[RepresentativeDimensionDescriptor, ...] = (
+    RepresentativeDimensionDescriptor(
+        vanilla=vanilla_dimensions.require_standard_dimension("minecraft:overworld"),
+        anchors=(
+            (0, 0),
+            (8, 0),
+            (-8, 0),
+            (0, 8),
+            (0, -8),
+            (128, 128),
+            (-128, 128),
+            (256, -256),
+        ),
+        radius_chunks=2048,
+        coordinate_policy="anchors+sha256-square-v1",
+    ),
+    RepresentativeDimensionDescriptor(
+        vanilla=vanilla_dimensions.require_standard_dimension("minecraft:the_nether"),
+        anchors=(
+            (0, 0),
+            (8, 0),
+            (-8, 0),
+            (0, 8),
+            (0, -8),
+            (128, 128),
+            (-128, 128),
+            (256, -256),
+        ),
+        radius_chunks=2048,
+        coordinate_policy="anchors+sha256-square-v1",
+    ),
+    RepresentativeDimensionDescriptor(
+        vanilla=vanilla_dimensions.require_standard_dimension("minecraft:the_end"),
+        anchors=(
+            (0, 0),
+            (4, 0),
+            (-4, 0),
+            (0, 4),
+            (0, -4),
+            (80, 0),
+            (-80, 0),
+            (0, 80),
+            (0, -80),
+        ),
+        radius_chunks=512,
+        coordinate_policy="central-anchors+sha256-outer-square-v1",
+        minimum_chebyshev_radius=80,
+    ),
 )
 
-ANCHORS = {
-    "minecraft:overworld": (
-        (0, 0),
-        (8, 0),
-        (-8, 0),
-        (0, 8),
-        (0, -8),
-        (128, 128),
-        (-128, 128),
-        (256, -256),
-    ),
-    "minecraft:the_nether": (
-        (0, 0),
-        (8, 0),
-        (-8, 0),
-        (0, 8),
-        (0, -8),
-        (128, 128),
-        (-128, 128),
-        (256, -256),
-    ),
-    "minecraft:the_end": (
-        (0, 0),
-        (4, 0),
-        (-4, 0),
-        (0, 4),
-        (0, -4),
-        (80, 0),
-        (-80, 0),
-        (0, 80),
-        (0, -80),
-    ),
-}
+DIMENSIONS = tuple(descriptor.key for descriptor in REPRESENTATIVE_DIMENSIONS)
+DIMENSION_BY_KEY = {descriptor.key: descriptor for descriptor in REPRESENTATIVE_DIMENSIONS}
 
-RANGES = {
-    "minecraft:overworld": 2048,
-    "minecraft:the_nether": 2048,
-    "minecraft:the_end": 512,
-}
+if len(DIMENSION_BY_KEY) != len(REPRESENTATIVE_DIMENSIONS):
+    raise RuntimeError("duplicate representative dimension key")
+
+# Compatibility/readability views.  They are derived from descriptors so there remains
+# only one source of truth for the sampling policy.
+ANCHORS = {descriptor.key: descriptor.anchors for descriptor in REPRESENTATIVE_DIMENSIONS}
+RANGES = {descriptor.key: descriptor.radius_chunks for descriptor in REPRESENTATIVE_DIMENSIONS}
 
 
 class PlanError(ValueError):
@@ -77,6 +120,13 @@ def derive_seeds() -> list[int]:
     return [_signed64(digest[index * 8 : (index + 1) * 8]) for index in range(SEED_COUNT)]
 
 
+def require_dimension(dimension: str) -> RepresentativeDimensionDescriptor:
+    try:
+        return DIMENSION_BY_KEY[dimension]
+    except KeyError as error:
+        raise PlanError(f"unsupported representative dimension: {dimension}") from error
+
+
 def _candidate(dimension: str, counter: int, radius: int) -> tuple[int, int]:
     digest = hashlib.sha256(
         f"{POLICY_ID}|{dimension}|chunk|{counter}".encode("utf-8")
@@ -88,16 +138,14 @@ def _candidate(dimension: str, counter: int, radius: int) -> tuple[int, int]:
 
 
 def derive_chunks(dimension: str) -> list[list[int]]:
-    if dimension not in DIMENSIONS:
-        raise PlanError(f"unsupported representative dimension: {dimension}")
-    chunks = list(ANCHORS[dimension])
+    descriptor = require_dimension(dimension)
+    chunks = list(descriptor.anchors)
     seen = set(chunks)
     counter = 0
-    radius = RANGES[dimension]
     while len(chunks) < CHUNKS_PER_DIMENSION:
-        candidate = _candidate(dimension, counter, radius)
+        candidate = _candidate(dimension, counter, descriptor.radius_chunks)
         counter += 1
-        if dimension == "minecraft:the_end" and max(abs(candidate[0]), abs(candidate[1])) < 80:
+        if not descriptor.accepts_candidate(candidate):
             continue
         if candidate in seen:
             continue
@@ -137,16 +185,12 @@ def build_plan() -> dict[str, object]:
         "seeds": derive_seeds(),
         "chunks_per_dimension": CHUNKS_PER_DIMENSION,
         "dimensions": {
-            dimension: {
-                "coordinate_policy": (
-                    "anchors+sha256-square-v1"
-                    if dimension != "minecraft:the_end"
-                    else "central-anchors+sha256-outer-square-v1"
-                ),
-                "radius_chunks": RANGES[dimension],
-                "chunks": derive_chunks(dimension),
+            descriptor.key: {
+                "coordinate_policy": descriptor.coordinate_policy,
+                "radius_chunks": descriptor.radius_chunks,
+                "chunks": derive_chunks(descriptor.key),
             }
-            for dimension in DIMENSIONS
+            for descriptor in REPRESENTATIVE_DIMENSIONS
         },
         "weighting": {
             "seed": "equal",
@@ -186,7 +230,8 @@ def validate_plan(plan: object) -> dict[str, object]:
 
     dimensions = plan.get("dimensions")
     assert isinstance(dimensions, dict)
-    for dimension in DIMENSIONS:
+    for descriptor in REPRESENTATIVE_DIMENSIONS:
+        dimension = descriptor.key
         entry = dimensions[dimension]
         assert isinstance(entry, dict)
         chunks = entry["chunks"]
