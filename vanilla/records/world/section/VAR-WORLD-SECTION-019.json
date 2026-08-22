@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-019",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.Strategy",
+    "signature": "getIndex(final int x , final int y , final int z)",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "becc365101217aa47856e2ed30638d387fb0da88c024a99eac2197d2cf6806a8",
+    "body_sha256": "06fe085184d0f10963deb844574091a97a290c6e1b17150440cf906172d24f83"
+  },
+  "classifications": ["SEMANTIC_GAMEPLAY"],
+  "hazards_reviewed": [],
+  "semantic_rules": ["SEM-WORLD-SECTION-002", "SEM-WORLD-SECTION-004"],
+  "evidence": [],
+  "notes": ["The same formula is parameterized by bitsPerAxis=4 for blocks and 2 for biomes."]
+}

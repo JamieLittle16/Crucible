@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-020",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.Strategy",
+    "signature": "createForBlockStates(final IdMap < T > registry)",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "220b8e36c22c5c749bec60b5aa35943d99512cf88502b887d547009935a418ac",
+    "body_sha256": "2c7f8253f7fcb0432883d811ed88ffe230acca0afd6d3a798ff9a54ff18e2120"
+  },
+  "classifications": ["IMPLEMENTATION_ONLY"],
+  "hazards_reviewed": [],
+  "semantic_rules": [],
+  "evidence": [],
+  "notes": ["0/4/5/6/7/8/global palette thresholds are target mechanism evidence, not live-storage semantics."]
+}

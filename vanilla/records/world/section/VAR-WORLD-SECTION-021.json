@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-021",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.PalettedContainer",
+    "signature": "onResize(final int bits , final T lastAddedValue)",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "181518b6ef4fa24967bfabc073473d459c46908d0c1a30d85e6c987d9a5abd3d",
+    "body_sha256": "9f9601d40c76ea4f4d23f4262aa45941689cd597471f6a43e8c961bb507d3462"
+  },
+  "classifications": ["IMPLEMENTATION_ONLY"],
+  "hazards_reviewed": [],
+  "semantic_rules": [],
+  "evidence": [],
+  "notes": ["Target promotion copies all logical entries. Crucible may eliminate this O(section) transition."]
+}
