@@ -308,6 +308,113 @@ Admit the extractor and normalized corpus boundary. Next, wire `CRUCIBLE-SECTION
 
 ---
 
+## 2026-08-22 — independent Rust corpus importer and purpose firewall admitted
+
+**Question**  
+Can the normalized vanilla corpus be consumed by the Rust benchmark laboratory without trusting the Python validator as the only implementation, and can structurally valid but non-representative corpora be prevented from entering production decisions?
+
+**Result**
+- merged PR #38: `5a424ca913142eacf889031ebb569e9305b60a0d`;
+- Rust corpus parsing independently rechecks target/version/generation identity, canonical line endings/coordinates/resource locations, strict ordering, exact 4096-cell shape and state bounds;
+- one section is streamed at a time rather than retaining the raw corpus in benchmark memory;
+- every imported section is reconstructed through direct-reference, direct, adaptive, fast-local and packed-local;
+- every reconstruction is checked cell-for-cell and against independently recomputed semantic summary evidence;
+- corpus purpose is an explicit policy value rather than inferred from “real vanilla” provenance alone;
+- `parser-admission` and unknown policies are decision-ineligible by default;
+- the official 26.2 parser corpus is independently cross-checked between Python and Rust;
+- decision mode is required to reject that parser-admission corpus.
+
+**Decision**  
+Admit the normalized corpus as an independent Rust benchmark input boundary, but keep structural validity separate from workload decision eligibility.
+
+---
+
+## 2026-08-22 — representative-v1 sampling law frozen
+
+**Question**  
+What real vanilla workload population is broad and explicit enough to inform representation selection without allowing content-dependent cherry-picking or implicit cross-dimension weighting?
+
+**Result**
+- merged PR #41: `c192a498d3a6a8cd5a8e0b37716f3db0bb80397d`;
+- policy: `vanilla-section-representative-v1`;
+- plan SHA-256: `fecb9c9bc77aa9689ceaf6d88fa9af96019a48d9533269f3bd15824f7dfc7191`;
+- four content-independent frozen seeds;
+- 64 selected chunk columns per standard dimension per seed;
+- equal seed weighting;
+- natural vertical-section weighting within each dimension;
+- dimensions remain separate decision strata;
+- cross-dimension scoring is forbidden without a later explicit workload model;
+- seed-0 real admission demonstrated 3,584 sections / 14,680,064 cells / 432 distinct states and all-five candidate reconstruction.
+
+**Interpretation**  
+“Real vanilla data” is not sufficient by itself: the selection law and weighting policy are part of benchmark semantics and must be frozen before observing candidate performance.
+
+**Decision**  
+Use representative-v1 as the first production-decision population law. Changes to seeds, coordinates, dimensions or weighting require a new policy identity rather than silent benchmark tuning.
+
+---
+
+## 2026-08-22 — complete four-seed population admitted for benchmark handoff
+
+**Question**  
+Is the complete representative-v1 population sufficiently coherent and independently validated to become an input to target-hardware performance qualification?
+
+**Result**
+- merged PR #42: `5029a73a195dc067a2e0360f770f0e3605a60df9`;
+- every frozen member is generated from the pinned official 26.2 server and remains individually decision-ineligible;
+- the structural set validator requires exact four-member seed/corpus identity, common target/server/plan/lattices, exact selected-coordinate schedule and Python/Rust reconstruction agreement;
+- a second independent population-admission firewall re-opens all member evidence and rechecks exact seed-specific generation properties, semantic fact/class keys and subset relations, per-dimension/global recomposition, structural-set identity and post-digest mutation resistance;
+- only the complete admitted population emits `benchmark_handoff_eligible = true`;
+- artifact schema distinguishes complete qualification from partial diagnostic output;
+- `decision_scope = dimension-separated-only` and `cross_dimension_score_allowed = false` are preserved through the handoff.
+
+**Decision**  
+Admit the four-seed population as production-decision **workload evidence**. It still contains no qualifying timing/RSS evidence and therefore does not select a representation.
+
+---
+
+## 2026-08-22 — target-hardware foundation audited before admission
+
+**Question**  
+Can real-population CPU/tail/RSS measurement be isolated tightly enough that later target-machine numbers describe section mechanisms rather than parser memory, demand-paging artifacts or biased query construction?
+
+**Checkpoint**  
+PR #43 hardened code checkpoint before documentation: `2c1deae93bbc7e71240beb312aa07a037df2ed3c`.
+
+**Foundation**
+- content-addressed per-dimension little-endian-u16 benchmark packs derived only from the admitted four-seed artifact;
+- source corpus rehash during conversion closes validation-to-pack TOCTOU;
+- exactly one candidate and one dimension per population benchmark process;
+- every loaded section is checked cell-for-cell and by independent semantic summary before timing;
+- steady-state random/sequential/4×4×4/membership workloads plus candidate-independent control work;
+- raw construction samples, representation transitions, logical allocation events, logical owned bytes and process RSS/HWM recorded separately;
+- complete toolchain/commit/CPU/affinity/frequency/governor/turbo/load provenance.
+
+**Methodology defects found and fixed during audit**
+1. merely allocating common scratch before RSS baseline did not guarantee physical residency; all retained common scratch is now explicitly dirty-prefaulted and restored before baseline;
+2. saturating RSS subtraction hid negative/noisy observations; loaded-minus-baseline RSS is now an exact signed integer;
+3. positive `maybe_contains` used a privileged fixed cell; each positive needle now comes from the deterministic planned `(section, cell)` and is preflighted for semantic truth before timing.
+
+**Permanent regression/evidence additions**
+- prefault restores canonical scratch contents;
+- signed positive/negative/zero RSS deltas are preserved;
+- positive membership follows the planned cell rather than cell zero;
+- hosted target smoke enforces exact RSS arithmetic and the explicit prefault protocol;
+- hardened hosted smoke artifact SHA-256: `66b655f7dd8b3c070d6038607845801d7676bd61fb3f90215bf4a656b03b9605`.
+
+**Interpretation**  
+GitHub-hosted timing and RSS remain diagnostic only. Construction samples describe the current benchmark materialization path and are not relabelled as production decode latency.
+
+**Admission state at this log update**  
+Strict CI, synthetic benchmark smoke, target benchmark smoke, full semantic qualification and the official parser-corpus probe have passed on the hardened implementation. The exact final PR head is still waiting for its official representative-member probe before squash merge.
+
+Full foundation record: [`SECTION_TARGET_HARDWARE_FOUNDATION_ADMISSION.md`](SECTION_TARGET_HARDWARE_FOUNDATION_ADMISSION.md).
+
+**Decision / follow-up**  
+Do not rank candidates yet. Finish the real representative-member gate, then admit the foundation and build the target-machine orchestrator with exact pack-hash binding, CPU affinity, deterministic order rotation, repeated-process noise diagnostics and candidate-isolated synthetic transition evidence.
+
+---
+
 ## Entry template
 
 ```markdown
