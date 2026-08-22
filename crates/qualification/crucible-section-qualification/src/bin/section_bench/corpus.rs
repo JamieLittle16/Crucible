@@ -8,7 +8,9 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
-use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256};
+use crucible_generated::{
+    BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256,
+};
 use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 const PARSER_ADMISSION_EXTRACTOR: &str = "vanilla-save-region-v1-stored-sections";
@@ -115,6 +117,11 @@ impl CorpusImportCheck {
         .expect("writing to String cannot fail");
         writeln!(
             output,
+            "  \"state_data_input_sha256\": \"{STATE_DATA_INPUT_SHA256}\","
+        )
+        .expect("writing to String cannot fail");
+        writeln!(
+            output,
             "  \"source_inventory_sha256\": \"{}\",",
             self.header.inventory_sha256
         )
@@ -183,24 +190,27 @@ pub(crate) fn check_corpus(
     path: &Path,
     decision_requested: bool,
 ) -> Result<CorpusImportCheck, String> {
-    let metadata = verify::scan_metadata(path)?;
-    if decision_requested && !metadata.header.decision_eligible() {
+    let header = verify::read_header(path)?;
+    if decision_requested && !header.decision_eligible() {
         return Err(format!(
             "corpus extractor {} has purpose {} and is not decision-eligible",
-            metadata.header.extractor,
-            metadata.header.purpose.as_str()
+            header.extractor,
+            header.purpose.as_str()
         ));
     }
 
-    let candidates = verify::check_all_candidates(path, &metadata.header)?;
+    let verified = verify::verify_corpus(path)?;
+    if verified.header != header {
+        return Err("corpus header changed while opening verification stream".to_owned());
+    }
     Ok(CorpusImportCheck {
-        header: metadata.header,
-        section_count: metadata.section_count,
-        total_cells: metadata.total_cells,
-        distinct_state_ids: metadata.distinct_state_ids,
-        cardinality_histogram: metadata.cardinality_histogram,
-        dimensions: metadata.dimensions,
-        candidates,
+        header: verified.header,
+        section_count: verified.section_count,
+        total_cells: verified.total_cells,
+        distinct_state_ids: verified.distinct_state_ids,
+        cardinality_histogram: verified.cardinality_histogram,
+        dimensions: verified.dimensions,
+        candidates: verified.candidates,
     })
 }
 
