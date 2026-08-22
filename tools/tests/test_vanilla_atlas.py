@@ -69,6 +69,34 @@ class LexicalTests(unittest.TestCase):
         self.assertTrue(any(kind == "RNG" for kind, _, _ in hazards))
 
 
+    def test_fields_with_call_initializers_are_not_mistaken_for_methods(self) -> None:
+        source = r"""
+package net.minecraft.world.level.block;
+
+public class Block {
+    public static final IdMapper<BlockState> BLOCK_STATE_REGISTRY = new IdMapper<>();
+    private static final Thing FACTORY_VALUE = createThing();
+    private final RandomSource random = RandomSource.create();
+
+    public static int getId(BlockState state) {
+        return 0;
+    }
+}
+"""
+        tokens = atlas.tokenize_java(source)
+        braces = atlas.matching_pairs(tokens, "{", "}")
+        parens = atlas.matching_pairs(tokens, "(", ")")
+        package, _imports = atlas.package_and_imports(tokens)
+        types = atlas.extract_types(tokens, package, braces)
+        methods, fields = atlas.extract_members(tokens, types[0], parens, braces)
+
+        self.assertEqual(
+            {field.name for field in fields},
+            {"BLOCK_STATE_REGISTRY", "FACTORY_VALUE", "random"},
+        )
+        self.assertIn("getId", {method.name for method in methods})
+
+
     def test_normalized_fingerprint_ignores_layout_but_preserves_literals(self) -> None:
         a = atlas.tokenize_java('void x(){ int n = 48; String s = "alpha"; }')
         b = atlas.tokenize_java('void x() { /* layout only */ int n=48; String s="alpha"; }')

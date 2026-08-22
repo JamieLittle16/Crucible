@@ -432,7 +432,15 @@ def extract_members(tokens: Sequence[Token], typ: TypeDecl, parens: dict[int, in
         if text == ";":
             segment = list(tokens[member_start:i])
             # Field declarations only. Method declarations ending ; are handled above.
-            if segment and not any(t.text == "(" for t in segment):
+            if segment and not any(
+                t.text == "("
+                for t in segment[
+                    : next(
+                        (k for k, t in enumerate(segment) if t.text == "="),
+                        len(segment),
+                    )
+                ]
+            ):
                 # Remove annotations/modifiers; infer type from prefix and declared names from commas/assignment.
                 stripped = [t for t in segment if t.text not in MODIFIERS]
                 if stripped:

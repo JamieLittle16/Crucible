@@ -1,0 +1,229 @@
+{
+  "atlas": {
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "schema": 1,
+    "version": "0.1.1"
+  },
+  "evidence": [
+    {
+      "classification": "PROBE_SUPPORT",
+      "id": "STATE-SOURCE-BOOTSTRAP-VERSION",
+      "role": "establish the target runtime version before registry bootstrap",
+      "surface": {
+        "body_sha256": "734ef76044216171686c01deeea544b770822738d70dcf848203690c0a1fabd9",
+        "diagnostic_lines": [
+          192,
+          196
+        ],
+        "kind": "method",
+        "modifiers": "public static",
+        "name": "tryDetectVersion",
+        "normalized_sha256": "b48b21f42b6cb27d643c74986fcde1162b864fdc30bd7337a4b53afbcf31cc8a",
+        "owner": "net.minecraft.SharedConstants",
+        "param_count": 0,
+        "return_type": "void",
+        "signature": "tryDetectVersion()",
+        "source_file_sha256": "dbdbe6f504584252f6054aa3edd6ce1c1d3f4541ed3d6736b1b63bafb3d9d06e",
+        "source_path": "src/net/minecraft/SharedConstants.java"
+      }
+    },
+    {
+      "classification": "PROBE_SUPPORT",
+      "id": "STATE-SOURCE-BOOTSTRAP-REGISTRIES",
+      "role": "complete vanilla registry bootstrap before state enumeration",
+      "surface": {
+        "body_sha256": "0b5b53856fbfb775252aa517b20d0521475a6462f112d046a1f3623c8ed2ae35",
+        "diagnostic_lines": [
+          43,
+          65
+        ],
+        "kind": "method",
+        "modifiers": "public static",
+        "name": "bootStrap",
+        "normalized_sha256": "5b244b3c29983dcf47b4db92cdfb42a6d05ab440cf2275a6acb47df2260f8d0e",
+        "owner": "net.minecraft.server.Bootstrap",
+        "param_count": 0,
+        "return_type": "void",
+        "signature": "bootStrap()",
+        "source_file_sha256": "33dda3f09d80c67dc24b8d00bce027136779d59f842de5b2486e12ee7da07f52",
+        "source_path": "src/net/minecraft/server/Bootstrap.java"
+      }
+    },
+    {
+      "classification": "PROBE_SUPPORT",
+      "id": "STATE-SOURCE-BLOCKS-INITIALIZATION",
+      "role": "force target block registration/static initialization before enumeration",
+      "surface": {
+        "declaration_kind": "class",
+        "diagnostic_lines": [
+          49,
+          5872
+        ],
+        "kind": "type",
+        "normalized_sha256": "7f87d1bddf615adfd992892699963cae24a7de5fda4fe0ab0c24ac88622a6692",
+        "owner": "net.minecraft.world.level.block.Blocks",
+        "source_file_sha256": "69dc91ca824aad4d3791ab0f38f504b3ce33fc988b3736982c35aa9aa9527dfd",
+        "source_path": "src/net/minecraft/world/level/block/Blocks.java"
+      }
+    },
+    {
+      "classification": "SEMANTIC_TARGET_DATA",
+      "id": "STATE-SOURCE-STATE-REGISTRY",
+      "role": "complete target block-state enumeration domain and vanilla global state-ID ordering",
+      "surface": {
+        "diagnostic_line": 82,
+        "kind": "field",
+        "modifiers": "public static final",
+        "name": "BLOCK_STATE_REGISTRY",
+        "owner": "net.minecraft.world.level.block.Block",
+        "source_file_sha256": "12e5cd3a94ca49eba637f5266078e73fc6f0d7c238f2d23b36bcf35a637f1124",
+        "source_path": "src/net/minecraft/world/level/block/Block.java",
+        "type_name": "IdMapper<BlockState>"
+      }
+    },
+    {
+      "classification": "SEMANTIC_TARGET_DATA",
+      "id": "STATE-SOURCE-VANILLA-ID",
+      "role": "map each official block state to the vanilla global numeric state ID",
+      "surface": {
+        "body_sha256": "5b14cd18a6d9e9e3a680bddd36a3b1ad1328da3133d465f8adb9e72da4dc160b",
+        "diagnostic_lines": [
+          126,
+          133
+        ],
+        "kind": "method",
+        "modifiers": "public static",
+        "name": "getId",
+        "normalized_sha256": "d450bde7dfd84ad330433ed40115fda1c257d7bcf7f3f3cdc3075bb7f81e2bf3",
+        "owner": "net.minecraft.world.level.block.Block",
+        "param_count": 1,
+        "return_type": "int",
+        "signature": "getId(final @ Nullable BlockState blockState)",
+        "source_file_sha256": "12e5cd3a94ca49eba637f5266078e73fc6f0d7c238f2d23b36bcf35a637f1124",
+        "source_path": "src/net/minecraft/world/level/block/Block.java"
+      }
+    },
+    {
+      "classification": "SEMANTIC_TARGET_DATA",
+      "id": "STATE-SOURCE-NON-AIR",
+      "role": "derive the exact non-air predicate used by section mutation accounting",
+      "surface": {
+        "body_sha256": "4d66eed4be29a1c056c32f320ee782d992053ba986976ca3a72b77f69d97f86a",
+        "diagnostic_lines": [
+          584,
+          586
+        ],
+        "kind": "method",
+        "modifiers": "public",
+        "name": "isAir",
+        "normalized_sha256": "6e363270589698c9924266e86a54576ae6cd5330fb4593956088a20a7c676446",
+        "owner": "net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase",
+        "param_count": 0,
+        "return_type": "boolean",
+        "signature": "isAir()",
+        "source_file_sha256": "598050c5e9c9064b8fc95f91c84d925695b573830eca129b81a964e1f171e572",
+        "source_path": "src/net/minecraft/world/level/block/state/BlockBehaviour.java"
+      }
+    },
+    {
+      "classification": "SEMANTIC_TARGET_DATA",
+      "id": "STATE-SOURCE-RANDOM-BLOCK",
+      "role": "derive block-state random-tick eligibility",
+      "surface": {
+        "body_sha256": "5ea8b605471371e6edba6d3ddc5a03c8c80479f844e69108f38132ab4e40c3ce",
+        "diagnostic_lines": [
+          869,
+          871
+        ],
+        "kind": "method",
+        "modifiers": "public",
+        "name": "isRandomlyTicking",
+        "normalized_sha256": "490f42de14230e1b0ab4ddea55f1b49c8da980ce0497448c440e51900df85c68",
+        "owner": "net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase",
+        "param_count": 0,
+        "return_type": "boolean",
+        "signature": "isRandomlyTicking()",
+        "source_file_sha256": "598050c5e9c9064b8fc95f91c84d925695b573830eca129b81a964e1f171e572",
+        "source_path": "src/net/minecraft/world/level/block/state/BlockBehaviour.java"
+      }
+    },
+    {
+      "classification": "SEMANTIC_TARGET_DATA",
+      "id": "STATE-SOURCE-FLUID-PROJECTION",
+      "role": "project a block state to the fluid state used by LevelChunkSection accounting",
+      "surface": {
+        "body_sha256": "e13033a1cba9201c70911c1ea43f0bc8d0c7c71d9ce639504a72c0bfdd2aca2b",
+        "diagnostic_lines": [
+          865,
+          867
+        ],
+        "kind": "method",
+        "modifiers": "public",
+        "name": "getFluidState",
+        "normalized_sha256": "dbb04cf89968efd4cad67f9107048ddb8e9e142196e21a95202e4bd6f4fad65d",
+        "owner": "net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase",
+        "param_count": 0,
+        "return_type": "FluidState",
+        "signature": "getFluidState()",
+        "source_file_sha256": "598050c5e9c9064b8fc95f91c84d925695b573830eca129b81a964e1f171e572",
+        "source_path": "src/net/minecraft/world/level/block/state/BlockBehaviour.java"
+      }
+    },
+    {
+      "classification": "SEMANTIC_TARGET_DATA",
+      "id": "STATE-SOURCE-FLUID-EMPTY",
+      "role": "derive counted-fluid presence from the projected fluid state",
+      "surface": {
+        "body_sha256": "e8886e433819aa73ebe3cb3ddba0b61624e48a225840de234c260e56be5c5920",
+        "diagnostic_lines": [
+          45,
+          47
+        ],
+        "kind": "method",
+        "modifiers": "public",
+        "name": "isEmpty",
+        "normalized_sha256": "0bb24b3d5e81dcdf508e95282878e64818562c8e714e0b57ba056eb9aaaa01e6",
+        "owner": "net.minecraft.world.level.material.FluidState",
+        "param_count": 0,
+        "return_type": "boolean",
+        "signature": "isEmpty()",
+        "source_file_sha256": "f861b76280724832b3fe348895f6d33f125b15c146eea51bfbfc9fe30f2a0b7f",
+        "source_path": "src/net/minecraft/world/level/material/FluidState.java"
+      }
+    },
+    {
+      "classification": "SEMANTIC_TARGET_DATA",
+      "id": "STATE-SOURCE-RANDOM-FLUID",
+      "role": "derive random-fluid tick eligibility for counted fluid states",
+      "surface": {
+        "body_sha256": "781bb99740c445f24a3b11d41379266b65cef5018b16322b6f888965b3e242c1",
+        "diagnostic_lines": [
+          87,
+          89
+        ],
+        "kind": "method",
+        "modifiers": "public",
+        "name": "isRandomlyTicking",
+        "normalized_sha256": "de5031dc14897603e2dc7c063bd9eec24480729e0ee31e2d6b9474ed28d9aedf",
+        "owner": "net.minecraft.world.level.material.FluidState",
+        "param_count": 0,
+        "return_type": "boolean",
+        "signature": "isRandomlyTicking()",
+        "source_file_sha256": "f861b76280724832b3fe348895f6d33f125b15c146eea51bfbfc9fe30f2a0b7f",
+        "source_path": "src/net/minecraft/world/level/material/FluidState.java"
+      }
+    }
+  ],
+  "qualification_digest": "5d312d6025fa6556feaf5fa26c80577dcb024e7e5be5cd1bda98d101367600c8",
+  "schema": 1,
+  "source": {
+    "archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+    "java_files": 4849
+  },
+  "spec_sha256": "2d1458fbfef7cb0edb5e22d88b7e9f412ab736ab557e5024bcca8d15761fb317",
+  "target": {
+    "data_version": 4903,
+    "minecraft_version": "26.2",
+    "protocol_version": 776
+  }
+}
