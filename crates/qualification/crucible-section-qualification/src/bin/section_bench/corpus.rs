@@ -14,10 +14,12 @@ use crucible_generated::{
 use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 const PARSER_ADMISSION_EXTRACTOR: &str = "vanilla-save-region-v1-stored-sections";
+const REPRESENTATIVE_MEMBER_EXTRACTOR: &str = "vanilla-save-region-v2-representative-member";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum CorpusPurpose {
     ParserAdmission,
+    RepresentativeMember,
     Unclassified,
 }
 
@@ -25,21 +27,22 @@ impl CorpusPurpose {
     pub(crate) const fn as_str(&self) -> &'static str {
         match self {
             Self::ParserAdmission => "parser-admission",
+            Self::RepresentativeMember => "representative-member",
             Self::Unclassified => "unclassified",
         }
     }
 
     pub(crate) const fn decision_eligible(&self) -> bool {
         match self {
-            Self::ParserAdmission | Self::Unclassified => false,
+            Self::ParserAdmission | Self::RepresentativeMember | Self::Unclassified => false,
         }
     }
 
     fn from_extractor(extractor: &str) -> Self {
-        if extractor == PARSER_ADMISSION_EXTRACTOR {
-            Self::ParserAdmission
-        } else {
-            Self::Unclassified
+        match extractor {
+            PARSER_ADMISSION_EXTRACTOR => Self::ParserAdmission,
+            REPRESENTATIVE_MEMBER_EXTRACTOR => Self::RepresentativeMember,
+            _ => Self::Unclassified,
         }
     }
 }
@@ -239,4 +242,26 @@ fn write_inline_string_usize_map(output: &mut String, values: &BTreeMap<String, 
         write!(output, "\"{key}\":{value}").expect("writing to String cannot fail");
     }
     output.push('}');
+}
+
+#[cfg(test)]
+mod purpose_tests {
+    use super::{CorpusPurpose, PARSER_ADMISSION_EXTRACTOR, REPRESENTATIVE_MEMBER_EXTRACTOR};
+
+    #[test]
+    fn representative_members_are_known_but_not_individually_decision_eligible() {
+        let parser = CorpusPurpose::from_extractor(PARSER_ADMISSION_EXTRACTOR);
+        assert_eq!(parser, CorpusPurpose::ParserAdmission);
+        assert_eq!(parser.as_str(), "parser-admission");
+        assert!(!parser.decision_eligible());
+
+        let representative = CorpusPurpose::from_extractor(REPRESENTATIVE_MEMBER_EXTRACTOR);
+        assert_eq!(representative, CorpusPurpose::RepresentativeMember);
+        assert_eq!(representative.as_str(), "representative-member");
+        assert!(!representative.decision_eligible());
+
+        let unknown = CorpusPurpose::from_extractor("future-policy-v99");
+        assert_eq!(unknown, CorpusPurpose::Unclassified);
+        assert!(!unknown.decision_eligible());
+    }
 }
