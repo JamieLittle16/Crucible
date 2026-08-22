@@ -251,15 +251,14 @@ impl<S: Copy + Eq> PackedLocal<S> {
 
         if shift + bits <= 64 {
             let shifted_mask = mask << shift;
-            self.words[word_index] =
-                (self.words[word_index] & !shifted_mask) | (value << shift);
+            self.words[word_index] = (self.words[word_index] & !shifted_mask) | (value << shift);
         } else {
             let low_bits = 64 - shift;
             let high_bits = bits - low_bits;
             let low_mask = (1_u64 << low_bits) - 1;
             let shifted_low_mask = low_mask << shift;
-            self.words[word_index] = (self.words[word_index] & !shifted_low_mask)
-                | ((value & low_mask) << shift);
+            self.words[word_index] =
+                (self.words[word_index] & !shifted_low_mask) | ((value & low_mask) << shift);
 
             let high_mask = (1_u64 << high_bits) - 1;
             self.words[word_index + 1] =
@@ -539,15 +538,13 @@ impl<S: Copy + Eq> BlockSection<S> for PackedLocalBlockSection<S> {
 mod tests {
     use std::mem;
 
-    use crucible_generated::{
-        AIR, BLOCK_STATE_COUNT_U32, BlockStateId, GeneratedStateFacts,
-    };
+    use crucible_generated::{AIR, BLOCK_STATE_COUNT_U32, BlockStateId, GeneratedStateFacts};
     use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
     use crucible_world_reference::DirectBlockSection;
 
     use super::{
-        FastLocalBlockSection, FastLocalRepresentation, PackedLocalBlockSection,
-        PackedLocalRepresentation, PackedLocal, PaletteSlot,
+        FastLocalBlockSection, FastLocalRepresentation, PackedLocal, PackedLocalBlockSection,
+        PackedLocalRepresentation, PaletteSlot,
     };
 
     fn pos(index: usize) -> SectionBlockPos {
@@ -598,8 +595,8 @@ mod tests {
             if step.is_multiple_of(2048) {
                 assert_target_equivalent(&candidate, &reference);
                 for needle in [AIR, state(1), state(100), state(1000)] {
-                    let exact = (0..BLOCK_SECTION_CELLS)
-                        .any(|index| reference.get(pos(index)) == needle);
+                    let exact =
+                        (0..BLOCK_SECTION_CELLS).any(|index| reference.get(pos(index)) == needle);
                     if !candidate.maybe_contains(|value| value == needle) {
                         assert!(!exact, "target maybe_contains false negative");
                     }
@@ -624,6 +621,34 @@ mod tests {
     }
 
     #[test]
+    fn fast_local_reuses_last_use_at_256_then_promotes_on_257() {
+        let mut section = FastLocalBlockSection::filled(AIR, &GeneratedStateFacts);
+        for raw in 1_u32..=255 {
+            section.replace(
+                pos(usize::try_from(raw - 1).expect("small cell index")),
+                state(raw),
+                &GeneratedStateFacts,
+            );
+        }
+        assert_eq!(section.live_palette_entries(), Some(256));
+        assert_eq!(
+            section.representation(),
+            FastLocalRepresentation::Local8Stable
+        );
+
+        section.replace(pos(0), state(256), &GeneratedStateFacts);
+        assert_eq!(section.live_palette_entries(), Some(256));
+        assert_eq!(
+            section.representation(),
+            FastLocalRepresentation::Local8Stable
+        );
+
+        section.replace(pos(255), state(257), &GeneratedStateFacts);
+        assert_eq!(section.representation(), FastLocalRepresentation::DirectN);
+        assert_eq!(section.live_palette_entries(), None);
+    }
+
+    #[test]
     fn fast_local_target_trace_matches_reference() {
         run_target_trace(
             FastLocalBlockSection::filled(AIR, &GeneratedStateFacts),
@@ -637,14 +662,42 @@ mod tests {
         let mut section = PackedLocalBlockSection::filled(AIR, &GeneratedStateFacts);
         assert_eq!(section.representation(), PackedLocalRepresentation::Uniform);
         section.replace(pos(0), state(1), &GeneratedStateFacts);
-        assert_eq!(section.representation(), PackedLocalRepresentation::Packed(1));
+        assert_eq!(
+            section.representation(),
+            PackedLocalRepresentation::Packed(1)
+        );
         let one_bit_bytes = 512 + 2 * mem::size_of::<PaletteSlot<BlockStateId>>();
         assert_eq!(section.backing_bytes(), one_bit_bytes);
 
         section.replace(pos(1), state(2), &GeneratedStateFacts);
-        assert_eq!(section.representation(), PackedLocalRepresentation::Packed(2));
+        assert_eq!(
+            section.representation(),
+            PackedLocalRepresentation::Packed(2)
+        );
         let two_bit_bytes = 1024 + 4 * mem::size_of::<PaletteSlot<BlockStateId>>();
         assert_eq!(section.backing_bytes(), two_bit_bytes);
+    }
+
+    #[test]
+    fn packed_reuses_last_use_at_256_then_promotes_on_257() {
+        let mut section = PackedLocalBlockSection::filled(AIR, &GeneratedStateFacts);
+        for raw in 1_u32..=255 {
+            section.replace(
+                pos(usize::try_from(raw - 1).expect("small cell index")),
+                state(raw),
+                &GeneratedStateFacts,
+            );
+        }
+        assert_eq!(section.representation(), PackedLocalRepresentation::Packed(8));
+        assert_eq!(section.live_palette_entries(), Some(256));
+
+        section.replace(pos(0), state(256), &GeneratedStateFacts);
+        assert_eq!(section.representation(), PackedLocalRepresentation::Packed(8));
+        assert_eq!(section.live_palette_entries(), Some(256));
+
+        section.replace(pos(255), state(257), &GeneratedStateFacts);
+        assert_eq!(section.representation(), PackedLocalRepresentation::DirectN);
+        assert_eq!(section.live_palette_entries(), None);
     }
 
     #[test]
@@ -669,7 +722,11 @@ mod tests {
             }
             for cell in 0..BLOCK_SECTION_CELLS {
                 let expected = u8::try_from(cell % capacity).expect("capacity is at most 256");
-                assert_eq!(packed.local_index(cell), expected, "bits={bits} cell={cell}");
+                assert_eq!(
+                    packed.local_index(cell),
+                    expected,
+                    "bits={bits} cell={cell}"
+                );
             }
         }
     }
