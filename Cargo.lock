@@ -11,5 +11,16 @@ name = "crucible-types"
 version = "0.0.0"
 
 [[package]]
+name = "crucible-world-contract"
+version = "0.0.0"
+
+[[package]]
+name = "crucible-world-reference"
+version = "0.0.0"
+dependencies = [
+ "crucible-world-contract",
+]
+
+[[package]]
 name = "xtask"
 version = "0.0.0"
