@@ -33,24 +33,28 @@ fn write_identity(
     writeln!(output, "  \"harness_version\": \"{HARNESS_VERSION}\",").map_err(fmt_error)?;
     writeln!(output, "  \"mode\": \"{}\",", mode.as_str()).map_err(fmt_error)?;
     write_string(output, "commit_sha", &hardware.commit_sha)?;
-    writeln!(output, "  \"minecraft_version\": \"{MINECRAFT_VERSION}\",").map_err(fmt_error)?;
+    writeln!(
+        output,
+        "  \"minecraft_version\": \"{MINECRAFT_VERSION}\"," 
+    )
+    .map_err(fmt_error)?;
     writeln!(output, "  \"protocol_version\": {PROTOCOL_VERSION},").map_err(fmt_error)?;
     writeln!(output, "  \"data_version\": {DATA_VERSION},").map_err(fmt_error)?;
     writeln!(
         output,
-        "  \"state_data_input_sha256\": \"{STATE_DATA_INPUT_SHA256}\","
+        "  \"state_data_input_sha256\": \"{STATE_DATA_INPUT_SHA256}\"," 
     )
     .map_err(fmt_error)?;
     writeln!(
         output,
-        "  \"state_data_generation_sha256\": \"{STATE_DATA_GENERATION_SHA256}\","
+        "  \"state_data_generation_sha256\": \"{STATE_DATA_GENERATION_SHA256}\"," 
     )
     .map_err(fmt_error)?;
     writeln!(output, "  \"benchmark_seed\": \"{BENCH_SEED:016x}\",").map_err(fmt_error)?;
     writeln!(output, "  \"build_profile\": \"release\",").map_err(fmt_error)?;
     writeln!(
         output,
-        "  \"codegen_policy\": \"lto=thin,codegen-units=1,panic=abort\","
+        "  \"codegen_policy\": \"lto=thin,codegen-units=1,panic=abort\"," 
     )
     .map_err(fmt_error)?;
     write_string(output, "target_triple", &hardware.target_triple)?;
@@ -84,15 +88,45 @@ fn write_string(output: &mut String, key: &str, value: &str) -> Result<(), Strin
 
 fn write_settings(output: &mut String, settings: Settings) -> Result<(), String> {
     writeln!(output, "  \"settings\": {{").map_err(fmt_error)?;
-    writeln!(output, "    \"warmup_samples\": {},", settings.warmup_samples).map_err(fmt_error)?;
-    writeln!(output, "    \"measured_samples\": {},", settings.measured_samples).map_err(fmt_error)?;
+    writeln!(
+        output,
+        "    \"warmup_samples\": {},",
+        settings.warmup_samples
+    )
+    .map_err(fmt_error)?;
+    writeln!(
+        output,
+        "    \"measured_samples\": {},",
+        settings.measured_samples
+    )
+    .map_err(fmt_error)?;
     writeln!(output, "    \"random_reads\": {},", settings.random_reads).map_err(fmt_error)?;
     writeln!(output, "    \"full_scans\": {},", settings.full_scans).map_err(fmt_error)?;
-    writeln!(output, "    \"volume_queries\": {},", settings.volume_queries).map_err(fmt_error)?;
+    writeln!(
+        output,
+        "    \"volume_queries\": {},",
+        settings.volume_queries
+    )
+    .map_err(fmt_error)?;
     writeln!(output, "    \"mutations\": {},", settings.mutations).map_err(fmt_error)?;
-    writeln!(output, "    \"contains_queries\": {},", settings.contains_queries).map_err(fmt_error)?;
-    writeln!(output, "    \"promotion_samples\": {},", settings.promotion_samples).map_err(fmt_error)?;
-    writeln!(output, "    \"lifetime_mutations\": {}", settings.lifetime_mutations).map_err(fmt_error)?;
+    writeln!(
+        output,
+        "    \"contains_queries\": {},",
+        settings.contains_queries
+    )
+    .map_err(fmt_error)?;
+    writeln!(
+        output,
+        "    \"promotion_samples\": {},",
+        settings.promotion_samples
+    )
+    .map_err(fmt_error)?;
+    writeln!(
+        output,
+        "    \"lifetime_mutations\": {}",
+        settings.lifetime_mutations
+    )
+    .map_err(fmt_error)?;
     writeln!(output, "  }},").map_err(fmt_error)
 }
 
