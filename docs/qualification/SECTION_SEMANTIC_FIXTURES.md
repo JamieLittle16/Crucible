@@ -24,26 +24,60 @@ The initial committed document is:
 
 `vanilla/fixtures/section/26.2-semantic-fixtures.txt`
 
-## Current qualification path
+## Qualification commands
 
-The committed fixture is compiled and executed by the `crucible-section-qualification` integration
-tests under the normal workspace `cargo check`, Clippy, test, and rustfmt gates. The initial fixture
-contains ten semantic cases: eight block cases executed against all four admitted live block
-candidates and the direct oracle, plus two independent biome cases.
-
-The target command remains:
+The source-backed semantic fixture path is:
 
 ```text
-cargo xtask qualify section --vanilla vanilla/fixtures/section/26.2-semantic-fixtures.txt
+cargo xtask qualify section \
+  --vanilla vanilla/fixtures/section/26.2-semantic-fixtures.txt
 ```
 
-That CLI wrapper and its `vanilla-fixture` evidence writer are intentionally deferred to the next
-#18 slice together with the official-runtime fixture producer. Until then, do not treat `--vanilla`
-as implemented merely because the normalized fixture engine is qualified.
+It executes the committed fixture through the independent direct oracle and all admitted live block
+candidates, executes the biome semantic cases, and writes commit-bound evidence to:
 
-The runtime producer will emit or verify this same semantic format from the local pinned official
-artifact. The qualification semantics should not change merely because the fixture producer changes.
+`target/crucible-qualification/section/vanilla-fixture.json`
 
-Wire/decode rules `SEM-WORLD-SECTION-017` and `018` remain intentionally outside this fixture until
-the packet/decode adapter exists. Live CPU storage must not grow packet ownership merely to satisfy a
-qualification milestone early.
+Hosted CI executes this command directly in addition to the deterministic quick trace qualification.
+
+To independently bind the block fixture signatures and expected count/gate outcomes to a raw dataset
+captured by the pinned official runtime reflection probe, add:
+
+```text
+cargo xtask qualify section \
+  --vanilla vanilla/fixtures/section/26.2-semantic-fixtures.txt \
+  --runtime-data .crucible/vanilla/26.2-block-states.raw.json
+```
+
+The runtime verifier is `tools/section_runtime_fixture.py`. It fails closed on target identity,
+official-server SHA-256, probe identity, dense global state IDs, block-state fact invariants, missing
+fact signatures, or fixture expectations that do not follow from the official runtime facts. Its
+evidence is written to:
+
+`target/crucible-qualification/section/runtime-facts-fixture.json`
+
+This creates an intentionally independent chain:
+
+```text
+pinned official source / SEM fixture
+              ↓
+committed semantic fixture
+       ↙                ↘
+Rust direct oracle       official runtime state-fact dataset
+       ↓                          ↓
+live candidates          independent Python verifier
+       ↘                ↙
+       qualification evidence
+```
+
+## Evidence boundary
+
+The `--runtime-data` path is **runtime-bound state-fact evidence**, not yet a claim that Crucible has
+black-box executed Mojang `LevelChunkSection` for every operation or reproduced its packet bytes.
+That stronger runtime/serialization oracle belongs with the packet/decode adapter and
+`SEM-WORLD-SECTION-017` / `018`.
+
+The distinction is deliberate: live CPU storage must not acquire packet ownership or Java-shaped
+container architecture merely to satisfy a qualification milestone early. The current fixture layer
+qualifies `SEM-WORLD-SECTION-003`, `004`, `005`–`010`, `012`, `015`, and `016` at the semantic boundary
+that already exists.
