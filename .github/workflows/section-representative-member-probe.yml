@@ -226,6 +226,23 @@ jobs:
               raise SystemExit('Python/Rust representative cardinality mismatch')
           if rust['dimensions'] != manifest['dimensions']:
               raise SystemExit('Python/Rust representative dimension counts mismatch')
+
+          expected_candidates = {
+              'direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local'
+          }
+          per_dimension = rust.get('per_dimension')
+          if not isinstance(per_dimension, dict) or set(per_dimension) != set(manifest['dimensions']):
+              raise SystemExit('Rust representative per-dimension evidence is incomplete')
+          merged_histogram = Counter()
+          merged_candidate_sections = Counter()
+          merged_candidate_bytes = Counter()
+          merged_candidate_transitions = Counter()
+          merged_candidate_allocations = Counter()
+          merged_candidate_representations = {
+              candidate: Counter() for candidate in expected_candidates
+          }
+          merged_candidate_max = Counter()
+
           lattice = extraction['section_lattice']
           for dimension in ('minecraft:overworld', 'minecraft:the_nether', 'minecraft:the_end'):
               if dimension not in lattice or dimension not in manifest['dimensions']:
@@ -233,6 +250,50 @@ jobs:
               expected = 64 * len(lattice[dimension])
               if manifest['dimensions'][dimension] != expected:
                   raise SystemExit(f'{dimension} section count does not match selected chunks × lattice')
+              summary = per_dimension[dimension]
+              if summary['section_count'] != expected or summary['total_cells'] != expected * 4096:
+                  raise SystemExit(f'{dimension} Rust section/cell totals mismatch')
+              histogram = Counter(summary['cardinality_histogram'])
+              if sum(histogram.values()) != expected:
+                  raise SystemExit(f'{dimension} Rust histogram does not sum to sections')
+              merged_histogram.update(histogram)
+              rows = summary.get('candidates')
+              if not isinstance(rows, list) or {row['candidate'] for row in rows} != expected_candidates:
+                  raise SystemExit(f'{dimension} Rust candidate set mismatch')
+              for row in rows:
+                  candidate = row['candidate']
+                  if row['sections'] != expected:
+                      raise SystemExit(f'{dimension} {candidate} section count mismatch')
+                  if sum(row['representations'].values()) != expected:
+                      raise SystemExit(f'{dimension} {candidate} representation total mismatch')
+                  merged_candidate_sections[candidate] += row['sections']
+                  merged_candidate_bytes[candidate] += row['total_owned_bytes']
+                  merged_candidate_transitions[candidate] += row['construction_transitions']
+                  merged_candidate_allocations[candidate] += row['logical_backing_allocations']
+                  merged_candidate_max[candidate] = max(
+                      merged_candidate_max[candidate], row['max_owned_bytes']
+                  )
+                  merged_candidate_representations[candidate].update(row['representations'])
+
+          if dict(merged_histogram) != rust['cardinality_histogram']:
+              raise SystemExit('Rust per-dimension histogram does not recompose global histogram')
+          global_rows = {row['candidate']: row for row in rust['candidates']}
+          if set(global_rows) != expected_candidates:
+              raise SystemExit('Rust global candidate set mismatch')
+          for candidate, row in global_rows.items():
+              if row['sections'] != merged_candidate_sections[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global section mismatch')
+              if row['total_owned_bytes'] != merged_candidate_bytes[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global byte mismatch')
+              if row['max_owned_bytes'] != merged_candidate_max[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global max-byte mismatch')
+              if row['construction_transitions'] != merged_candidate_transitions[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global transition mismatch')
+              if row['logical_backing_allocations'] != merged_candidate_allocations[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global allocation mismatch')
+              if row['representations'] != dict(merged_candidate_representations[candidate]):
+                  raise SystemExit(f'{candidate} per-dimension/global representation mismatch')
+
           if manifest['section_count'] != sum(manifest['dimensions'].values()):
               raise SystemExit('representative member dimension totals do not sum to sections')
           print(
