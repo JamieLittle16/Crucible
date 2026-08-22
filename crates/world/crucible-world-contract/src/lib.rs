@@ -104,6 +104,10 @@ impl SectionStateFacts {
     /// on a non-air block state. Random block/fluid contributions are canonicalized to the same
     /// counted domains.
     #[must_use]
+    #[expect(
+        clippy::fn_params_excessive_bools,
+        reason = "the four booleans are independent target semantic facts packed into one byte"
+    )]
     pub const fn new(
         non_air: bool,
         counted_fluid: bool,
