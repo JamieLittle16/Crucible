@@ -53,7 +53,7 @@ Generate a local qualification artifact with:
 ```text
 python3 tools/state_source_qualification.py \
   --atlas .crucible/vanilla/atlas.sqlite \
-  --output .crucible/vanilla/26.2-state-source-qualification.json
+  --output vanilla/state-data/26.2-source-qualification.json
 ```
 
 Once an artifact is reviewed/committed, byte-identical regeneration is checked with `--verify`.
@@ -71,7 +71,7 @@ Runtime-derived state data is deliberately **not production-qualified** merely b
 - runtime probe identity;
 - complete/dense runtime state universe invariants.
 
-The official Minecraft 26.2 runtime is pinned in `vanilla.lock.toml`. The current qualified-runtime candidate exposes 32,366 dense vanilla state IDs (`0..32365`), which proves `u16` sufficient for this target when the final source binding is accepted.
+The official Minecraft 26.2 runtime is pinned in `vanilla.lock.toml`. The current runtime evidence exposes 32,366 dense vanilla state IDs (`0..32365`), which proves `u16` sufficient for this target once the final source binding is accepted.
 
 Bind raw runtime evidence with:
 
@@ -83,6 +83,38 @@ python3 tools/qualify_state_data.py \
 ```
 
 The qualified dataset provenance includes the raw runtime input digest, exact official-server SHA-256, source archive SHA-256, source-qualification digest, and binder version. The subsequent generator input digest therefore commits to both independent oracle paths.
+
+## One-command finalization
+
+`tools/finalize_state_data.py` orchestrates the complete evidence chain without collapsing the independent tools into one implementation. With the pinned local Atlas available it will:
+
+1. regenerate the source qualification;
+2. obtain fresh official-runtime state data (or consume `--runtime-data`);
+3. bind both evidence paths;
+4. generate `crates/data/crucible-generated/src/lib.rs`;
+5. generate `vanilla/state-data/26.2-state-data-manifest.json`;
+6. validate that target and provenance identities survive the whole chain.
+
+Normal finalization:
+
+```text
+python3 tools/finalize_state_data.py
+```
+
+Reuse an already captured runtime dataset:
+
+```text
+python3 tools/finalize_state_data.py \
+  --runtime-data .crucible/vanilla/26.2-block-states.raw.json
+```
+
+After the source qualification, generated Rust and manifest are reviewed/committed, exact replay is:
+
+```text
+python3 tools/finalize_state_data.py --verify
+```
+
+Any changed source fingerprint, source specification, source archive, official-server binary, runtime facts, assignment policy or generated output causes verification to fail rather than silently refreshing production data.
 
 ## Normalized input schema
 
