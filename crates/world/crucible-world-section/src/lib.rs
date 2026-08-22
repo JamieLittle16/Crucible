@@ -548,7 +548,9 @@ impl<S: Copy + Eq> BlockSection<S> for DirectNBlockSection<S> {
 mod tests {
     use std::mem;
 
-    use super::{AdaptiveBlockSection, DirectNBlockSection, PaletteSlot, RepresentationKind};
+    use super::{
+        AdaptiveBlockSection, DirectNBlockSection, LOCAL4_CAPACITY, PaletteSlot, RepresentationKind,
+    };
     use crucible_world_contract::{
         BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBlockPos, SectionStateFacts,
     };
