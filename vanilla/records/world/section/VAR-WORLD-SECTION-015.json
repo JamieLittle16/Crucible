@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-015",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.LevelChunkSection",
+    "signature": "fillBiomesFromNoise(final BiomeResolver biomeResolver , final Climate . Sampler sampler , final int quartMinX , final int quartMinY , final int quartMinZ)",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "d97abca2c1c51ed61d9e1029c0db6baa412d6b36623ea604cf4e6201739759da",
+    "body_sha256": "c1add11b5f87cdeb4c114b9790719b4c3b77dead90bb8ea749396a29a5a0fdf7"
+  },
+  "classifications": ["SEMANTIC_GAMEPLAY", "WORLDGEN"],
+  "hazards_reviewed": [],
+  "semantic_rules": ["SEM-WORLD-SECTION-003", "SEM-WORLD-SECTION-004", "SEM-WORLD-SECTION-015", "SEM-WORLD-SECTION-016"],
+  "evidence": [],
+  "notes": []
+}

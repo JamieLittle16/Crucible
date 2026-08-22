@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-014",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.LevelChunkSection",
+    "signature": "getNoiseBiome(final int quartX , final int quartY , final int quartZ)",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "f939e6abf5ce75d7b61e9382dcc2de8f7ed04e900594b88f3e7b42a923229d5c",
+    "body_sha256": "8addd9eb7e2e5a600ed0e0c3495391a168ed71ea8da9ba31d092fd6ea473cf37"
+  },
+  "classifications": ["SEMANTIC_GAMEPLAY"],
+  "hazards_reviewed": [],
+  "semantic_rules": ["SEM-WORLD-SECTION-003", "SEM-WORLD-SECTION-004", "SEM-WORLD-SECTION-015"],
+  "evidence": [],
+  "notes": []
+}

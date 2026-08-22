@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-025",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.PalettedContainer",
+    "signature": "getAndSetUnchecked(final int x , final int y , final int z , final T value)",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "ecfd197e57164e4b9ad9182cb41c1dcebf2ee447295d9f0e164ca51f16a45cde",
+    "body_sha256": "8532774cb82a09f68556e449a3e562c514b6d90c8c0e6abb58368c97730528ee"
+  },
+  "classifications": ["SEMANTIC_GAMEPLAY"],
+  "hazards_reviewed": [],
+  "semantic_rules": ["SEM-WORLD-SECTION-005", "SEM-WORLD-SECTION-002", "SEM-WORLD-SECTION-004"],
+  "evidence": [],
+  "notes": []
+}

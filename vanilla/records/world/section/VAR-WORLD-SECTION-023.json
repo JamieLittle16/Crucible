@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-023",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.PalettedContainer",
+    "signature": "count(final PalettedContainer . CountConsumer < T > output)",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "9d915c19503c4351ada3256b066717ba2bb6348db9759565115e04ee233a6d2f",
+    "body_sha256": "4efe8b88ae606aa0285a6ccfc8e7c66297ee2b0c84eef08b1892b5ca92272470"
+  },
+  "classifications": ["DERIVED_STATE"],
+  "hazards_reviewed": [],
+  "semantic_rules": ["SEM-WORLD-SECTION-012"],
+  "evidence": [],
+  "notes": ["Used by LevelChunkSection.recalcBlockCounts as the independent target recomputation path."]
+}

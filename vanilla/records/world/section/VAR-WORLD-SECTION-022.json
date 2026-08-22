@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-022",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.PalettedContainer",
+    "signature": "maybeHas(final Predicate < T > predicate)",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "e57737d6dc34aceeecfce9c4c5f555bb9b268a2ec7e53fd5e5c245cae49b232a",
+    "body_sha256": "d43a01a8eb95a9ab86dcc97b0a0bee52ea1eac6edbaf644bfcad74ee8fe8fe2b"
+  },
+  "classifications": ["SEMANTIC_GAMEPLAY", "DERIVED_STATE"],
+  "hazards_reviewed": [],
+  "semantic_rules": ["SEM-WORLD-SECTION-013"],
+  "evidence": [],
+  "notes": ["Delegation to palette membership explains why true may be stale while false proves absence."]
+}

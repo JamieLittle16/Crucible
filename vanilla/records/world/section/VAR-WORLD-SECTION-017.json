@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "VAR-WORLD-SECTION-017",
+  "status": "VAR_REVIEWED",
+  "source": {
+    "type": "net.minecraft.world.level.chunk.LevelChunkSection",
+    "signature": "acquire()",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "15bcaf909c8bd38961c9642b68d6731be5a683e4c1dead2ebf7538678a4fe437",
+    "body_sha256": "1be4c7a85b9bc65a9ea6b97fca0a9989c13939f57202a6571cf0dfff2ba38fe0"
+  },
+  "classifications": ["IMPLEMENTATION_ONLY"],
+  "hazards_reviewed": [],
+  "semantic_rules": [],
+  "evidence": [],
+  "notes": ["Per-container ThreadingDetector is not a Crucible semantic requirement; authority safety is enforced by the Crucible ownership model."]
+}
