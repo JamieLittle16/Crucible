@@ -53,6 +53,28 @@ class SourceEvidence:
 
 
 @dataclass(frozen=True)
+class DimensionStats:
+    section_count: int
+    total_cells: int
+    distinct_state_ids: int
+    cardinality_histogram: dict[int, int]
+    cell_facts: dict[str, int]
+    section_classes: dict[str, int]
+
+    def manifest(self) -> dict[str, object]:
+        return {
+            "section_count": self.section_count,
+            "total_cells": self.total_cells,
+            "distinct_state_ids": self.distinct_state_ids,
+            "cardinality_histogram": {
+                str(key): value for key, value in sorted(self.cardinality_histogram.items())
+            },
+            "cell_facts": self.cell_facts,
+            "section_classes": self.section_classes,
+        }
+
+
+@dataclass(frozen=True)
 class ParsedCorpus:
     target: TargetEvidence
     source: SourceEvidence
@@ -61,6 +83,7 @@ class ParsedCorpus:
     distinct_state_ids: int
     cardinality_histogram: dict[int, int]
     dimensions: dict[str, int]
+    per_dimension: dict[str, DimensionStats]
     cell_facts: dict[str, int]
     section_classes: dict[str, int]
     corpus_sha256: str
@@ -90,6 +113,10 @@ class ParsedCorpus:
                 str(key): value for key, value in sorted(self.cardinality_histogram.items())
             },
             "dimensions": dict(sorted(self.dimensions.items())),
+            "per_dimension": {
+                dimension: stats.manifest()
+                for dimension, stats in sorted(self.per_dimension.items())
+            },
             "cell_facts": self.cell_facts,
             "section_classes": self.section_classes,
         }
@@ -116,7 +143,9 @@ def _require_str(mapping: dict[str, object], key: str) -> str:
 
 
 def load_target_evidence(state_manifest_path: Path, generated_rust_path: Path) -> TargetEvidence:
-    manifest = _require_mapping(json.loads(state_manifest_path.read_text(encoding="utf-8")), "state manifest")
+    manifest = _require_mapping(
+        json.loads(state_manifest_path.read_text(encoding="utf-8")), "state manifest"
+    )
     target = _require_mapping(manifest.get("target"), "state manifest target")
     minecraft_version = _require_str(target, "minecraft_version")
     protocol_version = _require_int(target, "protocol_version")
@@ -265,6 +294,66 @@ def _count_cell_facts(states: Iterable[int], flags: tuple[int, ...], totals: Cou
         totals["random_fluid"] += int(bool(flag & 0x08))
 
 
+def _fact_dict(counter: Counter[str]) -> dict[str, int]:
+    return {
+        "non_air": counter["non_air"],
+        "counted_fluid": counter["counted_fluid"],
+        "random_block": counter["random_block"],
+        "random_fluid": counter["random_fluid"],
+    }
+
+
+def _class_dict(counter: Counter[str]) -> dict[str, int]:
+    return {
+        "all_air": counter["all_air"],
+        "contains_fluid": counter["contains_fluid"],
+        "random_block_present": counter["random_block_present"],
+        "random_fluid_present": counter["random_fluid_present"],
+    }
+
+
+@dataclass
+class _DimensionAccumulator:
+    section_count: int
+    states: set[int]
+    cardinality_histogram: Counter[int]
+    cell_facts: Counter[str]
+    section_classes: Counter[str]
+
+    @classmethod
+    def empty(cls) -> _DimensionAccumulator:
+        return cls(0, set(), Counter(), Counter(), Counter())
+
+    def record(
+        self,
+        states: tuple[int, ...],
+        unique: set[int],
+        section_fact_counts: Counter[str],
+    ) -> None:
+        self.section_count += 1
+        self.states.update(unique)
+        self.cardinality_histogram[len(unique)] += 1
+        self.cell_facts.update(section_fact_counts)
+        self.section_classes["all_air"] += int(section_fact_counts["non_air"] == 0)
+        self.section_classes["contains_fluid"] += int(section_fact_counts["counted_fluid"] > 0)
+        self.section_classes["random_block_present"] += int(
+            section_fact_counts["random_block"] > 0
+        )
+        self.section_classes["random_fluid_present"] += int(
+            section_fact_counts["random_fluid"] > 0
+        )
+
+    def finish(self) -> DimensionStats:
+        return DimensionStats(
+            section_count=self.section_count,
+            total_cells=self.section_count * SECTION_CELLS,
+            distinct_state_ids=len(self.states),
+            cardinality_histogram=dict(self.cardinality_histogram),
+            cell_facts=_fact_dict(self.cell_facts),
+            section_classes=_class_dict(self.section_classes),
+        )
+
+
 def validate_corpus(path: Path, target: TargetEvidence) -> ParsedCorpus:
     raw = path.read_bytes()
     if not raw:
@@ -291,6 +380,7 @@ def validate_corpus(path: Path, target: TargetEvidence) -> ParsedCorpus:
     all_states: set[int] = set()
     cardinality_histogram: Counter[int] = Counter()
     dimensions: Counter[str] = Counter()
+    dimension_accumulators: dict[str, _DimensionAccumulator] = {}
     cell_facts: Counter[str] = Counter()
     section_classes: Counter[str] = Counter()
 
@@ -316,8 +406,20 @@ def validate_corpus(path: Path, target: TargetEvidence) -> ParsedCorpus:
         section_classes["contains_fluid"] += int(section_fact_counts["counted_fluid"] > 0)
         section_classes["random_block_present"] += int(section_fact_counts["random_block"] > 0)
         section_classes["random_fluid_present"] += int(section_fact_counts["random_fluid"] > 0)
+        dimension_accumulators.setdefault(
+            key.dimension, _DimensionAccumulator.empty()
+        ).record(states, unique, section_fact_counts)
 
     section_count = len(lines) - 3
+    per_dimension = {
+        dimension: accumulator.finish()
+        for dimension, accumulator in sorted(dimension_accumulators.items())
+    }
+    if {dimension: stats.section_count for dimension, stats in per_dimension.items()} != dict(
+        dimensions
+    ):
+        raise CorpusError("per-dimension section counts failed internal recomposition")
+
     return ParsedCorpus(
         target=target,
         source=source,
@@ -326,18 +428,9 @@ def validate_corpus(path: Path, target: TargetEvidence) -> ParsedCorpus:
         distinct_state_ids=len(all_states),
         cardinality_histogram=dict(cardinality_histogram),
         dimensions=dict(dimensions),
-        cell_facts={
-            "non_air": cell_facts["non_air"],
-            "counted_fluid": cell_facts["counted_fluid"],
-            "random_block": cell_facts["random_block"],
-            "random_fluid": cell_facts["random_fluid"],
-        },
-        section_classes={
-            "all_air": section_classes["all_air"],
-            "contains_fluid": section_classes["contains_fluid"],
-            "random_block_present": section_classes["random_block_present"],
-            "random_fluid_present": section_classes["random_fluid_present"],
-        },
+        per_dimension=per_dimension,
+        cell_facts=_fact_dict(cell_facts),
+        section_classes=_class_dict(section_classes),
         corpus_sha256=hashlib.sha256(raw).hexdigest(),
     )
 
