@@ -1,0 +1,59 @@
+name: State Data Probe
+
+on:
+  pull_request:
+    paths:
+      - tools/state_data.py
+      - tools/official_state_data.py
+      - tools/tests/test_state_data.py
+      - tools/tests/test_official_state_data.py
+      - .github/workflows/state-data-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    name: Official 26.2 state facts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Extract official state facts
+        run: |
+          python3 tools/official_state_data.py \
+            --version 26.2 \
+            --output /tmp/26.2-block-states.json
+
+      - name: Inspect normalized data
+        run: python3 tools/state_data.py inspect /tmp/26.2-block-states.json
+
+      - name: Generate Rust target data
+        run: |
+          python3 tools/state_data.py generate /tmp/26.2-block-states.json \
+            --output /tmp/target_26_2.rs \
+            --manifest /tmp/26.2-state-data-manifest.json
+          python3 tools/state_data.py verify /tmp/26.2-block-states.json \
+            --output /tmp/target_26_2.rs \
+            --manifest /tmp/26.2-state-data-manifest.json
+
+      - name: Upload qualification artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: minecraft-26.2-state-data
+          path: |
+            /tmp/26.2-block-states.json
+            /tmp/target_26_2.rs
+            /tmp/26.2-state-data-manifest.json
+          if-no-files-found: error
+          retention-days: 7
