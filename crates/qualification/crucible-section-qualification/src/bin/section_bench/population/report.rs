@@ -31,9 +31,21 @@ pub(super) fn render<C: BenchSection>(
     string(&mut out, 2, "harness_version", REPORT_VERSION, true)?;
     string(&mut out, 2, "mode", mode.as_str(), true)?;
     string(&mut out, 2, "candidate", C::NAME, true)?;
-    boolean(&mut out, 2, "production_candidate", C::PRODUCTION_CANDIDATE, true)?;
+    boolean(
+        &mut out,
+        2,
+        "production_candidate",
+        C::PRODUCTION_CANDIDATE,
+        true,
+    )?;
     string(&mut out, 2, "minecraft_version", MINECRAFT_VERSION, true)?;
-    number(&mut out, 2, "protocol_version", u128::from(PROTOCOL_VERSION), true)?;
+    number(
+        &mut out,
+        2,
+        "protocol_version",
+        u128::from(PROTOCOL_VERSION),
+        true,
+    )?;
     number(&mut out, 2, "data_version", u128::from(DATA_VERSION), true)?;
     number(
         &mut out,
@@ -79,7 +91,12 @@ pub(super) fn render<C: BenchSection>(
         true,
     )?;
 
-    write_hardware(&mut out, hardware, affinity_cpu, affinity_frequency.as_ref())?;
+    write_hardware(
+        &mut out,
+        hardware,
+        affinity_cpu,
+        affinity_frequency.as_ref(),
+    )?;
     write_settings(&mut out, settings)?;
     write_memory(&mut out, loaded)?;
     write_map(&mut out, "representations", &loaded.representations)?;
@@ -149,16 +166,16 @@ fn write_hardware(
     let unknown = FrequencyMetadata::unknown();
     let frequency = affinity_frequency.unwrap_or(&unknown);
     string(out, 2, "affinity_cpu_governor", &frequency.governor, true)?;
-    string(out, 2, "affinity_cpu_current_khz", &frequency.current_khz, true)?;
-    string(out, 2, "affinity_cpu_min_khz", &frequency.min_khz, true)?;
-    string(out, 2, "affinity_cpu_max_khz", &frequency.max_khz, true)?;
     string(
         out,
         2,
-        "intel_pstate_no_turbo",
-        &hardware.no_turbo,
+        "affinity_cpu_current_khz",
+        &frequency.current_khz,
         true,
-    )
+    )?;
+    string(out, 2, "affinity_cpu_min_khz", &frequency.min_khz, true)?;
+    string(out, 2, "affinity_cpu_max_khz", &frequency.max_khz, true)?;
+    string(out, 2, "intel_pstate_no_turbo", &hardware.no_turbo, true)
 }
 
 fn write_settings(out: &mut String, settings: PopulationSettings) -> Result<(), String> {
@@ -218,8 +235,7 @@ fn write_memory<C>(out: &mut String, loaded: &LoadedCandidate<C>) -> Result<(), 
         ),
         (
             "known_prebaseline_harness_bytes",
-            u128::try_from(loaded.known_prebaseline_harness_bytes)
-                .expect("harness bytes fit u128"),
+            u128::try_from(loaded.known_prebaseline_harness_bytes).expect("harness bytes fit u128"),
         ),
         (
             "construction_transitions",
@@ -227,8 +243,7 @@ fn write_memory<C>(out: &mut String, loaded: &LoadedCandidate<C>) -> Result<(), 
         ),
         (
             "logical_backing_allocations",
-            u128::try_from(loaded.logical_backing_allocations)
-                .expect("allocation count fits u128"),
+            u128::try_from(loaded.logical_backing_allocations).expect("allocation count fits u128"),
         ),
     ];
     for (index, (key, value)) in values.iter().enumerate() {
@@ -259,11 +274,7 @@ fn write_summary(out: &mut String, summary: &SampleSummary) -> Result<(), String
     Ok(())
 }
 
-fn write_map(
-    out: &mut String,
-    key: &str,
-    values: &BTreeMap<String, usize>,
-) -> Result<(), String> {
+fn write_map(out: &mut String, key: &str, values: &BTreeMap<String, usize>) -> Result<(), String> {
     write!(out, "  \"{}\": {{", escape(key)).map_err(fmt_error)?;
     for (index, (name, value)) in values.iter().enumerate() {
         if index != 0 {
