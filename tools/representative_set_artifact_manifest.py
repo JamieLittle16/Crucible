@@ -65,6 +65,22 @@ def collect_provenance() -> dict[str, object]:
     }
 
 
+def _validate_admission_digest(admission: dict[str, Any]) -> str:
+    expected = admission.get("admission_sha256")
+    if not isinstance(expected, str) or len(expected) != 64:
+        raise ArtifactManifestError(
+            f"population admission has invalid admission_sha256: {expected!r}"
+        )
+    payload = dict(admission)
+    payload.pop("admission_sha256")
+    actual = _canonical_digest(payload)
+    if actual != expected:
+        raise ArtifactManifestError(
+            f"population admission digest mismatch: expected {expected}, got {actual}"
+        )
+    return expected
+
+
 def build_manifest(
     root: Path,
     *,
@@ -90,7 +106,6 @@ def build_manifest(
             "population_sha256",
             "set_evidence_sha256",
             "set_file_sha256",
-            "admission_sha256",
         ):
             value = admission.get(key)
             if not isinstance(value, str) or len(value) != 64:
@@ -98,16 +113,10 @@ def build_manifest(
                     f"population admission has invalid {key}: {value!r}"
                 )
             identities[key] = value
+        identities["admission_sha256"] = _validate_admission_digest(admission)
 
-    if qualification_complete:
-        if _sha256(set_path) != identities["set_file_sha256"]:
-            raise ArtifactManifestError(
-                "corpus-set.json changed after population admission"
-            )
-        if _sha256(admission_path) == identities["admission_sha256"]:
-            raise ArtifactManifestError(
-                "admission_sha256 is a canonical record digest, not a raw file digest"
-            )
+    if qualification_complete and _sha256(set_path) != identities["set_file_sha256"]:
+        raise ArtifactManifestError("corpus-set.json changed after population admission")
 
     entries = []
     output_path = root / "artifact-manifest.json"
