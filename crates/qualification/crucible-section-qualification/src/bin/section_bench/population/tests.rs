@@ -3,11 +3,18 @@ use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crucible_generated::{AIR, BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256};
+use crucible_generated::{
+    AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
+};
 use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use crucible_world_contract::BlockSection;
+use crucible_world_section::DirectNBlockSection;
+
+use crate::model::BenchSection;
+use crate::workloads::pos;
 
 use super::PopulationMode;
-use super::measure::percentile;
+use super::measure::{percentile, positive_needles};
 use super::pack::{
     PACK_MAGIC, PAYLOAD_BYTES_PER_SECTION, PackReader, RSS_PROTOCOL, canonical_usize,
     prefault_common_scratch, signed_rss_delta, status_value_kib,
@@ -137,6 +144,18 @@ fn rss_delta_preserves_negative_measurements_instead_of_saturating() {
     assert_eq!(signed_rss_delta(1_500, 1_000), Ok(500));
     assert_eq!(signed_rss_delta(1_000, 1_500), Ok(-500));
     assert_eq!(signed_rss_delta(1_234, 1_234), Ok(0));
+}
+
+#[test]
+fn positive_membership_needles_follow_planned_cells_not_fixed_cell_zero() {
+    let mut section = <DirectNBlockSection<BlockStateId> as BenchSection>::filled(AIR);
+    let marker = BlockStateId::new(1).expect("qualified target contains state 1");
+    let _ = section.replace(pos(37), marker, &GeneratedStateFacts);
+    let plan = [(0_usize, 37_usize), (0, 0)];
+
+    let needles = positive_needles(&[section], &plan);
+
+    assert_eq!(needles, vec![marker, AIR]);
 }
 
 #[test]
