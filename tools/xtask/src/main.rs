@@ -8,6 +8,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
+use crucible_section_qualification::{Candidate, QualificationMode};
+
 const PINNED_RUST: &str = "1.97.1";
 
 fn main() -> ExitCode {
@@ -17,6 +19,10 @@ fn main() -> ExitCode {
         Some("vanilla") => {
             let remaining_args = args.collect::<Vec<_>>();
             vanilla(&remaining_args)
+        }
+        Some("qualify") => {
+            let remaining_args = args.collect::<Vec<_>>();
+            qualify(&remaining_args)
         }
         Some(command) => failure(&format!("unknown xtask command: {command}")),
         None => {
@@ -202,6 +208,91 @@ fn vanilla_state_data(root: &Path, args: &[OsString]) -> ExitCode {
     }
 }
 
+fn qualify(args: &[OsString]) -> ExitCode {
+    if args.first().and_then(|arg| arg.to_str()) != Some("section") {
+        return failure(
+            "usage: cargo xtask qualify section [--quick|--full] [--candidate <direct|adaptive|fast-local|packed-local>]",
+        );
+    }
+
+    let mut mode = QualificationMode::Quick;
+    let mut candidate = None;
+    let mut index = 1_usize;
+    while index < args.len() {
+        match args[index].to_str() {
+            Some("--quick") => mode = QualificationMode::Quick,
+            Some("--full") => mode = QualificationMode::Full,
+            Some("--candidate") => {
+                let Some(value) = args.get(index + 1).and_then(|arg| arg.to_str()) else {
+                    return failure("--candidate requires a candidate name");
+                };
+                let Some(parsed) = Candidate::parse(value) else {
+                    return failure(
+                        "unknown section candidate; expected direct, adaptive, fast-local, or packed-local",
+                    );
+                };
+                candidate = Some(parsed);
+                index += 1;
+            }
+            Some("--vanilla") => {
+                return failure(
+                    "vanilla section fixtures are not wired in this qualification slice yet; use --quick or --full",
+                );
+            }
+            Some(other) => return failure(&format!("unknown section qualification option: {other}")),
+            None => return failure("section qualification arguments must be valid UTF-8"),
+        }
+        index += 1;
+    }
+
+    let report = match crucible_section_qualification::qualify(mode, candidate) {
+        Ok(report) => report,
+        Err(error) => return failure(&format!("section qualification failed: {error}")),
+    };
+
+    let root = workspace_root();
+    let commit_sha = match git_head_sha(&root) {
+        Ok(sha) => sha,
+        Err(error) => return failure(&error),
+    };
+    let output_dir = root.join("target/crucible-qualification/section");
+    if let Err(error) = fs::create_dir_all(&output_dir) {
+        return failure(&format!("could not create qualification output directory: {error}"));
+    }
+    let output_path = output_dir.join(format!("{}.json", mode.as_str()));
+    if let Err(error) = fs::write(&output_path, report.to_json(&commit_sha)) {
+        return failure(&format!("could not write section qualification evidence: {error}"));
+    }
+
+    for record in report.records() {
+        println!(
+            "section qualification: {} {} operations={} PASS",
+            record.id(),
+            record.candidate().as_str(),
+            record.trace_operations()
+        );
+    }
+    println!("section qualification evidence: {}", output_path.display());
+    ExitCode::SUCCESS
+}
+
+fn git_head_sha(root: &Path) -> Result<String, String> {
+    let output = Command::new("git")
+        .args(["-C", root.to_string_lossy().as_ref(), "rev-parse", "HEAD"])
+        .output()
+        .map_err(|error| format!("could not execute git rev-parse: {error}"))?;
+    if !output.status.success() {
+        return Err("git rev-parse HEAD failed; equivalence evidence requires a concrete commit".to_owned());
+    }
+    let sha = String::from_utf8(output.stdout)
+        .map_err(|_| "git rev-parse HEAD returned non-UTF-8 output".to_owned())?;
+    let sha = sha.trim();
+    if sha.len() != 40 || !sha.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err("git rev-parse HEAD did not return a 40-character hexadecimal SHA".to_owned());
+    }
+    Ok(sha.to_owned())
+}
+
 fn run_python(root: &Path, script: &Path, args: &[OsString]) -> ExitCode {
     if !script.is_file() {
         return failure(&format!("{} is missing", script.display()));
@@ -265,6 +356,9 @@ fn help() {
     println!("  vanilla state-data generate   generate committed Rust + manifest");
     println!("  vanilla state-data verify     replay the full pinned qualification chain");
     println!("  vanilla state-data diff       compare two generated manifests");
+    println!("  qualify section --quick       run PR-sized section semantic qualification");
+    println!("  qualify section --full        run extended multi-seed section qualification");
+    println!("  qualify section --candidate   restrict qualification to one candidate");
     println!();
     println!("examples:");
     println!("  cargo xtask vanilla verify-source /path/to/mc-src.zip");
@@ -272,6 +366,8 @@ fn help() {
     println!("  cargo xtask vanilla frontier m0-world-kernel");
     println!("  cargo xtask vanilla next m0-world-kernel");
     println!("  cargo xtask vanilla state-data verify");
+    println!("  cargo xtask qualify section --quick");
+    println!("  cargo xtask qualify section --full --candidate packed-local");
 }
 
 fn failure(message: &str) -> ExitCode {
