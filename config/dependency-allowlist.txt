@@ -1,0 +1,8 @@
+# Exact crates.io dependencies approved for Crucible.
+# Format: crate-name@version
+#
+# Every entry represents an explicit source/license/necessity review. Git dependencies are
+# forbidden by CI policy. Stale entries fail CI so this file remains an exact description
+# of the external Rust dependency surface.
+#
+# The workspace currently has no external Rust dependencies.

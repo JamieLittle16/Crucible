@@ -18,6 +18,7 @@ on:
       - vanilla/state-data/**
       - vanilla/fixtures/section/**
       - vanilla/vanilla.lock.toml
+      - crates/data/crucible-generated/**
       - .github/workflows/state-data-probe.yml
 
 permissions:
@@ -30,12 +31,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
       - name: Set up Java 25
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
           distribution: temurin
           java-version: "25"
@@ -84,6 +85,32 @@ jobs:
             --fixture vanilla/fixtures/section/26.2-semantic-fixtures.txt \
             --output /tmp/26.2-section-runtime-facts-fixture.json
 
+      - name: Reproduce committed qualified state data byte-for-byte
+        run: |
+          python3 tools/qualify_state_data.py \
+            --runtime-data /tmp/26.2-block-states.raw.json \
+            --source-qualification vanilla/state-data/26.2-source-qualification.json \
+            --output /tmp/26.2-block-states.qualified.json
+          python3 tools/state_data.py generate /tmp/26.2-block-states.qualified.json \
+            --assignment vanilla-identity \
+            --output /tmp/target_26_2.qualified.rs \
+            --manifest /tmp/26.2-state-data-qualified-manifest.json
+          cmp --silent \
+            crates/data/crucible-generated/src/lib.rs \
+            /tmp/target_26_2.qualified.rs || {
+              echo 'generated Rust target data differs from committed output' >&2
+              diff -u crates/data/crucible-generated/src/lib.rs /tmp/target_26_2.qualified.rs | head -200
+              exit 1
+            }
+          cmp --silent \
+            vanilla/state-data/26.2-state-data-manifest.json \
+            /tmp/26.2-state-data-qualified-manifest.json || {
+              echo 'generated state-data manifest differs from committed output' >&2
+              diff -u vanilla/state-data/26.2-state-data-manifest.json /tmp/26.2-state-data-qualified-manifest.json
+              exit 1
+            }
+          echo 'qualified state data reproducibility PASS'
+
       - name: Generate unqualified smoke output
         run: |
           # This proves the low-level generator still consumes the runtime schema. Production
@@ -96,12 +123,15 @@ jobs:
             --manifest /tmp/26.2-state-data-unqualified-manifest.json
 
       - name: Upload runtime evidence artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: minecraft-26.2-state-data-runtime-evidence
           path: |
             /tmp/26.2-block-states.raw.json
+            /tmp/26.2-block-states.qualified.json
             /tmp/26.2-section-runtime-facts-fixture.json
+            /tmp/target_26_2.qualified.rs
+            /tmp/26.2-state-data-qualified-manifest.json
             /tmp/target_26_2.unqualified.rs
             /tmp/26.2-state-data-unqualified-manifest.json
           if-no-files-found: error
