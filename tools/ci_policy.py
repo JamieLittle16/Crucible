@@ -9,7 +9,7 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKFLOWS = ROOT / ".github" / "workflows"
+GITHUB_CONFIG = ROOT / ".github"
 LOCKFILE = ROOT / "Cargo.lock"
 ALLOWLIST = ROOT / "config" / "dependency-allowlist.txt"
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -24,9 +24,12 @@ def display_path(path: Path) -> str:
         return str(path)
 
 
-def workflow_action_errors(workflows: Path = WORKFLOWS) -> list[str]:
+def workflow_action_errors(github_config: Path = GITHUB_CONFIG) -> list[str]:
     errors: list[str] = []
-    for path in sorted(workflows.glob("*.yml")):
+    yaml_files = sorted(
+        {path for pattern in ("*.yml", "*.yaml") for path in github_config.rglob(pattern)}
+    )
+    for path in yaml_files:
         for line_number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             stripped = raw.strip()
             if stripped.startswith("- uses:"):
