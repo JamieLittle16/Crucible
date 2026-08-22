@@ -480,7 +480,12 @@ impl<S: Copy + Eq> PackedLocalBlockSection<S> {
                         unreachable!("matched packed storage before replacement")
                     };
                     let mut widened = storage.widen();
-                    debug_assert_eq!(widened.try_replace(cell, state), PackedReplace::Done);
+                    match widened.try_replace(cell, state) {
+                        PackedReplace::Done => {}
+                        PackedReplace::NeedsWider | PackedReplace::NeedsDirect => {
+                            unreachable!("widened packed storage must accept pending state")
+                        }
+                    }
                     self.storage = PackedStorage::Packed(widened);
                 }
                 PackedReplace::NeedsDirect => {
@@ -680,6 +685,26 @@ mod tests {
             FastLocalBlockSection::filled(AIR, &GeneratedStateFacts),
             100_000,
             0x5A17_8D39_11C4_E2B7,
+        );
+    }
+
+    #[test]
+    fn packed_first_widen_installs_pending_state_in_all_build_modes() {
+        let mut section = PackedLocalBlockSection::filled(AIR, &GeneratedStateFacts);
+
+        assert_eq!(section.replace(pos(16), state(7), &GeneratedStateFacts), AIR);
+        assert_eq!(section.replace(pos(16), AIR, &GeneratedStateFacts), state(7));
+        assert_eq!(section.replace(pos(33), state(7), &GeneratedStateFacts), AIR);
+
+        assert_eq!(
+            section.representation(),
+            PackedLocalRepresentation::Packed(1)
+        );
+        assert_eq!(section.replace(pos(37), state(15), &GeneratedStateFacts), AIR);
+        assert_eq!(section.get(pos(37)), state(15));
+        assert_eq!(
+            section.representation(),
+            PackedLocalRepresentation::Packed(2)
         );
     }
 
