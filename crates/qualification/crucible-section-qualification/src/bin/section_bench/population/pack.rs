@@ -9,9 +9,7 @@ use crucible_generated::{
     AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
 };
 use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
-use crucible_world_contract::{
-    BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary,
-};
+use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary};
 
 use crate::model::BenchSection;
 use crate::workloads::pos;
@@ -19,8 +17,7 @@ use crate::workloads::pos;
 use super::{SampleSummary, measure};
 
 pub(super) const PACK_MAGIC: &str = "CRUCIBLE-SECTION-BENCH-PACK|1";
-pub(super) const PAYLOAD_BYTES_PER_SECTION: usize =
-    BLOCK_SECTION_CELLS * mem::size_of::<u16>();
+pub(super) const PAYLOAD_BYTES_PER_SECTION: usize = BLOCK_SECTION_CELLS * mem::size_of::<u16>();
 const STATE_SEEN_WORDS: usize = BLOCK_STATE_COUNT.div_ceil(64);
 
 #[derive(Clone, Debug)]
@@ -63,8 +60,9 @@ pub(super) struct PackReader {
 
 impl PackReader {
     pub(super) fn open(path: &Path) -> Result<Self, String> {
-        let file = File::open(path)
-            .map_err(|error| format!("could not open population pack {}: {error}", path.display()))?;
+        let file = File::open(path).map_err(|error| {
+            format!("could not open population pack {}: {error}", path.display())
+        })?;
         let mut reader = BufReader::new(file);
         let magic = read_canonical_text_line(&mut reader, "pack magic")?;
         if magic != PACK_MAGIC {
@@ -167,11 +165,7 @@ pub(super) fn load_candidate<C: BenchSection>(
     let mut max_owned_bytes = 0_usize;
 
     while reader.read_section(&mut raw_scratch)? {
-        decode_section(
-            &raw_scratch,
-            &mut decoded_states,
-            &mut observed_states,
-        )?;
+        decode_section(&raw_scratch, &mut decoded_states, &mut observed_states)?;
 
         let start = Instant::now();
         let built = construct_candidate::<C>(&decoded_states)?;
@@ -240,7 +234,9 @@ struct BuiltCandidate<C> {
     owned_bytes: usize,
 }
 
-fn construct_candidate<C: BenchSection>(states: &[BlockStateId]) -> Result<BuiltCandidate<C>, String> {
+fn construct_candidate<C: BenchSection>(
+    states: &[BlockStateId],
+) -> Result<BuiltCandidate<C>, String> {
     let first = *states
         .first()
         .ok_or_else(|| "decoded population section unexpectedly has no cells".to_owned())?;
