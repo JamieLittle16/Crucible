@@ -1,0 +1,154 @@
+name: Section Fixture Branch Patch
+
+on:
+  push:
+    branches:
+      - m0/section-semantic-fixtures
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[fixture-patch]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: m0/section-semantic-fixtures
+          fetch-depth: 0
+
+      - name: Install pinned formatter
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt
+
+      - name: Apply fixture integration patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          lib = Path('crates/qualification/crucible-section-qualification/src/lib.rs')
+          text = lib.read_text()
+          needle = '#![forbid(unsafe_code)]\n\n'
+          replacement = '#![forbid(unsafe_code)]\n\npub mod fixtures;\n\n'
+          if 'pub mod fixtures;' not in text:
+              if needle not in text:
+                  raise SystemExit('qualification module insertion point missing')
+              text = text.replace(needle, replacement, 1)
+              lib.write_text(text)
+
+          fixtures = Path('crates/qualification/crucible-section-qualification/src/fixtures.rs')
+          text = fixtures.read_text()
+          text = text.replace('    flags: u8,\n', '')
+          text = text.replace('                flags,\n                state,\n', '                state,\n')
+          text = text.replace('assert_eq!(evidence.fixture_cases(), 9);', 'assert_eq!(evidence.fixture_cases(), 10);')
+          text = text.replace('assert_eq!(evidence.block_candidate_checks(), 28);', 'assert_eq!(evidence.block_candidate_checks(), 32);')
+          fixtures.write_text(text)
+
+          xtask = Path('tools/xtask/src/main.rs')
+          text = xtask.read_text()
+          old_usage = '"usage: cargo xtask qualify section [--quick|--full] [--candidate <direct|adaptive|fast-local|packed-local>]",'
+          new_usage = '"usage: cargo xtask qualify section [--quick|--full] [--candidate <direct|adaptive|fast-local|packed-local>] | --vanilla <semantic-fixture>",'
+          if old_usage not in text:
+              raise SystemExit('xtask usage insertion point missing')
+          text = text.replace(old_usage, new_usage, 1)
+
+          old_vars = '    let mut mode = QualificationMode::Quick;\n    let mut candidate = None;\n    let mut index = 1_usize;'
+          new_vars = '    let mut mode = QualificationMode::Quick;\n    let mut candidate = None;\n    let mut vanilla_fixture = None;\n    let mut index = 1_usize;'
+          if old_vars not in text:
+              raise SystemExit('xtask variable insertion point missing')
+          text = text.replace(old_vars, new_vars, 1)
+
+          old_vanilla = '''            Some("--vanilla") => {
+                return failure(
+                    "vanilla section fixtures are not wired in this qualification slice yet; use --quick or --full",
+                );
+            }
+'''
+          new_vanilla = '''            Some("--vanilla") => {
+                let Some(value) = args.get(index + 1) else {
+                    return failure("--vanilla requires a semantic fixture path");
+                };
+                vanilla_fixture = Some(value.clone());
+                index += 1;
+            }
+'''
+          if old_vanilla not in text:
+              raise SystemExit('xtask vanilla branch insertion point missing')
+          text = text.replace(old_vanilla, new_vanilla, 1)
+
+          marker = '''    let report = match crucible_section_qualification::qualify(mode, candidate) {
+'''
+          vanilla_block = '''    if let Some(fixture) = vanilla_fixture {
+        if candidate.is_some() || mode == QualificationMode::Full {
+            return failure("--vanilla cannot be combined with --candidate or --full");
+        }
+        let root = workspace_root();
+        let fixture_path = if Path::new(&fixture).is_absolute() {
+            PathBuf::from(&fixture)
+        } else {
+            root.join(&fixture)
+        };
+        let fixture_text = match fs::read_to_string(&fixture_path) {
+            Ok(contents) => contents,
+            Err(error) => {
+                return failure(&format!(
+                    "could not read section semantic fixture {}: {error}",
+                    fixture_path.display()
+                ));
+            }
+        };
+        let evidence = match crucible_section_qualification::fixtures::qualify_fixture(&fixture_text) {
+            Ok(evidence) => evidence,
+            Err(error) => return failure(&format!("section fixture qualification failed: {error}")),
+        };
+        let commit_sha = match git_head_sha(&root) {
+            Ok(sha) => sha,
+            Err(error) => return failure(&error),
+        };
+        let output_dir = root.join("target/crucible-qualification/section");
+        if let Err(error) = fs::create_dir_all(&output_dir) {
+            return failure(&format!(
+                "could not create qualification output directory: {error}"
+            ));
+        }
+        let output_path = output_dir.join("vanilla-fixture.json");
+        if let Err(error) = fs::write(&output_path, evidence.to_json(&commit_sha)) {
+            return failure(&format!(
+                "could not write section fixture evidence: {error}"
+            ));
+        }
+        println!(
+            "section fixture qualification: cases={} block-candidate-checks={} biome-checks={} fingerprint={:016x} PASS",
+            evidence.fixture_cases(),
+            evidence.block_candidate_checks(),
+            evidence.biome_checks(),
+            evidence.fixture_fingerprint()
+        );
+        println!("section fixture evidence: {}", output_path.display());
+        return ExitCode::SUCCESS;
+    }
+
+'''
+          if marker not in text:
+              raise SystemExit('xtask qualification dispatch insertion point missing')
+          text = text.replace(marker, vanilla_block + marker, 1)
+          xtask.write_text(text)
+          PY
+
+          cargo fmt --all
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "integration patch produced no changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/qualification/crucible-section-qualification/src/lib.rs \
+                  crates/qualification/crucible-section-qualification/src/fixtures.rs \
+                  tools/xtask/src/main.rs
+          git commit -m "M0.3C: wire source-backed semantic fixtures [fixture-patch]"
+          git push origin HEAD:m0/section-semantic-fixtures
