@@ -7,10 +7,12 @@ on:
       - tools/official_state_data.py
       - tools/state_source_qualification.py
       - tools/qualify_state_data.py
+      - tools/finalize_state_data.py
       - tools/tests/test_state_data.py
       - tools/tests/test_official_state_data.py
       - tools/tests/test_state_source_qualification.py
       - tools/tests/test_qualify_state_data.py
+      - tools/tests/test_finalize_state_data.py
       - vanilla/state-data/**
       - vanilla/vanilla.lock.toml
       - .github/workflows/state-data-probe.yml
@@ -39,6 +41,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools/tests -p 'test_state_source_qualification.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_qualify_state_data.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_finalize_state_data.py' -v
 
       - name: Extract official state facts
         run: |
