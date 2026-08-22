@@ -333,10 +333,12 @@ fn every_candidate_is_exact_at_palette_boundaries() {
 fn boundary_images_exercise_adaptive_and_packed_transitions() {
     let section = synthetic_section(17);
     let expected = recompute_section_summary_for_test(&section);
-    let adaptive = inspect_candidate_section::<AdaptiveBlockSection<BlockStateId>>(&section, expected)
-        .expect("adaptive exact");
-    let packed = inspect_candidate_section::<PackedLocalBlockSection<BlockStateId>>(&section, expected)
-        .expect("packed exact");
+    let adaptive =
+        inspect_candidate_section::<AdaptiveBlockSection<BlockStateId>>(&section, expected)
+            .expect("adaptive exact");
+    let packed =
+        inspect_candidate_section::<PackedLocalBlockSection<BlockStateId>>(&section, expected)
+            .expect("packed exact");
     assert!(adaptive.transitions >= 2);
     assert!(adaptive.logical_allocations >= 4);
     assert!(packed.transitions >= 2);
