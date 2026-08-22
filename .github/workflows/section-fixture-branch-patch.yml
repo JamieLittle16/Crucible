@@ -1,3 +1,4 @@
+# Branch-local integration helper; removed before merge.
 name: Section Fixture Branch Patch
 
 on:
