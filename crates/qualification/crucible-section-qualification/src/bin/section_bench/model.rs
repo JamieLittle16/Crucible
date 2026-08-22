@@ -315,14 +315,14 @@ impl BenchSection for PackedLocalBlockSection<BlockStateId> {
     }
 
     fn transition_logical_allocations(before: &str, after: &str) -> usize {
-        if before == "uniform" && after.starts_with("packed-") {
+        let packed_backing_created = (before == "uniform" && after.starts_with("packed-"))
+            || (before.starts_with("packed-")
+                && after.starts_with("packed-")
+                && before != after);
+        if packed_backing_created {
             2
-        } else if before.starts_with("packed-") && after.starts_with("packed-") && before != after {
-            2
-        } else if before.starts_with("packed-") && after == "direct-n" {
-            1
         } else {
-            0
+            usize::from(before.starts_with("packed-") && after == "direct-n")
         }
     }
 }
@@ -354,6 +354,16 @@ mod tests {
                 "packed-1", "packed-2"
             ),
             2
+        );
+    }
+
+    #[test]
+    fn packed_to_direct_has_one_logical_backing_allocation() {
+        assert_eq!(
+            <PackedLocalBlockSection<_> as BenchSection>::transition_logical_allocations(
+                "packed-8", "direct-n"
+            ),
+            1
         );
     }
 
