@@ -69,12 +69,29 @@ def candidate_rows(section_count: int) -> list[dict[str, object]]:
                 "sections": section_count,
                 "total_owned_bytes": section_count * (index + 1),
                 "max_owned_bytes": index + 1,
-                "construction_transitions": index,
-                "logical_backing_allocations": index + 2,
+                "construction_transitions": section_count * index,
+                "logical_backing_allocations": section_count * (index + 2),
                 "representations": {f"repr-{index}": section_count},
             }
         )
     return rows
+
+
+def dimension_summary(section_count: int) -> dict[str, object]:
+    return {
+        "section_count": section_count,
+        "total_cells": section_count * 4096,
+        "distinct_state_ids": 2,
+        "cardinality_histogram": {"1": section_count - 1, "2": 1},
+        "candidates": candidate_rows(section_count),
+    }
+
+
+def global_cardinality(dimensions: dict[str, int]) -> dict[str, int]:
+    return {
+        "1": sum(count - 1 for count in dimensions.values()),
+        "2": len(dimensions),
+    }
 
 
 def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict]]:
@@ -96,7 +113,10 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
         for descriptor in plan.REPRESENTATIVE_DIMENSIONS
     }
     section_count = sum(dimensions.values())
-    cardinality = {"1": section_count - 1, "2": 1}
+    cardinality = global_cardinality(dimensions)
+    per_dimension = {
+        dimension: dimension_summary(count) for dimension, count in dimensions.items()
+    }
     result = []
     timings = batch_timings()
     for seed_index, seed in enumerate(built["seeds"]):
@@ -148,13 +168,13 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
             "dimensions": copy.deepcopy(dimensions),
             "cardinality_histogram": copy.deepcopy(cardinality),
             "cell_facts": {
-                "non_air": 1,
+                "non_air": 3,
                 "counted_fluid": 0,
                 "random_block": 0,
                 "random_fluid": 0,
             },
             "section_classes": {
-                "all_air": section_count - 1,
+                "all_air": section_count - 3,
                 "contains_fluid": 0,
                 "random_block_present": 0,
                 "random_fluid_present": 0,
@@ -174,6 +194,7 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
             "distinct_state_ids": 2,
             "dimensions": copy.deepcopy(dimensions),
             "cardinality_histogram": copy.deepcopy(cardinality),
+            "per_dimension": copy.deepcopy(per_dimension),
             "candidates": candidate_rows(section_count),
         }
         result.append((world, extraction, manifest, rust))
@@ -197,6 +218,8 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
     def test_complete_population_is_decision_eligible_and_deterministic(self) -> None:
         result = self.build()
         self.assertTrue(result["decision_eligible"])
+        self.assertEqual(result["decision_scope"], "dimension-separated-only")
+        self.assertFalse(result["cross_dimension_score_allowed"])
         self.assertEqual(result["member_count"], 4)
         self.assertEqual(result["policy"], plan.POLICY_ID)
         self.assertEqual(result["plan_sha256"], plan.build_plan()["plan_sha256"])
@@ -206,6 +229,16 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
             result["aggregate"]["section_count"],
             sum(member["section_count"] for member in result["members"]),
         )
+        self.assertTrue(result["aggregate"]["descriptive_only"])
+        self.assertNotIn("candidates", result["aggregate"])
+        self.assertNotIn("cardinality_histogram", result["aggregate"])
+        self.assertEqual(set(result["per_dimension"]), set(plan.DIMENSIONS))
+        for dimension in plan.DIMENSIONS:
+            summary = result["per_dimension"][dimension]
+            self.assertEqual(summary["seed_weighting"], "equal")
+            self.assertEqual(summary["member_count"], plan.SEED_COUNT)
+            for metrics in summary["candidates"].values():
+                self.assertEqual(metrics["sections"], summary["section_count"])
         for member in result["members"]:
             generation = member["world_generation"]
             self.assertEqual(generation["generator"], corpus_set.WORLD_GENERATOR)
@@ -218,6 +251,15 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
     def test_missing_member_is_rejected(self) -> None:
         built = plan.build_plan()
         inputs = member_inputs(built)[:-1]
+        with self.assertRaises(corpus_set.CorpusSetError):
+            self.build(inputs)
+
+    def test_duplicate_member_corpus_identity_is_rejected(self) -> None:
+        built = plan.build_plan()
+        inputs = member_inputs(built)
+        duplicate = inputs[0][1]["corpus_sha256"]
+        inputs[1][1]["corpus_sha256"] = duplicate
+        inputs[1][2]["corpus_sha256"] = duplicate
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
@@ -296,28 +338,10 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
-    def test_cross_seed_lattice_drift_is_rejected(self) -> None:
+    def test_cross_seed_lattice_drift_is_rejected_without_count_drift(self) -> None:
         built = plan.build_plan()
         inputs = member_inputs(built)
-        extraction = inputs[3][1]
-        extraction["section_lattice"]["minecraft:the_end"] = [0, 1]
-        # Keep this member internally self-consistent so the failure is genuinely cross-seed.
-        extraction["section_count"] += plan.CHUNKS_PER_DIMENSION
-        manifest = inputs[3][2]
-        rust = inputs[3][3]
-        manifest["dimensions"]["minecraft:the_end"] += plan.CHUNKS_PER_DIMENSION
-        manifest["section_count"] += plan.CHUNKS_PER_DIMENSION
-        manifest["total_cells"] = manifest["section_count"] * 4096
-        manifest["cardinality_histogram"]["1"] += plan.CHUNKS_PER_DIMENSION
-        manifest["section_classes"]["all_air"] += plan.CHUNKS_PER_DIMENSION
-        rust["dimensions"]["minecraft:the_end"] += plan.CHUNKS_PER_DIMENSION
-        rust["section_count"] += plan.CHUNKS_PER_DIMENSION
-        rust["total_cells"] = rust["section_count"] * 4096
-        rust["cardinality_histogram"]["1"] += plan.CHUNKS_PER_DIMENSION
-        for row in rust["candidates"]:
-            row["sections"] = rust["section_count"]
-            only = next(iter(row["representations"]))
-            row["representations"][only] = rust["section_count"]
+        inputs[3][1]["section_lattice"]["minecraft:the_end"] = [1]
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
@@ -327,6 +351,31 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
         inputs[0][3]["cardinality_histogram"] = {
             "1": inputs[0][3]["section_count"]
         }
+        with self.assertRaises(corpus_set.CorpusSetError):
+            self.build(inputs)
+
+    def test_missing_per_dimension_evidence_is_rejected(self) -> None:
+        built = plan.build_plan()
+        inputs = member_inputs(built)
+        del inputs[0][3]["per_dimension"]
+        with self.assertRaises(corpus_set.CorpusSetError):
+            self.build(inputs)
+
+    def test_per_dimension_histogram_must_recompose_global_member(self) -> None:
+        built = plan.build_plan()
+        inputs = member_inputs(built)
+        overworld = inputs[0][3]["per_dimension"]["minecraft:overworld"]
+        overworld["cardinality_histogram"] = {
+            "1": overworld["section_count"]
+        }
+        with self.assertRaises(corpus_set.CorpusSetError):
+            self.build(inputs)
+
+    def test_per_dimension_candidates_must_recompose_global_member(self) -> None:
+        built = plan.build_plan()
+        inputs = member_inputs(built)
+        row = inputs[0][3]["per_dimension"]["minecraft:the_end"]["candidates"][1]
+        row["total_owned_bytes"] += 1
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
