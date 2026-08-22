@@ -8,7 +8,10 @@ use super::check_corpus;
 static SERIAL: AtomicU64 = AtomicU64::new(0);
 
 fn section_line(dimension: &str, section_y: i64, states: impl Iterator<Item = u32>) -> String {
-    let payload = states.map(|state| state.to_string()).collect::<Vec<_>>().join(",");
+    let payload = states
+        .map(|state| state.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
     format!("SECTION|{dimension}|0|0|{section_y}|{payload}")
 }
 
@@ -58,8 +61,17 @@ fn per_dimension_evidence_is_not_implicitly_cross_weighted() {
             .iter()
             .all(|candidate| candidate.sections == 1)
     );
-    assert!(end.candidates.iter().all(|candidate| candidate.sections == 1));
-    assert!(checked.candidates.iter().all(|candidate| candidate.sections == 2));
+    assert!(
+        end.candidates
+            .iter()
+            .all(|candidate| candidate.sections == 1)
+    );
+    assert!(
+        checked
+            .candidates
+            .iter()
+            .all(|candidate| candidate.sections == 2)
+    );
 
     let json = checked.to_json(false);
     assert!(json.contains("\"per_dimension\""));
