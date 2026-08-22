@@ -692,15 +692,27 @@ mod tests {
     fn packed_first_widen_installs_pending_state_in_all_build_modes() {
         let mut section = PackedLocalBlockSection::filled(AIR, &GeneratedStateFacts);
 
-        assert_eq!(section.replace(pos(16), state(7), &GeneratedStateFacts), AIR);
-        assert_eq!(section.replace(pos(16), AIR, &GeneratedStateFacts), state(7));
-        assert_eq!(section.replace(pos(33), state(7), &GeneratedStateFacts), AIR);
+        assert_eq!(
+            section.replace(pos(16), state(7), &GeneratedStateFacts),
+            AIR
+        );
+        assert_eq!(
+            section.replace(pos(16), AIR, &GeneratedStateFacts),
+            state(7)
+        );
+        assert_eq!(
+            section.replace(pos(33), state(7), &GeneratedStateFacts),
+            AIR
+        );
 
         assert_eq!(
             section.representation(),
             PackedLocalRepresentation::Packed(1)
         );
-        assert_eq!(section.replace(pos(37), state(15), &GeneratedStateFacts), AIR);
+        assert_eq!(
+            section.replace(pos(37), state(15), &GeneratedStateFacts),
+            AIR
+        );
         assert_eq!(section.get(pos(37)), state(15));
         assert_eq!(
             section.representation(),
