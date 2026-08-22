@@ -17,6 +17,7 @@ import official_state_data
 
 DEFAULT_SEED = "6842363988700132471"
 DEFAULT_TIMEOUT_SECONDS = 240
+OVERWORLD_REGION = Path("dimensions/minecraft/overworld/region")
 
 
 class WorldProbeError(RuntimeError):
@@ -59,6 +60,19 @@ def _reader(stream, output: queue.Queue[str], log_path: Path) -> None:
     output.put("")
 
 
+def _tree(root: Path) -> str:
+    if not root.exists():
+        return "<missing>"
+    entries: list[str] = []
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root).as_posix()
+        entries.append(relative + ("/" if path.is_dir() else ""))
+        if len(entries) >= 100:
+            entries.append("<truncated>")
+            break
+    return "\n".join(entries) or "<empty>"
+
+
 def run_server(server: Path, work_dir: Path, timeout_seconds: int) -> Path:
     world = work_dir / "world"
     if world.exists():
@@ -69,16 +83,15 @@ def run_server(server: Path, work_dir: Path, timeout_seconds: int) -> Path:
         server_properties(DEFAULT_SEED), encoding="utf-8"
     )
 
-    command = [
-        "java",
-        "-Xms512M",
-        "-Xmx2048M",
-        "-jar",
-        str(server.resolve()),
-        "nogui",
-    ]
     process = subprocess.Popen(
-        command,
+        [
+            "java",
+            "-Xms512M",
+            "-Xmx2048M",
+            "-jar",
+            str(server.resolve()),
+            "nogui",
+        ],
         cwd=work_dir,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -90,12 +103,11 @@ def run_server(server: Path, work_dir: Path, timeout_seconds: int) -> Path:
     assert process.stdout is not None
 
     lines: queue.Queue[str] = queue.Queue()
-    reader = threading.Thread(
+    threading.Thread(
         target=_reader,
         args=(process.stdout, lines, work_dir / "server.log"),
         daemon=True,
-    )
-    reader.start()
+    ).start()
 
     deadline = time.monotonic() + timeout_seconds
     started = False
@@ -108,15 +120,15 @@ def run_server(server: Path, work_dir: Path, timeout_seconds: int) -> Path:
                 line = lines.get(timeout=0.25)
             except queue.Empty:
                 continue
-            if line:
-                output_tail.append(line.rstrip())
-                output_tail = output_tail[-40:]
-                if "Done (" in line and 'For help, type "help"' in line:
-                    started = True
-                    process.stdin.write("save-all flush\n")
-                    process.stdin.write("stop\n")
-                    process.stdin.flush()
-                    break
+            if not line:
+                continue
+            output_tail.append(line.rstrip())
+            output_tail = output_tail[-40:]
+            if "Done (" in line and 'For help, type "help"' in line:
+                started = True
+                process.stdin.write("save-all flush\nstop\n")
+                process.stdin.flush()
+                break
 
         if not started:
             if process.poll() is None:
@@ -126,15 +138,13 @@ def run_server(server: Path, work_dir: Path, timeout_seconds: int) -> Path:
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait(timeout=10)
-            tail = "\n".join(output_tail)
             raise WorldProbeError(
                 "official server did not reach completed startup before exit/timeout"
-                + (f":\n{tail}" if tail else "")
+                + ("\n" + "\n".join(output_tail) if output_tail else "")
             )
 
-        remaining = max(1.0, deadline - time.monotonic())
         try:
-            return_code = process.wait(timeout=remaining)
+            return_code = process.wait(timeout=max(1.0, deadline - time.monotonic()))
         except subprocess.TimeoutExpired as error:
             process.terminate()
             try:
@@ -151,11 +161,19 @@ def run_server(server: Path, work_dir: Path, timeout_seconds: int) -> Path:
             process.wait(timeout=10)
 
     level_dat = world / "level.dat"
-    region_dir = world / "region"
+    region_dir = world / OVERWORLD_REGION
     if not level_dat.is_file() or not region_dir.is_dir():
-        raise WorldProbeError("official server exited without a complete overworld save")
+        raise WorldProbeError(
+            "official server exited without the expected Minecraft 26.2 world layout\n"
+            f"expected level.dat={level_dat}\n"
+            f"expected overworld region={region_dir}\n"
+            f"observed world tree:\n{_tree(world)}"
+        )
     if not any(region_dir.glob("r.*.*.mca")):
-        raise WorldProbeError("official server save contains no overworld region files")
+        raise WorldProbeError(
+            "official server save contains no 26.2 overworld region files\n"
+            f"observed world tree:\n{_tree(world)}"
+        )
     return world
 
 
@@ -186,6 +204,7 @@ def generate(
                     "server_sha256": server_sha256,
                     "seed": DEFAULT_SEED,
                     "generator": "official-server-spawn-world-v1",
+                    "overworld_region_path": OVERWORLD_REGION.as_posix(),
                     "server_properties": server_properties(DEFAULT_SEED).splitlines(),
                 },
                 indent=2,
@@ -201,7 +220,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", default="26.2")
     parser.add_argument("--work-dir", type=Path, required=True)
-    parser.add_argument("--cache", type=Path, default=Path(".crucible/vanilla/downloads"))
+    parser.add_argument(
+        "--cache", type=Path, default=Path(".crucible/vanilla/downloads")
+    )
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--evidence", type=Path)
     args = parser.parse_args()
@@ -209,11 +230,11 @@ def main() -> int:
         parser.error("--timeout-seconds must be positive")
     try:
         world = generate(
-            version=args.version,
-            work_dir=args.work_dir,
-            cache=args.cache,
-            timeout_seconds=args.timeout_seconds,
-            evidence_output=args.evidence,
+            args.version,
+            args.work_dir,
+            args.cache,
+            args.timeout_seconds,
+            args.evidence,
         )
     except (WorldProbeError, ValueError, OSError, subprocess.SubprocessError) as error:
         print(f"official section world error: {error}", file=sys.stderr)
