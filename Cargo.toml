@@ -5,6 +5,7 @@ members = [
     "crates/crucible-component",
     "crates/world/crucible-world-contract",
     "crates/world/crucible-world-reference",
+    "crates/world/crucible-world-section",
     "tools/xtask",
 ]
 default-members = [
@@ -12,6 +13,7 @@ default-members = [
     "crates/crucible-component",
     "crates/world/crucible-world-contract",
     "crates/world/crucible-world-reference",
+    "crates/world/crucible-world-section",
     "tools/xtask",
 ]
 

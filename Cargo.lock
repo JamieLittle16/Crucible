@@ -22,5 +22,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "crucible-world-section"
+version = "0.0.0"
+dependencies = [
+ "crucible-world-contract",
+ "crucible-world-reference",
+]
+
+[[package]]
 name = "xtask"
 version = "0.0.0"
