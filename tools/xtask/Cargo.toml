@@ -6,5 +6,8 @@ rust-version.workspace = true
 repository.workspace = true
 publish = false
 
+[dependencies]
+crucible-section-qualification = { path = "../../crates/qualification/crucible-section-qualification" }
+
 [lints]
 workspace = true
