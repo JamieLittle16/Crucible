@@ -12,6 +12,7 @@ mod measure;
 mod model;
 mod population;
 mod report;
+mod target_synthetic;
 mod workloads;
 
 use std::env;
@@ -24,6 +25,7 @@ use crucible_generated::BLOCK_STATE_COUNT;
 
 use crate::model::Mode;
 use crate::population::PopulationMode;
+use crate::target_synthetic::TargetSyntheticMode;
 
 const HIGHEST_SYNTHETIC_STATE: usize = 5_511;
 
@@ -44,6 +46,11 @@ enum Invocation {
         mode: PopulationMode,
         output: Option<PathBuf>,
     },
+    TargetSynthetic {
+        candidate: String,
+        mode: TargetSyntheticMode,
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug)]
@@ -54,6 +61,8 @@ struct ParsedArgs {
     population_pack: Option<PathBuf>,
     population_candidate: Option<String>,
     population_mode: Option<PopulationMode>,
+    target_synthetic_candidate: Option<String>,
+    target_synthetic_mode: Option<TargetSyntheticMode>,
     output: Option<PathBuf>,
 }
 
@@ -66,6 +75,8 @@ impl ParsedArgs {
             population_pack: None,
             population_candidate: None,
             population_mode: None,
+            target_synthetic_candidate: None,
+            target_synthetic_mode: None,
             output: None,
         }
     }
@@ -74,6 +85,15 @@ impl ParsedArgs {
         let population_requested = self.population_pack.is_some()
             || self.population_candidate.is_some()
             || self.population_mode.is_some();
+        let target_synthetic_requested =
+            self.target_synthetic_candidate.is_some() || self.target_synthetic_mode.is_some();
+
+        if population_requested && target_synthetic_requested {
+            return Err(
+                "population and target-synthetic benchmark options cannot be combined".to_owned(),
+            );
+        }
+
         if population_requested {
             if self.synthetic_mode_explicit || self.corpus.is_some() {
                 return Err(
@@ -93,6 +113,27 @@ impl ParsedArgs {
             })?;
             return Ok(Invocation::Population {
                 pack,
+                candidate,
+                mode,
+                output: self.output,
+            });
+        }
+
+        if target_synthetic_requested {
+            if self.synthetic_mode_explicit || self.corpus.is_some() {
+                return Err(
+                    "target-synthetic benchmark options cannot be combined with synthetic/corpus modes"
+                        .to_owned(),
+                );
+            }
+            let candidate = self.target_synthetic_candidate.ok_or_else(|| {
+                "target-synthetic benchmark requires --synthetic-candidate NAME".to_owned()
+            })?;
+            let mode = self.target_synthetic_mode.ok_or_else(|| {
+                "target-synthetic benchmark requires --synthetic-target-smoke or --synthetic-target-qualification"
+                    .to_owned()
+            })?;
+            return Ok(Invocation::TargetSynthetic {
                 candidate,
                 mode,
                 output: self.output,
@@ -152,6 +193,11 @@ fn run() -> Result<(), String> {
             mode,
             output,
         } => run_population(&pack, &candidate, mode, output),
+        Invocation::TargetSynthetic {
+            candidate,
+            mode,
+            output,
+        } => run_target_synthetic(&candidate, mode, output),
     }
 }
 
@@ -215,6 +261,21 @@ fn run_population(
     Ok(())
 }
 
+fn run_target_synthetic(
+    candidate: &str,
+    mode: TargetSyntheticMode,
+    output: Option<PathBuf>,
+) -> Result<(), String> {
+    let artifact = target_synthetic::run(candidate, mode)?;
+    write_artifact(output, &artifact)?;
+    println!(
+        "section target synthetic benchmark: mode={} candidate={} complete",
+        mode.as_str(),
+        candidate
+    );
+    Ok(())
+}
+
 fn parse_args() -> Result<Option<Invocation>, String> {
     let mut parsed = ParsedArgs::new();
     let mut args = env::args_os().skip(1);
@@ -269,6 +330,21 @@ where
         Some("--population-qualification") => {
             set_population_mode(parsed, PopulationMode::Qualification)?;
         }
+        Some("--synthetic-candidate") => {
+            if parsed.target_synthetic_candidate.is_some() {
+                return Err("--synthetic-candidate may be specified only once".to_owned());
+            }
+            let candidate = next_value(args, "--synthetic-candidate requires a candidate name")?
+                .into_string()
+                .map_err(|_| "synthetic candidate name must be valid UTF-8".to_owned())?;
+            parsed.target_synthetic_candidate = Some(candidate);
+        }
+        Some("--synthetic-target-smoke") => {
+            set_target_synthetic_mode(parsed, TargetSyntheticMode::Smoke)?;
+        }
+        Some("--synthetic-target-qualification") => {
+            set_target_synthetic_mode(parsed, TargetSyntheticMode::Qualification)?;
+        }
         Some("--output") => {
             if parsed.output.is_some() {
                 return Err("--output may be specified only once".to_owned());
@@ -299,6 +375,17 @@ fn set_population_mode(parsed: &mut ParsedArgs, mode: PopulationMode) -> Result<
     Ok(())
 }
 
+fn set_target_synthetic_mode(
+    parsed: &mut ParsedArgs,
+    mode: TargetSyntheticMode,
+) -> Result<(), String> {
+    if parsed.target_synthetic_mode.is_some() {
+        return Err("target-synthetic benchmark mode may be specified only once".to_owned());
+    }
+    parsed.target_synthetic_mode = Some(mode);
+    Ok(())
+}
+
 fn next_value<I>(args: &mut I, error: &str) -> Result<OsString, String>
 where
     I: Iterator<Item = OsString>,
@@ -308,7 +395,7 @@ where
 
 fn print_help() {
     println!(
-        "usage: section_bench [--smoke|--qualification] [--output PATH]\n       section_bench --corpus-check CORPUS [--output PATH]\n       section_bench --corpus-decision-check CORPUS [--output PATH]\n       section_bench --population-pack PACK --candidate NAME (--population-smoke|--population-qualification) [--output PATH]"
+        "usage: section_bench [--smoke|--qualification] [--output PATH]\n       section_bench --corpus-check CORPUS [--output PATH]\n       section_bench --corpus-decision-check CORPUS [--output PATH]\n       section_bench --population-pack PACK --candidate NAME (--population-smoke|--population-qualification) [--output PATH]\n       section_bench --synthetic-candidate NAME (--synthetic-target-smoke|--synthetic-target-qualification) [--output PATH]"
     );
 }
 
