@@ -9,6 +9,7 @@ on:
       - crates/world/crucible-world-section/**
       - crates/data/crucible-generated/**
       - tools/xtask/**
+      - vanilla/state-data/**
       - vanilla/fixtures/section/**
       - .github/workflows/section-full-qualification.yml
   workflow_dispatch:
@@ -21,10 +22,14 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  full-section-equivalence:
-    name: Full section equivalence
+  qualify:
+    name: Full section qualification (${{ matrix.candidate }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        candidate: [direct, adaptive, fast-local, packed-local]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -35,12 +40,14 @@ jobs:
         run: rustup toolchain install 1.97.1 --profile minimal
 
       - name: Run full multi-seed section qualification
-        run: cargo xtask qualify section --full
+        run: >-
+          cargo run --release --locked -p xtask --
+          qualify section --full --candidate ${{ matrix.candidate }}
 
       - name: Upload full qualification evidence
         uses: actions/upload-artifact@v4
         with:
-          name: crucible-section-full-equivalence
+          name: crucible-section-full-${{ matrix.candidate }}
           path: target/crucible-qualification/section/full.json
           if-no-files-found: error
           retention-days: 30
