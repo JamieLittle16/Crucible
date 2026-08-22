@@ -15,6 +15,8 @@ use super::{PopulationMode, PopulationSettings, SampleSummary, TimingRecord};
 
 const REPORT_SCHEMA: u32 = 1;
 const REPORT_VERSION: &str = "section-population-bench-v1";
+const BUILD_PROFILE: &str = "release";
+const CODEGEN_POLICY: &str = "lto=thin,codegen-units=1,panic=abort,strip=debuginfo";
 
 pub(super) fn render<C: BenchSection>(
     mode: PopulationMode,
@@ -38,6 +40,8 @@ pub(super) fn render<C: BenchSection>(
         C::PRODUCTION_CANDIDATE,
         true,
     )?;
+    string(&mut out, 2, "build_profile", BUILD_PROFILE, true)?;
+    string(&mut out, 2, "codegen_policy", CODEGEN_POLICY, true)?;
     string(&mut out, 2, "minecraft_version", MINECRAFT_VERSION, true)?;
     number(
         &mut out,
