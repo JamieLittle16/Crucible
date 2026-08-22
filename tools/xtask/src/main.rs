@@ -226,7 +226,7 @@ fn qualify(args: &[OsString]) -> ExitCode {
                 let Some(value) = args.get(index + 1).and_then(|arg| arg.to_str()) else {
                     return failure("--candidate requires a candidate name");
                 };
-                let Some(parsed) = Candidate::parse(value) else {
+                let Some(parsed) = Candidate::from_name(value) else {
                     return failure(
                         "unknown section candidate; expected direct, adaptive, fast-local, or packed-local",
                     );
@@ -239,7 +239,9 @@ fn qualify(args: &[OsString]) -> ExitCode {
                     "vanilla section fixtures are not wired in this qualification slice yet; use --quick or --full",
                 );
             }
-            Some(other) => return failure(&format!("unknown section qualification option: {other}")),
+            Some(other) => {
+                return failure(&format!("unknown section qualification option: {other}"));
+            }
             None => return failure("section qualification arguments must be valid UTF-8"),
         }
         index += 1;
@@ -257,11 +259,15 @@ fn qualify(args: &[OsString]) -> ExitCode {
     };
     let output_dir = root.join("target/crucible-qualification/section");
     if let Err(error) = fs::create_dir_all(&output_dir) {
-        return failure(&format!("could not create qualification output directory: {error}"));
+        return failure(&format!(
+            "could not create qualification output directory: {error}"
+        ));
     }
     let output_path = output_dir.join(format!("{}.json", mode.as_str()));
     if let Err(error) = fs::write(&output_path, report.to_json(&commit_sha)) {
-        return failure(&format!("could not write section qualification evidence: {error}"));
+        return failure(&format!(
+            "could not write section qualification evidence: {error}"
+        ));
     }
 
     for record in report.records() {
@@ -282,7 +288,9 @@ fn git_head_sha(root: &Path) -> Result<String, String> {
         .output()
         .map_err(|error| format!("could not execute git rev-parse: {error}"))?;
     if !output.status.success() {
-        return Err("git rev-parse HEAD failed; equivalence evidence requires a concrete commit".to_owned());
+        return Err(
+            "git rev-parse HEAD failed; equivalence evidence requires a concrete commit".to_owned(),
+        );
     }
     let sha = String::from_utf8(output.stdout)
         .map_err(|_| "git rev-parse HEAD returned non-UTF-8 output".to_owned())?;
