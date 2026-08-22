@@ -316,9 +316,7 @@ impl BenchSection for PackedLocalBlockSection<BlockStateId> {
 
     fn transition_logical_allocations(before: &str, after: &str) -> usize {
         let packed_backing_created = (before == "uniform" && after.starts_with("packed-"))
-            || (before.starts_with("packed-")
-                && after.starts_with("packed-")
-                && before != after);
+            || (before.starts_with("packed-") && after.starts_with("packed-") && before != after);
         if packed_backing_created {
             2
         } else {
