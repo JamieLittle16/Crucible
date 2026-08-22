@@ -5,8 +5,12 @@ on:
     paths:
       - tools/state_data.py
       - tools/official_state_data.py
+      - tools/state_source_qualification.py
       - tools/tests/test_state_data.py
       - tools/tests/test_official_state_data.py
+      - tools/tests/test_state_source_qualification.py
+      - vanilla/state-data/**
+      - vanilla/vanilla.lock.toml
       - .github/workflows/state-data-probe.yml
 
 permissions:
@@ -28,6 +32,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
+
+      - name: Qualification gate tests
+        run: python3 -m unittest tools.tests.test_state_source_qualification -v
 
       - name: Extract official state facts
         run: |
