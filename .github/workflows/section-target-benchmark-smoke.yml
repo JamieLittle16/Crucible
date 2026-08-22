@@ -130,8 +130,15 @@ jobs:
               }
               if not required_memory <= set(memory):
                   raise SystemExit(f'{candidate}: memory evidence incomplete')
-              if memory['rss_protocol'] != 'candidate-delta-after-common-preallocation':
+              if memory['rss_protocol'] != 'candidate-delta-after-explicit-prefaulted-common-scratch':
                   raise SystemExit(f'{candidate}: RSS protocol mismatch')
+              if not isinstance(memory['rss_loaded_delta_kib'], int):
+                  raise SystemExit(f'{candidate}: RSS delta must be a signed JSON integer')
+              expected_delta = memory['rss_loaded_kib'] - memory['rss_baseline_kib']
+              if memory['rss_loaded_delta_kib'] != expected_delta:
+                  raise SystemExit(
+                      f"{candidate}: RSS delta mismatch: expected {expected_delta}, got {memory['rss_loaded_delta_kib']}"
+                  )
               if not record['representations']:
                   raise SystemExit(f'{candidate}: representation evidence empty')
               if len(record['construction']['samples_ns']) != 3:
