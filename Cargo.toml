@@ -3,11 +3,15 @@ resolver = "3"
 members = [
     "crates/crucible-types",
     "crates/crucible-component",
+    "crates/world/crucible-world-contract",
+    "crates/world/crucible-world-reference",
     "tools/xtask",
 ]
 default-members = [
     "crates/crucible-types",
     "crates/crucible-component",
+    "crates/world/crucible-world-contract",
+    "crates/world/crucible-world-reference",
     "tools/xtask",
 ]
 
