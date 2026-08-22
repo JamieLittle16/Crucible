@@ -433,11 +433,11 @@ mod tests {
             rng ^= rng << 8;
             let index = usize::try_from(rng % cell_count).expect("bounded index");
             let state = u16::try_from((rng >> 24) % 320).expect("synthetic state fits u16");
-            let pos = pos(index);
+            let position = pos(index);
 
             assert_eq!(
-                candidate.replace(pos, state, &SyntheticFacts),
-                reference.replace(pos, state, &SyntheticFacts)
+                candidate.replace(position, state, &SyntheticFacts),
+                reference.replace(position, state, &SyntheticFacts)
             );
             assert_eq!(candidate.summary(), reference.summary());
 
