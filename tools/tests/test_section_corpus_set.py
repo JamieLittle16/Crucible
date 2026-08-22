@@ -12,8 +12,8 @@ import section_corpus_set as corpus_set
 import section_representative_plan as plan
 
 SERVER_SHA = "c" * 64
-GENERATION_SHA = "g" * 64
-INPUT_SHA = "i" * 64
+GENERATION_SHA = "1" * 64
+INPUT_SHA = "2" * 64
 
 
 def state_manifest() -> dict[str, object]:
@@ -32,9 +32,31 @@ def state_manifest() -> dict[str, object]:
 def selected_chunks(built: dict[str, object]) -> dict[str, list[list[int]]]:
     dimensions = built["dimensions"]
     return {
-        dimension: sorted([list(chunk) for chunk in dimensions[dimension]["chunks"]])
-        for dimension in plan.DIMENSIONS
+        descriptor.key: sorted(
+            [list(chunk) for chunk in dimensions[descriptor.key]["chunks"]]
+        )
+        for descriptor in plan.REPRESENTATIVE_DIMENSIONS
     }
+
+
+def batch_timings(batch_size: int = 8) -> list[dict[str, object]]:
+    timings = []
+    index = 0
+    for descriptor in plan.REPRESENTATIVE_DIMENSIONS:
+        remaining = plan.CHUNKS_PER_DIMENSION
+        while remaining:
+            ticket_count = min(batch_size, remaining)
+            timings.append(
+                {
+                    "index": index,
+                    "dimension": descriptor.key,
+                    "ticket_count": ticket_count,
+                    "elapsed_ms": 100 + index,
+                }
+            )
+            remaining -= ticket_count
+            index += 1
+    return timings
 
 
 def candidate_rows(section_count: int) -> list[dict[str, object]]:
@@ -70,26 +92,31 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
         "minecraft:the_end": [0],
     }
     dimensions = {
-        dimension: plan.CHUNKS_PER_DIMENSION * len(lattice[dimension])
-        for dimension in plan.DIMENSIONS
+        descriptor.key: plan.CHUNKS_PER_DIMENSION * len(lattice[descriptor.key])
+        for descriptor in plan.REPRESENTATIVE_DIMENSIONS
     }
     section_count = sum(dimensions.values())
     cardinality = {"1": section_count - 1, "2": 1}
     result = []
+    timings = batch_timings()
     for seed_index, seed in enumerate(built["seeds"]):
         inventory = f"{seed_index + 1:064x}"
         corpus_sha = f"{seed_index + 100:064x}"
         world = {
-            "schema": 1,
-            "generator": "official-server-representative-section-world-v1",
+            "schema": corpus_set.WORLD_SCHEMA,
+            "generator": corpus_set.WORLD_GENERATOR,
             "minecraft_version": "26.2",
             "server_sha256": SERVER_SHA,
             "representative_policy": built["policy"],
             "plan_sha256": built["plan_sha256"],
             "seed_index": seed_index,
             "seed": seed,
-            "command_count": len(plan.DIMENSIONS) * plan.CHUNKS_PER_DIMENSION,
-            "command_sha256": "d" * 64,
+            "selection_command_count": len(plan.DIMENSIONS) * plan.CHUNKS_PER_DIMENSION,
+            "selection_command_sha256": corpus_set.SELECTION_COMMAND_SHA256,
+            "batch_size": 8,
+            "batch_count": len(timings),
+            "batch_settle_seconds": 2,
+            "batch_timings": copy.deepcopy(timings),
         }
         extraction = {
             "schema": 1,
@@ -154,14 +181,16 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
 
 
 class RepresentativeCorpusSetTests(unittest.TestCase):
-    def build(self, inputs=None):
+    def build(self, inputs=None, manifest=None, server_sha=SERVER_SHA):
         built = plan.build_plan()
         if inputs is None:
             inputs = member_inputs(built)
+        if manifest is None:
+            manifest = state_manifest()
         return corpus_set.build_set(
             plan=built,
-            state_manifest=state_manifest(),
-            pinned_server_sha256=SERVER_SHA,
+            state_manifest=manifest,
+            pinned_server_sha256=server_sha,
             member_inputs=inputs,
         )
 
@@ -177,6 +206,14 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
             result["aggregate"]["section_count"],
             sum(member["section_count"] for member in result["members"]),
         )
+        for member in result["members"]:
+            generation = member["world_generation"]
+            self.assertEqual(generation["generator"], corpus_set.WORLD_GENERATOR)
+            self.assertEqual(
+                generation["selection_command_sha256"],
+                corpus_set.SELECTION_COMMAND_SHA256,
+            )
+            self.assertNotIn("batch_timings", generation)
 
     def test_missing_member_is_rejected(self) -> None:
         built = plan.build_plan()
@@ -194,6 +231,63 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
                 inputs[2][1]["plan_sha256"] = "0" * 64
             with self.subTest(mutate=mutate), self.assertRaises(corpus_set.CorpusSetError):
                 self.build(inputs)
+
+    def test_world_generation_provenance_is_strict(self) -> None:
+        built = plan.build_plan()
+        mutations = []
+
+        inputs = member_inputs(built)
+        inputs[0][0]["generator"] = "unbounded-v0"
+        mutations.append(inputs)
+
+        inputs = member_inputs(built)
+        inputs[0][0]["selection_command_sha256"] = "0" * 64
+        mutations.append(inputs)
+
+        inputs = member_inputs(built)
+        inputs[0][0]["batch_count"] -= 1
+        mutations.append(inputs)
+
+        inputs = member_inputs(built)
+        inputs[0][0]["batch_timings"][0]["dimension"] = "minecraft:moon"
+        mutations.append(inputs)
+
+        inputs = member_inputs(built)
+        inputs[0][0]["batch_timings"][0]["ticket_count"] = 9
+        mutations.append(inputs)
+
+        inputs = member_inputs(built)
+        inputs[0][0]["batch_timings"][0]["elapsed_ms"] = -1
+        mutations.append(inputs)
+
+        for index, inputs in enumerate(mutations):
+            with self.subTest(index=index), self.assertRaises(corpus_set.CorpusSetError):
+                self.build(inputs)
+
+    def test_sha256_fields_are_canonical_lowercase_hex(self) -> None:
+        built = plan.build_plan()
+        invalid_values = ["A" * 64, "g" * 64, "0" * 63, "0" * 65]
+        for invalid in invalid_values:
+            inputs = member_inputs(built)
+            inputs[0][1]["inventory_sha256"] = invalid
+            with self.subTest(field="inventory", value=invalid), self.assertRaises(
+                corpus_set.CorpusSetError
+            ):
+                self.build(inputs)
+
+        for invalid in invalid_values:
+            manifest = state_manifest()
+            manifest["generation_digest"] = invalid
+            with self.subTest(field="generation", value=invalid), self.assertRaises(
+                corpus_set.CorpusSetError
+            ):
+                self.build(manifest=manifest)
+
+        for invalid in invalid_values:
+            with self.subTest(field="server", value=invalid), self.assertRaises(
+                corpus_set.CorpusSetError
+            ):
+                self.build(server_sha=invalid)
 
     def test_wrong_selected_chunk_schedule_is_rejected(self) -> None:
         built = plan.build_plan()
@@ -230,7 +324,9 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
     def test_python_rust_histogram_disagreement_is_rejected(self) -> None:
         built = plan.build_plan()
         inputs = member_inputs(built)
-        inputs[0][3]["cardinality_histogram"] = {"1": inputs[0][3]["section_count"]}
+        inputs[0][3]["cardinality_histogram"] = {
+            "1": inputs[0][3]["section_count"]
+        }
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
