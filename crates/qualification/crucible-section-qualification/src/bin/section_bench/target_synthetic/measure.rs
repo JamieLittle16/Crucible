@@ -61,13 +61,8 @@ fn measure_replacements<C: BenchSection>(
         ("high-entropy-replace", high_states.as_slice()),
         ("palette-churn", churn_states.as_slice()),
     ] {
-        let (timing, final_representation) = measure_replace_checked(
-            &prepared.section,
-            &positions,
-            states,
-            settings,
-            workload,
-        )?;
+        let (timing, final_representation) =
+            measure_replace_checked(&prepared.section, &positions, states, settings, workload)?;
         timings.push(TimingRecord {
             candidate: C::NAME,
             production_candidate: C::PRODUCTION_CANDIDATE,
@@ -145,7 +140,11 @@ fn expected_after<C: BenchSection>(
     expected
 }
 
-fn verify_image<C: BenchSection>(section: &C, expected: &[BlockStateId], label: &str) -> Result<(), String> {
+fn verify_image<C: BenchSection>(
+    section: &C,
+    expected: &[BlockStateId],
+    label: &str,
+) -> Result<(), String> {
     if expected.len() != BLOCK_SECTION_CELLS {
         return Err(format!("{label}: expected image has the wrong cell count"));
     }
