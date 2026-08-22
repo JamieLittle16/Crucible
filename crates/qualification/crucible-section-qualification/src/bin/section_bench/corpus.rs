@@ -28,7 +28,9 @@ impl CorpusPurpose {
     }
 
     pub(crate) const fn decision_eligible(&self) -> bool {
-        false
+        match self {
+            Self::ParserAdmission | Self::Unclassified => false,
+        }
     }
 
     fn from_extractor(extractor: &str) -> Self {
