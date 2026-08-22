@@ -77,6 +77,20 @@ bytes, with each state ID encoded little-endian in frozen section cell order.
 
 No trailing bytes are permitted. A state ID outside the frozen target universe is a hard failure.
 
+### Exact pack-file identity at orchestration
+
+The Rust child intentionally remains dependency-light and does not implement a second SHA-256 stack merely to hash its input file. It binds itself to the target, `population_sha256`, `admission_sha256`, dimension and section count from the validated pack header.
+
+The target-hardware orchestrator is responsible for the cryptographic outer binding. Immediately before launching each child it must:
+
+1. verify the pack-set manifest;
+2. SHA-256 the exact pack file to be passed to the child;
+3. require equality with the manifest entry;
+4. launch the child without rewriting the pack;
+5. bind the returned child evidence to that exact pack SHA-256 in the orchestration record.
+
+A child record without this orchestration-layer pack binding is diagnostic, not decision evidence.
+
 ## Dimension firewall
 
 The admitted population has:
@@ -111,13 +125,24 @@ Process memory evidence is not inferred from logical owned bytes.
 For each child process:
 
 1. open and validate the pack header;
-2. allocate one reusable fixed-size section decode buffer;
-3. record baseline process `VmRSS`;
-4. construct and retain every candidate section in the selected dimension;
-5. touch/read back every section as part of semantic reconstruction;
-6. record post-load `VmRSS` and `VmHWM`;
-7. report the RSS delta, peak RSS and deterministic logical owned bytes separately;
-8. only after the RSS snapshot allocate timing query plans.
+2. allocate every common retained parsing/measurement scratch buffer needed during population construction;
+3. **explicitly dirty/prefault every common scratch page and restore its canonical initial contents** before the baseline;
+4. record baseline process `VmRSS` and `VmHWM`;
+5. allocate, construct and retain every candidate section in the selected dimension;
+6. touch/read back every section as part of semantic reconstruction;
+7. record post-load `VmRSS` and `VmHWM`;
+8. report the raw baseline, raw loaded RSS, the **signed** loaded-minus-baseline delta, high-water values and deterministic logical owned bytes separately;
+9. only after the loaded RSS snapshot allocate timing query plans.
+
+The protocol identifier is:
+
+```text
+candidate-delta-after-explicit-prefaulted-common-scratch
+```
+
+The explicit prefault is required because allocation/capacity alone does not imply physical residency on a demand-paged OS. Without it, later writes to common benchmark buffers can fault pages after the baseline and be misattributed to the candidate.
+
+The RSS delta is signed deliberately. A negative delta is not rounded or saturated to zero; it is preserved as evidence that the process-level observation was noisy or otherwise unsuitable for direct memory ranking. The later orchestrator decides whether repeated RSS evidence is stable enough to qualify.
 
 The qualification artifact must say explicitly that RSS is process-level evidence and logical bytes are representation-level evidence.
 
@@ -133,9 +158,17 @@ Steady-state measurements operate on the already constructed candidate sections 
 - positive `maybe_contains`;
 - negative `maybe_contains` using a state proven absent from the loaded population.
 
-Candidate construction latency is recorded separately, excluding pack I/O, with p50/p95/p99/max.
+Positive membership queries do not privilege cell zero. Each query selects a deterministic pseudo-random `(section, cell)` pair and uses the state observed at that exact cell as its guaranteed-present needle. Before timing, every planned positive query is required to return `true`; a false result is a correctness failure, not a fast benchmark sample.
 
-Synthetic replacement, churn and promotion workloads remain the correct place for controlled mutation and transition-tail experiments; real terrain is not mutated merely to manufacture an arbitrary write distribution.
+Negative `maybe_contains` is interpreted according to the semantic contract: `false` proves absence, while `true` may be a permitted conservative false positive. The globally selected negative needle is nevertheless proven absent from the loaded population.
+
+### Construction sample interpretation
+
+The child records one construction/materialization sample for each real population section. Pack decode and semantic verification are outside that timer.
+
+These samples describe the current **benchmark materialization path** (`filled` plus semantic replacements). They are useful for exposing pathological representation-building and transition costs, but they are not yet a claim about the eventual production chunk/network decode pipeline. They must not be relabelled as production decode latency.
+
+Synthetic replacement, churn and promotion workloads remain the authoritative controlled transition-tail experiments until the production decode/persistence adapters exist.
 
 ## Samples and noise
 
@@ -152,7 +185,7 @@ The orchestration layer must record at minimum:
 - governor/frequency/turbo metadata where exposed;
 - Rust/toolchain/target/codegen identity;
 - repository commit SHA;
-- pack-set/population/admission identities.
+- exact pack SHA-256 plus pack-set/population/admission identities.
 
 Candidate ordering must be rotated deterministically across rounds so thermal/frequency drift is not always assigned to the same mechanism.
 
@@ -212,6 +245,7 @@ CI must:
 - unit-test pack construction and corruption rejection;
 - compile the release benchmark child;
 - run a tiny release-mode population smoke pack;
+- verify explicit prefaulted-common-scratch RSS protocol and exact signed-delta arithmetic;
 - verify artifact schema/provenance/workload/candidate fields;
 - preserve all existing semantic/full-qualification gates.
 
