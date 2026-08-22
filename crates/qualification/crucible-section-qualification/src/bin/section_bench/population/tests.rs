@@ -3,13 +3,14 @@ use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crucible_generated::{BLOCK_STATE_COUNT, STATE_DATA_GENERATION_SHA256};
+use crucible_generated::{AIR, BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256};
 use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use super::PopulationMode;
 use super::measure::percentile;
 use super::pack::{
-    PACK_MAGIC, PAYLOAD_BYTES_PER_SECTION, PackReader, canonical_usize, status_value_kib,
+    PACK_MAGIC, PAYLOAD_BYTES_PER_SECTION, PackReader, RSS_PROTOCOL, canonical_usize,
+    prefault_common_scratch, signed_rss_delta, status_value_kib,
 };
 use super::report::single_cpu;
 
@@ -110,6 +111,32 @@ fn proc_status_memory_parser_requires_kilobytes() {
     assert_eq!(status_value_kib(status, "VmHWM:"), Ok(2345));
     assert!(status_value_kib("VmRSS: 10 MB\n", "VmRSS:").is_err());
     assert!(status_value_kib("Name: test\n", "VmRSS:").is_err());
+}
+
+#[test]
+fn common_rss_scratch_prefault_restores_canonical_initial_values() {
+    let mut raw = vec![0_u8; PAYLOAD_BYTES_PER_SECTION * 2];
+    let mut decoded = vec![AIR; 4096];
+    let mut observed = vec![0_u64; BLOCK_STATE_COUNT.div_ceil(64)];
+    let mut construction = vec![0_u128; 257];
+
+    prefault_common_scratch(&mut raw, &mut decoded, &mut observed, &mut construction);
+
+    assert!(raw.iter().all(|value| *value == 0));
+    assert!(decoded.iter().all(|state| *state == AIR));
+    assert!(observed.iter().all(|value| *value == 0));
+    assert!(construction.iter().all(|value| *value == 0));
+    assert_eq!(
+        RSS_PROTOCOL,
+        "candidate-delta-after-explicit-prefaulted-common-scratch"
+    );
+}
+
+#[test]
+fn rss_delta_preserves_negative_measurements_instead_of_saturating() {
+    assert_eq!(signed_rss_delta(1_500, 1_000), Ok(500));
+    assert_eq!(signed_rss_delta(1_000, 1_500), Ok(-500));
+    assert_eq!(signed_rss_delta(1_234, 1_234), Ok(0));
 }
 
 #[test]
