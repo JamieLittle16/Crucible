@@ -1,0 +1,144 @@
+name: Section Target Synthetic Smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/section-target-synthetic-smoke.yml"
+      - "crates/qualification/crucible-section-qualification/**"
+      - "crates/world/**"
+      - "crates/data/crucible-generated/**"
+      - "docs/qualification/section/SECTION_TARGET_HARDWARE_SYNTHETIC.md"
+      - "Cargo.toml"
+      - "Cargo.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Candidate-isolated synthetic smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Run all candidate-isolated release smokes
+        run: |
+          set -euo pipefail
+          root=target/crucible-qualification/section/target-synthetic-smoke
+          rm -rf "$root"
+          mkdir -p "$root"
+          for candidate in direct-reference direct adaptive fast-local packed-local; do
+            cargo run --release --locked \
+              -p crucible-section-qualification \
+              --bin section_bench -- \
+              --synthetic-candidate "$candidate" \
+              --synthetic-target-smoke \
+              --output "$root/$candidate.json"
+          done
+
+      - name: Validate synthetic evidence structure
+        run: |
+          python3 - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          root = Path('target/crucible-qualification/section/target-synthetic-smoke')
+          candidates = ['direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local']
+          replacements = {
+              'same-state-replace',
+              'low-entropy-replace',
+              'high-entropy-replace',
+              'palette-churn',
+          }
+          promotions = [2, 3, 5, 9, 17, 33, 65, 129, 257]
+          promotion_names = {f'promotion-to-{value}' for value in promotions}
+
+          for candidate in candidates:
+              record = json.loads((root / f'{candidate}.json').read_text())
+              if record['schema'] != 1 or record['harness_version'] != 'section-target-synthetic-bench-v1':
+                  raise SystemExit(f'{candidate}: schema/version mismatch')
+              if record['mode'] != 'smoke' or record['candidate'] != candidate:
+                  raise SystemExit(f'{candidate}: identity mismatch')
+              if record['production_candidate'] != (candidate != 'direct-reference'):
+                  raise SystemExit(f'{candidate}: production flag mismatch')
+              if record['scope'] != 'synthetic-mechanism-stress':
+                  raise SystemExit(f'{candidate}: scope mismatch')
+              if record['build_profile'] != 'release':
+                  raise SystemExit(f'{candidate}: build profile mismatch')
+              if record['codegen_policy'] != 'lto=thin,codegen-units=1,panic=abort,strip=debuginfo':
+                  raise SystemExit(f'{candidate}: codegen policy mismatch')
+              if record['minecraft_version'] != '26.2' or record['protocol_version'] != 776 or record['data_version'] != 4903:
+                  raise SystemExit(f'{candidate}: target identity mismatch')
+              if record['state_count'] != 32366:
+                  raise SystemExit(f'{candidate}: state count mismatch')
+              settings = record['settings']
+              expected_settings = {
+                  'warmup_samples': 1,
+                  'measured_samples': 3,
+                  'mutations': 2048,
+                  'promotion_samples': 8,
+                  'control_operations': 20000,
+                  'case_count': 10,
+              }
+              if settings != expected_settings:
+                  raise SystemExit(f'{candidate}: settings mismatch: {settings}')
+              if record['promotion_targets'] != promotions:
+                  raise SystemExit(f'{candidate}: promotion target drift')
+
+              control = record['control']
+              if control['workload'] != 'control-integer-loop' or control['unit'] != 'iteration':
+                  raise SystemExit(f'{candidate}: control identity mismatch')
+              if len(control['timing']['samples_ns']) != 3 or control['timing']['operations_per_sample'] != 20000:
+                  raise SystemExit(f'{candidate}: control sample shape mismatch')
+
+              timings = record['timings']
+              if len(timings) != 49:
+                  raise SystemExit(f'{candidate}: expected 49 timing records, got {len(timings)}')
+              counts = Counter(entry['workload'] for entry in timings)
+              if any(counts[name] != 10 for name in replacements):
+                  raise SystemExit(f'{candidate}: replacement workload count mismatch: {counts}')
+              if any(counts[name] != 1 for name in promotion_names):
+                  raise SystemExit(f'{candidate}: promotion workload count mismatch: {counts}')
+              if set(counts) != replacements | promotion_names:
+                  raise SystemExit(f'{candidate}: unexpected workload names: {set(counts)}')
+
+              for entry in timings:
+                  timing = entry['timing']
+                  if entry['workload'] in replacements:
+                      if len(timing['samples_ns']) != 3 or timing['operations_per_sample'] != 2048:
+                          raise SystemExit(f"{candidate}/{entry['workload']}: replacement sample shape mismatch")
+                  else:
+                      if len(timing['samples_ns']) != 8 or timing['operations_per_sample'] != 1:
+                          raise SystemExit(f"{candidate}/{entry['workload']}: promotion sample shape mismatch")
+                  if timing['p99_ns'] > timing['max_ns']:
+                      raise SystemExit(f"{candidate}/{entry['workload']}: invalid tail ordering")
+                  if not entry['representation']:
+                      raise SystemExit(f"{candidate}/{entry['workload']}: missing representation identity")
+
+              if not record['commit_sha'] or not record['rustc_verbose']:
+                  raise SystemExit(f'{candidate}: source/toolchain provenance incomplete')
+              if not record['cpus_allowed_list'] or not record['mems_allowed_list']:
+                  raise SystemExit(f'{candidate}: CPU/NUMA provenance incomplete')
+          print('candidate-isolated target synthetic smoke PASS')
+          PY
+
+      - name: Upload diagnostic synthetic evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: section-target-synthetic-smoke
+          path: target/crucible-qualification/section/target-synthetic-smoke
+          if-no-files-found: error
+          retention-days: 7
