@@ -688,11 +688,17 @@ mod tests {
                 &GeneratedStateFacts,
             );
         }
-        assert_eq!(section.representation(), PackedLocalRepresentation::Packed(8));
+        assert_eq!(
+            section.representation(),
+            PackedLocalRepresentation::Packed(8)
+        );
         assert_eq!(section.live_palette_entries(), Some(256));
 
         section.replace(pos(0), state(256), &GeneratedStateFacts);
-        assert_eq!(section.representation(), PackedLocalRepresentation::Packed(8));
+        assert_eq!(
+            section.representation(),
+            PackedLocalRepresentation::Packed(8)
+        );
         assert_eq!(section.live_palette_entries(), Some(256));
 
         section.replace(pos(255), state(257), &GeneratedStateFacts);
