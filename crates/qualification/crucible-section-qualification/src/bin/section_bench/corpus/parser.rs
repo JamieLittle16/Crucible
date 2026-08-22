@@ -11,7 +11,7 @@ use super::{CorpusHeader, CorpusPurpose, CorpusSection, SectionKey};
 const MAGIC: &str = "CRUCIBLE-SECTION-CORPUS|1";
 const SOURCE_KIND: &str = "vanilla-save";
 const SECTION_LINE_INITIAL_CAPACITY: usize = 32 * 1024;
-const STATE_SEEN_WORDS: usize = (BLOCK_STATE_COUNT + 63) / 64;
+const STATE_SEEN_WORDS: usize = BLOCK_STATE_COUNT.div_ceil(64);
 
 pub(super) struct CorpusReader<R: BufRead> {
     reader: R,
