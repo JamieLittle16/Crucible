@@ -1,0 +1,15 @@
+[package]
+name = "crucible-world-section"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.97.1"
+publish = false
+
+[dependencies]
+crucible-world-contract = { path = "../crucible-world-contract" }
+
+[dev-dependencies]
+crucible-world-reference = { path = "../crucible-world-reference" }
+
+[lints]
+workspace = true
