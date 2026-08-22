@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import tomllib
 from collections import Counter
 from pathlib import Path
@@ -17,6 +18,9 @@ SCHEMA = 1
 KIND = "section-corpus-set"
 MEMBER_EXTRACTOR = "vanilla-save-region-v2-representative-member"
 MEMBER_PURPOSE = "representative-member"
+WORLD_GENERATOR = "official-server-representative-section-world-v2-batched"
+WORLD_SCHEMA = 2
+SELECTION_COMMAND_SHA256 = "cb97b7490c28e38293251561749a87dbda2d0f78d78c7cf98471e5eff825a354"
 EXPECTED_CANDIDATES = {
     "direct-reference": False,
     "direct": True,
@@ -26,6 +30,7 @@ EXPECTED_CANDIDATES = {
 }
 DEFAULT_LOCK = Path("vanilla/vanilla.lock.toml")
 DEFAULT_STATE_MANIFEST = Path("vanilla/state-data/26.2-state-data-manifest.json")
+SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
 class CorpusSetError(ValueError):
@@ -49,6 +54,19 @@ def _string(mapping: dict[str, Any], key: str, label: str) -> str:
     value = mapping.get(key)
     if not isinstance(value, str) or not value:
         raise CorpusSetError(f"{label}.{key} must be a non-empty string")
+    return value
+
+
+def _sha256(mapping: dict[str, Any], key: str, label: str) -> str:
+    value = _string(mapping, key, label)
+    if SHA256.fullmatch(value) is None:
+        raise CorpusSetError(f"{label}.{key} must be canonical lowercase SHA-256")
+    return value
+
+
+def _require_sha256(value: object, label: str) -> str:
+    if not isinstance(value, str) or SHA256.fullmatch(value) is None:
+        raise CorpusSetError(f"{label} must be canonical lowercase SHA-256")
     return value
 
 
@@ -83,10 +101,12 @@ def _target_from_state_manifest(state_manifest: dict[str, Any]) -> dict[str, obj
         "protocol_version": _integer(target, "protocol_version", "state manifest target"),
         "data_version": _integer(target, "data_version", "state manifest target"),
         "state_count": _integer(state_manifest, "state_count", "state manifest"),
-        "state_data_generation_sha256": _string(
+        "state_data_generation_sha256": _sha256(
             state_manifest, "generation_digest", "state manifest"
         ),
-        "state_data_input_sha256": _string(state_manifest, "input_digest", "state manifest"),
+        "state_data_input_sha256": _sha256(
+            state_manifest, "input_digest", "state manifest"
+        ),
     }
 
 
@@ -106,10 +126,13 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _expected_selection(plan: dict[str, object]) -> dict[str, list[list[int]]]:
     dimensions = _object(plan["dimensions"], "plan dimensions")
     return {
-        dimension: sorted(
-            [[int(chunk[0]), int(chunk[1])] for chunk in dimensions[dimension]["chunks"]]
+        descriptor.key: sorted(
+            [
+                [int(chunk[0]), int(chunk[1])]
+                for chunk in dimensions[descriptor.key]["chunks"]
+            ]
         )
-        for dimension in section_representative_plan.DIMENSIONS
+        for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS
     }
 
 
@@ -161,6 +184,78 @@ def _validate_candidate_rows(
     return observed
 
 
+def _validate_world_generation(
+    world: dict[str, Any],
+    *,
+    plan: dict[str, object],
+) -> dict[str, object]:
+    _equal(_integer(world, "schema", "world evidence"), WORLD_SCHEMA, "world schema")
+    _equal(_string(world, "generator", "world evidence"), WORLD_GENERATOR, "world generator")
+
+    expected_tickets = (
+        len(section_representative_plan.REPRESENTATIVE_DIMENSIONS)
+        * section_representative_plan.CHUNKS_PER_DIMENSION
+    )
+    _equal(
+        _integer(world, "selection_command_count", "world evidence"),
+        expected_tickets,
+        "world selection command count",
+    )
+    _equal(
+        _sha256(world, "selection_command_sha256", "world evidence"),
+        SELECTION_COMMAND_SHA256,
+        "world selection command digest",
+    )
+
+    batch_size = _integer(world, "batch_size", "world evidence")
+    batch_count = _integer(world, "batch_count", "world evidence")
+    settle_seconds = _integer(world, "batch_settle_seconds", "world evidence")
+    if batch_size <= 0 or batch_count <= 0 or settle_seconds < 0:
+        raise CorpusSetError("world bounded-generation parameters are invalid")
+
+    expected_batches_per_dimension = (
+        section_representative_plan.CHUNKS_PER_DIMENSION + batch_size - 1
+    ) // batch_size
+    expected_batch_count = (
+        expected_batches_per_dimension
+        * len(section_representative_plan.REPRESENTATIVE_DIMENSIONS)
+    )
+    _equal(batch_count, expected_batch_count, "world batch count")
+
+    raw_timings = world.get("batch_timings")
+    if not isinstance(raw_timings, list) or len(raw_timings) != batch_count:
+        raise CorpusSetError("world batch timing evidence is incomplete")
+    tickets_by_dimension: Counter[str] = Counter()
+    for index, raw_timing in enumerate(raw_timings):
+        timing = _object(raw_timing, f"world batch timing[{index}]")
+        _equal(_integer(timing, "index", f"world batch timing[{index}]"), index, "batch index")
+        dimension = _string(timing, "dimension", f"world batch timing[{index}]")
+        if dimension not in section_representative_plan.DIMENSION_BY_KEY:
+            raise CorpusSetError(f"world batch timing has unknown dimension {dimension!r}")
+        ticket_count = _integer(timing, "ticket_count", f"world batch timing[{index}]")
+        elapsed_ms = _integer(timing, "elapsed_ms", f"world batch timing[{index}]")
+        if ticket_count <= 0 or ticket_count > batch_size or elapsed_ms < 0:
+            raise CorpusSetError(f"world batch timing[{index}] has invalid metrics")
+        tickets_by_dimension[dimension] += ticket_count
+    expected_dimension_tickets = Counter(
+        {
+            descriptor.key: section_representative_plan.CHUNKS_PER_DIMENSION
+            for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS
+        }
+    )
+    _equal(tickets_by_dimension, expected_dimension_tickets, "world batch dimension coverage")
+
+    # Elapsed timings are deliberately validated but not returned: runner speed is not
+    # part of stable representative corpus identity.
+    return {
+        "generator": WORLD_GENERATOR,
+        "selection_command_sha256": SELECTION_COMMAND_SHA256,
+        "batch_size": batch_size,
+        "batch_count": batch_count,
+        "batch_settle_seconds": settle_seconds,
+    }
+
+
 def validate_member(
     *,
     seed_index: int,
@@ -175,26 +270,19 @@ def validate_member(
     seeds = plan["seeds"]
     assert isinstance(seeds, list)
     expected_seed = int(seeds[seed_index])
-    plan_sha = str(plan["plan_sha256"])
+    plan_sha = _require_sha256(plan["plan_sha256"], "representative plan digest")
 
-    _equal(_integer(world, "schema", "world evidence"), 1, "world schema")
-    _equal(
-        _string(world, "generator", "world evidence"),
-        "official-server-representative-section-world-v1",
-        "world generator",
-    )
+    generation = _validate_world_generation(world, plan=plan)
     _equal(world.get("minecraft_version"), state_target["minecraft_version"], "world target")
-    _equal(_string(world, "server_sha256", "world evidence"), pinned_server_sha256, "server SHA-256")
+    _equal(
+        _sha256(world, "server_sha256", "world evidence"),
+        pinned_server_sha256,
+        "server SHA-256",
+    )
     _equal(world.get("representative_policy"), plan["policy"], "world representative policy")
     _equal(world.get("plan_sha256"), plan_sha, "world plan digest")
     _equal(_integer(world, "seed_index", "world evidence"), seed_index, "world seed index")
     _equal(_integer(world, "seed", "world evidence"), expected_seed, "world seed")
-    _equal(
-        _integer(world, "command_count", "world evidence"),
-        len(section_representative_plan.DIMENSIONS)
-        * section_representative_plan.CHUNKS_PER_DIMENSION,
-        "world command count",
-    )
 
     _equal(_integer(extraction, "schema", "extraction evidence"), 1, "extraction schema")
     _equal(_string(extraction, "policy", "extraction evidence"), MEMBER_EXTRACTOR, "extractor")
@@ -211,11 +299,15 @@ def validate_member(
     lattice_raw = _object(extraction.get("section_lattice"), "section lattice")
     lattice: dict[str, list[int]] = {}
     expected_dimensions: dict[str, int] = {}
-    for dimension in section_representative_plan.DIMENSIONS:
+    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
+        dimension = descriptor.key
         raw_values = lattice_raw.get(dimension)
         if not isinstance(raw_values, list) or not raw_values:
             raise CorpusSetError(f"section lattice for {dimension} must be a non-empty list")
-        values = [_integer({"value": value}, "value", f"{dimension} lattice") for value in raw_values]
+        values = [
+            _integer({"value": value}, "value", f"{dimension} lattice")
+            for value in raw_values
+        ]
         if values != list(range(values[0], values[-1] + 1)):
             raise CorpusSetError(f"section lattice for {dimension} is not contiguous")
         lattice[dimension] = values
@@ -235,9 +327,9 @@ def validate_member(
     source = _object(manifest.get("source"), "member manifest source")
     _equal(source.get("kind"), "vanilla-save", "member source kind")
     _equal(source.get("extractor"), MEMBER_EXTRACTOR, "member source extractor")
-    inventory_sha = _string(extraction, "inventory_sha256", "extraction evidence")
+    inventory_sha = _sha256(extraction, "inventory_sha256", "extraction evidence")
     _equal(source.get("inventory_sha256"), inventory_sha, "member source inventory")
-    corpus_sha = _string(extraction, "corpus_sha256", "extraction evidence")
+    corpus_sha = _sha256(extraction, "corpus_sha256", "extraction evidence")
     _equal(manifest.get("corpus_sha256"), corpus_sha, "member corpus SHA-256")
     section_count = _integer(manifest, "section_count", "member manifest")
     _equal(section_count, expected_sections, "member manifest section count")
@@ -254,16 +346,31 @@ def validate_member(
     _equal(_integer(rust, "schema", "Rust member evidence"), 1, "Rust schema")
     _equal(rust.get("kind"), "section-corpus-import-check", "Rust evidence kind")
     for key, expected in state_target.items():
-        rust_key = key
-        _equal(rust.get(rust_key), expected, f"Rust target {rust_key}")
+        _equal(rust.get(key), expected, f"Rust target {key}")
     _equal(rust.get("source_inventory_sha256"), inventory_sha, "Rust source inventory")
     _equal(rust.get("extractor"), MEMBER_EXTRACTOR, "Rust extractor")
     _equal(rust.get("purpose"), MEMBER_PURPOSE, "Rust member purpose")
-    _equal(_boolean(rust, "decision_requested", "Rust member evidence"), False, "member decision request")
-    _equal(_boolean(rust, "decision_eligible", "Rust member evidence"), False, "member decision eligibility")
-    _equal(_integer(rust, "section_count", "Rust member evidence"), section_count, "Rust section count")
+    _equal(
+        _boolean(rust, "decision_requested", "Rust member evidence"),
+        False,
+        "member decision request",
+    )
+    _equal(
+        _boolean(rust, "decision_eligible", "Rust member evidence"),
+        False,
+        "member decision eligibility",
+    )
+    _equal(
+        _integer(rust, "section_count", "Rust member evidence"),
+        section_count,
+        "Rust section count",
+    )
     _equal(rust.get("dimensions"), expected_dimensions, "Rust dimensions")
-    _equal(rust.get("cardinality_histogram"), manifest.get("cardinality_histogram"), "Python/Rust cardinality histogram")
+    _equal(
+        rust.get("cardinality_histogram"),
+        manifest.get("cardinality_histogram"),
+        "Python/Rust cardinality histogram",
+    )
     _equal(
         _integer(rust, "distinct_state_ids", "Rust member evidence"),
         _integer(manifest, "distinct_state_ids", "member manifest"),
@@ -274,6 +381,7 @@ def validate_member(
     return {
         "seed_index": seed_index,
         "seed": expected_seed,
+        "world_generation": generation,
         "source_inventory_sha256": inventory_sha,
         "corpus_sha256": corpus_sha,
         "section_count": section_count,
@@ -281,7 +389,9 @@ def validate_member(
         "distinct_state_ids": _integer(manifest, "distinct_state_ids", "member manifest"),
         "dimensions": expected_dimensions,
         "section_lattice": lattice,
-        "cardinality_histogram": dict(sorted(cardinality.items(), key=lambda item: int(item[0]))),
+        "cardinality_histogram": dict(
+            sorted(cardinality.items(), key=lambda item: int(item[0]))
+        ),
         "cell_facts": manifest.get("cell_facts"),
         "section_classes": manifest.get("section_classes"),
         "candidates": candidates,
@@ -293,9 +403,12 @@ def build_set(
     plan: dict[str, object],
     state_manifest: dict[str, Any],
     pinned_server_sha256: str,
-    member_inputs: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]],
+    member_inputs: list[
+        tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]
+    ],
 ) -> dict[str, object]:
     section_representative_plan.validate_plan(plan)
+    pinned_server_sha256 = _require_sha256(pinned_server_sha256, "pinned server SHA-256")
     seeds = plan["seeds"]
     assert isinstance(seeds, list)
     if len(member_inputs) != len(seeds):
@@ -352,11 +465,19 @@ def build_set(
         assert isinstance(member_candidates, dict)
         for name, metrics in member_candidates.items():
             target = candidate_totals[name]
-            target["sections"] = int(target["sections"]) + int(metrics["sections"] if "sections" in metrics else member["section_count"])
-            target["total_owned_bytes"] = int(target["total_owned_bytes"]) + int(metrics["total_owned_bytes"])
-            target["max_owned_bytes"] = max(int(target["max_owned_bytes"]), int(metrics["max_owned_bytes"]))
-            target["construction_transitions"] = int(target["construction_transitions"]) + int(metrics["construction_transitions"])
-            target["logical_backing_allocations"] = int(target["logical_backing_allocations"]) + int(metrics["logical_backing_allocations"])
+            target["sections"] = int(target["sections"]) + int(member["section_count"])
+            target["total_owned_bytes"] = int(target["total_owned_bytes"]) + int(
+                metrics["total_owned_bytes"]
+            )
+            target["max_owned_bytes"] = max(
+                int(target["max_owned_bytes"]), int(metrics["max_owned_bytes"])
+            )
+            target["construction_transitions"] = int(
+                target["construction_transitions"]
+            ) + int(metrics["construction_transitions"])
+            target["logical_backing_allocations"] = int(
+                target["logical_backing_allocations"]
+            ) + int(metrics["logical_backing_allocations"])
             reps = target["representations"]
             assert isinstance(reps, Counter)
             reps.update(metrics["representations"])
@@ -398,7 +519,10 @@ def build_set(
     return result
 
 
-def load_member_inputs(root: Path, count: int) -> list[tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]]:
+def load_member_inputs(
+    root: Path,
+    count: int,
+) -> list[tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]]:
     members = []
     for index in range(count):
         directory = root / f"seed-{index}"
@@ -428,7 +552,7 @@ def main() -> int:
         with args.lock.open("rb") as handle:
             lock = tomllib.load(handle)
         runtime = _object(lock.get("runtime"), "vanilla lock runtime")
-        server_sha = _string(runtime, "server_sha256", "vanilla lock runtime")
+        server_sha = _sha256(runtime, "server_sha256", "vanilla lock runtime")
         seeds = plan["seeds"]
         assert isinstance(seeds, list)
         member_inputs = load_member_inputs(args.members_root, len(seeds))
@@ -442,13 +566,21 @@ def main() -> int:
         args.output.write_text(
             json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
-    except (OSError, json.JSONDecodeError, tomllib.TOMLDecodeError, CorpusSetError, section_representative_plan.PlanError) as error:
+    except (
+        OSError,
+        json.JSONDecodeError,
+        tomllib.TOMLDecodeError,
+        CorpusSetError,
+        section_representative_plan.PlanError,
+    ) as error:
         print(f"representative corpus-set error: {error}")
         return 1
 
+    aggregate = result["aggregate"]
+    assert isinstance(aggregate, dict)
     print(
         "representative corpus set: "
-        f"members={result['member_count']} sections={result['aggregate']['section_count']} "
+        f"members={result['member_count']} sections={aggregate['section_count']} "
         f"set_sha256={result['set_sha256']} PASS"
     )
     return 0
