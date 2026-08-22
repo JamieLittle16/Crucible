@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
-use crucible_world_contract::BLOCK_SECTION_CELLS;
+use crucible_world_contract::{
+    BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary,
+};
 use crucible_world_reference::DirectBlockSection;
 use crucible_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
@@ -25,14 +27,20 @@ pub(super) struct VerifiedCorpus {
     pub(super) candidates: Vec<CandidateImportSummary>,
 }
 
-pub(super) fn read_header(path: &Path) -> Result<CorpusHeader, String> {
-    let reader = CorpusReader::open(path)?;
-    Ok(reader.header().clone())
-}
-
-pub(super) fn verify_corpus(path: &Path) -> Result<VerifiedCorpus, String> {
+pub(super) fn verify_corpus(
+    path: &Path,
+    decision_requested: bool,
+) -> Result<VerifiedCorpus, String> {
     let mut reader = CorpusReader::open(path)?;
     let header = reader.header().clone();
+    if decision_requested && !header.decision_eligible() {
+        return Err(format!(
+            "corpus extractor {} has purpose {} and is not decision-eligible",
+            header.extractor,
+            header.purpose.as_str()
+        ));
+    }
+
     let mut section_count = 0_usize;
     let mut observed_states = vec![false; BLOCK_STATE_COUNT];
     let mut cardinality_histogram = BTreeMap::new();
@@ -56,11 +64,13 @@ pub(super) fn verify_corpus(path: &Path) -> Result<VerifiedCorpus, String> {
             observed_states[state.as_usize()] = true;
         }
 
-        direct_reference.record::<DirectBlockSection<BlockStateId>>(&section)?;
-        direct.record::<DirectNBlockSection<BlockStateId>>(&section)?;
-        adaptive.record::<AdaptiveBlockSection<BlockStateId>>(&section)?;
-        fast_local.record::<FastLocalBlockSection<BlockStateId>>(&section)?;
-        packed_local.record::<PackedLocalBlockSection<BlockStateId>>(&section)?;
+        let expected_summary = recompute_section_summary(&section);
+        direct_reference
+            .record::<DirectBlockSection<BlockStateId>>(&section, expected_summary)?;
+        direct.record::<DirectNBlockSection<BlockStateId>>(&section, expected_summary)?;
+        adaptive.record::<AdaptiveBlockSection<BlockStateId>>(&section, expected_summary)?;
+        fast_local.record::<FastLocalBlockSection<BlockStateId>>(&section, expected_summary)?;
+        packed_local.record::<PackedLocalBlockSection<BlockStateId>>(&section, expected_summary)?;
     }
 
     if section_count == 0 {
@@ -99,6 +109,31 @@ pub(super) fn verify_corpus(path: &Path) -> Result<VerifiedCorpus, String> {
     })
 }
 
+fn recompute_section_summary(section: &CorpusSection) -> SectionSummary {
+    let mut non_air_count = 0_u16;
+    let mut fluid_count = 0_u16;
+    let mut random_block_present = false;
+    let mut random_fluid_present = false;
+
+    for state in section.states.iter().copied() {
+        let facts = <GeneratedStateFacts as BlockStateFacts<BlockStateId>>::facts(
+            &GeneratedStateFacts,
+            state,
+        );
+        non_air_count += u16::from(facts.non_air());
+        fluid_count += u16::from(facts.counted_fluid());
+        random_block_present |= facts.random_block();
+        random_fluid_present |= facts.random_fluid();
+    }
+
+    SectionSummary {
+        non_air_count,
+        fluid_count,
+        random_block_present,
+        random_fluid_present,
+    }
+}
+
 #[derive(Debug)]
 struct CandidateAccumulator {
     candidate: &'static str,
@@ -125,8 +160,12 @@ impl CandidateAccumulator {
         }
     }
 
-    fn record<C: BenchSection>(&mut self, section: &CorpusSection) -> Result<(), String> {
-        let inspected = inspect_candidate_section::<C>(section)?;
+    fn record<C: BenchSection>(
+        &mut self,
+        section: &CorpusSection,
+        expected_summary: SectionSummary,
+    ) -> Result<(), String> {
+        let inspected = inspect_candidate_section::<C>(section, expected_summary)?;
         self.sections = self
             .sections
             .checked_add(1)
@@ -175,6 +214,7 @@ pub(super) struct InspectedCandidate {
 
 pub(super) fn inspect_candidate_section<C: BenchSection>(
     section: &CorpusSection,
+    expected_summary: SectionSummary,
 ) -> Result<InspectedCandidate, String> {
     let first = *section
         .states
@@ -212,10 +252,23 @@ pub(super) fn inspect_candidate_section<C: BenchSection>(
         }
     }
 
+    let actual_summary = <C as BlockSection<BlockStateId>>::summary(&candidate);
+    if actual_summary != expected_summary {
+        return Err(format!(
+            "{} corpus summary mismatch at {:?}: expected {:?}, got {:?}",
+            C::NAME, section.key, expected_summary, actual_summary
+        ));
+    }
+
     Ok(InspectedCandidate {
         owned_bytes: candidate.owned_bytes(),
         transitions,
         logical_allocations,
         representation: candidate.representation_name(),
     })
+}
+
+#[cfg(test)]
+pub(super) fn recompute_section_summary_for_test(section: &CorpusSection) -> SectionSummary {
+    recompute_section_summary(section)
 }
