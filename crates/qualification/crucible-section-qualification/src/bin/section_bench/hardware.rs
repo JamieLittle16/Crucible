@@ -14,6 +14,7 @@ pub(crate) struct HardwareMetadata {
     pub(crate) cpu_min_khz: String,
     pub(crate) cpu_max_khz: String,
     pub(crate) cpus_allowed_list: String,
+    pub(crate) mems_allowed_list: String,
     pub(crate) load_average: String,
     pub(crate) no_turbo: String,
     pub(crate) rustflags: String,
@@ -41,7 +42,14 @@ pub(crate) fn collect() -> Result<HardwareMetadata, String> {
         cpu_current_khz: read_trimmed("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"),
         cpu_min_khz: read_trimmed("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq"),
         cpu_max_khz: read_trimmed("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq"),
-        cpus_allowed_list: cpus_allowed_list(),
+        cpus_allowed_list: status_allowed_list("Cpus_allowed_list:").unwrap_or_else(|| {
+            command_output("taskset", &["-pc", &id().to_string()])
+                .unwrap_or_else(|_| "unknown".to_owned())
+                .trim()
+                .to_owned()
+        }),
+        mems_allowed_list: status_allowed_list("Mems_allowed_list:")
+            .unwrap_or_else(|| "unknown".to_owned()),
         load_average: read_trimmed("/proc/loadavg"),
         no_turbo: read_trimmed("/sys/devices/system/cpu/intel_pstate/no_turbo"),
         rustflags: env::var("RUSTFLAGS").unwrap_or_default(),
@@ -77,23 +85,15 @@ fn cpu_model() -> String {
         .unwrap_or_else(|| "unknown".to_owned())
 }
 
-fn cpus_allowed_list() -> String {
-    let from_status = fs::read_to_string("/proc/self/status")
+fn status_allowed_list(prefix: &str) -> Option<String> {
+    fs::read_to_string("/proc/self/status")
         .ok()
         .and_then(|contents| {
             contents.lines().find_map(|line| {
-                line.strip_prefix("Cpus_allowed_list:")
+                line.strip_prefix(prefix)
                     .map(|value| value.trim().to_owned())
             })
-        });
-    if let Some(value) = from_status {
-        return value;
-    }
-
-    command_output("taskset", &["-pc", &id().to_string()])
-        .unwrap_or_else(|_| "unknown".to_owned())
-        .trim()
-        .to_owned()
+        })
 }
 
 #[cfg(test)]
@@ -107,5 +107,6 @@ mod tests {
         assert!(!metadata.target_triple.is_empty());
         assert!(!metadata.rustc_verbose.is_empty());
         assert!(!metadata.cpus_allowed_list.is_empty());
+        assert!(!metadata.mems_allowed_list.is_empty());
     }
 }
