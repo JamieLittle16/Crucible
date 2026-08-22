@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs::{self, File};
+use std::hint::black_box;
 use std::io::{BufRead, BufReader, Read};
 use std::mem;
 use std::path::Path;
@@ -18,6 +19,7 @@ use super::{SampleSummary, measure};
 
 pub(super) const PACK_MAGIC: &str = "CRUCIBLE-SECTION-BENCH-PACK|1";
 pub(super) const PAYLOAD_BYTES_PER_SECTION: usize = BLOCK_SECTION_CELLS * mem::size_of::<u16>();
+pub(super) const RSS_PROTOCOL: &str = "candidate-delta-after-explicit-prefaulted-common-scratch";
 const STATE_SEEN_WORDS: usize = BLOCK_STATE_COUNT.div_ceil(64);
 
 #[derive(Clone, Debug)]
@@ -40,7 +42,7 @@ pub(super) struct LoadedCandidate<C> {
     pub(super) representations: BTreeMap<String, usize>,
     pub(super) rss_baseline_kib: u64,
     pub(super) rss_loaded_kib: u64,
-    pub(super) rss_loaded_delta_kib: u64,
+    pub(super) rss_loaded_delta_kib: i64,
     pub(super) rss_baseline_high_water_kib: u64,
     pub(super) rss_loaded_high_water_kib: u64,
     pub(super) known_prebaseline_harness_bytes: usize,
@@ -133,13 +135,20 @@ pub(super) fn load_candidate<C: BenchSection>(
     let mut reader = PackReader::open(pack_path)?;
     let header = reader.header().clone();
 
-    // Common parsing/measurement scratch is allocated before the RSS baseline. The retained
-    // candidate vector is deliberately allocated afterwards so its object/backing residency is in
-    // the measured delta.
+    // Common parsing/measurement scratch is both allocated and explicitly dirtied before the RSS
+    // baseline. Merely reserving capacity is insufficient on demand-paged systems: later writes
+    // could otherwise fault common harness pages after the baseline and falsely attribute them to
+    // the candidate. The retained candidate vector is deliberately allocated only afterwards.
     let mut raw_scratch = vec![0_u8; PAYLOAD_BYTES_PER_SECTION];
     let mut decoded_states = vec![AIR; BLOCK_SECTION_CELLS];
     let mut observed_states = [0_u64; STATE_SEEN_WORDS];
-    let mut construction_samples = Vec::with_capacity(header.section_count);
+    let mut construction_samples = vec![0_u128; header.section_count];
+    prefault_common_scratch(
+        &mut raw_scratch,
+        &mut decoded_states,
+        &mut observed_states,
+        &mut construction_samples,
+    );
     let known_prebaseline_harness_bytes = raw_scratch
         .capacity()
         .checked_add(
@@ -151,7 +160,7 @@ pub(super) fn load_candidate<C: BenchSection>(
         .and_then(|value| {
             value.checked_add(
                 construction_samples
-                    .capacity()
+                    .len()
                     .checked_mul(mem::size_of::<u128>())?,
             )
         })
@@ -159,6 +168,7 @@ pub(super) fn load_candidate<C: BenchSection>(
     let baseline = process_memory()?;
 
     let mut sections = Vec::with_capacity(header.section_count);
+    let mut construction_sample_index = 0_usize;
     let mut construction_transitions = 0_usize;
     let mut logical_backing_allocations = 0_usize;
     let mut logical_owned_bytes = 0_usize;
@@ -169,7 +179,12 @@ pub(super) fn load_candidate<C: BenchSection>(
 
         let start = Instant::now();
         let built = construct_candidate::<C>(&decoded_states)?;
-        construction_samples.push(start.elapsed().as_nanos());
+        let elapsed = start.elapsed().as_nanos();
+        let sample = construction_samples
+            .get_mut(construction_sample_index)
+            .ok_or_else(|| "population construction sample count exceeded pack header".to_owned())?;
+        *sample = elapsed;
+        construction_sample_index += 1;
 
         verify_candidate::<C>(&built.section, &decoded_states)?;
         construction_transitions = construction_transitions
@@ -186,14 +201,15 @@ pub(super) fn load_candidate<C: BenchSection>(
     }
     reader.finish()?;
 
-    if sections.len() != header.section_count {
+    if sections.len() != header.section_count || construction_sample_index != header.section_count {
         return Err(format!(
-            "population pack declared {} sections but constructed {}",
+            "population pack declared {} sections but constructed {} with {} timing samples",
             header.section_count,
-            sections.len()
+            sections.len(),
+            construction_sample_index
         ));
     }
-    std::hint::black_box(&sections);
+    black_box(&sections);
     let loaded_memory = process_memory()?;
     let negative_state = absent_state(&observed_states)?;
 
@@ -220,11 +236,53 @@ pub(super) fn load_candidate<C: BenchSection>(
         representations,
         rss_baseline_kib: baseline.rss_kib,
         rss_loaded_kib: loaded_memory.rss_kib,
-        rss_loaded_delta_kib: loaded_memory.rss_kib.saturating_sub(baseline.rss_kib),
+        rss_loaded_delta_kib: signed_rss_delta(loaded_memory.rss_kib, baseline.rss_kib)?,
         rss_baseline_high_water_kib: baseline.high_water_kib,
         rss_loaded_high_water_kib: loaded_memory.high_water_kib,
         known_prebaseline_harness_bytes,
     })
+}
+
+pub(super) fn prefault_common_scratch(
+    raw_scratch: &mut [u8],
+    decoded_states: &mut [BlockStateId],
+    observed_states: &mut [u64],
+    construction_samples: &mut [u128],
+) {
+    // Write a non-zero marker before restoring the canonical initial value. The black-box barriers
+    // make the writes observably relevant to the benchmark process and prevent the optimizer from
+    // collapsing the prefault pass into an untouched zero allocation.
+    black_box(&mut *raw_scratch).fill(0xA5);
+    black_box(&*raw_scratch);
+    raw_scratch.fill(0);
+
+    let marker = BlockStateId::new(1).expect("qualified target contains block state 1");
+    black_box(&mut *decoded_states).fill(marker);
+    black_box(&*decoded_states);
+    decoded_states.fill(AIR);
+
+    black_box(&mut *observed_states).fill(u64::MAX);
+    black_box(&*observed_states);
+    observed_states.fill(0);
+
+    black_box(&mut *construction_samples).fill(1);
+    black_box(&*construction_samples);
+    construction_samples.fill(0);
+
+    black_box(&*raw_scratch);
+    black_box(&*decoded_states);
+    black_box(&*observed_states);
+    black_box(&*construction_samples);
+}
+
+pub(super) fn signed_rss_delta(loaded_kib: u64, baseline_kib: u64) -> Result<i64, String> {
+    let loaded = i64::try_from(loaded_kib)
+        .map_err(|_| "loaded RSS does not fit signed qualification range".to_owned())?;
+    let baseline = i64::try_from(baseline_kib)
+        .map_err(|_| "baseline RSS does not fit signed qualification range".to_owned())?;
+    loaded
+        .checked_sub(baseline)
+        .ok_or_else(|| "RSS delta overflow".to_owned())
 }
 
 struct BuiltCandidate<C> {
