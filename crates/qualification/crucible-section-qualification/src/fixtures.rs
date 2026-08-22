@@ -132,7 +132,11 @@ enum Case {
 /// fact signature, or any semantic disagreement.
 pub fn qualify_fixture(input: &str) -> Result<FixtureEvidence, FixtureFailure> {
     let mut lines = input.lines();
-    validate_header(lines.next().ok_or_else(|| FixtureFailure::new("empty fixture"))?)?;
+    validate_header(
+        lines
+            .next()
+            .ok_or_else(|| FixtureFailure::new("empty fixture"))?,
+    )?;
     validate_provenance(
         lines
             .next()
@@ -205,7 +209,9 @@ fn validate_header(line: &str) -> Result<(), FixtureFailure> {
         || parse_u32(parts[3], "protocol version")? != PROTOCOL_VERSION
         || parse_u32(parts[4], "data version")? != DATA_VERSION
     {
-        return Err(FixtureFailure::new("fixture target pin differs from build target"));
+        return Err(FixtureFailure::new(
+            "fixture target pin differs from build target",
+        ));
     }
     Ok(())
 }
@@ -251,14 +257,31 @@ fn parse_line(
                 state,
             });
         }
-        ["BLOCK-FILL", name, state, non_air, fluid, block_tick, fluid_tick] => {
+        [
+            "BLOCK-FILL",
+            name,
+            state,
+            non_air,
+            fluid,
+            block_tick,
+            fluid_tick,
+        ] => {
             cases.push(Case::BlockFill {
                 name: (*name).to_owned(),
                 state: (*state).to_owned(),
                 expected: parse_summary(non_air, fluid, block_tick, fluid_tick)?,
             });
         }
-        ["BLOCK-ONE", name, state, cell, non_air, fluid, block_tick, fluid_tick] => {
+        [
+            "BLOCK-ONE",
+            name,
+            state,
+            cell,
+            non_air,
+            fluid,
+            block_tick,
+            fluid_tick,
+        ] => {
             cases.push(Case::BlockOne {
                 name: (*name).to_owned(),
                 state: (*state).to_owned(),
@@ -290,11 +313,7 @@ fn parse_line(
     Ok(())
 }
 
-fn qualify_block<C, F>(
-    case: &Case,
-    states: &[StateBinding],
-    build: F,
-) -> Result<(), FixtureFailure>
+fn qualify_block<C, F>(case: &Case, states: &[StateBinding], build: F) -> Result<(), FixtureFailure>
 where
     C: BlockSection<BlockStateId>,
     F: Fn(BlockStateId) -> C,
@@ -323,9 +342,7 @@ where
             if candidate.replace(position, target, &GeneratedStateFacts) != AIR
                 || reference.replace(position, target, &GeneratedStateFacts) != AIR
             {
-                return Err(FixtureFailure::new(format!(
-                    "{name}: wrong previous state"
-                )));
+                return Err(FixtureFailure::new(format!("{name}: wrong previous state")));
             }
             compare_image(name, &candidate, &reference, *expected)
         }
