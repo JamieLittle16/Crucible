@@ -79,8 +79,9 @@ fn all_candidates_execute_the_same_isolated_stress_contract() {
 
 #[test]
 fn packed_promotion_to_three_exercises_first_width_widen() {
-    let measured = measure::run::<PackedLocalBlockSection<BlockStateId>>(&tiny_case(), tiny_settings())
-        .expect("packed synthetic run");
+    let measured =
+        measure::run::<PackedLocalBlockSection<BlockStateId>>(&tiny_case(), tiny_settings())
+            .expect("packed synthetic run");
     let record = measured
         .timings
         .iter()
@@ -98,7 +99,10 @@ fn target_synthetic_modes_reuse_frozen_v2_sampling_scale() {
     assert_eq!(smoke.benchmark.mutations, Mode::Smoke.settings().mutations);
     assert_eq!(smoke.benchmark.promotion_samples, 8);
     assert_eq!(smoke.control_operations, 20_000);
-    assert_eq!(qualification.benchmark.mutations, Mode::Qualification.settings().mutations);
+    assert_eq!(
+        qualification.benchmark.mutations,
+        Mode::Qualification.settings().mutations
+    );
     assert_eq!(qualification.benchmark.promotion_samples, 1_000);
     assert_eq!(qualification.control_operations, 1_000_000);
 }
