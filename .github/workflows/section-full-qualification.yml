@@ -1,6 +1,18 @@
 name: Section Full Qualification
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - crates/qualification/crucible-section-qualification/**
+      - crates/world/crucible-world-contract/**
+      - crates/world/crucible-world-reference/**
+      - crates/world/crucible-world-section/**
+      - crates/data/crucible-generated/**
+      - tools/xtask/**
+      - vanilla/state-data/**
+      - vanilla/fixtures/section/**
+      - .github/workflows/section-full-qualification.yml
   pull_request:
     paths:
       - crates/qualification/crucible-section-qualification/**
