@@ -25,7 +25,7 @@ The combined controller sits above two already-admitted lower layers:
    - validates candidate-isolated replacement/churn/promotion records;
    - independently recomputes timing summaries from raw samples;
    - aggregates repeated synthetic evidence;
-   - applies synthetic control/replacement/promotion-tail noise gates.
+   - applies synthetic control/replacement/promotion-tail repeat-noise gates.
 3. `section_target_combined.py`
    - invokes the population controller exactly once;
    - reopens and rehashes its retained artifact;
@@ -78,12 +78,44 @@ Synthetic scheduling is independently candidate-position balanced. In every five
 
 The two evidence families are not compared directly as if they were the same workload. Therefore no cross-family scalar normalization is introduced here. Candidate order is balanced within each evidence family and both retain candidate-independent control workloads for drift qualification.
 
+## Synthetic repeat-noise model
+
+Repeated synthetic measurements use **two distinct noise signals**. Neither may substitute for the other.
+
+### Central-drift gate — median absolute deviation
+
+For a repeated scalar sequence, the aggregator records the median and median absolute deviation (MAD), then normalizes MAD relative to the absolute median.
+
+Qualification ceilings are:
+- candidate-independent control p50: relative MAD <= 5%;
+- production replacement p50: relative MAD <= 10%;
+- production promotion p99: relative MAD <= 15%.
+
+MAD is intentionally robust. That is useful for estimating central repeatability, but it also means one extreme result in five rounds can leave MAD equal to zero.
+
+### Isolated-excursion gate — maximum deviation from the median
+
+Qualification therefore also records the largest absolute deviation from the median across repeated rounds and normalizes it relative to the median.
+
+The isolated-excursion ceiling is deliberately looser than the central MAD ceiling: exactly `3 ×` the corresponding MAD threshold.
+
+Therefore:
+- control maximum relative deviation <= 15%;
+- production replacement-p50 maximum relative deviation <= 30%;
+- production promotion-p99 maximum relative deviation <= 45%.
+
+A synthetic evidence family is repeat-noise eligible only when both its MAD and isolated-excursion gates pass.
+
+This is intentionally **not** a gate on each benchmark timing record's raw `max_ns`. `max_ns` remains a workload-tail observation. The isolated-excursion gate compares the chosen repeated-run summary metric across qualification rounds. These are different concepts and must remain separately named in evidence and documentation.
+
+The direct reference remains reference-only: instability in its mechanism measurements does not veto production evidence. Candidate-independent control instability still applies globally because it diagnoses the measurement environment rather than a candidate mechanism.
+
 ## Eligibility fields
 
 The combined record exposes:
 - `qualification_complete` — both evidence phases completed and were structurally validated;
 - `population_evidence_eligible` — copied from the admitted population noise/protocol result;
-- `synthetic_evidence_eligible` — produced by the admitted synthetic noise/protocol classifier;
+- `synthetic_evidence_eligible` — produced by the admitted synthetic protocol + two-part repeat-noise classifier;
 - `combined_measurement_evidence_eligible` — logical AND of those two evidence-family eligibility flags;
 - `decision_evidence_eligible` — **always false in this layer**.
 
@@ -118,29 +150,36 @@ synthetic/
   ...
 ```
 
-The combined artifact manifest recursively records path, size and SHA-256 for every retained file except itself and binds them to the combined evidence SHA-256.
+The combined artifact manifest recursively records path, size and SHA-256 for every retained file except the **root combined manifest itself** and binds them to the combined evidence SHA-256. Nested lower-layer manifests are evidence and must remain in the upper inventory.
 
 The population artifact is independently reopened before synthetic work begins. Every file listed by the lower population artifact is rehashed and required to match. This prevents a stale or mutated population directory from being treated as trusted input to the combined layer.
 
 ## Regression obligations
 
-The combined controller must permanently test at least:
+The combined/synthetic evidence boundary must permanently test at least:
 - compiler/profile override rejection;
 - exact retained-binary binding;
 - population orchestration digest validation;
 - population artifact recursive rehashing;
+- nested artifact manifests remain in the upper chain of custody;
 - decision-scope/cross-dimension firewall;
 - independent decision blockers for population and synthetic evidence;
 - unconditional Pareto-record blocker;
-- content-addressed combined artifact construction.
+- content-addressed combined artifact construction;
+- MAD and maximum-deviation statistics are independently recomputed;
+- a single extreme control excursion fails even when MAD is zero;
+- a single extreme production replacement excursion fails even when MAD is zero;
+- a single extreme production promotion excursion fails even when MAD is zero;
+- the looser isolated-excursion gate does not collapse into a strict maximum/no-outlier rule;
+- isolated-excursion thresholds remain exactly three times their corresponding MAD thresholds.
 
 Hosted integration smoke additionally proves the real executable path through all 15 population children and all five synthetic children.
 
-Any material defect discovered in this controller receives a permanent regression and an entry in the section experiment/defect ledger.
+Any material defect discovered in this controller receives a permanent regression and an entry in the section experiment/defect record.
 
 ## Qualification mode
 
-A production-target run requires the lower protocols' qualification settings, currently at least five rounds and a multiple of five. Both population and synthetic noise classifiers must admit their respective evidence.
+A production-target run requires the lower protocols' qualification settings, currently at least five rounds and a multiple of five. Both population and synthetic protocol/noise classifiers must admit their respective evidence.
 
 Even then, this layer only produces **combined measurement evidence**. The next independent layer must:
 1. ingest correctness qualification identity;
