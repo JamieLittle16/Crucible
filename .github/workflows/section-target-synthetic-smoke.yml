@@ -8,6 +8,7 @@ on:
       - "crates/world/**"
       - "crates/data/crucible-generated/**"
       - "docs/qualification/section/SECTION_TARGET_HARDWARE_SYNTHETIC.md"
+      - "docs/qualification/section/SECTION_TARGET_HARDWARE_SYNTHETIC_ADMISSION.md"
       - "Cargo.toml"
       - "Cargo.lock"
   workflow_dispatch:
