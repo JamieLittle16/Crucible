@@ -11,8 +11,8 @@ use crucible_generated::{
     AIR, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256, STATE_MUTATION_FLAGS,
 };
 use crucible_world_contract::{
-    BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBiomePos,
-    SectionBlockPos, SectionSummary,
+    BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, BlockSection, SectionBiomePos, SectionBlockPos,
+    SectionSummary,
 };
 use crucible_world_reference::{DirectBiomeSection, DirectBlockSection};
 use crucible_world_section::{
@@ -160,16 +160,16 @@ pub fn qualify_fixture(input: &str) -> Result<FixtureEvidence, FixtureFailure> {
     for case in &cases {
         match case {
             Case::BlockFill { .. } | Case::BlockOne { .. } | Case::BlockReverse { .. } => {
-                qualify_block::<DirectNBlockSection<BlockStateId>>(case, &states, |state| {
+                qualify_block::<DirectNBlockSection<BlockStateId>, _>(case, &states, |state| {
                     DirectNBlockSection::filled(state, &GeneratedStateFacts)
                 })?;
-                qualify_block::<AdaptiveBlockSection<BlockStateId>>(case, &states, |state| {
+                qualify_block::<AdaptiveBlockSection<BlockStateId>, _>(case, &states, |state| {
                     AdaptiveBlockSection::filled(state, &GeneratedStateFacts)
                 })?;
-                qualify_block::<FastLocalBlockSection<BlockStateId>>(case, &states, |state| {
+                qualify_block::<FastLocalBlockSection<BlockStateId>, _>(case, &states, |state| {
                     FastLocalBlockSection::filled(state, &GeneratedStateFacts)
                 })?;
-                qualify_block::<PackedLocalBlockSection<BlockStateId>>(case, &states, |state| {
+                qualify_block::<PackedLocalBlockSection<BlockStateId>, _>(case, &states, |state| {
                     PackedLocalBlockSection::filled(state, &GeneratedStateFacts)
                 })?;
                 block_candidate_checks += 4;
