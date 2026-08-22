@@ -115,6 +115,10 @@ jobs:
                   raise SystemExit(f'{candidate}: report identity mismatch')
               if record['production_candidate'] != (candidate != 'direct-reference'):
                   raise SystemExit(f'{candidate}: production flag mismatch')
+              if record.get('build_profile') != 'release':
+                  raise SystemExit(f'{candidate}: build profile provenance mismatch')
+              if record.get('codegen_policy') != 'lto=thin,codegen-units=1,panic=abort,strip=debuginfo':
+                  raise SystemExit(f'{candidate}: codegen policy provenance mismatch')
               if record['minecraft_version'] != '26.2' or record['protocol_version'] != 776 or record['data_version'] != 4903:
                   raise SystemExit(f'{candidate}: target identity mismatch')
               if record['population_sha256'] != 'a' * 64 or record['admission_sha256'] != 'b' * 64:
