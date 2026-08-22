@@ -127,9 +127,7 @@ fn measure_control(settings: PopulationSettings) -> SampleSummary {
     measure(settings, settings.control_operations, |index| {
         let mut value = u64::try_from(index).expect("benchmark operation index fits u64")
             ^ 0x9E37_79B9_7F4A_7C15;
-        value = value
-            .rotate_left(17)
-            .wrapping_mul(0xD6E8_FEB8_6659_FD93);
+        value = value.rotate_left(17).wrapping_mul(0xD6E8_FEB8_6659_FD93);
         value ^= value >> 23;
         black_box(value);
     })
