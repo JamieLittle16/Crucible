@@ -15,7 +15,7 @@ mod workloads;
 
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use crucible_generated::BLOCK_STATE_COUNT;
@@ -62,7 +62,7 @@ fn run() -> Result<(), String> {
             path,
             decision_requested,
             output,
-        } => run_corpus(path, decision_requested, output),
+        } => run_corpus(&path, decision_requested, output),
     }
 }
 
@@ -91,11 +91,11 @@ fn run_synthetic(mode: Mode, output: Option<PathBuf>) -> Result<(), String> {
 }
 
 fn run_corpus(
-    path: PathBuf,
+    path: &Path,
     decision_requested: bool,
     output: Option<PathBuf>,
 ) -> Result<(), String> {
-    let checked = corpus::check_corpus(&path, decision_requested)?;
+    let checked = corpus::check_corpus(path, decision_requested)?;
     let artifact = checked.to_json(decision_requested);
     write_artifact(output, &artifact)?;
     println!(
