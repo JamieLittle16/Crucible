@@ -72,7 +72,9 @@ pub(crate) fn run(candidate: &str, mode: TargetSyntheticMode) -> Result<String, 
         return Err("target synthetic benchmarks must be built with --release".to_owned());
     }
     if BLOCK_STATE_COUNT <= 5_511 {
-        return Err("target state universe is too small for synthetic benchmark streams".to_owned());
+        return Err(
+            "target state universe is too small for synthetic benchmark streams".to_owned(),
+        );
     }
 
     match candidate {
