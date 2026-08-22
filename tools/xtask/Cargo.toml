@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 crucible-section-qualification = { path = "../../crates/qualification/crucible-section-qualification" }
+crucible-section-vanilla-fixture = { path = "../../crates/qualification/crucible-section-vanilla-fixture" }
 
 [lints]
 workspace = true
