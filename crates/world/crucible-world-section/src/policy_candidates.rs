@@ -196,8 +196,10 @@ impl<S: Copy + Eq> PackedLocal<S> {
     fn from_uniform(previous: S, changed_cell: usize, state: S) -> Self {
         debug_assert!(previous != state);
         let mut palette = Vec::with_capacity(2);
-        palette.push(PaletteSlot::new(previous, SECTION_CELL_COUNT_U16 - 1));
-        palette.push(PaletteSlot::new(state, 1));
+        palette.extend([
+            PaletteSlot::new(previous, SECTION_CELL_COUNT_U16 - 1),
+            PaletteSlot::new(state, 1),
+        ]);
         let mut result = Self {
             palette,
             words: vec![0; Self::word_count(1)].into_boxed_slice(),
