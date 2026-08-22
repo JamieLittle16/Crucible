@@ -139,7 +139,9 @@ class OfficialRepresentativeSectionWorldTests(unittest.TestCase):
             cursor += 1
 
             self.assertEqual(events[cursor][0], "send")
-            added_marker = events[cursor][1][0]
+            added_command = events[cursor][1][0]
+            self.assertTrue(added_command.startswith("say "))
+            added_marker = added_command.removeprefix("say ")
             self.assertIn("_ADDED", added_marker)
             cursor += 1
             self.assertEqual(events[cursor][0], "wait")
@@ -159,7 +161,9 @@ class OfficialRepresentativeSectionWorldTests(unittest.TestCase):
             )
             cursor += 1
             self.assertEqual(events[cursor][0], "send")
-            removed_marker = events[cursor][1][0]
+            removed_command = events[cursor][1][0]
+            self.assertTrue(removed_command.startswith("say "))
+            removed_marker = removed_command.removeprefix("say ")
             self.assertIn("_REMOVED", removed_marker)
             cursor += 1
             self.assertEqual(events[cursor][0], "wait")
