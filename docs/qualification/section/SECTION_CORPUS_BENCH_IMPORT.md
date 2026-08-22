@@ -1,21 +1,21 @@
 # Section Corpus Benchmark Import Contract
 
-Status: **M0.3D design contract — implementation slice active**  
+Status: **M0.3D implementation/qualification contract**  
 Parent: #19  
 Depends on: real-target corpus admission #37
 
-This document freezes how normalized vanilla section corpora enter the Rust benchmark laboratory. The importer is qualification-critical tooling: a parsing, sampling, or weighting bug can select the wrong production representation even when the section implementations themselves are correct.
+This document freezes how normalized vanilla section corpora enter the Rust benchmark laboratory. The importer is qualification-critical tooling: a parsing, reconstruction, or weighting-policy bug can select the wrong production representation even when the section implementations themselves are correct.
 
 ## Governing distinction
 
 A corpus has two independent statuses:
 
-1. **structurally/semantically admitted** — its bytes match `CRUCIBLE-SECTION-CORPUS/1`, the target/digests are pinned, every section has exactly 4096 valid semantic state IDs, and source provenance is valid;
+1. **structurally/semantically admitted** — its bytes match `CRUCIBLE-SECTION-CORPUS/1`, target identity is pinned, every section has exactly 4096 valid semantic state IDs, source provenance is valid, and every benchmark mechanism reconstructs the same semantic image/summary;
 2. **decision-eligible** — its sampling/weighting policy is representative enough to influence a production representation decision.
 
 Passing (1) never implies (2).
 
-The first official 26.2 spawn corpus passes (1) but deliberately fails (2): it is `vanilla-save-region-v1-stored-sections`, generated only to admit the parser, and contains an overwhelmingly all-air/cardinality-1 distribution.
+The first official 26.2 spawn corpus passes (1) but deliberately fails (2): it is `vanilla-save-region-v1-stored-sections`, generated to admit the real-save/parser/import boundary, and contains an overwhelmingly all-air/cardinality-1 distribution.
 
 ## Cold-boundary rule
 
@@ -25,10 +25,12 @@ The importer is streaming-first:
 
 ```text
 corpus file
-  -> strict header validation
+  -> strict header validation / corpus-purpose gate
   -> one SECTION record
   -> one exact 4096-state semantic image
-  -> candidate construction / verification / diagnostic measurement
+  -> independent target-summary recomputation
+  -> five candidate constructions / exact verification
+  -> aggregate representation-memory diagnostics
   -> discard raw record
   -> next SECTION record
 ```
@@ -44,7 +46,7 @@ The Rust importer independently requires:
 - protocol `776`;
 - data version `4903`;
 - state count `32366`;
-- generated-state digest through the generated constants rather than a copied literal;
+- generated-state generation digest through generated constants rather than a copied literal;
 - source kind `vanilla-save`;
 - canonical lowercase 64-hex source inventory digest;
 - canonical extractor token;
@@ -54,6 +56,8 @@ The Rust importer independently requires:
 - exactly 4096 state IDs per section;
 - every state ID within the frozen target universe;
 - canonical LF/newline rules.
+
+Rust import evidence additionally records the frozen state-data input digest. The normalized corpus-byte SHA-256 is independently computed by the Python validator and bound to the Rust result by the official workflow evidence chain rather than reimplementing hashing in the dependency-light Rust binary.
 
 The Python `section_corpus.py` validator remains the canonical external validator. The Rust importer is an independent consumer and must reject malformed input on its own rather than assuming the Python step was run correctly.
 
@@ -70,36 +74,52 @@ Initial registry:
 
 A future representative policy becomes decision-eligible only through a reviewed code/documentation change that names the policy and its evidence obligations.
 
-## Candidate image reconstruction
+`--corpus-decision-check` evaluates this policy before performing expensive whole-corpus reconstruction, so a known non-eligible corpus fails quickly and explicitly.
 
-For each corpus section and candidate:
+## Candidate image and summary reconstruction
 
-1. construct the candidate from the first semantic state;
-2. install the remaining 4095 cells in frozen section order;
-3. track representation transitions/logical backing-allocation events outside production structs;
-4. after construction, independently read all 4096 cells and require exact equality with the corpus image;
-5. record final representation and deterministic owned bytes.
+For each corpus section:
 
-The semantic verification pass occurs outside timing windows.
+1. independently recompute the exact expected `SectionSummary` from all 4096 semantic state IDs using frozen generated 26.2 facts;
+2. construct each candidate from the section's first semantic state;
+3. install cells whose target state differs from that fill state, in frozen section order;
+4. track representation transitions/logical backing-allocation events outside production structs using typed representation identities;
+5. after construction, independently read all 4096 cells and require exact equality with the corpus image;
+6. require the candidate's maintained non-air count, counted-fluid count, random-block presence and random-fluid presence to equal the independent recomputation;
+7. record final representation and deterministic owned bytes.
 
-A corpus benchmark may never continue after an image mismatch.
+Skipping redundant fill-state replacements is an image-reconstruction optimization only. It does not weaken same-state replacement qualification: those mutation semantics are independently exercised by M0.3C traces and synthetic benchmark regressions.
 
-## Diagnostic real-corpus measurements
+A corpus import may never continue after an image or summary mismatch.
 
-The first importer exposes **diagnostic-only** corpus measurement for non-decision-eligible corpora.
+## Allocation-conscious implementation
 
-Useful aggregate records include:
+The importer is cold tooling, but unnecessary work is still rejected because corpus admission can process tens of millions of cells and later RSS experiments must have a clean boundary.
+
+Current rules:
+- one authoritative streaming pass over section bodies;
+- one reusable section-line `String` buffer;
+- direct token iteration rather than retaining 4096 token strings;
+- fixed target-state bitset for per-section cardinality instead of a tree/hash set;
+- no whole-corpus semantic image retention;
+- all five mechanisms consume the same parsed section before it is discarded;
+- representation transition tracking uses `RepresentationCode` rather than allocating representation-name strings per mutation;
+- strings are produced only for final evidence records.
+
+## Current diagnostic output
+
+#38 deliberately emits **structural/semantic diagnostics, not real-corpus timing**:
 
 - sections/cells consumed;
-- cardinality histogram observed by the Rust importer;
+- distinct-state count and cardinality histogram observed by Rust;
+- dimension histogram;
 - final representation histogram per candidate;
-- aggregate/final owned bytes per candidate;
+- total/max deterministic owned bytes per candidate;
 - construction representation transitions;
 - logical backing-allocation events;
-- construction latency distribution;
-- sequential full-section read latency distribution.
+- target/provenance/purpose/decision identity.
 
-GitHub-hosted timings remain non-qualifying regardless of corpus purpose.
+Construction/read timing over real corpora is a subsequent #19 measurement slice. GitHub-hosted timing remains non-qualifying regardless of corpus purpose.
 
 ## Future process/RSS qualification
 
@@ -109,7 +129,7 @@ Do not introduce a custom allocator merely for this purpose.
 
 ## Heavy regression requirements
 
-The importer must permanently test at least:
+The importer permanently tests at least:
 
 - exact valid-header admission;
 - wrong Minecraft/protocol/data/state-count/generation digest rejection;
@@ -121,25 +141,32 @@ The importer must permanently test at least:
 - duplicate and out-of-order coordinates, including negative coordinates;
 - 4095/4097-cell rejection;
 - leading-zero, negative, nonnumeric and out-of-range state IDs;
+- empty-corpus rejection;
 - parser-admission policy is not decision-eligible;
 - unknown policy is not decision-eligible;
 - exact cell-order preservation;
 - exact cardinality recomputation;
-- candidate reconstruction equivalence for every benchmarked mechanism;
-- construction transition/allocation tracking remains external to production objects;
-- diagnostic mode refuses to claim production qualification.
+- full metadata aggregation across multiple sections;
+- candidate image and exact summary equivalence for every benchmarked mechanism;
+- explicit 17-state transition-boundary reconstruction;
+- real generated 26.2 state classes covering air, solid, counted fluid, random block and random fluid;
+- construction transition/allocation tracking remains external to production objects.
+
+The independent Python↔Rust evidence checker also has negative tests for target/provenance drift, corpus-summary disagreement, candidate-set/production-flag mismatch, representation-count disagreement and impossible memory totals.
 
 Any material importer or corpus-weighting defect discovered later receives a permanent regression and experiment-log entry.
 
 ## Admission gate for this slice
 
-The importer slice is complete when:
+The importer slice is complete only when one exact final head satisfies all of:
 
-1. strict Rust streaming import and tests are green under normal CI;
-2. existing synthetic benchmark smoke remains green;
-3. existing full semantic qualification remains unchanged/green;
-4. the hosted official 26.2 corpus workflow feeds its freshly generated real corpus through the Rust importer/diagnostic path successfully;
-5. Python and Rust agree on section count and core corpus identity/provenance;
-6. no non-decision-eligible corpus can enter a production-decision benchmark mode.
+1. strict Rust/tooling CI — format, all-target check, Clippy `-D warnings`, Rust tests, quick/source-backed qualification and rustdoc;
+2. existing release synthetic benchmark smoke remains green;
+3. existing full release semantic qualification remains green for direct/adaptive/fast-local/packed-local;
+4. hosted `Section Corpus Probe` freshly generates a world with the pinned official 26.2 server and feeds its normalized corpus through the Rust importer;
+5. the independent Python validator and Rust importer agree on target/provenance/section/cardinality/dimension/candidate evidence;
+6. every real-corpus section reconstructs exact cells and exact SEM summaries through all five mechanisms;
+7. `--corpus-decision-check` rejects the parser-admission corpus for the expected policy reason;
+8. the evidence artifact retains Python manifest, Rust import summary and decision-rejection record.
 
-No representation winner is selected by this slice.
+No representation winner is selected by this slice. Representative workload weighting, real-corpus timing and controlled target-hardware/RSS qualification remain subsequent #19 work.
