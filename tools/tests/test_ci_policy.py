@@ -14,21 +14,26 @@ import ci_policy
 class CiPolicyTests(unittest.TestCase):
     def test_actions_must_be_pinned_to_full_commit_sha(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            workflows = Path(temporary)
-            (workflows / "good.yml").write_text(
+            github_config = Path(temporary)
+            (github_config / "good.yml").write_text(
                 "steps:\n"
                 "  - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6\n"
                 "  - uses: ./local-action\n",
                 encoding="utf-8",
             )
-            self.assertEqual(ci_policy.workflow_action_errors(workflows), [])
+            self.assertEqual(ci_policy.workflow_action_errors(github_config), [])
 
-            (workflows / "bad.yml").write_text(
-                "steps:\n  - uses: actions/checkout@v6\n",
+            nested = github_config / "actions" / "nested"
+            nested.mkdir(parents=True)
+            (nested / "action.yaml").write_text(
+                "runs:\n"
+                "  steps:\n"
+                "    - uses: actions/checkout@v6\n",
                 encoding="utf-8",
             )
-            errors = ci_policy.workflow_action_errors(workflows)
+            errors = ci_policy.workflow_action_errors(github_config)
             self.assertTrue(any("full 40-hex commit SHA" in error for error in errors))
+            self.assertTrue(any("action.yaml" in error for error in errors))
 
     def test_internal_only_lockfile_needs_no_allowlist(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -64,8 +69,8 @@ class CiPolicyTests(unittest.TestCase):
 
     def test_git_and_unknown_sources_are_forbidden(self) -> None:
         cases = [
-            'git+https://github.com/example/repo?rev=deadbeef',
-            'registry+https://example.invalid/index',
+            "git+https://github.com/example/repo?rev=deadbeef",
+            "registry+https://example.invalid/index",
         ]
         for source in cases:
             with self.subTest(source=source), tempfile.TemporaryDirectory() as temporary:
