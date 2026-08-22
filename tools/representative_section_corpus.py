@@ -16,6 +16,7 @@ if str(TOOLS) not in sys.path:
 
 import section_corpus  # noqa: E402
 import section_representative_plan  # noqa: E402
+import vanilla_chunk_status  # noqa: E402
 import vanilla_dimensions  # noqa: E402
 import vanilla_section_extractor as base  # noqa: E402
 
@@ -220,6 +221,20 @@ def extract_member(
     )
     selection = selected_chunks(plan)
     regions = selected_region_paths(world, selection)
+    try:
+        chunk_status_histogram = vanilla_chunk_status.qualify_selected_chunks(
+            regions,
+            selection,
+            required_status=vanilla_chunk_status.FULL_CHUNK_STATUS,
+        )
+    except vanilla_chunk_status.ChunkStatusError as error:
+        raise RepresentativeCorpusError(str(error)) from error
+    expected_chunk_count = sum(len(chunks) for chunks in selection.values())
+    if chunk_status_histogram != {vanilla_chunk_status.FULL_CHUNK_STATUS: expected_chunk_count}:
+        raise RepresentativeCorpusError(
+            f"representative saved-status histogram mismatch: {chunk_status_histogram}"
+        )
+
     inventory_sha256, inventory_entries = source_inventory(world, regions)
     sections = extract_selected_sections(regions, selection, state_ids)
     lattice = validate_selected_sections(sections, selection)
@@ -256,6 +271,7 @@ def extract_member(
             descriptor.key: [[x, z] for x, z in sorted(selection[descriptor.key])]
             for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS
         },
+        "chunk_status_histogram": chunk_status_histogram,
         "section_lattice": lattice,
         "corpus_sha256": parsed.corpus_sha256,
         "section_count": parsed.section_count,
