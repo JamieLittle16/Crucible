@@ -75,11 +75,11 @@ impl QualificationMode {
 pub enum Candidate {
     /// Direct 4096-state production-mechanism baseline.
     Direct,
-    /// Uniform -> Local4Stable -> Local8Stable -> DirectN.
+    /// `Uniform -> Local4Stable -> Local8Stable -> DirectN`.
     Adaptive,
-    /// Uniform -> Local8Stable -> DirectN.
+    /// `Uniform -> Local8Stable -> DirectN`.
     FastLocal,
-    /// Uniform -> packed 1..8-bit local -> DirectN.
+    /// `Uniform -> packed 1..8-bit local -> DirectN`.
     PackedLocal,
 }
 
@@ -211,29 +211,32 @@ impl Trace {
     #[must_use]
     pub fn encode(&self) -> String {
         let mut output = String::new();
-        writeln!(
+        let _ = writeln!(
             output,
             "{TRACE_MAGIC}|{TRACE_SCHEMA}|{}|{:016x}",
             self.class.as_str(),
             self.seed
-        )
-        .expect("writing to a String cannot fail");
+        );
 
         for operation in &self.operations {
-            match operation {
+            let _ = match operation {
                 TraceOp::Get(cell) => writeln!(output, "G|{cell}"),
                 TraceOp::Replace { cell, state } => writeln!(output, "R|{cell}|{state}"),
                 TraceOp::ReplaceSame(cell) => writeln!(output, "N|{cell}"),
                 TraceOp::Summary => writeln!(output, "S"),
                 TraceOp::Contains(state) => writeln!(output, "C|{state}"),
                 TraceOp::Checkpoint => writeln!(output, "K"),
-            }
-            .expect("writing to a String cannot fail");
+            };
         }
         output
     }
 
     /// Decodes a v1 trace and rejects malformed or out-of-domain operations.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QualificationFailure`] for a bad header/schema, unknown trace class, malformed
+    /// operation, or any cell/state identity outside the frozen target domains.
     pub fn decode(input: &str) -> Result<Self, QualificationFailure> {
         let mut lines = input.lines();
         let header = lines
@@ -336,77 +339,68 @@ impl QualificationReport {
     #[must_use]
     pub fn to_json(&self, commit_sha: &str) -> String {
         let mut output = String::new();
-        writeln!(output, "{{").expect("String write");
-        writeln!(output, "  \"schema\": {EVIDENCE_SCHEMA},").expect("String write");
-        writeln!(output, "  \"qualification\": \"section\",").expect("String write");
-        writeln!(output, "  \"mode\": \"{}\",", self.mode.as_str()).expect("String write");
-        writeln!(output, "  \"minecraft_version\": \"{MINECRAFT_VERSION}\",")
-            .expect("String write");
-        writeln!(output, "  \"protocol_version\": {PROTOCOL_VERSION},").expect("String write");
-        writeln!(output, "  \"data_version\": {DATA_VERSION},").expect("String write");
-        writeln!(
+        let _ = writeln!(output, "{{");
+        let _ = writeln!(output, "  \"schema\": {EVIDENCE_SCHEMA},");
+        let _ = writeln!(output, "  \"qualification\": \"section\",");
+        let _ = writeln!(output, "  \"mode\": \"{}\",", self.mode.as_str());
+        let _ = writeln!(output, "  \"minecraft_version\": \"{MINECRAFT_VERSION}\",");
+        let _ = writeln!(output, "  \"protocol_version\": {PROTOCOL_VERSION},");
+        let _ = writeln!(output, "  \"data_version\": {DATA_VERSION},");
+        let _ = writeln!(
             output,
             "  \"commit_sha\": \"{}\",",
             json_safe_token(commit_sha)
-        )
-        .expect("String write");
-        writeln!(output, "  \"state_count\": {BLOCK_STATE_COUNT},").expect("String write");
-        writeln!(
+        );
+        let _ = writeln!(output, "  \"state_count\": {BLOCK_STATE_COUNT},");
+        let _ = writeln!(
             output,
             "  \"state_data_input_sha256\": \"{STATE_DATA_INPUT_SHA256}\","
-        )
-        .expect("String write");
-        writeln!(
+        );
+        let _ = writeln!(
             output,
             "  \"state_data_generation_sha256\": \"{STATE_DATA_GENERATION_SHA256}\","
-        )
-        .expect("String write");
-        writeln!(output, "  \"trace_schema\": {TRACE_SCHEMA},").expect("String write");
-        writeln!(output, "  \"sem_ids\": [").expect("String write");
+        );
+        let _ = writeln!(output, "  \"trace_schema\": {TRACE_SCHEMA},");
+        let _ = writeln!(output, "  \"sem_ids\": [");
         for (index, sem_id) in SEM_IDS.iter().enumerate() {
             let suffix = if index + 1 == SEM_IDS.len() { "" } else { "," };
-            writeln!(output, "    \"{sem_id}\"{suffix}").expect("String write");
+            let _ = writeln!(output, "    \"{sem_id}\"{suffix}");
         }
-        writeln!(output, "  ],").expect("String write");
-        writeln!(output, "  \"records\": [").expect("String write");
+        let _ = writeln!(output, "  ],");
+        let _ = writeln!(output, "  \"records\": [");
         for (index, record) in self.records.iter().enumerate() {
             let suffix = if index + 1 == self.records.len() {
                 ""
             } else {
                 ","
             };
-            writeln!(output, "    {{").expect("String write");
-            writeln!(output, "      \"id\": \"{}\",", record.id()).expect("String write");
-            writeln!(
+            let _ = writeln!(output, "    {{");
+            let _ = writeln!(output, "      \"id\": \"{}\",", record.id());
+            let _ = writeln!(
                 output,
                 "      \"candidate\": \"{}\",",
                 record.candidate.as_str()
-            )
-            .expect("String write");
-            writeln!(output, "      \"trace_count\": {},", record.trace_count)
-                .expect("String write");
-            writeln!(
+            );
+            let _ = writeln!(output, "      \"trace_count\": {},", record.trace_count);
+            let _ = writeln!(
                 output,
                 "      \"trace_operations\": {},",
                 record.trace_operations
-            )
-            .expect("String write");
-            writeln!(
+            );
+            let _ = writeln!(
                 output,
                 "      \"synthetic_operations\": {},",
                 record.synthetic_operations
-            )
-            .expect("String write");
-            writeln!(
+            );
+            let _ = writeln!(
                 output,
                 "      \"trace_fingerprint_fnv1a64\": \"{:016x}\"",
                 record.trace_fingerprint
-            )
-            .expect("String write");
-            writeln!(output, "    }}{suffix}").expect("String write");
+            );
+            let _ = writeln!(output, "    }}{suffix}");
         }
-        writeln!(output, "  ]").expect("String write");
-        writeln!(output, "}}").expect("String write");
+        let _ = writeln!(output, "  ]");
+        let _ = writeln!(output, "}}");
         output
     }
 }
@@ -465,6 +459,12 @@ impl<S: Copy + Eq> CandidateFactory<S> for PackedLocalBlockSection<S> {
 }
 
 /// Runs the selected deterministic qualification tier.
+///
+/// # Errors
+///
+/// Returns [`QualificationFailure`] when generated target facts disagree with their committed
+/// table, trace serialization is unstable, the permanent reference violates recomputation, or any
+/// selected candidate diverges from the reference on an observed semantic obligation.
 pub fn qualify(
     mode: QualificationMode,
     candidate_filter: Option<Candidate>,
@@ -783,7 +783,13 @@ where
 }
 
 fn validate_generated_facts() -> Result<(), QualificationFailure> {
-    for index in 0..BLOCK_STATE_COUNT {
+    if STATE_MUTATION_FLAGS.len() != BLOCK_STATE_COUNT {
+        return Err(QualificationFailure::new(
+            "generated mutation-fact table length differs from state count",
+        ));
+    }
+
+    for (index, expected) in STATE_MUTATION_FLAGS.iter().copied().enumerate() {
         let raw = u32::try_from(index)
             .map_err(|_| QualificationFailure::new("state index does not fit u32"))?;
         let state = BlockStateId::new(raw)
@@ -793,10 +799,9 @@ fn validate_generated_facts() -> Result<(), QualificationFailure> {
             | (u8::from(facts.counted_fluid()) << 1)
             | (u8::from(facts.random_block()) << 2)
             | (u8::from(facts.random_fluid()) << 3);
-        if observed != STATE_MUTATION_FLAGS[index] {
+        if observed != expected {
             return Err(QualificationFailure::new(format!(
-                "generated mutation facts mismatch at state {index}: table={} observed={observed}",
-                STATE_MUTATION_FLAGS[index]
+                "generated mutation facts mismatch at state {index}: table={expected} observed={observed}"
             )));
         }
     }
@@ -877,7 +882,7 @@ fn trace_localized_churn() -> Trace {
 }
 
 fn trace_random_uniform() -> Trace {
-    let seed = 0xA11C_E5EED_u64;
+    let seed = 0x000A_11CE_5EED_u64;
     let mut trace = Trace::new(TraceClass::RandomUniformWrites, seed);
     let mut rng = seed;
     for _round in 0..16 {
@@ -893,7 +898,7 @@ fn trace_random_uniform() -> Trace {
 }
 
 fn trace_high_entropy() -> Trace {
-    let seed = 0xE117_20F1_E5_u64;
+    let seed = 0x00E1_1720_F1E5_u64;
     let mut trace = Trace::new(TraceClass::HighEntropyWrites, seed);
     let mut rng = seed;
     for step in 0..4096_usize {
