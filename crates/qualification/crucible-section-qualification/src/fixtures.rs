@@ -169,9 +169,11 @@ pub fn qualify_fixture(input: &str) -> Result<FixtureEvidence, FixtureFailure> {
                 qualify_block::<FastLocalBlockSection<BlockStateId>, _>(case, &states, |state| {
                     FastLocalBlockSection::filled(state, &GeneratedStateFacts)
                 })?;
-                qualify_block::<PackedLocalBlockSection<BlockStateId>, _>(case, &states, |state| {
-                    PackedLocalBlockSection::filled(state, &GeneratedStateFacts)
-                })?;
+                qualify_block::<PackedLocalBlockSection<BlockStateId>, _>(
+                    case,
+                    &states,
+                    |state| PackedLocalBlockSection::filled(state, &GeneratedStateFacts),
+                )?;
                 block_candidate_checks += 4;
             }
             Case::BiomeFillOrder => {
