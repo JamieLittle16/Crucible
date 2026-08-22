@@ -1,0 +1,11 @@
+[package]
+name = "crucible-world-contract"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.97.1"
+publish = false
+
+[dependencies]
+
+[lints]
+workspace = true
