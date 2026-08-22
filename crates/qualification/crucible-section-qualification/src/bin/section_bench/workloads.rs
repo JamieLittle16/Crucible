@@ -1,6 +1,6 @@
-use std::collections::BTreeSet;
-
-use crucible_generated::{AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_MUTATION_FLAGS};
+use crucible_generated::{
+    AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_MUTATION_FLAGS,
+};
 use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
 
 use crate::model::{BENCH_SEED, BenchSection, CARDINALITIES, CaseSpec, Mode, Pattern};
@@ -98,6 +98,7 @@ pub(crate) fn cases_for(mode: Mode) -> Vec<CaseSpec> {
 pub(crate) fn prepare<C: BenchSection>(case: CaseSpec) -> Prepared<C> {
     assert!((1..=BLOCK_SECTION_CELLS).contains(&case.pool_cardinality));
     let states = state_pool(case);
+    assert_eq!(states.len(), case.pool_cardinality);
     let mut section = C::filled(states[0]);
     let mut seen = vec![false; states.len()];
     let mut rng = BENCH_SEED
@@ -152,15 +153,27 @@ fn generic_state_pool(cardinality: usize) -> Vec<BlockStateId> {
 }
 
 fn survival_state_pool(cardinality: usize) -> Vec<BlockStateId> {
-    assert!(cardinality >= 2, "survival-like requires AIR plus solid state");
+    assert!(
+        cardinality >= 2,
+        "survival-like requires AIR plus solid state"
+    );
+    let solids = states_with_exact_flags(NON_AIR, cardinality - 1);
+    assert_eq!(
+        solids.len(),
+        cardinality - 1,
+        "target must provide enough plain solid states for survival workload"
+    );
     let mut states = Vec::with_capacity(cardinality);
     states.push(AIR);
-    states.extend(states_with_exact_flags(NON_AIR, cardinality - 1));
+    states.extend(solids);
     states
 }
 
 fn fluid_state_pool(cardinality: usize) -> Vec<BlockStateId> {
-    assert!(cardinality >= 3, "fluid workload requires air, fluid, and solid");
+    assert!(
+        cardinality >= 3,
+        "fluid workload requires air, fluid, and solid"
+    );
     let mut states = Vec::with_capacity(cardinality);
     states.push(AIR);
     states.push(
@@ -175,7 +188,11 @@ fn fluid_state_pool(cardinality: usize) -> Vec<BlockStateId> {
             states.push(state);
         }
     }
-    assert_eq!(states.len(), cardinality);
+    assert_eq!(
+        states.len(),
+        cardinality,
+        "target must provide enough plain solid states for fluid workload"
+    );
     states
 }
 
@@ -325,9 +342,7 @@ mod tests {
     use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts};
     use crucible_world_section::DirectNBlockSection;
 
-    use super::{
-        COUNTED_FLUID, NON_AIR, CaseSpec, Pattern, pos, positive_contains_state, prepare,
-    };
+    use super::{COUNTED_FLUID, CaseSpec, NON_AIR, Pattern, pos, positive_contains_state, prepare};
 
     fn observed_states(
         section: &DirectNBlockSection<crucible_generated::BlockStateId>,
@@ -354,7 +369,10 @@ mod tests {
             },
         ] {
             let prepared = prepare::<DirectNBlockSection<_>>(case);
-            assert_eq!(prepared.actual_cardinality, observed_states(&prepared.section).len());
+            assert_eq!(
+                prepared.actual_cardinality,
+                observed_states(&prepared.section).len()
+            );
         }
     }
 
