@@ -81,7 +81,10 @@ pub(super) fn verify_corpus(path: &Path) -> Result<VerifiedCorpus, String> {
         fast_local.finish(),
         packed_local.finish(),
     ];
-    if candidates.iter().any(|candidate| candidate.sections != section_count) {
+    if candidates
+        .iter()
+        .any(|candidate| candidate.sections != section_count)
+    {
         return Err("candidate importer section counts diverged".to_owned());
     }
 
