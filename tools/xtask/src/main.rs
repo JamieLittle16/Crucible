@@ -211,12 +211,14 @@ fn vanilla_state_data(root: &Path, args: &[OsString]) -> ExitCode {
 fn qualify(args: &[OsString]) -> ExitCode {
     if args.first().and_then(|arg| arg.to_str()) != Some("section") {
         return failure(
-            "usage: cargo xtask qualify section [--quick|--full] [--candidate <direct|adaptive|fast-local|packed-local>]",
+            "usage: cargo xtask qualify section [--quick|--full] [--candidate <direct|adaptive|fast-local|packed-local>] | --vanilla <fixture> [--runtime-data <RAW.json>]",
         );
     }
 
     let mut mode = QualificationMode::Quick;
     let mut candidate = None;
+    let mut vanilla_fixture = None;
+    let mut runtime_data = None;
     let mut index = 1_usize;
     while index < args.len() {
         match args[index].to_str() {
@@ -235,9 +237,18 @@ fn qualify(args: &[OsString]) -> ExitCode {
                 index += 1;
             }
             Some("--vanilla") => {
-                return failure(
-                    "vanilla section fixtures are not wired in this qualification slice yet; use --quick or --full",
-                );
+                let Some(value) = args.get(index + 1) else {
+                    return failure("--vanilla requires a semantic fixture path");
+                };
+                vanilla_fixture = Some(value.clone());
+                index += 1;
+            }
+            Some("--runtime-data") => {
+                let Some(value) = args.get(index + 1) else {
+                    return failure("--runtime-data requires an official runtime JSON path");
+                };
+                runtime_data = Some(value.clone());
+                index += 1;
             }
             Some(other) => {
                 return failure(&format!("unknown section qualification option: {other}"));
@@ -245,6 +256,16 @@ fn qualify(args: &[OsString]) -> ExitCode {
             None => return failure("section qualification arguments must be valid UTF-8"),
         }
         index += 1;
+    }
+
+    if let Some(fixture) = vanilla_fixture {
+        if candidate.is_some() || mode == QualificationMode::Full {
+            return failure("--vanilla cannot be combined with --candidate or --full");
+        }
+        return qualify_section_fixture(&fixture, runtime_data.as_ref());
+    }
+    if runtime_data.is_some() {
+        return failure("--runtime-data is only valid together with --vanilla");
     }
 
     let report = match crucible_section_qualification::qualify(mode, candidate) {
@@ -279,6 +300,68 @@ fn qualify(args: &[OsString]) -> ExitCode {
         );
     }
     println!("section qualification evidence: {}", output_path.display());
+    ExitCode::SUCCESS
+}
+
+fn qualify_section_fixture(fixture: &OsString, runtime_data: Option<&OsString>) -> ExitCode {
+    let root = workspace_root();
+    let commit_sha = match git_head_sha(&root) {
+        Ok(sha) => sha,
+        Err(error) => return failure(&error),
+    };
+    let output_dir = root.join("target/crucible-qualification/section");
+    if let Err(error) = fs::create_dir_all(&output_dir) {
+        return failure(&format!(
+            "could not create qualification output directory: {error}"
+        ));
+    }
+
+    let source_evidence = output_dir.join("vanilla-fixture.json");
+    let status = Command::new("cargo")
+        .args([
+            "run",
+            "--quiet",
+            "--locked",
+            "-p",
+            "crucible-section-qualification",
+            "--bin",
+            "section_fixture",
+            "--",
+            "--fixture",
+        ])
+        .arg(fixture)
+        .arg("--output")
+        .arg(&source_evidence)
+        .arg("--commit")
+        .arg(&commit_sha)
+        .current_dir(&root)
+        .status();
+    match status {
+        Ok(status) if status.success() => {}
+        Ok(status) => return exit_from_status(status.code()),
+        Err(error) => return failure(&format!("could not launch section fixture qualifier: {error}")),
+    }
+
+    if let Some(runtime_data) = runtime_data {
+        let script = root.join("tools/section_runtime_fixture.py");
+        let runtime_evidence = output_dir.join("runtime-facts-fixture.json");
+        let status = run_python(
+            &root,
+            &script,
+            &[
+                OsString::from("--runtime-data"),
+                runtime_data.clone(),
+                OsString::from("--fixture"),
+                fixture.clone(),
+                OsString::from("--output"),
+                runtime_evidence.into_os_string(),
+            ],
+        );
+        if status != ExitCode::SUCCESS {
+            return status;
+        }
+    }
+
     ExitCode::SUCCESS
 }
 
@@ -317,11 +400,13 @@ fn run_python(root: &Path, script: &Path, args: &[OsString]) -> ExitCode {
         .status()
     {
         Ok(status) if status.success() => ExitCode::SUCCESS,
-        Ok(status) => {
-            ExitCode::from(u8::try_from(status.code().unwrap_or(1).clamp(1, 255)).unwrap_or(1))
-        }
+        Ok(status) => exit_from_status(status.code()),
         Err(error) => failure(&format!("could not launch {}: {error}", script.display())),
     }
+}
+
+fn exit_from_status(code: Option<i32>) -> ExitCode {
+    ExitCode::from(u8::try_from(code.unwrap_or(1).clamp(1, 255)).unwrap_or(1))
 }
 
 fn find_python() -> Option<OsString> {
@@ -367,6 +452,8 @@ fn help() {
     println!("  qualify section --quick       run PR-sized section semantic qualification");
     println!("  qualify section --full        run extended multi-seed section qualification");
     println!("  qualify section --candidate   restrict qualification to one candidate");
+    println!("  qualify section --vanilla     qualify a source-backed semantic fixture");
+    println!("  qualify section --runtime-data additionally bind fixture to official runtime facts");
     println!();
     println!("examples:");
     println!("  cargo xtask vanilla verify-source /path/to/mc-src.zip");
@@ -376,6 +463,7 @@ fn help() {
     println!("  cargo xtask vanilla state-data verify");
     println!("  cargo xtask qualify section --quick");
     println!("  cargo xtask qualify section --full --candidate packed-local");
+    println!("  cargo xtask qualify section --vanilla vanilla/fixtures/section/26.2-semantic-fixtures.txt");
 }
 
 fn failure(message: &str) -> ExitCode {
