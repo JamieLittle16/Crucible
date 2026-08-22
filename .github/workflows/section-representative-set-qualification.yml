@@ -33,6 +33,9 @@ jobs:
           python3 -m unittest discover -s tools/tests -p 'test_official_representative_section_world.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_representative_section_corpus.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_section_corpus_set.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_population_admission.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_representative_set_artifact_manifest.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_representative_set_workflow.py' -v
           cargo test --locked -p crucible-section-qualification --bin section_bench corpus::
 
       - name: Materialize and verify frozen representative plan
@@ -156,12 +159,20 @@ jobs:
             rm -rf "$world_run"
           done
 
-      - name: Admit only the complete four-member population
+      - name: Build structural four-member set
         run: |
           python3 tools/section_corpus_set.py \
             --plan /tmp/crucible-representative-set/representative-plan.json \
             --members-root /tmp/crucible-representative-set \
             --output /tmp/crucible-representative-set/corpus-set.json
+
+      - name: Apply independent population admission firewall
+        run: |
+          python3 tools/section_population_admission.py \
+            --plan /tmp/crucible-representative-set/representative-plan.json \
+            --members-root /tmp/crucible-representative-set \
+            --corpus-set /tmp/crucible-representative-set/corpus-set.json \
+            --output /tmp/crucible-representative-set/population-admission.json
 
       - name: Verify population decision firewall
         run: |
@@ -169,18 +180,15 @@ jobs:
           import json
           from pathlib import Path
           record = json.loads(Path('/tmp/crucible-representative-set/corpus-set.json').read_text())
+          admission = json.loads(Path('/tmp/crucible-representative-set/population-admission.json').read_text())
           if record['schema'] != 1 or record['kind'] != 'section-corpus-set':
               raise SystemExit('representative set identity/schema mismatch')
           if record['policy'] != 'vanilla-section-representative-v1':
               raise SystemExit('representative set policy mismatch')
           if record['member_count'] != 4 or not record['decision_eligible']:
-              raise SystemExit('complete four-member population was not admitted')
-          if record['decision_scope'] != 'dimension-separated-only':
-              raise SystemExit('representative set decision scope drifted')
-          if record['cross_dimension_score_allowed']:
-              raise SystemExit('representative set unexpectedly permits cross-dimension scoring')
-          if len(record['population_sha256']) != 64 or len(record['evidence_sha256']) != 64:
-              raise SystemExit('representative set content identity is malformed')
+              raise SystemExit('complete four-member population was not structurally admitted')
+          if record['decision_scope'] != 'dimension-separated-only' or record['cross_dimension_score_allowed']:
+              raise SystemExit('representative set dimension firewall drifted')
           if len({member['corpus_sha256'] for member in record['members']}) != 4:
               raise SystemExit('representative set contains duplicate member corpus identities')
           expected_dimensions = {'minecraft:overworld', 'minecraft:the_nether', 'minecraft:the_end'}
@@ -190,44 +198,35 @@ jobs:
               raise SystemExit('representative aggregate lost descriptive-only guard')
           if 'candidates' in record['aggregate'] or 'cardinality_histogram' in record['aggregate']:
               raise SystemExit('representative aggregate leaked decision-bearing cross-dimension metrics')
+          if admission['kind'] != 'section-representative-set-admission':
+              raise SystemExit('population admission identity mismatch')
+          if not admission['decision_eligible'] or not admission['benchmark_handoff_eligible']:
+              raise SystemExit('population admission did not authorize benchmark handoff')
+          if admission['population_sha256'] != record['population_sha256']:
+              raise SystemExit('population admission/set population identity mismatch')
+          if admission['set_evidence_sha256'] != record['evidence_sha256']:
+              raise SystemExit('population admission/set evidence identity mismatch')
+          if set(admission['per_dimension']) != expected_dimensions:
+              raise SystemExit('population admission semantic dimension evidence is incomplete')
+          for dimension, summary in admission['per_dimension'].items():
+              if set(summary['cell_facts']) != {'non_air', 'counted_fluid', 'random_block', 'random_fluid'}:
+                  raise SystemExit(f'{dimension} population cell-fact keys drifted')
+              if set(summary['section_classes']) != {'all_air', 'contains_fluid', 'random_block_present', 'random_fluid_present'}:
+                  raise SystemExit(f'{dimension} population section-class keys drifted')
           print(
               'representative population PASS: '
               f"members={record['member_count']} "
               f"sections={record['aggregate']['section_count']} "
               f"population={record['population_sha256']} "
-              f"evidence={record['evidence_sha256']}"
+              f"admission={admission['admission_sha256']}"
           )
           PY
 
-      - name: Write qualification artifact manifest
+      - name: Write self-describing qualification artifact manifest
         if: always()
-        run: |
-          python3 - <<'PY'
-          import hashlib
-          import json
-          from pathlib import Path
-          root = Path('/tmp/crucible-representative-set')
-          root.mkdir(parents=True, exist_ok=True)
-          entries = []
-          for path in sorted(root.rglob('*')):
-              if path.is_file():
-                  entries.append({
-                      'path': path.relative_to(root).as_posix(),
-                      'size': path.stat().st_size,
-                      'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
-                  })
-          manifest = {
-              'schema': 1,
-              'kind': 'section-representative-set-workflow-artifact',
-              'files': entries,
-          }
-          (root / 'artifact-manifest.json').write_text(
-              json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8'
-          )
-          print(f'artifact manifest: {len(entries)} files')
-          PY
+        run: python3 tools/representative_set_artifact_manifest.py /tmp/crucible-representative-set
 
-      - name: Upload complete representative-set evidence
+      - name: Upload representative-set evidence or diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
