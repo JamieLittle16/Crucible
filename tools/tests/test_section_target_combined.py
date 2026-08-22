@@ -180,21 +180,36 @@ class DecisionFirewallTests(unittest.TestCase):
         self.assertIn("synthetic mechanism evidence did not pass protocol/noise eligibility", blockers)
         self.assertIn("dimension-separated Pareto selection record not assembled", blockers)
 
-    def test_combined_artifact_manifest_is_content_addressed_and_excludes_itself(self) -> None:
+    def test_combined_artifact_manifest_is_content_addressed_and_excludes_only_itself(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "combined-orchestration.json").write_text("{}\n", encoding="utf-8")
-            nested = root / "synthetic" / "round-00"
-            nested.mkdir(parents=True)
-            (nested / "direct.json").write_text(json.dumps({"ok": True}) + "\n", encoding="utf-8")
+            (root / "artifact-manifest.json").write_text("stale-root-manifest\n", encoding="utf-8")
+            synthetic = root / "synthetic" / "round-00"
+            synthetic.mkdir(parents=True)
+            (synthetic / "direct.json").write_text(
+                json.dumps({"ok": True}) + "\n", encoding="utf-8"
+            )
+            population_dir = root / "population"
+            population_dir.mkdir()
+            (population_dir / "artifact-manifest.json").write_text(
+                json.dumps({"kind": "nested-evidence"}) + "\n", encoding="utf-8"
+            )
+
             manifest = combined.artifact_manifest(root, "f" * 64)
             self.assertEqual(manifest["kind"], combined.ARTIFACT_KIND)
             self.assertEqual(manifest["combined_evidence_sha256"], "f" * 64)
             paths = {entry["path"] for entry in manifest["files"]}
             self.assertEqual(
                 paths,
-                {"combined-orchestration.json", "synthetic/round-00/direct.json"},
+                {
+                    "combined-orchestration.json",
+                    "population/artifact-manifest.json",
+                    "synthetic/round-00/direct.json",
+                },
             )
+            self.assertNotIn("artifact-manifest.json", paths)
+            self.assertIn("population/artifact-manifest.json", paths)
             expected = combined.canonical_digest(
                 {key: value for key, value in manifest.items() if key != "manifest_sha256"}
             )
