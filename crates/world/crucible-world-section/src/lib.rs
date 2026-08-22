@@ -14,6 +14,13 @@ use crucible_world_contract::{
     SectionSummary,
 };
 
+mod policy_candidates;
+
+pub use policy_candidates::{
+    FastLocalBlockSection, FastLocalRepresentation, PackedLocalBlockSection,
+    PackedLocalRepresentation,
+};
+
 const SECTION_CELL_COUNT_U16: u16 = 4096;
 const LOCAL4_BYTES: usize = BLOCK_SECTION_CELLS / 2;
 const LOCAL4_CAPACITY: usize = 16;
