@@ -2,6 +2,8 @@ mod parser;
 mod verify;
 
 #[cfg(test)]
+mod dimension_tests;
+#[cfg(test)]
 mod tests;
 
 use std::collections::BTreeMap;
@@ -88,6 +90,15 @@ pub(crate) struct CandidateImportSummary {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct DimensionImportSummary {
+    pub(crate) section_count: usize,
+    pub(crate) total_cells: usize,
+    pub(crate) distinct_state_ids: usize,
+    pub(crate) cardinality_histogram: BTreeMap<usize, usize>,
+    pub(crate) candidates: Vec<CandidateImportSummary>,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct CorpusImportCheck {
     pub(crate) header: CorpusHeader,
     pub(crate) section_count: usize,
@@ -95,6 +106,7 @@ pub(crate) struct CorpusImportCheck {
     pub(crate) distinct_state_ids: usize,
     pub(crate) cardinality_histogram: BTreeMap<usize, usize>,
     pub(crate) dimensions: BTreeMap<String, usize>,
+    pub(crate) per_dimension: BTreeMap<String, DimensionImportSummary>,
     pub(crate) candidates: Vec<CandidateImportSummary>,
 }
 
@@ -163,28 +175,11 @@ impl CorpusImportCheck {
         );
         output.push_str(",\n");
         write_string_usize_map(&mut output, "dimensions", &self.dimensions, 2);
-        output.push_str(",\n  \"candidates\": [\n");
-        for (index, candidate) in self.candidates.iter().enumerate() {
-            write!(
-                output,
-                "    {{\"candidate\":\"{}\",\"production_candidate\":{},\"sections\":{},\"total_owned_bytes\":{},\"max_owned_bytes\":{},\"construction_transitions\":{},\"logical_backing_allocations\":{},\"representations\":",
-                candidate.candidate,
-                candidate.production_candidate,
-                candidate.sections,
-                candidate.total_owned_bytes,
-                candidate.max_owned_bytes,
-                candidate.construction_transitions,
-                candidate.logical_backing_allocations,
-            )
-            .expect("writing to String cannot fail");
-            write_inline_string_usize_map(&mut output, &candidate.representations);
-            output.push('}');
-            if index + 1 != self.candidates.len() {
-                output.push(',');
-            }
-            output.push('\n');
-        }
-        output.push_str("  ]\n}\n");
+        output.push_str(",\n");
+        write_dimension_summaries(&mut output, &self.per_dimension, 2);
+        output.push_str(",\n  \"candidates\": ");
+        write_candidate_array(&mut output, &self.candidates, 2);
+        output.push_str("\n}\n");
         output
     }
 }
@@ -201,8 +196,85 @@ pub(crate) fn check_corpus(
         distinct_state_ids: verified.distinct_state_ids,
         cardinality_histogram: verified.cardinality_histogram,
         dimensions: verified.dimensions,
+        per_dimension: verified.per_dimension,
         candidates: verified.candidates,
     })
+}
+
+fn write_dimension_summaries(
+    output: &mut String,
+    values: &BTreeMap<String, DimensionImportSummary>,
+    indent: usize,
+) {
+    let prefix = " ".repeat(indent);
+    writeln!(output, "{prefix}\"per_dimension\": {{").expect("writing to String cannot fail");
+    for (index, (dimension, summary)) in values.iter().enumerate() {
+        let entry_prefix = " ".repeat(indent + 2);
+        writeln!(output, "{entry_prefix}\"{dimension}\": {{")
+            .expect("writing to String cannot fail");
+        writeln!(
+            output,
+            "{entry_prefix}  \"section_count\": {},",
+            summary.section_count
+        )
+        .expect("writing to String cannot fail");
+        writeln!(
+            output,
+            "{entry_prefix}  \"total_cells\": {},",
+            summary.total_cells
+        )
+        .expect("writing to String cannot fail");
+        writeln!(
+            output,
+            "{entry_prefix}  \"distinct_state_ids\": {},",
+            summary.distinct_state_ids
+        )
+        .expect("writing to String cannot fail");
+        write_usize_map(
+            output,
+            "cardinality_histogram",
+            &summary.cardinality_histogram,
+            indent + 4,
+        );
+        output.push_str(",\n");
+        write!(output, "{entry_prefix}  \"candidates\": ")
+            .expect("writing to String cannot fail");
+        write_candidate_array(output, &summary.candidates, indent + 4);
+        output.push('\n');
+        write!(output, "{entry_prefix}}}").expect("writing to String cannot fail");
+        if index + 1 != values.len() {
+            output.push(',');
+        }
+        output.push('\n');
+    }
+    write!(output, "{prefix}}}").expect("writing to String cannot fail");
+}
+
+fn write_candidate_array(output: &mut String, candidates: &[CandidateImportSummary], indent: usize) {
+    output.push_str("[\n");
+    let item_prefix = " ".repeat(indent + 2);
+    for (index, candidate) in candidates.iter().enumerate() {
+        write!(
+            output,
+            "{item_prefix}{{\"candidate\":\"{}\",\"production_candidate\":{},\"sections\":{},\"total_owned_bytes\":{},\"max_owned_bytes\":{},\"construction_transitions\":{},\"logical_backing_allocations\":{},\"representations\":",
+            candidate.candidate,
+            candidate.production_candidate,
+            candidate.sections,
+            candidate.total_owned_bytes,
+            candidate.max_owned_bytes,
+            candidate.construction_transitions,
+            candidate.logical_backing_allocations,
+        )
+        .expect("writing to String cannot fail");
+        write_inline_string_usize_map(output, &candidate.representations);
+        output.push('}');
+        if index + 1 != candidates.len() {
+            output.push(',');
+        }
+        output.push('\n');
+    }
+    let prefix = " ".repeat(indent);
+    write!(output, "{prefix}]").expect("writing to String cannot fail");
 }
 
 fn write_usize_map(
