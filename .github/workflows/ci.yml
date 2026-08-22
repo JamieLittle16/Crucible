@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
@@ -38,6 +38,9 @@ jobs:
           rustfmt --version
           cargo clippy --version
           python3 --version
+
+      - name: Supply-chain and dependency policy
+        run: python3 tools/ci_policy.py
 
       # crucible-generated is byte-for-byte owned by tools/state_data.py and its
       # exact output is checked by the state-data qualification pipeline. Keep it
@@ -72,16 +75,11 @@ jobs:
           cargo xtask qualify section
           --vanilla vanilla/fixtures/section/26.2-semantic-fixtures.txt
 
-      - name: Vanilla Atlas tests
+      - name: Python tooling tests
         run: python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
 
       - name: Python syntax
-        run: >-
-          python3 -m py_compile
-          tools/vanilla_atlas.py
-          tools/section_runtime_fixture.py
-          tools/tests/test_vanilla_atlas.py
-          tools/tests/test_section_runtime_fixture.py
+        run: python3 -m compileall -q tools
 
       - name: Rustdoc
         env:
@@ -94,7 +92,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
