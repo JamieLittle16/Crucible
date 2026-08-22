@@ -40,7 +40,7 @@ jobs:
           --smoke
           --output target/crucible-qualification/section/benchmark-smoke.json
 
-      - name: Validate smoke artifact identity
+      - name: Validate smoke artifact semantics
         run: |
           python3 - <<'PY'
           import json
@@ -48,23 +48,36 @@ jobs:
 
           path = Path('target/crucible-qualification/section/benchmark-smoke.json')
           data = json.loads(path.read_text())
-          assert data['schema'] == 1
-          assert data['harness_version'] == 'section-bench-v1'
+          assert data['schema'] == 2
+          assert data['harness_version'] == 'section-bench-v2'
           assert data['mode'] == 'smoke'
           assert data['minecraft_version'] == '26.2'
           assert data['protocol_version'] == 776
           assert data['data_version'] == 4903
+          assert data['cpus_allowed_list']
           assert data['timings']
           assert data['memory']
-          assert {row['candidate'] for row in data['timings']} == {
+          assert data['lifetimes']
+
+          candidates = {
               'direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local'
           }
+          assert {row['candidate'] for row in data['timings']} == candidates
+          assert {row['candidate'] for row in data['memory']} == candidates
+          assert {row['candidate'] for row in data['lifetimes']} == candidates
+
+          assert any(row['pattern'] == 'fluid-containing' for row in data['memory'])
+          assert any(row['pattern'] == 'survival-like' for row in data['memory'])
+          assert all(row['actual_cardinality'] <= row['pool_cardinality'] for row in data['memory'])
+          assert all(row['actual_cardinality'] <= row['pool_cardinality'] for row in data['timings'])
+          assert all(row['logical_backing_allocations'] >= 0 for row in data['lifetimes'])
+          assert all(row['peak_owned_bytes'] >= row['final_owned_bytes'] for row in data['lifetimes'])
+
           print(
               'benchmark smoke records:',
-              len(data['timings']),
-              'timings,',
-              len(data['memory']),
-              'memory'
+              len(data['timings']), 'timings,',
+              len(data['memory']), 'memory,',
+              len(data['lifetimes']), 'lifetimes'
           )
           PY
 
