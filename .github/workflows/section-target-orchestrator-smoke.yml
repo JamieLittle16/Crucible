@@ -7,6 +7,7 @@ on:
       - "tools/section_target_hardware.py"
       - "tools/tests/test_section_target_hardware.py"
       - "docs/qualification/section/SECTION_TARGET_HARDWARE_ORCHESTRATOR.md"
+      - "docs/qualification/section/SECTION_TARGET_HARDWARE_ORCHESTRATOR_ADMISSION.md"
       - "crates/qualification/crucible-section-qualification/**"
       - "crates/world/**"
       - "crates/data/crucible-generated/**"
