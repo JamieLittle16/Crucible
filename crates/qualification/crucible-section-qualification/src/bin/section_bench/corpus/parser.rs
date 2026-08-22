@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -11,12 +10,15 @@ use super::{CorpusHeader, CorpusPurpose, CorpusSection, SectionKey};
 
 const MAGIC: &str = "CRUCIBLE-SECTION-CORPUS|1";
 const SOURCE_KIND: &str = "vanilla-save";
+const SECTION_LINE_INITIAL_CAPACITY: usize = 32 * 1024;
+const STATE_SEEN_WORDS: usize = (BLOCK_STATE_COUNT + 63) / 64;
 
 pub(super) struct CorpusReader<R: BufRead> {
     reader: R,
     header: CorpusHeader,
     next_line_number: usize,
     previous_key: Option<SectionKey>,
+    line_buffer: String,
 }
 
 impl CorpusReader<BufReader<File>> {
@@ -42,6 +44,7 @@ impl<R: BufRead> CorpusReader<R> {
             header,
             next_line_number: 4,
             previous_key: None,
+            line_buffer: String::with_capacity(SECTION_LINE_INITIAL_CAPACITY),
         })
     }
 
@@ -51,11 +54,12 @@ impl<R: BufRead> CorpusReader<R> {
 
     pub(super) fn next_section(&mut self) -> Result<Option<CorpusSection>, String> {
         let line_number = self.next_line_number;
-        let Some(line) = read_canonical_line(&mut self.reader, line_number)? else {
+        self.line_buffer.clear();
+        if !read_canonical_line_into(&mut self.reader, &mut self.line_buffer, line_number)? {
             return Ok(None);
-        };
+        }
         self.next_line_number += 1;
-        let section = parse_section_line(&line, line_number)?;
+        let section = parse_section_line(&self.line_buffer, line_number)?;
         if let Some(previous) = &self.previous_key
             && section.key <= *previous
         {
@@ -143,53 +147,78 @@ fn parse_section_line(line: &str, line_number: usize) -> Result<CorpusSection, S
         section_y: parse_canonical_i64(parts[4], &format!("line {line_number} section_y"))?,
     };
 
-    let raw_states = parts[5].split(',').collect::<Vec<_>>();
-    if raw_states.len() != BLOCK_SECTION_CELLS {
-        return Err(format!(
-            "line {line_number}: section has {} cells; expected {BLOCK_SECTION_CELLS}",
-            raw_states.len()
-        ));
+    let mut states = Vec::with_capacity(BLOCK_SECTION_CELLS);
+    let mut seen = [0_u64; STATE_SEEN_WORDS];
+    let mut cardinality = 0_usize;
+
+    for (cell, raw) in parts[5].split(',').enumerate() {
+        if cell >= BLOCK_SECTION_CELLS {
+            return Err(format!(
+                "line {line_number}: section has more than {BLOCK_SECTION_CELLS} cells"
+            ));
+        }
+        let state = parse_state_id(raw, line_number, cell)?;
+        let index = state.as_usize();
+        let word = index >> 6;
+        let bit = 1_u64 << (index & 63);
+        if seen[word] & bit == 0 {
+            seen[word] |= bit;
+            cardinality += 1;
+        }
+        states.push(state);
     }
 
-    let mut states = Vec::with_capacity(BLOCK_SECTION_CELLS);
-    let mut unique = BTreeSet::new();
-    for (cell, raw) in raw_states.into_iter().enumerate() {
-        let value = parse_canonical_u64(raw, &format!("line {line_number} cell {cell}"))?;
-        let raw_u32 = u32::try_from(value).map_err(|_| {
-            format!("line {line_number} cell {cell}: state ID {value} does not fit u32")
-        })?;
-        let state = BlockStateId::new(raw_u32).ok_or_else(|| {
-            format!(
-                "line {line_number} cell {cell}: state ID {value} outside 0..{}",
-                BLOCK_STATE_COUNT - 1
-            )
-        })?;
-        unique.insert(state);
-        states.push(state);
+    if states.len() != BLOCK_SECTION_CELLS {
+        return Err(format!(
+            "line {line_number}: section has {} cells; expected {BLOCK_SECTION_CELLS}",
+            states.len()
+        ));
     }
 
     Ok(CorpusSection {
         key,
         states: states.into_boxed_slice(),
-        cardinality: unique.len(),
+        cardinality,
+    })
+}
+
+fn parse_state_id(raw: &str, line_number: usize, cell: usize) -> Result<BlockStateId, String> {
+    if !is_canonical_unsigned(raw) {
+        return Err(format!(
+            "line {line_number} cell {cell}: noncanonical state ID {raw:?}"
+        ));
+    }
+    let value = raw.parse::<u32>().map_err(|_| {
+        format!("line {line_number} cell {cell}: state ID {raw} does not fit u32")
+    })?;
+    BlockStateId::new(value).ok_or_else(|| {
+        format!(
+            "line {line_number} cell {cell}: state ID {value} outside 0..{}",
+            BLOCK_STATE_COUNT - 1
+        )
     })
 }
 
 fn read_required_line<R: BufRead>(reader: &mut R, line_number: usize) -> Result<String, String> {
-    read_canonical_line(reader, line_number)?
-        .ok_or_else(|| format!("corpus ended before required header line {line_number}"))
+    let mut line = String::new();
+    if !read_canonical_line_into(reader, &mut line, line_number)? {
+        return Err(format!(
+            "corpus ended before required header line {line_number}"
+        ));
+    }
+    Ok(line)
 }
 
-fn read_canonical_line<R: BufRead>(
+fn read_canonical_line_into<R: BufRead>(
     reader: &mut R,
+    line: &mut String,
     line_number: usize,
-) -> Result<Option<String>, String> {
-    let mut line = String::new();
+) -> Result<bool, String> {
     let read = reader
-        .read_line(&mut line)
+        .read_line(line)
         .map_err(|error| format!("could not read corpus line {line_number}: {error}"))?;
     if read == 0 {
-        return Ok(None);
+        return Ok(false);
     }
     if line.contains('\r') {
         return Err(format!(
@@ -207,7 +236,7 @@ fn read_canonical_line<R: BufRead>(
             "line {line_number}: corpus must not contain blank lines"
         ));
     }
-    Ok(Some(line))
+    Ok(true)
 }
 
 fn field<'a>(part: &'a str, name: &str) -> Result<&'a str, String> {
