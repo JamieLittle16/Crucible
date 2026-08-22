@@ -1,0 +1,236 @@
+name: Section Representative Set Qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: Official 26.2 four-seed representative set
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Representative population regressions
+        run: |
+          python3 -m unittest discover -s tools/tests -p 'test_vanilla_dimensions.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_representative_plan.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_official_representative_section_world.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_representative_section_corpus.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_corpus_set.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_population_admission.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_representative_set_artifact_manifest.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_representative_set_workflow.py' -v
+          cargo test --locked -p crucible-section-qualification --bin section_bench corpus::
+
+      - name: Materialize and verify frozen representative plan
+        run: |
+          mkdir -p /tmp/crucible-representative-set
+          python3 tools/section_representative_plan.py write /tmp/crucible-representative-set/representative-plan.json
+          python3 tools/section_representative_plan.py verify /tmp/crucible-representative-set/representative-plan.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          plan = json.loads(Path('/tmp/crucible-representative-set/representative-plan.json').read_text())
+          expected = 'fecb9c9bc77aa9689ceaf6d88fa9af96019a48d9533269f3bd15824f7dfc7191'
+          if plan['plan_sha256'] != expected:
+              raise SystemExit(f"representative plan digest drifted: {plan['plan_sha256']}")
+          if len(plan['seeds']) != 4:
+              raise SystemExit(f"representative seed count drifted: {len(plan['seeds'])}")
+          print(f'representative population plan PASS: {expected}')
+          PY
+
+      - name: Extract official runtime state identities
+        run: |
+          python3 tools/official_state_data.py \
+            --version 26.2 \
+            --output /tmp/crucible-representative-set/26.2-block-states.raw.json
+
+      - name: Bind runtime identities to committed source qualification
+        run: |
+          python3 tools/qualify_state_data.py \
+            --runtime-data /tmp/crucible-representative-set/26.2-block-states.raw.json \
+            --source-qualification vanilla/state-data/26.2-source-qualification.json \
+            --output /tmp/crucible-representative-set/26.2-block-states.qualified.json
+
+      - name: Verify bound state identity matches frozen generator input
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'tools')
+          import state_data
+          qualified = json.loads(Path('/tmp/crucible-representative-set/26.2-block-states.qualified.json').read_text())
+          manifest = json.loads(Path('vanilla/state-data/26.2-state-data-manifest.json').read_text())
+          actual = state_data.digest(qualified)
+          expected = manifest['input_digest']
+          if actual != expected:
+              raise SystemExit(f'qualified-state digest mismatch: expected {expected}, got {actual}')
+          print(f'qualified target state input PASS: {actual}')
+          PY
+
+      - name: Generate and independently admit all four representative members
+        run: |
+          set -euo pipefail
+          root=/tmp/crucible-representative-set
+          plan="$root/representative-plan.json"
+          states="$root/26.2-block-states.qualified.json"
+          for seed_index in 0 1 2 3; do
+            member="$root/seed-$seed_index"
+            world_run="/tmp/crucible-representative-world-$seed_index"
+            mkdir -p "$member"
+
+            echo "=== representative seed $seed_index: official world generation ==="
+            if ! python3 tools/official_representative_section_world.py \
+              --version 26.2 \
+              --plan "$plan" \
+              --seed-index "$seed_index" \
+              --work-dir "$world_run" \
+              --cache .crucible/vanilla/downloads \
+              --timeout-seconds 900 \
+              --batch-size 8 \
+              --batch-settle-seconds 2 \
+              --evidence "$member/world-evidence.json"; then
+              if [ -f "$world_run/server.log" ]; then
+                cp "$world_run/server.log" "$member/server.log"
+              fi
+              echo "representative seed $seed_index official generation failed" >&2
+              exit 1
+            fi
+            cp "$world_run/server.log" "$member/server.log"
+
+            echo "=== representative seed $seed_index: exact selected extraction ==="
+            python3 tools/representative_section_corpus.py \
+              --world "$world_run/world" \
+              --plan "$plan" \
+              --seed-index "$seed_index" \
+              --qualified-states "$states" \
+              --output "$member/member.corpus" \
+              --evidence "$member/extraction-evidence.json"
+
+            echo "=== representative seed $seed_index: independent Python validation ==="
+            python3 tools/section_corpus.py validate \
+              "$member/member.corpus" \
+              --manifest "$member/corpus-manifest.json"
+
+            echo "=== representative seed $seed_index: all-five Rust reconstruction ==="
+            cargo run --release --locked \
+              -p crucible-section-qualification \
+              --bin section_bench -- \
+              --corpus-check "$member/member.corpus" \
+              --output "$member/rust-import.json"
+
+            echo "=== representative seed $seed_index: individual decision rejection ==="
+            set +e
+            cargo run --release --locked \
+              -p crucible-section-qualification \
+              --bin section_bench -- \
+              --corpus-decision-check "$member/member.corpus" \
+              > "$member/decision-rejection.log" 2>&1
+            status=$?
+            set -e
+            if [ "$status" -eq 0 ]; then
+              cat "$member/decision-rejection.log"
+              echo "seed $seed_index unexpectedly passed individual decision gate" >&2
+              exit 1
+            fi
+            if ! grep -q 'purpose representative-member and is not decision-eligible' "$member/decision-rejection.log"; then
+              cat "$member/decision-rejection.log"
+              echo "seed $seed_index failed individual decision gate for an unexpected reason" >&2
+              exit 1
+            fi
+
+            rm -rf "$world_run"
+          done
+
+      - name: Build structural four-member set
+        run: |
+          python3 tools/section_corpus_set.py \
+            --plan /tmp/crucible-representative-set/representative-plan.json \
+            --members-root /tmp/crucible-representative-set \
+            --output /tmp/crucible-representative-set/corpus-set.json
+
+      - name: Apply independent population admission firewall
+        run: |
+          python3 tools/section_population_admission.py \
+            --plan /tmp/crucible-representative-set/representative-plan.json \
+            --members-root /tmp/crucible-representative-set \
+            --corpus-set /tmp/crucible-representative-set/corpus-set.json \
+            --output /tmp/crucible-representative-set/population-admission.json
+
+      - name: Verify population decision firewall
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          record = json.loads(Path('/tmp/crucible-representative-set/corpus-set.json').read_text())
+          admission = json.loads(Path('/tmp/crucible-representative-set/population-admission.json').read_text())
+          if record['schema'] != 1 or record['kind'] != 'section-corpus-set':
+              raise SystemExit('representative set identity/schema mismatch')
+          if record['policy'] != 'vanilla-section-representative-v1':
+              raise SystemExit('representative set policy mismatch')
+          if record['member_count'] != 4 or not record['decision_eligible']:
+              raise SystemExit('complete four-member population was not structurally admitted')
+          if record['decision_scope'] != 'dimension-separated-only' or record['cross_dimension_score_allowed']:
+              raise SystemExit('representative set dimension firewall drifted')
+          if len({member['corpus_sha256'] for member in record['members']}) != 4:
+              raise SystemExit('representative set contains duplicate member corpus identities')
+          expected_dimensions = {'minecraft:overworld', 'minecraft:the_nether', 'minecraft:the_end'}
+          if set(record['per_dimension']) != expected_dimensions:
+              raise SystemExit('representative set per-dimension evidence is incomplete')
+          if not record['aggregate'].get('descriptive_only'):
+              raise SystemExit('representative aggregate lost descriptive-only guard')
+          if 'candidates' in record['aggregate'] or 'cardinality_histogram' in record['aggregate']:
+              raise SystemExit('representative aggregate leaked decision-bearing cross-dimension metrics')
+          if admission['kind'] != 'section-representative-set-admission':
+              raise SystemExit('population admission identity mismatch')
+          if not admission['decision_eligible'] or not admission['benchmark_handoff_eligible']:
+              raise SystemExit('population admission did not authorize benchmark handoff')
+          if admission['population_sha256'] != record['population_sha256']:
+              raise SystemExit('population admission/set population identity mismatch')
+          if admission['set_evidence_sha256'] != record['evidence_sha256']:
+              raise SystemExit('population admission/set evidence identity mismatch')
+          if set(admission['per_dimension']) != expected_dimensions:
+              raise SystemExit('population admission semantic dimension evidence is incomplete')
+          for dimension, summary in admission['per_dimension'].items():
+              if set(summary['cell_facts']) != {'non_air', 'counted_fluid', 'random_block', 'random_fluid'}:
+                  raise SystemExit(f'{dimension} population cell-fact keys drifted')
+              if set(summary['section_classes']) != {'all_air', 'contains_fluid', 'random_block_present', 'random_fluid_present'}:
+                  raise SystemExit(f'{dimension} population section-class keys drifted')
+          print(
+              'representative population PASS: '
+              f"members={record['member_count']} "
+              f"sections={record['aggregate']['section_count']} "
+              f"population={record['population_sha256']} "
+              f"admission={admission['admission_sha256']}"
+          )
+          PY
+
+      - name: Write self-describing qualification artifact manifest
+        if: always()
+        run: python3 tools/representative_set_artifact_manifest.py /tmp/crucible-representative-set
+
+      - name: Upload representative-set evidence or diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: minecraft-26.2-section-representative-set
+          path: /tmp/crucible-representative-set
+          if-no-files-found: error
+          retention-days: 30
