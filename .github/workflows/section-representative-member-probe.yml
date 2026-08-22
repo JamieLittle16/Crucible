@@ -5,12 +5,14 @@ on:
     paths:
       - tools/official_state_data.py
       - tools/qualify_state_data.py
+      - tools/vanilla_dimensions.py
       - tools/vanilla_section_extractor.py
       - tools/section_corpus.py
       - tools/section_representative_plan.py
       - tools/official_representative_section_world.py
       - tools/representative_section_corpus.py
       - tools/section_corpus_set.py
+      - tools/tests/test_vanilla_dimensions.py
       - tools/tests/test_section_representative_plan.py
       - tools/tests/test_official_representative_section_world.py
       - tools/tests/test_representative_section_corpus.py
@@ -53,6 +55,7 @@ jobs:
 
       - name: Representative policy regressions
         run: |
+          python3 -m unittest discover -s tools/tests -p 'test_vanilla_dimensions.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_section_representative_plan.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_official_representative_section_world.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_representative_section_corpus.py' -v
@@ -107,7 +110,7 @@ jobs:
           print(f'qualified target state input PASS: {actual}')
           PY
 
-      - name: Generate official representative seed-0 world
+      - name: Generate official representative seed-0 world in bounded batches
         run: |
           python3 tools/official_representative_section_world.py \
             --version 26.2 \
@@ -115,7 +118,9 @@ jobs:
             --seed-index 0 \
             --work-dir /tmp/crucible-representative-seed-0 \
             --cache .crucible/vanilla/downloads \
-            --settle-seconds 90 \
+            --timeout-seconds 900 \
+            --batch-size 8 \
+            --batch-settle-seconds 2 \
             --evidence /tmp/world-evidence.json
 
       - name: Extract exact selected representative member
@@ -169,6 +174,7 @@ jobs:
           python3 - <<'PY'
           import json
           import tomllib
+          from collections import Counter
           from pathlib import Path
           world = json.loads(Path('/tmp/world-evidence.json').read_text())
           extraction = json.loads(Path('/tmp/extraction-evidence.json').read_text())
@@ -179,12 +185,31 @@ jobs:
               lock = tomllib.load(handle)
           if world['server_sha256'] != lock['runtime']['server_sha256']:
               raise SystemExit('representative world used the wrong official server')
+          if world['generator'] != 'official-server-representative-section-world-v2-batched':
+              raise SystemExit('representative world generator identity mismatch')
           if world['plan_sha256'] != plan['plan_sha256'] or extraction['plan_sha256'] != plan['plan_sha256']:
               raise SystemExit('representative member plan binding mismatch')
           if world['seed_index'] != 0 or extraction['seed_index'] != 0:
               raise SystemExit('representative seed index mismatch')
           if world['seed'] != plan['seeds'][0] or extraction['seed'] != plan['seeds'][0]:
               raise SystemExit('representative seed identity mismatch')
+          if world['selection_command_count'] != 192:
+              raise SystemExit('representative selection command count mismatch')
+          if world['selection_command_sha256'] != 'cb97b7490c28e38293251561749a87dbda2d0f78d78c7cf98471e5eff825a354':
+              raise SystemExit('representative selection command identity mismatch')
+          if world['batch_size'] != 8 or world['batch_count'] != 24:
+              raise SystemExit('representative bounded batch policy mismatch')
+          if len(world['batch_timings']) != 24:
+              raise SystemExit('representative batch timing evidence incomplete')
+          batch_dimensions = Counter(item['dimension'] for item in world['batch_timings'])
+          if batch_dimensions != Counter({
+              'minecraft:overworld': 8,
+              'minecraft:the_nether': 8,
+              'minecraft:the_end': 8,
+          }):
+              raise SystemExit(f'representative batch dimension coverage mismatch: {batch_dimensions}')
+          if any(item['ticket_count'] != 8 or item['elapsed_ms'] < 0 for item in world['batch_timings']):
+              raise SystemExit('representative batch timing record is malformed')
           if extraction['policy'] != 'vanilla-save-region-v2-representative-member':
               raise SystemExit('representative extractor identity mismatch')
           if manifest['source']['inventory_sha256'] != extraction['inventory_sha256']:
@@ -230,6 +255,19 @@ jobs:
             /tmp/corpus-manifest.json
             /tmp/rust-import.json
             /tmp/decision-rejection.log
+            /tmp/crucible-representative-seed-0/server.log
             /tmp/representative-seed-0.corpus
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload representative generation diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: minecraft-26.2-section-representative-member-failure
+          path: |
+            /tmp/representative-plan.json
+            /tmp/crucible-representative-seed-0/server.log
+            /tmp/world-evidence.json
+          if-no-files-found: warn
+          retention-days: 7
