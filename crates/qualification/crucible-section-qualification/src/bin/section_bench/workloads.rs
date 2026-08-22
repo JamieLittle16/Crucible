@@ -1,7 +1,7 @@
 use crucible_generated::{
     AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_MUTATION_FLAGS,
 };
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
+use crucible_world_contract::{BLOCK_SECTION_CELLS, SectionBlockPos};
 
 use crate::model::{BENCH_SEED, BenchSection, CARDINALITIES, CaseSpec, Mode, Pattern};
 
