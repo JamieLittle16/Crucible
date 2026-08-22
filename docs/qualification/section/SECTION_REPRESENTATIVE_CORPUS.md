@@ -33,6 +33,36 @@ python3 tools/section_representative_plan.py verify /tmp/section-plan.json
 
 The plan generator itself is covered by frozen seed/digest tests. A change to any seed, coordinate, weighting or selection guard creates a different plan digest and therefore a different evidence population.
 
+## Dimension abstraction
+
+Representative qualification follows the same architectural direction as the engine: **dimension identity/configuration is data; mechanisms operate over descriptors rather than branching on dimension names**.
+
+Cold qualification tooling has two deliberately small descriptor layers:
+
+```text
+VanillaDimensionDescriptor
+    key                 e.g. minecraft:overworld
+    26.2 region path    e.g. dimensions/minecraft/overworld/region
+              │
+              ▼
+RepresentativeDimensionDescriptor
+    vanilla descriptor reference
+    anchor coordinates
+    sampling radius
+    coordinate-policy identity
+    optional minimum Chebyshev radius
+```
+
+`tools/vanilla_dimensions.py` is the qualification-side source of truth for standard target-visible dimension identity and the pinned 26.2 save topology. `tools/section_representative_plan.py` adds only representative-sampling policy.
+
+The world generator, representative extractor and expected-region checks iterate those descriptors generically. The End's outer-island sampling rule is descriptor data (`minimum_chebyshev_radius = 80`), not an `if dimension == minecraft:the_end` branch in the mechanism.
+
+This module is **not** the future production Crucible `Dimension` runtime object. It intentionally does not contain mutation authority, scheduler ownership, ticking state, component/profile resolution or gameplay services. Production code must not import the qualification descriptor. The two systems share an architectural law, not an implementation dependency:
+
+> Dimension identity and configuration are explicit data; subsystems consume the properties they need.
+
+Representative-v1 deliberately supports only the three pinned standard vanilla dimensions. Unknown/custom dimensions fail closed. Supporting additional dimension classes later requires explicit evidence and, if it changes the benchmark population, a new representative policy rather than a hidden branch.
+
 ## Seed selection
 
 Representative-v1 uses exactly four vanilla seeds.
@@ -92,21 +122,82 @@ python3 tools/official_representative_section_world.py \
   --plan /tmp/section-plan.json \
   --seed-index 0 \
   --work-dir .crucible/vanilla/representative/seed-0 \
+  --batch-size 8 \
+  --batch-settle-seconds 2 \
   --evidence .crucible/vanilla/representative/seed-0/world-evidence.json
 ```
 
-The generator:
+### Frozen selection, replaceable orchestration
 
-1. validates the exact frozen plan;
-2. binds the requested seed index to the plan-derived seed;
-3. boots the pinned official server;
-4. enables normal vanilla dimensions and structures;
-5. issues one `forceload add` command for every selected chunk in every dimension;
-6. allows generation to settle;
-7. performs `save-all flush`;
-8. stops cleanly;
-9. requires the selected region files to exist;
-10. records the server SHA, plan SHA, seed identity, command count/digest and server properties.
+The representative plan defines **which** 192 dimension/chunk tickets belong to one seed member. It does not freeze the server-orchestration mechanism used to materialize those chunks.
+
+The stable selection-command identity remains:
+
+```text
+192 `forceload add` commands
+selection_command_sha256 = cb97b7490c28e38293251561749a87dbda2d0f78d78c7cf98471e5eff825a354
+```
+
+The current admitted generator mechanism is:
+
+```text
+official-server-representative-section-world-v2-batched
+```
+
+It converts dimension-scoped chunk tickets into bounded, same-dimension batches. For every batch:
+
+```text
+install <= batch_size force-load tickets
+        ↓
+unique console marker proves commands were processed
+        ↓
+bounded generation settle window
+        ↓
+save-all flush
+        ↓
+unique console marker proves the synchronous flush returned
+        ↓
+remove exactly that batch's force-load tickets
+        ↓
+unique console marker proves removals were processed
+        ↓
+next batch
+```
+
+After all batches, a final `save-all flush` barrier runs before shutdown.
+
+The generator therefore keeps resource pressure bounded instead of holding the complete widely separated population force-loaded simultaneously. This mirrors Crucible's broader resource-governance doctrine: batch boundaries and explicit completion barriers are preferred to unbounded admission plus hope.
+
+### Why v1 generation was rejected
+
+The first real representative-member probe on 2026-08-22 used generator v1:
+
+```text
+192 live force-load tickets
+→ fixed 90-second settle
+→ one save-all flush
+→ stop
+```
+
+The frozen plan, official runtime state binding and all policy tests passed. The official server did not crash, but generation/save backlog remained large enough that it could not stop cleanly before the 600-second generator deadline.
+
+This was classified as an orchestration/resource-governance failure, **not** a corpus-selection failure. The sample was not shrunk or cherry-picked. Generator v1 is superseded by bounded v2 and remains part of the experiment record.
+
+### Generator evidence
+
+World evidence schema 2 records:
+
+- exact generator identity;
+- pinned official server SHA-256;
+- representative policy and plan digest;
+- seed index and seed;
+- stable 192-command selection digest;
+- batch size/count;
+- settle policy;
+- one timing/coverage record per batch;
+- exact server properties.
+
+Batch elapsed times are validated as diagnostics but are deliberately excluded from the stable corpus-set identity. Runner speed is not workload identity.
 
 The world may contain extra spawn/support chunks generated by Mojang. Those chunks are allowed in the source world but are **not** admitted into the representative corpus.
 
@@ -120,7 +211,7 @@ The extractor is identified as:
 vanilla-save-region-v2-representative-member
 ```
 
-For every dimension it filters to exactly the 64 plan coordinates. It requires:
+For every dimension descriptor it filters to exactly the 64 plan coordinates. It requires:
 
 - every selected chunk to exist;
 - no unplanned chunk to enter the output;
@@ -152,12 +243,14 @@ That is intentional. One seed cannot stand in for the four-seed population merel
 
 It requires exactly four members and independently cross-checks, for each seed:
 
-- official representative-world generator identity;
-- pinned server SHA-256;
+- bounded official representative-world generator identity;
+- canonical pinned server SHA-256;
+- stable selection-command count/digest;
+- valid bounded-batch structure and complete per-dimension ticket coverage;
 - representative policy and plan SHA-256;
 - seed index and exact derived seed;
 - exact selected chunk schedule;
-- source inventory SHA-256;
+- canonical source inventory SHA-256;
 - canonical corpus SHA-256;
 - Python manifest target/source/counts;
 - Rust target/source/purpose/counts;
@@ -234,11 +327,69 @@ or roughly 58.7 million section cells. The exact count is evidence and must be d
 
 ## CI versus qualification hardware
 
-Hosted CI may generate **one complete seed member** to prove the official-server commands, multi-dimension save path, selection/lattice rules, Python validator and Rust importer remain target-correct.
+Hosted CI may generate **one complete seed member** to prove the official-server commands, bounded batching/barriers, multi-dimension save path, selection/lattice rules, Python validator and Rust importer remain target-correct.
 
-Hosted CI timing is never used for production selection.
+Hosted CI timing is never used for production selection. Batch timings in the member artifact diagnose generation orchestration only.
+
+If a complete member becomes too expensive for routine PR execution, the sampling policy is not weakened. The full member moves to a manual/scheduled qualification workflow and a smaller target-format smoke remains on PRs.
 
 The complete four-seed set is generated as a qualification artifact and later consumed by the controlled target-hardware benchmark/RSS protocol under #19.
+
+## Module boundaries
+
+The representative path is intentionally split so failures localize cleanly:
+
+```text
+vanilla_dimensions.py
+    target-visible dimension/save descriptors
+
+section_representative_plan.py
+    content-independent seed/chunk sampling law
+
+official_representative_section_world.py
+    bounded official-server materialization mechanism
+
+representative_section_corpus.py
+    exact selected-chunk extraction + lattice proof
+
+section_corpus.py
+    independent Python semantic validation
+
+section_bench/corpus/*
+    independent Rust streaming reconstruction
+
+section_corpus_set.py
+    four-member decision firewall / aggregate identity
+```
+
+No production section implementation is modified by this qualification path.
+
+## Testing obligations
+
+Permanent tests cover at least:
+
+- exact frozen seed derivation and plan SHA;
+- descriptor key/path identity and uniqueness;
+- descriptor-driven sampling output remaining byte-identical to the frozen plan;
+- coordinate uniqueness/quadrant/End-outer coverage;
+- dimension-local bounded batches;
+- exact ticket add/remove inversion;
+- complete 192-ticket batch coverage with no duplicates;
+- orchestration phase ordering with a fake console;
+- invalid batch sizes;
+- negative region-coordinate floor division;
+- missing selected regions/chunks;
+- unplanned chunk exclusion;
+- duplicate/gapped/inconsistent section lattices;
+- exact member purpose and individual decision rejection;
+- canonical SHA-256 formatting;
+- bounded-generator provenance corruption;
+- missing/altered four-member populations;
+- cross-seed lattice drift;
+- Python↔Rust histogram/count disagreement;
+- candidate-set/representation-total corruption.
+
+A real pinned-server member probe sits above these synthetic/adversarial tests.
 
 ## Production decision chain
 
@@ -282,4 +433,6 @@ Any change to:
 
 creates a new representative policy and plan digest.
 
-Do not silently regenerate `representative-v1` with altered rules.
+Changes to bounded generation mechanics do **not** silently change the representative sampling plan. They must change the generator identity/evidence and pass the same exact corpus admission chain.
+
+Do not silently regenerate `representative-v1` with altered sampling rules.
