@@ -77,7 +77,28 @@ def candidate_rows(section_count: int) -> list[dict[str, object]]:
     return rows
 
 
-def dimension_summary(section_count: int) -> dict[str, object]:
+def python_dimension_summary(section_count: int) -> dict[str, object]:
+    return {
+        "section_count": section_count,
+        "total_cells": section_count * 4096,
+        "distinct_state_ids": 2,
+        "cardinality_histogram": {"1": section_count - 1, "2": 1},
+        "cell_facts": {
+            "non_air": section_count,
+            "counted_fluid": 0,
+            "random_block": 0,
+            "random_fluid": 0,
+        },
+        "section_classes": {
+            "all_air": section_count - 1,
+            "contains_fluid": 0,
+            "random_block_present": 0,
+            "random_fluid_present": 0,
+        },
+    }
+
+
+def rust_dimension_summary(section_count: int) -> dict[str, object]:
     return {
         "section_count": section_count,
         "total_cells": section_count * 4096,
@@ -114,8 +135,11 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
     }
     section_count = sum(dimensions.values())
     cardinality = global_cardinality(dimensions)
-    per_dimension = {
-        dimension: dimension_summary(count) for dimension, count in dimensions.items()
+    python_dimensions = {
+        dimension: python_dimension_summary(count) for dimension, count in dimensions.items()
+    }
+    rust_dimensions = {
+        dimension: rust_dimension_summary(count) for dimension, count in dimensions.items()
     }
     result = []
     timings = batch_timings()
@@ -147,6 +171,9 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
             "seed": seed,
             "inventory_sha256": inventory,
             "selected_chunks": selected_chunks(built),
+            "chunk_status_histogram": {
+                corpus_set.FULL_CHUNK_STATUS: len(plan.DIMENSIONS) * plan.CHUNKS_PER_DIMENSION
+            },
             "section_lattice": copy.deepcopy(lattice),
             "corpus_sha256": corpus_sha,
             "section_count": section_count,
@@ -167,6 +194,7 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
             "distinct_state_ids": 2,
             "dimensions": copy.deepcopy(dimensions),
             "cardinality_histogram": copy.deepcopy(cardinality),
+            "per_dimension": copy.deepcopy(python_dimensions),
             "cell_facts": {
                 "non_air": 3,
                 "counted_fluid": 0,
@@ -194,11 +222,22 @@ def member_inputs(built: dict[str, object]) -> list[tuple[dict, dict, dict, dict
             "distinct_state_ids": 2,
             "dimensions": copy.deepcopy(dimensions),
             "cardinality_histogram": copy.deepcopy(cardinality),
-            "per_dimension": copy.deepcopy(per_dimension),
+            "per_dimension": copy.deepcopy(rust_dimensions),
             "candidates": candidate_rows(section_count),
         }
         result.append((world, extraction, manifest, rust))
     return result
+
+
+def mutate_candidate_evidence(inputs: list[tuple[dict, dict, dict, dict]]) -> None:
+    rust = inputs[0][3]
+    global_row = rust["candidates"][1]
+    added = 0
+    for summary in rust["per_dimension"].values():
+        row = summary["candidates"][1]
+        row["total_owned_bytes"] += summary["section_count"]
+        added += summary["section_count"]
+    global_row["total_owned_bytes"] += added
 
 
 class RepresentativeCorpusSetTests(unittest.TestCase):
@@ -223,8 +262,15 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
         self.assertEqual(result["member_count"], 4)
         self.assertEqual(result["policy"], plan.POLICY_ID)
         self.assertEqual(result["plan_sha256"], plan.build_plan()["plan_sha256"])
-        self.assertEqual(len(result["set_sha256"]), 64)
-        self.assertEqual(result["set_sha256"], corpus_set._canonical_digest(result))
+        self.assertEqual(len(result["population_sha256"]), 64)
+        self.assertEqual(len(result["evidence_sha256"]), 64)
+        self.assertEqual(
+            result["population_sha256"],
+            corpus_set._canonical_digest(result["population_identity"]),
+        )
+        evidence = dict(result)
+        evidence.pop("evidence_sha256")
+        self.assertEqual(result["evidence_sha256"], corpus_set._canonical_digest(evidence))
         self.assertEqual(
             result["aggregate"]["section_count"],
             sum(member["section_count"] for member in result["members"]),
@@ -247,12 +293,26 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
                 corpus_set.SELECTION_COMMAND_SHA256,
             )
             self.assertNotIn("batch_timings", generation)
+            self.assertEqual(
+                member["chunk_status_histogram"],
+                {corpus_set.FULL_CHUNK_STATUS: len(plan.DIMENSIONS) * plan.CHUNKS_PER_DIMENSION},
+            )
+
+    def test_population_identity_is_stable_across_candidate_only_changes(self) -> None:
+        built = plan.build_plan()
+        baseline_inputs = member_inputs(built)
+        changed_inputs = copy.deepcopy(baseline_inputs)
+        mutate_candidate_evidence(changed_inputs)
+        baseline = self.build(baseline_inputs)
+        changed = self.build(changed_inputs)
+        self.assertEqual(baseline["population_sha256"], changed["population_sha256"])
+        self.assertEqual(baseline["population_identity"], changed["population_identity"])
+        self.assertNotEqual(baseline["evidence_sha256"], changed["evidence_sha256"])
 
     def test_missing_member_is_rejected(self) -> None:
         built = plan.build_plan()
-        inputs = member_inputs(built)[:-1]
         with self.assertRaises(corpus_set.CorpusSetError):
-            self.build(inputs)
+            self.build(member_inputs(built)[:-1])
 
     def test_duplicate_member_corpus_identity_is_rejected(self) -> None:
         built = plan.build_plan()
@@ -260,6 +320,13 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
         duplicate = inputs[0][1]["corpus_sha256"]
         inputs[1][1]["corpus_sha256"] = duplicate
         inputs[1][2]["corpus_sha256"] = duplicate
+        with self.assertRaises(corpus_set.CorpusSetError):
+            self.build(inputs)
+
+    def test_non_full_chunk_status_is_rejected(self) -> None:
+        built = plan.build_plan()
+        inputs = member_inputs(built)
+        inputs[0][1]["chunk_status_histogram"] = {"minecraft:features": 192}
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
@@ -277,31 +344,24 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
     def test_world_generation_provenance_is_strict(self) -> None:
         built = plan.build_plan()
         mutations = []
-
         inputs = member_inputs(built)
         inputs[0][0]["generator"] = "unbounded-v0"
         mutations.append(inputs)
-
         inputs = member_inputs(built)
         inputs[0][0]["selection_command_sha256"] = "0" * 64
         mutations.append(inputs)
-
         inputs = member_inputs(built)
         inputs[0][0]["batch_count"] -= 1
         mutations.append(inputs)
-
         inputs = member_inputs(built)
         inputs[0][0]["batch_timings"][0]["dimension"] = "minecraft:moon"
         mutations.append(inputs)
-
         inputs = member_inputs(built)
         inputs[0][0]["batch_timings"][0]["ticket_count"] = 9
         mutations.append(inputs)
-
         inputs = member_inputs(built)
         inputs[0][0]["batch_timings"][0]["elapsed_ms"] = -1
         mutations.append(inputs)
-
         for index, inputs in enumerate(mutations):
             with self.subTest(index=index), self.assertRaises(corpus_set.CorpusSetError):
                 self.build(inputs)
@@ -316,7 +376,6 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
                 corpus_set.CorpusSetError
             ):
                 self.build(inputs)
-
         for invalid in invalid_values:
             manifest = state_manifest()
             manifest["generation_digest"] = invalid
@@ -324,7 +383,6 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
                 corpus_set.CorpusSetError
             ):
                 self.build(manifest=manifest)
-
         for invalid in invalid_values:
             with self.subTest(field="server", value=invalid), self.assertRaises(
                 corpus_set.CorpusSetError
@@ -348,16 +406,24 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
     def test_python_rust_histogram_disagreement_is_rejected(self) -> None:
         built = plan.build_plan()
         inputs = member_inputs(built)
-        inputs[0][3]["cardinality_histogram"] = {
-            "1": inputs[0][3]["section_count"]
-        }
+        inputs[0][3]["cardinality_histogram"] = {"1": inputs[0][3]["section_count"]}
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
     def test_missing_per_dimension_evidence_is_rejected(self) -> None:
         built = plan.build_plan()
+        for source_index in (2, 3):
+            inputs = member_inputs(built)
+            del inputs[0][source_index]["per_dimension"]
+            with self.subTest(source_index=source_index), self.assertRaises(
+                corpus_set.CorpusSetError
+            ):
+                self.build(inputs)
+
+    def test_python_rust_per_dimension_disagreement_is_rejected(self) -> None:
+        built = plan.build_plan()
         inputs = member_inputs(built)
-        del inputs[0][3]["per_dimension"]
+        inputs[0][2]["per_dimension"]["minecraft:the_end"]["distinct_state_ids"] = 3
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
@@ -365,9 +431,7 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
         built = plan.build_plan()
         inputs = member_inputs(built)
         overworld = inputs[0][3]["per_dimension"]["minecraft:overworld"]
-        overworld["cardinality_histogram"] = {
-            "1": overworld["section_count"]
-        }
+        overworld["cardinality_histogram"] = {"1": overworld["section_count"]}
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
 
@@ -399,7 +463,6 @@ class RepresentativeCorpusSetTests(unittest.TestCase):
         inputs[0][3]["candidates"][0]["candidate"] = "unknown"
         with self.assertRaises(corpus_set.CorpusSetError):
             self.build(inputs)
-
         inputs = member_inputs(built)
         inputs[0][3]["candidates"][1]["representations"] = {"direct-n": 1}
         with self.assertRaises(corpus_set.CorpusSetError):
