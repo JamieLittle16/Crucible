@@ -6,8 +6,8 @@ use crucible_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 
-use crate::model::{PROMOTION_TARGETS, Mode, Settings};
-use crate::workloads::{cases_for, CaseSpec, Pattern};
+use crate::model::{CaseSpec, Mode, PROMOTION_TARGETS, Pattern, Settings};
+use crate::workloads::cases_for;
 
 use super::measure;
 use super::{REPLACEMENT_WORKLOADS, TargetSyntheticMode, TargetSyntheticSettings};
@@ -52,7 +52,8 @@ fn assert_candidate_shape<C: crate::model::BenchSection>() {
         assert!(workloads.contains(workload));
     }
     for target in PROMOTION_TARGETS {
-        assert!(workloads.contains(format!("promotion-to-{target}").as_str()));
+        let workload = format!("promotion-to-{target}");
+        assert!(workloads.contains(workload.as_str()));
     }
 
     for record in &measured.timings {
