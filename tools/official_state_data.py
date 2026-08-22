@@ -7,6 +7,7 @@ MANIFEST_URL='https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'
 TARGET_PROTOCOL=776
 TARGET_DATA_VERSION=4903
 CLASS_NAMES={
+ 'bootstrap':'net.minecraft.server.Bootstrap',
  'blocks':'net.minecraft.world.level.block.Blocks',
  'block':'net.minecraft.world.level.block.Block',
  'block_state':'net.minecraft.world.level.block.state.BlockState',
@@ -77,10 +78,11 @@ def extract_classpath(bundle:Path,root:Path):
 
 def java_probe(mapping_text:str|None):
  if mapping_text is None:
-  obf=dict(CLASS_NAMES); field='BLOCK_STATE_REGISTRY'; names={'get_id':'getId','is_air':'isAir','random_block':'isRandomlyTicking','get_fluid':'getFluidState','fluid_empty':'isEmpty','random_fluid':'isRandomlyTicking'}
+  obf=dict(CLASS_NAMES); field='BLOCK_STATE_REGISTRY'; names={'bootstrap':'bootStrap','get_id':'getId','is_air':'isAir','random_block':'isRandomlyTicking','get_fluid':'getFluidState','fluid_empty':'isEmpty','random_fluid':'isRandomlyTicking'}
   return _java_source(obf,field,names)
  classes,fields,methods=parse_mappings(mapping_text); obf={key:classes[value] for key,value in CLASS_NAMES.items()}; field=fields[(CLASS_NAMES['block'],'BLOCK_STATE_REGISTRY')]
  names={
+  'bootstrap':unique_method(methods,CLASS_NAMES['bootstrap'],'bootStrap'),
   'get_id':unique_method(methods,CLASS_NAMES['block'],'getId'),
   'is_air':unique_method(methods,CLASS_NAMES['state_base'],'isAir'),
   'random_block':unique_method(methods,CLASS_NAMES['state_base'],'isRandomlyTicking'),
@@ -91,7 +93,7 @@ def java_probe(mapping_text:str|None):
  return _java_source(obf,field,names)
 
 def _java_source(obf,field,names):
- return f'''import java.lang.reflect.*;\npublic final class CrucibleStateProbe {{\n  static Method zero(Class<?> c,String n) throws Exception {{ Method m=c.getMethod(n); m.setAccessible(true); return m; }}\n  static Method oneStatic(Class<?> c,String n) throws Exception {{ for(Method m:c.getMethods()) if(m.getName().equals(n)&&Modifier.isStatic(m.getModifiers())&&m.getParameterCount()==1) {{m.setAccessible(true);return m;}} throw new NoSuchMethodException(n); }}\n  public static void main(String[] args) throws Exception {{\n    Class.forName("{obf['blocks']}",true,CrucibleStateProbe.class.getClassLoader());\n    Class<?> block=Class.forName("{obf['block']}");\n    Field registryField=block.getField("{field}"); registryField.setAccessible(true); Object registry=registryField.get(null);\n    Method getId=oneStatic(block,"{names['get_id']}");\n    Class<?> stateBase=Class.forName("{obf['state_base']}"); Method isAir=zero(stateBase,"{names['is_air']}"); Method randomBlock=zero(stateBase,"{names['random_block']}"); Method getFluid=zero(stateBase,"{names['get_fluid']}");\n    Class<?> fluidState=Class.forName("{obf['fluid_state']}"); Method fluidEmpty=zero(fluidState,"{names['fluid_empty']}"); Method randomFluid=zero(fluidState,"{names['random_fluid']}");\n    for(Object state:(Iterable<?>)registry) {{\n      int id=((Number)getId.invoke(null,state)).intValue(); boolean air=(Boolean)isAir.invoke(state); boolean rb=!air && (Boolean)randomBlock.invoke(state); Object fluid=getFluid.invoke(state); boolean cf=!air && !(Boolean)fluidEmpty.invoke(fluid); boolean rf=cf && (Boolean)randomFluid.invoke(fluid);\n      String raw=state.toString().replace("\\t"," ").replace("\\n"," ");\n      System.out.println(id+"\\t"+(air?0:1)+"\\t"+(cf?1:0)+"\\t"+(rb?1:0)+"\\t"+(rf?1:0)+"\\t"+raw);\n    }}\n  }}\n}}\n'''
+ return f'''import java.lang.reflect.*;\npublic final class CrucibleStateProbe {{\n  static Method zero(Class<?> c,String n) throws Exception {{ Method m=c.getMethod(n); m.setAccessible(true); return m; }}\n  static Method oneStatic(Class<?> c,String n) throws Exception {{ for(Method m:c.getMethods()) if(m.getName().equals(n)&&Modifier.isStatic(m.getModifiers())&&m.getParameterCount()==1) {{m.setAccessible(true);return m;}} throw new NoSuchMethodException(n); }}\n  public static void main(String[] args) throws Exception {{\n    Class<?> bootstrap=Class.forName("{obf['bootstrap']}"); zero(bootstrap,"{names['bootstrap']}").invoke(null);\n    Class.forName("{obf['blocks']}",true,CrucibleStateProbe.class.getClassLoader());\n    Class<?> block=Class.forName("{obf['block']}");\n    Field registryField=block.getField("{field}"); registryField.setAccessible(true); Object registry=registryField.get(null);\n    Method getId=oneStatic(block,"{names['get_id']}");\n    Class<?> stateBase=Class.forName("{obf['state_base']}"); Method isAir=zero(stateBase,"{names['is_air']}"); Method randomBlock=zero(stateBase,"{names['random_block']}"); Method getFluid=zero(stateBase,"{names['get_fluid']}");\n    Class<?> fluidState=Class.forName("{obf['fluid_state']}"); Method fluidEmpty=zero(fluidState,"{names['fluid_empty']}"); Method randomFluid=zero(fluidState,"{names['random_fluid']}");\n    for(Object state:(Iterable<?>)registry) {{\n      int id=((Number)getId.invoke(null,state)).intValue(); boolean air=(Boolean)isAir.invoke(state); boolean rb=!air && (Boolean)randomBlock.invoke(state); Object fluid=getFluid.invoke(state); boolean cf=!air && !(Boolean)fluidEmpty.invoke(fluid); boolean rf=cf && (Boolean)randomFluid.invoke(fluid);\n      String raw=state.toString().replace("\\t"," ").replace("\\n"," ");\n      System.out.println(id+"\\t"+(air?0:1)+"\\t"+(cf?1:0)+"\\t"+(rb?1:0)+"\\t"+(rf?1:0)+"\\t"+raw);\n    }}\n  }}\n}}\n'''
 
 def canonical_key(raw:str)->str:
  m=re.fullmatch(r'Block\{([^}]+)\}(?:\[(.*)\])?',raw)
