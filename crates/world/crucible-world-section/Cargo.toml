@@ -9,6 +9,7 @@ publish = false
 crucible-world-contract = { path = "../crucible-world-contract" }
 
 [dev-dependencies]
+crucible-generated = { path = "../../data/crucible-generated" }
 crucible-world-reference = { path = "../crucible-world-reference" }
 
 [lints]
