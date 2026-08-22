@@ -11,8 +11,6 @@ use std::path::Path;
 use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256};
 use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
-use self::parser::CorpusReader;
-
 const PARSER_ADMISSION_EXTRACTOR: &str = "vanilla-save-region-v1-stored-sections";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -100,11 +98,8 @@ impl CorpusImportCheck {
         writeln!(output, "  \"schema\": 1,").expect("writing to String cannot fail");
         writeln!(output, "  \"kind\": \"section-corpus-import-check\",")
             .expect("writing to String cannot fail");
-        writeln!(
-            output,
-            "  \"minecraft_version\": \"{MINECRAFT_VERSION}\","
-        )
-        .expect("writing to String cannot fail");
+        writeln!(output, "  \"minecraft_version\": \"{MINECRAFT_VERSION}\",")
+            .expect("writing to String cannot fail");
         writeln!(output, "  \"protocol_version\": {PROTOCOL_VERSION},")
             .expect("writing to String cannot fail");
         writeln!(output, "  \"data_version\": {DATA_VERSION},")
@@ -130,11 +125,8 @@ impl CorpusImportCheck {
             self.header.purpose.as_str()
         )
         .expect("writing to String cannot fail");
-        writeln!(
-            output,
-            "  \"decision_requested\": {decision_requested},"
-        )
-        .expect("writing to String cannot fail");
+        writeln!(output, "  \"decision_requested\": {decision_requested},")
+            .expect("writing to String cannot fail");
         writeln!(
             output,
             "  \"decision_eligible\": {},",
@@ -247,8 +239,4 @@ fn write_inline_string_usize_map(output: &mut String, values: &BTreeMap<String, 
         write!(output, "\"{key}\":{value}").expect("writing to String cannot fail");
     }
     output.push('}');
-}
-
-fn open_reader(path: &Path) -> Result<CorpusReader, String> {
-    CorpusReader::open(path)
 }
