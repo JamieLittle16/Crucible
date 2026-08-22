@@ -18,6 +18,7 @@ const SECTION_CELL_COUNT_U16: u16 = 4096;
 const LOCAL4_BYTES: usize = BLOCK_SECTION_CELLS / 2;
 const LOCAL4_CAPACITY: usize = 16;
 const LOCAL8_CAPACITY: usize = 256;
+const _: () = assert!(BLOCK_SECTION_CELLS == 4096);
 
 /// Physical representation currently used by an [`AdaptiveBlockSection`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -77,11 +78,9 @@ impl LiveHeader {
             self.non_air_count - u16::from(previous.non_air()) + u16::from(next.non_air());
         self.fluid_count = self.fluid_count - u16::from(previous.counted_fluid())
             + u16::from(next.counted_fluid());
-        self.random_block_count = self.random_block_count
-            - u16::from(previous.random_block())
+        self.random_block_count = self.random_block_count - u16::from(previous.random_block())
             + u16::from(next.random_block());
-        self.random_fluid_count = self.random_fluid_count
-            - u16::from(previous.random_fluid())
+        self.random_fluid_count = self.random_fluid_count - u16::from(previous.random_fluid())
             + u16::from(next.random_fluid());
     }
 
@@ -504,14 +503,14 @@ impl<S: Copy + Eq> DirectNBlockSection<S> {
 
     /// Returns exact heap bytes owned by the direct cell backing, excluding allocator metadata.
     #[must_use]
-    pub const fn backing_bytes(&self) -> usize {
-        BLOCK_SECTION_CELLS * mem::size_of::<S>()
+    pub fn backing_bytes(&self) -> usize {
+        mem::size_of_val(self.cells.as_ref())
     }
 
     /// Returns deterministic object-plus-backing bytes, excluding allocator metadata.
     #[must_use]
-    pub const fn owned_bytes(&self) -> usize {
-        mem::size_of::<Self>() + BLOCK_SECTION_CELLS * mem::size_of::<S>()
+    pub fn owned_bytes(&self) -> usize {
+        mem::size_of::<Self>() + self.backing_bytes()
     }
 }
 
@@ -549,9 +548,7 @@ impl<S: Copy + Eq> BlockSection<S> for DirectNBlockSection<S> {
 mod tests {
     use std::mem;
 
-    use super::{
-        AdaptiveBlockSection, DirectNBlockSection, PaletteSlot, RepresentationKind,
-    };
+    use super::{AdaptiveBlockSection, DirectNBlockSection, PaletteSlot, RepresentationKind};
     use crucible_world_contract::{
         BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBlockPos, SectionStateFacts,
     };
@@ -586,7 +583,10 @@ mod tests {
             assert_eq!(candidate.get(pos(index)), reference.get(pos(index)));
         }
         assert_eq!(candidate.summary(), reference.summary());
-        assert_eq!(reference.summary(), reference.recompute_summary(&SyntheticFacts));
+        assert_eq!(
+            reference.summary(),
+            reference.recompute_summary(&SyntheticFacts)
+        );
     }
 
     fn replace_both<C: BlockSection<u16>>(
@@ -818,8 +818,8 @@ mod tests {
             if step.is_multiple_of(2048) {
                 assert_matches_reference(&candidate, &reference);
                 for needle in [0_u16, 1, 15, 16, 255, 256, 319] {
-                    let exact = (0..BLOCK_SECTION_CELLS)
-                        .any(|cell| reference.get(pos(cell)) == needle);
+                    let exact =
+                        (0..BLOCK_SECTION_CELLS).any(|cell| reference.get(pos(cell)) == needle);
                     if !candidate.maybe_contains(|state| state == needle) {
                         assert!(!exact, "false negative for state {needle}");
                     }
