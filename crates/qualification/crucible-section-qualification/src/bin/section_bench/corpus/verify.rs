@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection};
+use crucible_world_contract::BLOCK_SECTION_CELLS;
 use crucible_world_reference::DirectBlockSection;
 use crucible_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
