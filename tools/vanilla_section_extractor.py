@@ -47,6 +47,22 @@ class ExtractedSection:
     states: tuple[int, ...]
 
 
+@dataclass(frozen=True)
+class NbtListValue:
+    element_type: int
+    values: tuple[object, ...]
+
+
+@dataclass(frozen=True)
+class NbtIntArray:
+    values: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class NbtLongArray:
+    values: tuple[int, ...]
+
+
 class NbtReader:
     """Strict big-endian Java NBT reader for cold qualification tooling."""
 
@@ -102,7 +118,10 @@ class NbtReader:
             length = self._length("list")
             if element_type == 0 and length != 0:
                 raise ExtractorError("non-empty NBT list cannot have TAG_End element type")
-            return [self.payload(element_type) for _ in range(length)]
+            return NbtListValue(
+                element_type=element_type,
+                values=tuple(self.payload(element_type) for _ in range(length)),
+            )
         if tag_type == 10:
             result: dict[str, object] = {}
             while True:
@@ -114,9 +133,13 @@ class NbtReader:
                     raise ExtractorError(f"duplicate NBT compound key: {name}")
                 result[name] = self.payload(child_type)
         if tag_type == 11:
-            return [self._unpack(">i") for _ in range(self._length("int-array"))]
+            return NbtIntArray(
+                tuple(self._unpack(">i") for _ in range(self._length("int-array")))
+            )
         if tag_type == 12:
-            return [self._unpack(">q") for _ in range(self._length("long-array"))]
+            return NbtLongArray(
+                tuple(self._unpack(">q") for _ in range(self._length("long-array")))
+            )
         raise ExtractorError(f"unsupported NBT tag type: {tag_type}")
 
     def root(self) -> dict[str, object]:
@@ -141,10 +164,19 @@ def _require_compound(value: object, label: str) -> dict[str, object]:
     return value
 
 
-def _require_list(value: object, label: str) -> list[object]:
-    if not isinstance(value, list):
+def _require_list(
+    value: object,
+    label: str,
+    *,
+    element_type: int | None = None,
+) -> tuple[object, ...]:
+    if not isinstance(value, NbtListValue):
         raise ExtractorError(f"{label} must be an NBT list")
-    return value
+    if element_type is not None and value.element_type != element_type:
+        raise ExtractorError(
+            f"{label} must have NBT element type {element_type}; got {value.element_type}"
+        )
+    return value.values
 
 
 def _require_int(value: object, label: str) -> int:
@@ -169,7 +201,9 @@ def canonical_palette_key(entry: object) -> str:
     items: list[str] = []
     for key, value in properties.items():
         if not key or not isinstance(value, str) or not value:
-            raise ExtractorError("block-state palette Properties must map non-empty strings to strings")
+            raise ExtractorError(
+                "block-state palette Properties must map non-empty strings to strings"
+            )
         items.append(f"{key}={value}")
     if not items:
         return name
@@ -184,11 +218,18 @@ def load_state_identity_map(
     manifest_raw = json.loads(state_manifest_path.read_text(encoding="utf-8"))
     if not isinstance(manifest_raw, dict):
         raise ExtractorError("state-data manifest root must be an object")
-    if manifest_raw.get("assignment_policy") != "vanilla-identity" or manifest_raw.get("mapping") != "identity":
-        raise ExtractorError("section save extraction currently requires frozen vanilla-identity state IDs")
+    if (
+        manifest_raw.get("assignment_policy") != "vanilla-identity"
+        or manifest_raw.get("mapping") != "identity"
+    ):
+        raise ExtractorError(
+            "section save extraction currently requires frozen vanilla-identity state IDs"
+        )
     digest = state_data.digest(qualified)
     if digest != manifest_raw.get("input_digest"):
-        raise ExtractorError("qualified state dataset does not match committed state-data input digest")
+        raise ExtractorError(
+            "qualified state dataset does not match committed state-data input digest"
+        )
     target = qualified.get("target")
     if target != manifest_raw.get("target"):
         raise ExtractorError("qualified state dataset target disagrees with state-data manifest")
@@ -210,7 +251,11 @@ def decode_block_states(
     state_ids: dict[str, int],
 ) -> tuple[int, ...]:
     compound = _require_compound(block_states, "section block_states")
-    palette_raw = _require_list(compound.get("palette"), "section block_states.palette")
+    palette_raw = _require_list(
+        compound.get("palette"),
+        "section block_states.palette",
+        element_type=10,
+    )
     if not palette_raw:
         raise ExtractorError("section block-state palette must not be empty")
 
@@ -219,18 +264,24 @@ def decode_block_states(
         key = canonical_palette_key(raw_entry)
         state = state_ids.get(key)
         if state is None:
-            raise ExtractorError(f"saved block state is absent from qualified target identity map: {key}")
+            raise ExtractorError(
+                f"saved block state is absent from qualified target identity map: {key}"
+            )
         palette.append(state)
 
     data_raw = compound.get("data")
     if len(palette) == 1:
-        if data_raw not in (None, []):
-            raise ExtractorError("single-state section must omit block_states.data or store an empty array")
+        if data_raw is not None and (
+            not isinstance(data_raw, NbtLongArray) or data_raw.values
+        ):
+            raise ExtractorError(
+                "single-state section must omit block_states.data or store an empty long array"
+            )
         return (palette[0],) * section_corpus.SECTION_CELLS
 
-    data = _require_list(data_raw, "section block_states.data")
-    if not all(isinstance(value, int) and not isinstance(value, bool) for value in data):
-        raise ExtractorError("section block_states.data must be a long array")
+    if not isinstance(data_raw, NbtLongArray):
+        raise ExtractorError("section block_states.data must be an NBT long array")
+    data = data_raw.values
 
     bits = max(4, (len(palette) - 1).bit_length())
     values_per_long = 64 // bits
@@ -263,7 +314,9 @@ def _decompress_chunk(payload: bytes, compression: int) -> bytes:
         if compression == 3:
             return payload
     except (OSError, zlib.error) as error:
-        raise ExtractorError(f"chunk decompression failed for compression {compression}") from error
+        raise ExtractorError(
+            f"chunk decompression failed for compression {compression}"
+        ) from error
     if compression == 4:
         raise ExtractorError(
             "LZ4-compressed region chunks are not supported by extractor v1; refusing to guess"
@@ -284,10 +337,14 @@ def _chunk_payload(
     start = offset_sectors * SECTOR_BYTES
     allocation_end = start + sector_count * SECTOR_BYTES
     if allocation_end > len(region_bytes) or start + 5 > len(region_bytes):
-        raise ExtractorError(f"region location exceeds file for chunk {absolute_x},{absolute_z}")
+        raise ExtractorError(
+            f"region location exceeds file for chunk {absolute_x},{absolute_z}"
+        )
     length = int.from_bytes(region_bytes[start : start + 4], "big")
     if length < 1 or length > sector_count * SECTOR_BYTES - 4:
-        raise ExtractorError(f"invalid region chunk length for {absolute_x},{absolute_z}: {length}")
+        raise ExtractorError(
+            f"invalid region chunk length for {absolute_x},{absolute_z}: {length}"
+        )
     compression_byte = region_bytes[start + 4]
     external = bool(compression_byte & 0x80)
     compression = compression_byte & 0x7F
@@ -296,7 +353,9 @@ def _chunk_payload(
         try:
             payload = external_path.read_bytes()
         except OSError as error:
-            raise ExtractorError(f"missing external chunk payload: {external_path}") from error
+            raise ExtractorError(
+                f"missing external chunk payload: {external_path}"
+            ) from error
     else:
         payload_end = start + 4 + length
         payload = region_bytes[start + 5 : payload_end]
@@ -351,13 +410,19 @@ def extract_region(
             raise ExtractorError(
                 f"region slot {chunk_x},{chunk_z} contains chunk {stored_x},{stored_z}"
             )
-        section_list = _require_list(root.get("sections"), "chunk sections")
+        section_list = _require_list(
+            root.get("sections"),
+            "chunk sections",
+            element_type=10,
+        )
         seen_y: set[int] = set()
         for raw_section in section_list:
             section = _require_compound(raw_section, "chunk section")
             section_y = _require_int(section.get("Y"), "chunk section Y")
             if section_y in seen_y:
-                raise ExtractorError(f"chunk {chunk_x},{chunk_z} has duplicate section Y={section_y}")
+                raise ExtractorError(
+                    f"chunk {chunk_x},{chunk_z} has duplicate section Y={section_y}"
+                )
             seen_y.add(section_y)
             if "block_states" not in section:
                 continue
@@ -379,7 +444,9 @@ def validate_level_dat(world: Path) -> None:
     try:
         raw = gzip.decompress(level_path.read_bytes())
     except (OSError, EOFError) as error:
-        raise ExtractorError(f"could not read gzip-compressed level.dat: {level_path}") from error
+        raise ExtractorError(
+            f"could not read gzip-compressed level.dat: {level_path}"
+        ) from error
     root = parse_nbt(raw)
     data = _require_compound(root.get("Data"), "level.dat Data")
     data_version = _require_int(data.get("DataVersion"), "level.dat DataVersion")
@@ -397,7 +464,10 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def source_inventory(world: Path, selected_region_dirs: list[Path]) -> tuple[str, list[dict[str, str]]]:
+def source_inventory(
+    world: Path,
+    selected_region_dirs: list[Path],
+) -> tuple[str, list[dict[str, str]]]:
     paths: set[Path] = {world / "level.dat"}
     for directory in selected_region_dirs:
         paths.update(directory.glob("*.mca"))
@@ -407,22 +477,32 @@ def source_inventory(world: Path, selected_region_dirs: list[Path]) -> tuple[str
 
     entries: list[dict[str, str]] = []
     canonical_lines: list[str] = []
-    for path in sorted(paths, key=lambda candidate: candidate.relative_to(world).as_posix()):
+    for path in sorted(
+        paths,
+        key=lambda candidate: candidate.relative_to(world).as_posix(),
+    ):
         relative = path.relative_to(world).as_posix()
         digest = sha256_file(path)
         entries.append({"path": relative, "sha256": digest})
         canonical_lines.append(f"{relative}\t{digest}\n")
-    inventory_sha256 = hashlib.sha256("".join(canonical_lines).encode("utf-8")).hexdigest()
+    inventory_sha256 = hashlib.sha256(
+        "".join(canonical_lines).encode("utf-8")
+    ).hexdigest()
     return inventory_sha256, entries
 
 
-def discover_dimensions(world: Path, requested: set[str] | None) -> list[tuple[str, Path]]:
+def discover_dimensions(
+    world: Path,
+    requested: set[str] | None,
+) -> list[tuple[str, Path]]:
     selected: list[tuple[str, Path]] = []
     known = {name for name, _ in STANDARD_DIMENSIONS}
     if requested is not None:
         unknown = sorted(requested - known)
         if unknown:
-            raise ExtractorError(f"extractor v1 does not support requested dimensions: {unknown}")
+            raise ExtractorError(
+                f"extractor v1 does not support requested dimensions: {unknown}"
+            )
     for name, relative in STANDARD_DIMENSIONS:
         if requested is not None and name not in requested:
             continue
@@ -474,10 +554,14 @@ def extract_world(
     dimensions: set[str] | None,
 ) -> section_corpus.ParsedCorpus:
     validate_level_dat(world)
-    state_ids, state_manifest = load_state_identity_map(qualified_states, state_manifest_path)
+    state_ids, state_manifest = load_state_identity_map(
+        qualified_states,
+        state_manifest_path,
+    )
     selected = discover_dimensions(world, dimensions)
     inventory_sha256, inventory_entries = source_inventory(
-        world, [directory for _, directory in selected]
+        world,
+        [directory for _, directory in selected],
     )
 
     sections: list[ExtractedSection] = []
@@ -490,7 +574,10 @@ def extract_world(
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(corpus, encoding="utf-8", newline="\n")
 
-    target_evidence = section_corpus.load_target_evidence(state_manifest_path, generated_rust_path)
+    target_evidence = section_corpus.load_target_evidence(
+        state_manifest_path,
+        generated_rust_path,
+    )
     parsed = section_corpus.validate_corpus(output, target_evidence)
     if inventory_output is not None:
         inventory_output.parent.mkdir(parents=True, exist_ok=True)
@@ -555,7 +642,13 @@ def main() -> int:
             inventory_output=args.inventory,
             dimensions=set(args.dimension) if args.dimension else None,
         )
-    except (ExtractorError, section_corpus.CorpusError, ValueError, OSError, json.JSONDecodeError) as error:
+    except (
+        ExtractorError,
+        section_corpus.CorpusError,
+        ValueError,
+        OSError,
+        json.JSONDecodeError,
+    ) as error:
         print(f"section extraction error: {error}", file=sys.stderr)
         return 1
     print(
