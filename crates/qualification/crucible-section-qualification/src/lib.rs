@@ -591,7 +591,13 @@ fn run_operation<C: BlockSection<BlockStateId>>(
                     "replacement did not install requested state",
                 );
             }
-            compare_summaries(candidate, reference, candidate_name, trace, operation_index)?;
+            compare_incremental_summaries(
+                candidate,
+                reference,
+                candidate_name,
+                trace,
+                operation_index,
+            )?;
         }
         TraceOp::ReplaceSame(cell) => {
             let position = pos(cell);
@@ -615,7 +621,13 @@ fn run_operation<C: BlockSection<BlockStateId>>(
                     "same-state replacement changed summary",
                 );
             }
-            compare_summaries(candidate, reference, candidate_name, trace, operation_index)?;
+            compare_incremental_summaries(
+                candidate,
+                reference,
+                candidate_name,
+                trace,
+                operation_index,
+            )?;
         }
         TraceOp::Summary => {
             compare_summaries(candidate, reference, candidate_name, trace, operation_index)?;
@@ -659,6 +671,24 @@ fn checkpoint<C: BlockSection<BlockStateId>>(
         }
     }
     compare_summaries(candidate, reference, candidate_name, trace, operation_index)
+}
+
+fn compare_incremental_summaries<C: BlockSection<BlockStateId>>(
+    candidate: &C,
+    reference: &DirectBlockSection<BlockStateId>,
+    candidate_name: Candidate,
+    trace: &Trace,
+    operation_index: usize,
+) -> Result<(), QualificationFailure> {
+    if candidate.summary() != reference.summary() {
+        return trace_failure(
+            candidate_name,
+            trace,
+            operation_index,
+            "candidate/reference incremental summary mismatch",
+        );
+    }
+    Ok(())
 }
 
 fn compare_summaries<C: BlockSection<BlockStateId>>(
