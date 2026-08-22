@@ -114,6 +114,12 @@ After the source qualification, generated Rust and manifest are reviewed/committ
 python3 tools/finalize_state_data.py --verify
 ```
 
+The stable repository-facing spelling is also:
+
+```text
+cargo xtask vanilla state-data verify
+```
+
 Any changed source fingerprint, source specification, source archive, official-server binary, runtime facts, assignment policy or generated output causes verification to fail rather than silently refreshing production data.
 
 ## Normalized input schema
@@ -163,12 +169,24 @@ The representation width is selected from the actual generated state count. `u16
 
 ## State-data commands
 
-The low-level deterministic generator exposes:
+The stable repository tooling surface is:
+
+```text
+cargo xtask vanilla state-data inspect QUALIFIED.json
+cargo xtask vanilla state-data generate QUALIFIED.json
+cargo xtask vanilla state-data verify
+cargo xtask vanilla state-data diff OLD-MANIFEST.json NEW-MANIFEST.json
+```
+
+`inspect` and `generate` consume the already source+runtime-qualified normalized input. `verify` intentionally replays the full pinned finalization chain and therefore requires the local source-backed Atlas/evidence environment. `diff` compares manifest-level provenance and generation decisions without requiring Mojang artifacts.
+
+The lower-level deterministic generator remains directly invokable for tooling tests and debugging:
 
 ```text
 python3 tools/state_data.py inspect QUALIFIED.json
 python3 tools/state_data.py generate QUALIFIED.json --output generated.rs --manifest manifest.json
 python3 tools/state_data.py verify QUALIFIED.json --output generated.rs --manifest manifest.json
+python3 tools/state_data.py diff OLD-MANIFEST.json NEW-MANIFEST.json
 ```
 
 The raw official runtime probe is:

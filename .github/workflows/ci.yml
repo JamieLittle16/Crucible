@@ -39,8 +39,20 @@ jobs:
           cargo clippy --version
           python3 --version
 
-      - name: Format
-        run: cargo fmt --all -- --check
+      # crucible-generated is byte-for-byte owned by tools/state_data.py and its
+      # exact output is checked by the state-data qualification pipeline. Keep it
+      # in the workspace for check/clippy/test/doc, but never let rustfmt become a
+      # second writer of generated artifacts.
+      - name: Format handwritten Rust
+        run: >-
+          cargo fmt
+          --package crucible-types
+          --package crucible-component
+          --package crucible-world-contract
+          --package crucible-world-reference
+          --package crucible-world-section
+          --package xtask
+          -- --check
 
       - name: Check all targets
         run: cargo check --workspace --all-targets --all-features --locked

@@ -14,7 +14,10 @@ fn main() -> ExitCode {
     let mut args = env::args_os().skip(1);
     match args.next().as_deref().and_then(OsStr::to_str) {
         Some("guard") => guard(),
-        Some("vanilla") => vanilla(args.collect()),
+        Some("vanilla") => {
+            let remaining_args = args.collect::<Vec<_>>();
+            vanilla(&remaining_args)
+        }
         Some(command) => failure(&format!("unknown xtask command: {command}")),
         None => {
             help();
@@ -142,29 +145,83 @@ fn check_vanilla_pin_consistency(root: &Path, failures: &mut Vec<String>) {
     }
 }
 
-fn vanilla(args: Vec<OsString>) -> ExitCode {
+fn vanilla(args: &[OsString]) -> ExitCode {
     let root = workspace_root();
+    if args.first().and_then(|arg| arg.to_str()) == Some("state-data") {
+        return vanilla_state_data(&root, &args[1..]);
+    }
+
     let script = root.join("tools/vanilla_atlas.py");
     if !script.is_file() {
         return failure("tools/vanilla_atlas.py is missing");
     }
+    run_python(&root, &script, args)
+}
 
-    let Some(python) = find_python() else {
-        return failure("Python 3 is required for Vanilla Atlas tooling");
+fn vanilla_state_data(root: &Path, args: &[OsString]) -> ExitCode {
+    let Some(command) = args.first().and_then(|arg| arg.to_str()) else {
+        return failure("usage: cargo xtask vanilla state-data <inspect|generate|verify|diff> ...");
     };
 
-    let status = Command::new(python)
+    match command {
+        "inspect" if args.len() == 2 => {
+            let script = root.join("tools/state_data.py");
+            run_python(root, &script, &[OsString::from("inspect"), args[1].clone()])
+        }
+        "generate" if args.len() == 2 => {
+            let script = root.join("tools/state_data.py");
+            run_python(
+                root,
+                &script,
+                &[
+                    OsString::from("generate"),
+                    args[1].clone(),
+                    OsString::from("--output"),
+                    OsString::from("crates/data/crucible-generated/src/lib.rs"),
+                    OsString::from("--manifest"),
+                    OsString::from("vanilla/state-data/26.2-state-data-manifest.json"),
+                ],
+            )
+        }
+        "verify" if args.len() == 1 => {
+            let script = root.join("tools/finalize_state_data.py");
+            run_python(root, &script, &[OsString::from("--verify")])
+        }
+        "diff" if args.len() == 3 => {
+            let script = root.join("tools/state_data.py");
+            run_python(
+                root,
+                &script,
+                &[OsString::from("diff"), args[1].clone(), args[2].clone()],
+            )
+        }
+        _ => failure(
+            "usage: cargo xtask vanilla state-data inspect <qualified-input> | generate \
+             <qualified-input> | verify | diff <old-manifest> <new-manifest>",
+        ),
+    }
+}
+
+fn run_python(root: &Path, script: &Path, args: &[OsString]) -> ExitCode {
+    if !script.is_file() {
+        return failure(&format!("{} is missing", script.display()));
+    }
+
+    let Some(python) = find_python() else {
+        return failure("Python 3 is required for Vanilla tooling");
+    };
+
+    match Command::new(python)
         .arg(script)
         .args(args)
         .current_dir(root)
-        .status();
-
-    match status {
+        .status()
+    {
         Ok(status) if status.success() => ExitCode::SUCCESS,
         Ok(status) => {
             ExitCode::from(u8::try_from(status.code().unwrap_or(1).clamp(1, 255)).unwrap_or(1))
         }
-        Err(error) => failure(&format!("could not launch Vanilla Atlas: {error}")),
+        Err(error) => failure(&format!("could not launch {}: {error}", script.display())),
     }
 }
 
@@ -202,14 +259,19 @@ fn workspace_root() -> PathBuf {
 
 fn help() {
     println!("crucible xtask");
-    println!("  guard             run architecture/repository guards");
-    println!("  vanilla <args..>  run Vanilla Atlas tooling");
+    println!("  guard                         run architecture/repository guards");
+    println!("  vanilla <args..>              run Vanilla Atlas tooling");
+    println!("  vanilla state-data inspect    inspect a qualified state-data input");
+    println!("  vanilla state-data generate   generate committed Rust + manifest");
+    println!("  vanilla state-data verify     replay the full pinned qualification chain");
+    println!("  vanilla state-data diff       compare two generated manifests");
     println!();
     println!("examples:");
     println!("  cargo xtask vanilla verify-source /path/to/mc-src.zip");
     println!("  cargo xtask vanilla index /path/to/mc-src.zip");
     println!("  cargo xtask vanilla frontier m0-world-kernel");
     println!("  cargo xtask vanilla next m0-world-kernel");
+    println!("  cargo xtask vanilla state-data verify");
 }
 
 fn failure(message: &str) -> ExitCode {
