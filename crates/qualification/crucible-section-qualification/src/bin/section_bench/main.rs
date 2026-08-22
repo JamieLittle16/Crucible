@@ -42,7 +42,9 @@ fn run() -> Result<(), String> {
         return Err("section benchmarks must be built with --release".to_owned());
     }
     if BLOCK_STATE_COUNT <= HIGHEST_SYNTHETIC_STATE {
-        return Err("target state universe is too small for synthetic benchmark streams".to_owned());
+        return Err(
+            "target state universe is too small for synthetic benchmark streams".to_owned(),
+        );
     }
 
     let settings = mode.settings();
