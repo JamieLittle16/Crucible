@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 use crucible_section_qualification::{Candidate, QualificationMode};
+use crucible_section_vanilla_fixture::{VanillaFixture, qualify_fixture};
 
 const PINNED_RUST: &str = "1.97.1";
 
@@ -211,12 +212,13 @@ fn vanilla_state_data(root: &Path, args: &[OsString]) -> ExitCode {
 fn qualify(args: &[OsString]) -> ExitCode {
     if args.first().and_then(|arg| arg.to_str()) != Some("section") {
         return failure(
-            "usage: cargo xtask qualify section [--quick|--full] [--candidate <direct|adaptive|fast-local|packed-local>]",
+            "usage: cargo xtask qualify section [--quick|--full] [--candidate <direct|adaptive|fast-local|packed-local>] [--vanilla <fixture>]",
         );
     }
 
     let mut mode = QualificationMode::Quick;
     let mut candidate = None;
+    let mut vanilla_fixture = None;
     let mut index = 1_usize;
     while index < args.len() {
         match args[index].to_str() {
@@ -235,9 +237,11 @@ fn qualify(args: &[OsString]) -> ExitCode {
                 index += 1;
             }
             Some("--vanilla") => {
-                return failure(
-                    "vanilla section fixtures are not wired in this qualification slice yet; use --quick or --full",
-                );
+                let Some(path) = args.get(index + 1) else {
+                    return failure("--vanilla requires a fixture path");
+                };
+                vanilla_fixture = Some(path.clone());
+                index += 1;
             }
             Some(other) => {
                 return failure(&format!("unknown section qualification option: {other}"));
@@ -279,6 +283,48 @@ fn qualify(args: &[OsString]) -> ExitCode {
         );
     }
     println!("section qualification evidence: {}", output_path.display());
+
+    if let Some(path) = vanilla_fixture {
+        let path = PathBuf::from(path);
+        let path = if path.is_absolute() { path } else { root.join(path) };
+        let input = match fs::read_to_string(&path) {
+            Ok(input) => input,
+            Err(error) => {
+                return failure(&format!(
+                    "could not read vanilla section fixture {}: {error}",
+                    path.display()
+                ));
+            }
+        };
+        let fixture = match VanillaFixture::parse(&input) {
+            Ok(fixture) => fixture,
+            Err(error) => return failure(&format!("vanilla fixture rejected: {error}")),
+        };
+        let fixture_report = match qualify_fixture(&fixture, candidate) {
+            Ok(report) => report,
+            Err(error) => return failure(&format!("vanilla fixture qualification failed: {error}")),
+        };
+        let fixture_output = output_dir.join(format!(
+            "vanilla-{}-{}.json",
+            fixture_report.provenance().as_str(),
+            fixture_report.fixture_id()
+        ));
+        if let Err(error) = fs::write(&fixture_output, fixture_report.to_json(&commit_sha)) {
+            return failure(&format!(
+                "could not write vanilla fixture evidence: {error}"
+            ));
+        }
+        for record in fixture_report.records() {
+            println!(
+                "section vanilla fixture: {} {} operations={} PASS",
+                fixture_report.provenance().as_str(),
+                record.candidate().as_str(),
+                record.operations()
+            );
+        }
+        println!("section vanilla evidence: {}", fixture_output.display());
+    }
+
     ExitCode::SUCCESS
 }
 
@@ -367,6 +413,7 @@ fn help() {
     println!("  qualify section --quick       run PR-sized section semantic qualification");
     println!("  qualify section --full        run extended multi-seed section qualification");
     println!("  qualify section --candidate   restrict qualification to one candidate");
+    println!("  qualify section --vanilla     replay a provenance-bound external fixture");
     println!();
     println!("examples:");
     println!("  cargo xtask vanilla verify-source /path/to/mc-src.zip");
@@ -376,6 +423,9 @@ fn help() {
     println!("  cargo xtask vanilla state-data verify");
     println!("  cargo xtask qualify section --quick");
     println!("  cargo xtask qualify section --full --candidate packed-local");
+    println!(
+        "  cargo xtask qualify section --quick --vanilla vanilla/fixtures/world/section/26.2-source-reviewed-count-gates.fixture"
+    );
 }
 
 fn failure(message: &str) -> ExitCode {
