@@ -26,10 +26,8 @@ pub(super) fn steady_state_timings<C: BenchSection>(
     let contains_plan = query_plan(settings.contains_queries, sections.len(), BENCH_SEED ^ 0x30);
     let scan_count = settings.sequential_sections.min(sections.len());
     let scan_plan = section_plan(scan_count, sections.len(), BENCH_SEED ^ 0x40);
-    let positive_states = sections
-        .iter()
-        .map(|section| section.get(pos(0)))
-        .collect::<Vec<_>>();
+    let positive_states = positive_needles(sections, &contains_plan);
+    verify_positive_queries(sections, &contains_plan, &positive_states)?;
 
     let random = measure(settings, settings.random_reads, |operation| {
         let (section, cell) = random_plan[operation];
@@ -59,7 +57,7 @@ pub(super) fn steady_state_timings<C: BenchSection>(
 
     let positive = measure(settings, settings.contains_queries, |operation| {
         let (section_index, _) = contains_plan[operation];
-        let needle = positive_states[section_index];
+        let needle = positive_states[operation];
         black_box(sections[section_index].maybe_contains(|state| state == needle));
     });
     let negative = measure(settings, settings.contains_queries, |operation| {
@@ -100,6 +98,35 @@ pub(super) fn steady_state_timings<C: BenchSection>(
             timing: control,
         },
     ])
+}
+
+fn positive_needles<C: BenchSection>(
+    sections: &[C],
+    plan: &[(usize, usize)],
+) -> Vec<BlockStateId> {
+    plan.iter()
+        .map(|&(section, cell)| sections[section].get(pos(cell)))
+        .collect()
+}
+
+fn verify_positive_queries<C: BenchSection>(
+    sections: &[C],
+    plan: &[(usize, usize)],
+    needles: &[BlockStateId],
+) -> Result<(), String> {
+    if plan.len() != needles.len() {
+        return Err("positive membership plan/needle length mismatch".to_owned());
+    }
+    for (operation, (&(section_index, _), &needle)) in
+        plan.iter().zip(needles.iter()).enumerate()
+    {
+        if !sections[section_index].maybe_contains(|state| state == needle) {
+            return Err(format!(
+                "positive membership preflight produced false at operation {operation}"
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn measure<F>(settings: PopulationSettings, operations: usize, mut operation: F) -> SampleSummary
