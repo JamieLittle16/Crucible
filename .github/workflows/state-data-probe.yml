@@ -34,7 +34,7 @@ jobs:
           java-version: "25"
 
       - name: Qualification gate tests
-        run: python3 -m unittest tools.tests.test_state_source_qualification -v
+        run: python3 -m unittest discover -s tools/tests -p 'test_state_source_qualification.py' -v
 
       - name: Extract official state facts
         run: |
