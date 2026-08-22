@@ -190,19 +190,7 @@ pub(crate) fn check_corpus(
     path: &Path,
     decision_requested: bool,
 ) -> Result<CorpusImportCheck, String> {
-    let header = verify::read_header(path)?;
-    if decision_requested && !header.decision_eligible() {
-        return Err(format!(
-            "corpus extractor {} has purpose {} and is not decision-eligible",
-            header.extractor,
-            header.purpose.as_str()
-        ));
-    }
-
-    let verified = verify::verify_corpus(path)?;
-    if verified.header != header {
-        return Err("corpus header changed while opening verification stream".to_owned());
-    }
+    let verified = verify::verify_corpus(path, decision_requested)?;
     Ok(CorpusImportCheck {
         header: verified.header,
         section_count: verified.section_count,
