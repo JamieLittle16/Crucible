@@ -16,8 +16,10 @@ import section_representative_plan
 
 SCHEMA = 1
 KIND = "section-corpus-set"
+POPULATION_KIND = "section-corpus-population-identity"
 MEMBER_EXTRACTOR = "vanilla-save-region-v2-representative-member"
 MEMBER_PURPOSE = "representative-member"
+FULL_CHUNK_STATUS = "minecraft:full"
 WORLD_GENERATOR = "official-server-representative-section-world-v2-batched"
 WORLD_SCHEMA = 2
 SELECTION_COMMAND_SHA256 = "cb97b7490c28e38293251561749a87dbda2d0f78d78c7cf98471e5eff825a354"
@@ -94,6 +96,10 @@ def _counter(mapping: object, label: str) -> Counter[str]:
     return result
 
 
+def _nonnegative_mapping(value: object, label: str) -> dict[str, int]:
+    return dict(sorted(_counter(value, label).items()))
+
+
 def _target_from_state_manifest(state_manifest: dict[str, Any]) -> dict[str, object]:
     target = _object(state_manifest.get("target"), "state manifest target")
     return {
@@ -110,10 +116,9 @@ def _target_from_state_manifest(state_manifest: dict[str, Any]) -> dict[str, obj
     }
 
 
-def _canonical_digest(payload: dict[str, object]) -> str:
-    unsigned = {key: value for key, value in payload.items() if key != "set_sha256"}
+def _canonical_digest(payload: object) -> str:
     encoded = json.dumps(
-        unsigned, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
@@ -242,7 +247,6 @@ def _validate_world_generation(
 ) -> dict[str, object]:
     _equal(_integer(world, "schema", "world evidence"), WORLD_SCHEMA, "world schema")
     _equal(_string(world, "generator", "world evidence"), WORLD_GENERATOR, "world generator")
-
     expected_tickets = (
         len(section_representative_plan.REPRESENTATIVE_DIMENSIONS)
         * section_representative_plan.CHUNKS_PER_DIMENSION
@@ -257,22 +261,18 @@ def _validate_world_generation(
         SELECTION_COMMAND_SHA256,
         "world selection command digest",
     )
-
     batch_size = _integer(world, "batch_size", "world evidence")
     batch_count = _integer(world, "batch_count", "world evidence")
     settle_seconds = _integer(world, "batch_settle_seconds", "world evidence")
     if batch_size <= 0 or batch_count <= 0 or settle_seconds < 0:
         raise CorpusSetError("world bounded-generation parameters are invalid")
-
     expected_batches_per_dimension = (
         section_representative_plan.CHUNKS_PER_DIMENSION + batch_size - 1
     ) // batch_size
-    expected_batch_count = (
-        expected_batches_per_dimension
-        * len(section_representative_plan.REPRESENTATIVE_DIMENSIONS)
+    expected_batch_count = expected_batches_per_dimension * len(
+        section_representative_plan.REPRESENTATIVE_DIMENSIONS
     )
     _equal(batch_count, expected_batch_count, "world batch count")
-
     raw_timings = world.get("batch_timings")
     if not isinstance(raw_timings, list) or len(raw_timings) != batch_count:
         raise CorpusSetError("world batch timing evidence is incomplete")
@@ -299,7 +299,6 @@ def _validate_world_generation(
         }
     )
     _equal(tickets_by_dimension, expected_dimension_tickets, "world batch dimension coverage")
-
     return {
         "generator": WORLD_GENERATOR,
         "selection_command_sha256": SELECTION_COMMAND_SHA256,
@@ -309,27 +308,19 @@ def _validate_world_generation(
     }
 
 
-def _validate_rust_dimensions(
-    rust: dict[str, Any],
+def _validate_python_dimensions(
+    manifest: dict[str, Any],
     expected_dimensions: dict[str, int],
     global_cardinality: Counter[str],
-    global_candidates: dict[str, dict[str, object]],
 ) -> dict[str, dict[str, object]]:
-    raw_dimensions = _object(rust.get("per_dimension"), "Rust per_dimension")
-    _equal(set(raw_dimensions), set(expected_dimensions), "Rust per-dimension key set")
-
+    raw_dimensions = _object(manifest.get("per_dimension"), "Python per_dimension")
+    _equal(set(raw_dimensions), set(expected_dimensions), "Python per-dimension key set")
     merged_cardinality: Counter[str] = Counter()
-    merged_candidates = _empty_candidate_totals()
     validated: dict[str, dict[str, object]] = {}
-
     for dimension, expected_sections in expected_dimensions.items():
-        label = f"Rust per_dimension {dimension}"
+        label = f"Python per_dimension {dimension}"
         summary = _object(raw_dimensions.get(dimension), label)
-        _equal(
-            _integer(summary, "section_count", label),
-            expected_sections,
-            f"{dimension} section count",
-        )
+        _equal(_integer(summary, "section_count", label), expected_sections, f"{dimension} section count")
         _equal(
             _integer(summary, "total_cells", label),
             expected_sections * 4096,
@@ -341,21 +332,57 @@ def _validate_rust_dimensions(
         histogram = _counter(summary.get("cardinality_histogram"), f"{label} histogram")
         if sum(histogram.values()) != expected_sections:
             raise CorpusSetError(f"{dimension} histogram does not sum to section count")
-        candidates = _validate_candidate_rows(
-            summary.get("candidates"), expected_sections, label
-        )
         merged_cardinality.update(histogram)
-        _merge_candidate_metrics(merged_candidates, candidates)
         validated[dimension] = {
             "section_count": expected_sections,
             "total_cells": expected_sections * 4096,
             "distinct_state_ids": distinct,
-            "cardinality_histogram": dict(
-                sorted(histogram.items(), key=lambda item: int(item[0]))
+            "cardinality_histogram": dict(sorted(histogram.items(), key=lambda item: int(item[0]))),
+            "cell_facts": _nonnegative_mapping(summary.get("cell_facts"), f"{label} cell_facts"),
+            "section_classes": _nonnegative_mapping(
+                summary.get("section_classes"), f"{label} section_classes"
             ),
+        }
+    _equal(merged_cardinality, global_cardinality, "per-dimension/global Python histogram")
+    return validated
+
+
+def _validate_rust_dimensions(
+    rust: dict[str, Any],
+    python_dimensions: dict[str, dict[str, object]],
+    global_cardinality: Counter[str],
+    global_candidates: dict[str, dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    raw_dimensions = _object(rust.get("per_dimension"), "Rust per_dimension")
+    _equal(set(raw_dimensions), set(python_dimensions), "Rust/Python per-dimension key set")
+    merged_cardinality: Counter[str] = Counter()
+    merged_candidates = _empty_candidate_totals()
+    validated: dict[str, dict[str, object]] = {}
+    for dimension, python_summary in python_dimensions.items():
+        expected_sections = int(python_summary["section_count"])
+        label = f"Rust per_dimension {dimension}"
+        summary = _object(raw_dimensions.get(dimension), label)
+        _equal(_integer(summary, "section_count", label), expected_sections, f"{dimension} section count")
+        _equal(
+            _integer(summary, "total_cells", label),
+            int(python_summary["total_cells"]),
+            f"{dimension} total cells",
+        )
+        distinct = _integer(summary, "distinct_state_ids", label)
+        _equal(distinct, int(python_summary["distinct_state_ids"]), f"{dimension} distinct states")
+        histogram = _counter(summary.get("cardinality_histogram"), f"{label} histogram")
+        _equal(
+            histogram,
+            Counter(python_summary["cardinality_histogram"]),
+            f"{dimension} Python/Rust histogram",
+        )
+        candidates = _validate_candidate_rows(summary.get("candidates"), expected_sections, label)
+        merged_cardinality.update(histogram)
+        _merge_candidate_metrics(merged_candidates, candidates)
+        validated[dimension] = {
+            **python_summary,
             "candidates": candidates,
         }
-
     _equal(merged_cardinality, global_cardinality, "per-dimension/global Rust histogram")
     _equal(
         _normalize_candidate_totals(merged_candidates),
@@ -380,14 +407,9 @@ def validate_member(
     assert isinstance(seeds, list)
     expected_seed = int(seeds[seed_index])
     plan_sha = _require_sha256(plan["plan_sha256"], "representative plan digest")
-
     generation = _validate_world_generation(world, plan=plan)
     _equal(world.get("minecraft_version"), state_target["minecraft_version"], "world target")
-    _equal(
-        _sha256(world, "server_sha256", "world evidence"),
-        pinned_server_sha256,
-        "server SHA-256",
-    )
+    _equal(_sha256(world, "server_sha256", "world evidence"), pinned_server_sha256, "server SHA-256")
     _equal(world.get("representative_policy"), plan["policy"], "world representative policy")
     _equal(world.get("plan_sha256"), plan_sha, "world plan digest")
     _equal(_integer(world, "seed_index", "world evidence"), seed_index, "world seed index")
@@ -397,13 +419,19 @@ def validate_member(
     _equal(_string(extraction, "policy", "extraction evidence"), MEMBER_EXTRACTOR, "extractor")
     _equal(extraction.get("representative_policy"), plan["policy"], "extraction policy")
     _equal(extraction.get("plan_sha256"), plan_sha, "extraction plan digest")
-    _equal(
-        _integer(extraction, "seed_index", "extraction evidence"),
-        seed_index,
-        "extraction seed index",
-    )
+    _equal(_integer(extraction, "seed_index", "extraction evidence"), seed_index, "extraction seed index")
     _equal(_integer(extraction, "seed", "extraction evidence"), expected_seed, "extraction seed")
     _equal(extraction.get("selected_chunks"), _expected_selection(plan), "selected chunk schedule")
+    expected_chunk_count = (
+        len(section_representative_plan.REPRESENTATIVE_DIMENSIONS)
+        * section_representative_plan.CHUNKS_PER_DIMENSION
+    )
+    status_histogram = _counter(extraction.get("chunk_status_histogram"), "chunk status histogram")
+    _equal(
+        status_histogram,
+        Counter({FULL_CHUNK_STATUS: expected_chunk_count}),
+        "representative full-chunk status census",
+    )
 
     lattice_raw = _object(extraction.get("section_lattice"), "section lattice")
     lattice: dict[str, list[int]] = {}
@@ -413,16 +441,11 @@ def validate_member(
         raw_values = lattice_raw.get(dimension)
         if not isinstance(raw_values, list) or not raw_values:
             raise CorpusSetError(f"section lattice for {dimension} must be a non-empty list")
-        values = [
-            _integer({"value": value}, "value", f"{dimension} lattice")
-            for value in raw_values
-        ]
+        values = [_integer({"value": value}, "value", f"{dimension} lattice") for value in raw_values]
         if values != list(range(values[0], values[-1] + 1)):
             raise CorpusSetError(f"section lattice for {dimension} is not contiguous")
         lattice[dimension] = values
-        expected_dimensions[dimension] = (
-            section_representative_plan.CHUNKS_PER_DIMENSION * len(values)
-        )
+        expected_dimensions[dimension] = section_representative_plan.CHUNKS_PER_DIMENSION * len(values)
     expected_sections = sum(expected_dimensions.values())
     _equal(
         _integer(extraction, "section_count", "extraction evidence"),
@@ -443,14 +466,11 @@ def validate_member(
     section_count = _integer(manifest, "section_count", "member manifest")
     _equal(section_count, expected_sections, "member manifest section count")
     _equal(manifest.get("dimensions"), expected_dimensions, "member dimension section counts")
-    _equal(
-        _integer(manifest, "total_cells", "member manifest"),
-        section_count * 4096,
-        "member total cells",
-    )
+    _equal(_integer(manifest, "total_cells", "member manifest"), section_count * 4096, "member total cells")
     cardinality = _counter(manifest.get("cardinality_histogram"), "member cardinality histogram")
     if sum(cardinality.values()) != section_count:
         raise CorpusSetError("member cardinality histogram does not sum to section count")
+    python_dimensions = _validate_python_dimensions(manifest, expected_dimensions, cardinality)
 
     _equal(_integer(rust, "schema", "Rust member evidence"), 1, "Rust schema")
     _equal(rust.get("kind"), "section-corpus-import-check", "Rust evidence kind")
@@ -459,26 +479,10 @@ def validate_member(
     _equal(rust.get("source_inventory_sha256"), inventory_sha, "Rust source inventory")
     _equal(rust.get("extractor"), MEMBER_EXTRACTOR, "Rust extractor")
     _equal(rust.get("purpose"), MEMBER_PURPOSE, "Rust member purpose")
-    _equal(
-        _boolean(rust, "decision_requested", "Rust member evidence"),
-        False,
-        "member decision request",
-    )
-    _equal(
-        _boolean(rust, "decision_eligible", "Rust member evidence"),
-        False,
-        "member decision eligibility",
-    )
-    _equal(
-        _integer(rust, "section_count", "Rust member evidence"),
-        section_count,
-        "Rust section count",
-    )
-    _equal(
-        _integer(rust, "total_cells", "Rust member evidence"),
-        section_count * 4096,
-        "Rust total cells",
-    )
+    _equal(_boolean(rust, "decision_requested", "Rust member evidence"), False, "member decision request")
+    _equal(_boolean(rust, "decision_eligible", "Rust member evidence"), False, "member decision eligibility")
+    _equal(_integer(rust, "section_count", "Rust member evidence"), section_count, "Rust section count")
+    _equal(_integer(rust, "total_cells", "Rust member evidence"), section_count * 4096, "Rust total cells")
     _equal(rust.get("dimensions"), expected_dimensions, "Rust dimensions")
     rust_cardinality = _counter(rust.get("cardinality_histogram"), "Rust cardinality histogram")
     _equal(rust_cardinality, cardinality, "Python/Rust cardinality histogram")
@@ -487,14 +491,9 @@ def validate_member(
         _integer(manifest, "distinct_state_ids", "member manifest"),
         "Python/Rust distinct states",
     )
-    global_candidates = _validate_candidate_rows(
-        rust.get("candidates"), section_count, "Rust member"
-    )
+    global_candidates = _validate_candidate_rows(rust.get("candidates"), section_count, "Rust member")
     per_dimension = _validate_rust_dimensions(
-        rust,
-        expected_dimensions,
-        rust_cardinality,
-        global_candidates,
+        rust, python_dimensions, rust_cardinality, global_candidates
     )
 
     return {
@@ -503,17 +502,46 @@ def validate_member(
         "world_generation": generation,
         "source_inventory_sha256": inventory_sha,
         "corpus_sha256": corpus_sha,
+        "chunk_status_histogram": dict(sorted(status_histogram.items())),
         "section_count": section_count,
         "total_cells": section_count * 4096,
         "distinct_state_ids": _integer(manifest, "distinct_state_ids", "member manifest"),
         "section_lattice": lattice,
-        "cardinality_histogram": dict(
-            sorted(cardinality.items(), key=lambda item: int(item[0]))
-        ),
-        "cell_facts": manifest.get("cell_facts"),
-        "section_classes": manifest.get("section_classes"),
+        "cardinality_histogram": dict(sorted(cardinality.items(), key=lambda item: int(item[0]))),
+        "cell_facts": _nonnegative_mapping(manifest.get("cell_facts"), "member cell_facts"),
+        "section_classes": _nonnegative_mapping(manifest.get("section_classes"), "member section_classes"),
         "per_dimension": per_dimension,
         "candidates": global_candidates,
+    }
+
+
+def _population_identity(
+    *,
+    plan: dict[str, object],
+    state_target: dict[str, object],
+    pinned_server_sha256: str,
+    weighting: dict[str, Any],
+    section_lattice: object,
+    members: list[dict[str, object]],
+) -> dict[str, object]:
+    return {
+        "schema": SCHEMA,
+        "kind": POPULATION_KIND,
+        "policy": plan["policy"],
+        "plan_sha256": plan["plan_sha256"],
+        "target": state_target,
+        "server_sha256": pinned_server_sha256,
+        "weighting": weighting,
+        "section_lattice": section_lattice,
+        "member_count": len(members),
+        "members": [
+            {
+                "seed_index": member["seed_index"],
+                "seed": member["seed"],
+                "corpus_sha256": member["corpus_sha256"],
+            }
+            for member in members
+        ],
     }
 
 
@@ -538,7 +566,6 @@ def build_set(
     plan_target = _object(plan["target"], "plan target")
     for key in ("minecraft_version", "protocol_version", "data_version"):
         _equal(plan_target.get(key), state_target[key], f"plan/state target {key}")
-
     weighting = _object(plan.get("weighting"), "representative weighting")
     _equal(weighting.get("seed"), "equal", "seed weighting")
     _equal(weighting.get("dimension"), "report-separately", "dimension weighting")
@@ -561,11 +588,9 @@ def build_set(
         )
         for index, (world, extraction, manifest, rust) in enumerate(member_inputs)
     ]
-
     reference_lattice = members[0]["section_lattice"]
     for member in members[1:]:
         _equal(member["section_lattice"], reference_lattice, "cross-seed section lattice")
-
     corpus_shas = [str(member["corpus_sha256"]) for member in members]
     if len(set(corpus_shas)) != len(corpus_shas):
         raise CorpusSetError("representative members must have distinct corpus SHA-256 identities")
@@ -582,22 +607,13 @@ def build_set(
             summary = _object(member_dimensions.get(dimension), f"member {dimension}")
             member_sections = _integer(summary, "section_count", f"member {dimension}")
             section_count += member_sections
-            histogram.update(
-                _counter(summary.get("cardinality_histogram"), f"member {dimension} histogram")
-            )
-            member_distinct_states.append(
-                _integer(summary, "distinct_state_ids", f"member {dimension}")
-            )
+            histogram.update(_counter(summary.get("cardinality_histogram"), f"member {dimension} histogram"))
+            member_distinct_states.append(_integer(summary, "distinct_state_ids", f"member {dimension}"))
             candidates = _object(summary.get("candidates"), f"member {dimension} candidates")
             _merge_candidate_metrics(candidate_totals, candidates)
-
         normalized_candidates = _normalize_candidate_totals(candidate_totals)
         for name, metrics in normalized_candidates.items():
-            _equal(
-                metrics["sections"],
-                section_count,
-                f"{dimension} {name} aggregate section count",
-            )
+            _equal(metrics["sections"], section_count, f"{dimension} {name} aggregate section count")
         if sum(histogram.values()) != section_count:
             raise CorpusSetError(f"{dimension} aggregate histogram does not sum to sections")
         per_dimension[dimension] = {
@@ -606,9 +622,7 @@ def build_set(
             "section_count": section_count,
             "total_cells": section_count * 4096,
             "member_distinct_state_ids": member_distinct_states,
-            "cardinality_histogram": dict(
-                sorted(histogram.items(), key=lambda item: int(item[0]))
-            ),
+            "cardinality_histogram": dict(sorted(histogram.items(), key=lambda item: int(item[0]))),
             "candidates": normalized_candidates,
         }
 
@@ -619,6 +633,15 @@ def build_set(
     }
     _equal(sum(descriptive_dimension_counts.values()), total_sections, "descriptive section total")
 
+    population_identity = _population_identity(
+        plan=plan,
+        state_target=state_target,
+        pinned_server_sha256=pinned_server_sha256,
+        weighting=weighting,
+        section_lattice=reference_lattice,
+        members=members,
+    )
+    population_sha256 = _canonical_digest(population_identity)
     result: dict[str, object] = {
         "schema": SCHEMA,
         "kind": KIND,
@@ -632,6 +655,8 @@ def build_set(
         "weighting": weighting,
         "section_lattice": reference_lattice,
         "member_count": len(members),
+        "population_identity": population_identity,
+        "population_sha256": population_sha256,
         "members": members,
         "per_dimension": per_dimension,
         "aggregate": {
@@ -641,7 +666,7 @@ def build_set(
             "dimensions": descriptive_dimension_counts,
         },
     }
-    result["set_sha256"] = _canonical_digest(result)
+    result["evidence_sha256"] = _canonical_digest(result)
     return result
 
 
@@ -671,7 +696,6 @@ def main() -> int:
     parser.add_argument("--lock", type=Path, default=DEFAULT_LOCK)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-
     try:
         plan = section_representative_plan.load_plan(args.plan)
         state_manifest = _load_json(args.state_manifest)
@@ -707,7 +731,8 @@ def main() -> int:
     print(
         "representative corpus set: "
         f"members={result['member_count']} sections={aggregate['section_count']} "
-        f"set_sha256={result['set_sha256']} PASS"
+        f"population_sha256={result['population_sha256']} "
+        f"evidence_sha256={result['evidence_sha256']} PASS"
     )
     return 0
 
