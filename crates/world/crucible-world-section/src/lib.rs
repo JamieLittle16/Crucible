@@ -49,6 +49,10 @@ impl<S: Copy> PaletteSlot<S> {
     }
 }
 
+#[expect(
+    clippy::struct_field_names,
+    reason = "the count suffix distinguishes exact internal witnesses from public presence booleans"
+)]
 #[derive(Clone, Copy, Debug)]
 struct LiveHeader {
     non_air_count: u16,
@@ -290,6 +294,10 @@ impl<S: Copy + Eq> Local8<S> {
         self.palette.iter().filter(|slot| slot.is_live()).count()
     }
 
+    #[expect(
+        clippy::unnecessary_box_returns,
+        reason = "promotion keeps the 4096-cell direct backing heap-resident instead of returning it on the stack"
+    )]
     fn into_direct(self) -> Box<[S; BLOCK_SECTION_CELLS]> {
         let mut cells = Box::new([self.palette[0].state; BLOCK_SECTION_CELLS]);
         for (cell, target) in cells.iter_mut().enumerate() {
