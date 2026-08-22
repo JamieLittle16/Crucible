@@ -24,20 +24,25 @@ The initial committed document is:
 
 `vanilla/fixtures/section/26.2-semantic-fixtures.txt`
 
-## Command
+## Current qualification path
 
-The intended interface for this slice is:
+The committed fixture is compiled and executed by the `crucible-section-qualification` integration
+tests under the normal workspace `cargo check`, Clippy, test, and rustfmt gates. The initial fixture
+contains ten semantic cases: eight block cases executed against all four admitted live block
+candidates and the direct oracle, plus two independent biome cases.
+
+The target command remains:
 
 ```text
 cargo xtask qualify section --vanilla vanilla/fixtures/section/26.2-semantic-fixtures.txt
 ```
 
-It writes `target/crucible-qualification/section/vanilla-fixture.json` and links evidence to
-`SEM-WORLD-SECTION-003`, `004`, `005`–`010`, `012`, `015`, and `016`.
+That CLI wrapper and its `vanilla-fixture` evidence writer are intentionally deferred to the next
+#18 slice together with the official-runtime fixture producer. Until then, do not treat `--vanilla`
+as implemented merely because the normalized fixture engine is qualified.
 
-The command currently consumes a normalized semantic fixture. A later #18 slice may add an official
-runtime extractor that produces the same format from the local pinned official artifact; the
-qualification semantics and evidence schema should not change merely because the producer changes.
+The runtime producer will emit or verify this same semantic format from the local pinned official
+artifact. The qualification semantics should not change merely because the fixture producer changes.
 
 Wire/decode rules `SEM-WORLD-SECTION-017` and `018` remain intentionally outside this fixture until
 the packet/decode adapter exists. Live CPU storage must not grow packet ownership merely to satisfy a
