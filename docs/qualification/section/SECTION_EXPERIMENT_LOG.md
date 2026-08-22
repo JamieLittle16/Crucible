@@ -159,7 +159,7 @@ The pending write after packed-width expansion was performed inside a debug-only
 
 ```rust
 // defective shape
- debug_assert_eq!(widened.try_replace(cell, state), PackedReplace::Done);
+debug_assert_eq!(widened.try_replace(cell, state), PackedReplace::Done);
 ```
 
 In debug builds, `try_replace` executed. In release builds, the assertion expression was compiled out, removing the side effect entirely.
@@ -184,7 +184,7 @@ Per candidate:
 Full section qualification runs in release mode as an independent matrix. Performance work may proceed only from the post-fix qualified set.
 
 **General lesson**  
-Debug-only assertions must never be relied upon for mutation/validation side effects. Regression policy should check the concrete packed path and, where practical, statically discourage side-effectful assertion expressions in core code.
+Debug-only assertions must never be relied upon for mutation/validation side effects. Regression policy checks the concrete packed path in both the section implementation and the release benchmark/qualification build shape.
 
 ---
 
@@ -194,19 +194,74 @@ Debug-only assertions must never be relied upon for mutation/validation side eff
 Is the initial M0.3D benchmark harness sufficiently faithful to #19 to produce production-selection evidence?
 
 **Finding**  
-The interrupted harness is a strong scaffold but is **not yet freeze-grade**.
+The interrupted harness was a strong scaffold but was **not freeze-grade**.
 
 Material gaps found during audit:
 1. no explicit fluid-containing workload;
-2. `survival-like` is not yet grounded as an actual air/stone-like semantic distribution;
-3. positive `maybe_contains` may query a pool state that the spatial pattern never installed;
-4. some timing records use requested pool cardinality instead of observed actual cardinality;
-5. deterministic owned bytes exist, but representative lifetime allocation-event accounting is absent;
-6. hardware metadata needs stronger affinity/current-frequency/environment/codegen capture;
-7. real vanilla-derived section corpus ingestion is absent.
+2. `survival-like` was not grounded as an actual air/solid semantic distribution;
+3. positive `maybe_contains` could query a pool state that the spatial pattern never installed;
+4. some timing records used requested pool cardinality instead of observed actual cardinality;
+5. deterministic owned bytes existed, but representative lifetime allocation-event accounting was absent;
+6. hardware metadata needed stronger affinity/current-frequency/environment/codegen capture;
+7. real vanilla-derived section corpus ingestion was absent.
 
 **Decision**  
 Do not interpret initial synthetic timing as a production policy. Harden the harness, add regressions for the audit findings, keep GitHub timing diagnostic-only, then add the real vanilla-derived corpus before freezing thresholds.
+
+---
+
+## 2026-08-22 — section benchmark harness v2 admitted
+
+**Question**  
+Can the synthetic benchmark laboratory itself be made strict enough that workload-construction mistakes are regression-tested before any target-hardware numbers are trusted?
+
+**Commit / CI identity**  
+Branch checkpoint: `c2bfc5196659aa5f73d532592b39afd80d787472` (PR #34 integration state).
+
+Diagnostic smoke artifact:
+- artifact digest: `sha256:3f2c1cbd9409c84f24352ca55605e2298f1bdc9e2b3e487d59ad5a0d4f15e5cb`;
+- schema: `2`;
+- harness: `section-bench-v2`.
+
+**Changes admitted**
+- benchmark code split into model/workload/measurement/hardware/report modules;
+- explicit target-fact-backed fluid-containing workload;
+- survival-like workload defined as AIR plus qualified plain-solid states rather than arbitrary IDs;
+- positive `maybe_contains` needle selected only from states observed in the final image;
+- negative needle selected from the target universe outside the final image;
+- `actual_cardinality` computed from final construction and independently regression-checked by full semantic rescan;
+- deterministic construction/lifetime representation-transition and logical backing-allocation records;
+- peak/final owned-byte lifetime records;
+- integer picosecond-per-operation normalization instead of floating-point normalized timing;
+- CPU affinity, governor/current/min/max frequency where exposed, load, turbo state and Rust flag environment captured in artifacts;
+- release smoke artifact validator checks candidates, workload classes, cardinality invariants, lifetime records and memory relationships.
+
+**Permanent benchmark regressions**
+- actual cardinality equals independently observed final-image cardinality;
+- positive membership needle is truly present;
+- fluid workload contains a qualified counted-fluid state;
+- survival workload contains AIR and only qualified non-fluid/non-random solid states otherwise;
+- packed logical width-transition allocation accounting;
+- packed-to-direct logical allocation accounting;
+- packed first-width growth installs the requested state in the benchmark build shape;
+- integer timing normalization;
+- report JSON escaping;
+- basic immutable hardware identity capture.
+
+**Gate result**
+- `Section Benchmark Smoke`: PASS, including release execution and emitted-artifact validation;
+- normal strict CI: PASS through format, all-target check, Clippy `-D warnings`, Rust regressions, quick/source-backed semantic qualification, Atlas/Python and rustdoc;
+- M0.3C full release matrix: direct/adaptive/fast-local/packed-local all PASS unchanged.
+
+**Interpretation**  
+Audit gaps 1–6 are now represented in code and regressions. GitHub timing remains explicitly non-qualifying.
+
+**Remaining production-decision gates**
+1. a provenance-bound vanilla-derived real section corpus;
+2. controlled target-hardware/process-RSS qualification and Pareto/noise analysis.
+
+**Decision**  
+Admit benchmark harness v2 as the synthetic/diagnostic M0.3D laboratory. Do not freeze any representation or adaptive threshold until the two remaining evidence layers are complete.
 
 ---
 
