@@ -102,8 +102,11 @@ def canonical_key(raw:str)->str:
 
 def run_probe(server:Path,mappings:Path|None,work:Path):
  cp_entries=extract_classpath(server,work/'classpath'); mapping_text=mappings.read_text(encoding='utf-8') if mappings else None; source=java_probe(mapping_text); java=work/'CrucibleStateProbe.java'; java.write_text(source)
- cp=os.pathsep.join(str(p) for p in cp_entries); subprocess.run(['javac','-encoding','UTF-8','-d',str(work),str(java)],check=True)
- result=subprocess.run(['java','-cp',str(work)+os.pathsep+cp,'CrucibleStateProbe'],check=True,text=True,capture_output=True); states=[]
+ cp=os.pathsep.join(str(p) for p in cp_entries); compile_result=subprocess.run(['javac','-encoding','UTF-8','-d',str(work),str(java)],text=True,capture_output=True)
+ if compile_result.returncode!=0: raise ValueError(f'probe compilation failed:\n{compile_result.stderr}\n{compile_result.stdout}')
+ result=subprocess.run(['java','-cp',str(work)+os.pathsep+cp,'CrucibleStateProbe'],text=True,capture_output=True)
+ if result.returncode!=0: raise ValueError(f'probe runtime failed (exit {result.returncode}):\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}')
+ states=[]
  for line in result.stdout.splitlines():
   if not line.strip(): continue
   parts=line.split('\t',5)
