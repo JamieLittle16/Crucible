@@ -156,6 +156,8 @@ jobs:
                       raise SystemExit(f'{candidate}/{workload}: timing sample structure mismatch')
               if not record['commit_sha'] or not record['rustc_verbose'] or not record['cpus_allowed_list']:
                   raise SystemExit(f'{candidate}: hardware/toolchain provenance incomplete')
+              if not record.get('mems_allowed_list'):
+                  raise SystemExit(f'{candidate}: memory-node affinity provenance incomplete')
           print('candidate-isolated population smoke PASS')
           PY
 
