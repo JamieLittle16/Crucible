@@ -137,51 +137,102 @@ def _expected_selection(plan: dict[str, object]) -> dict[str, list[list[int]]]:
 
 
 def _validate_candidate_rows(
-    rust: dict[str, Any],
+    rows_value: object,
     section_count: int,
+    label: str,
 ) -> dict[str, dict[str, object]]:
-    rows = rust.get("candidates")
-    if not isinstance(rows, list) or len(rows) != len(EXPECTED_CANDIDATES):
-        raise CorpusSetError("Rust member evidence has the wrong candidate row count")
+    if not isinstance(rows_value, list) or len(rows_value) != len(EXPECTED_CANDIDATES):
+        raise CorpusSetError(f"{label} has the wrong candidate row count")
     observed: dict[str, dict[str, object]] = {}
-    for index, raw_row in enumerate(rows):
-        row = _object(raw_row, f"Rust candidate[{index}]")
-        name = _string(row, "candidate", f"Rust candidate[{index}]")
+    for index, raw_row in enumerate(rows_value):
+        row_label = f"{label} candidate[{index}]"
+        row = _object(raw_row, row_label)
+        name = _string(row, "candidate", row_label)
         if name in observed or name not in EXPECTED_CANDIDATES:
-            raise CorpusSetError(f"unexpected/duplicate Rust candidate {name!r}")
+            raise CorpusSetError(f"unexpected/duplicate candidate {name!r} in {label}")
         _equal(
-            _boolean(row, "production_candidate", f"Rust candidate[{index}]"),
+            _boolean(row, "production_candidate", row_label),
             EXPECTED_CANDIDATES[name],
-            f"{name} production flag",
+            f"{label} {name} production flag",
         )
         _equal(
-            _integer(row, "sections", f"Rust candidate[{index}]"),
+            _integer(row, "sections", row_label),
             section_count,
-            f"{name} section count",
+            f"{label} {name} section count",
         )
-        total_owned = _integer(row, "total_owned_bytes", f"Rust candidate[{index}]")
-        max_owned = _integer(row, "max_owned_bytes", f"Rust candidate[{index}]")
-        transitions = _integer(
-            row, "construction_transitions", f"Rust candidate[{index}]"
-        )
-        allocations = _integer(
-            row, "logical_backing_allocations", f"Rust candidate[{index}]"
-        )
+        total_owned = _integer(row, "total_owned_bytes", row_label)
+        max_owned = _integer(row, "max_owned_bytes", row_label)
+        transitions = _integer(row, "construction_transitions", row_label)
+        allocations = _integer(row, "logical_backing_allocations", row_label)
         if min(total_owned, max_owned, transitions, allocations) < 0:
-            raise CorpusSetError(f"{name} candidate metrics must be non-negative")
-        representations = _counter(row.get("representations"), f"{name} representations")
+            raise CorpusSetError(f"{label} {name} metrics must be non-negative")
+        representations = _counter(row.get("representations"), f"{label} {name} representations")
         if sum(representations.values()) != section_count:
-            raise CorpusSetError(f"{name} representation counts do not sum to sections")
+            raise CorpusSetError(f"{label} {name} representation counts do not sum to sections")
         observed[name] = {
             "production_candidate": EXPECTED_CANDIDATES[name],
+            "sections": section_count,
             "total_owned_bytes": total_owned,
             "max_owned_bytes": max_owned,
             "construction_transitions": transitions,
             "logical_backing_allocations": allocations,
             "representations": dict(sorted(representations.items())),
         }
-    _equal(set(observed), set(EXPECTED_CANDIDATES), "Rust candidate set")
+    _equal(set(observed), set(EXPECTED_CANDIDATES), f"{label} candidate set")
     return observed
+
+
+def _empty_candidate_totals() -> dict[str, dict[str, object]]:
+    return {
+        name: {
+            "production_candidate": production,
+            "sections": 0,
+            "total_owned_bytes": 0,
+            "max_owned_bytes": 0,
+            "construction_transitions": 0,
+            "logical_backing_allocations": 0,
+            "representations": Counter(),
+        }
+        for name, production in EXPECTED_CANDIDATES.items()
+    }
+
+
+def _merge_candidate_metrics(
+    totals: dict[str, dict[str, object]],
+    metrics: dict[str, dict[str, object]],
+) -> None:
+    _equal(set(metrics), set(EXPECTED_CANDIDATES), "candidate merge set")
+    for name, row in metrics.items():
+        target = totals[name]
+        target["sections"] = int(target["sections"]) + int(row["sections"])
+        target["total_owned_bytes"] = int(target["total_owned_bytes"]) + int(
+            row["total_owned_bytes"]
+        )
+        target["max_owned_bytes"] = max(
+            int(target["max_owned_bytes"]), int(row["max_owned_bytes"])
+        )
+        target["construction_transitions"] = int(
+            target["construction_transitions"]
+        ) + int(row["construction_transitions"])
+        target["logical_backing_allocations"] = int(
+            target["logical_backing_allocations"]
+        ) + int(row["logical_backing_allocations"])
+        representations = target["representations"]
+        assert isinstance(representations, Counter)
+        representations.update(row["representations"])
+
+
+def _normalize_candidate_totals(
+    totals: dict[str, dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    normalized: dict[str, dict[str, object]] = {}
+    for name, raw in totals.items():
+        row = dict(raw)
+        representations = row["representations"]
+        assert isinstance(representations, Counter)
+        row["representations"] = dict(sorted(representations.items()))
+        normalized[name] = row
+    return normalized
 
 
 def _validate_world_generation(
@@ -228,7 +279,11 @@ def _validate_world_generation(
     tickets_by_dimension: Counter[str] = Counter()
     for index, raw_timing in enumerate(raw_timings):
         timing = _object(raw_timing, f"world batch timing[{index}]")
-        _equal(_integer(timing, "index", f"world batch timing[{index}]"), index, "batch index")
+        _equal(
+            _integer(timing, "index", f"world batch timing[{index}]"),
+            index,
+            "batch index",
+        )
         dimension = _string(timing, "dimension", f"world batch timing[{index}]")
         if dimension not in section_representative_plan.DIMENSION_BY_KEY:
             raise CorpusSetError(f"world batch timing has unknown dimension {dimension!r}")
@@ -245,8 +300,6 @@ def _validate_world_generation(
     )
     _equal(tickets_by_dimension, expected_dimension_tickets, "world batch dimension coverage")
 
-    # Elapsed timings are deliberately validated but not returned: runner speed is not
-    # part of stable representative corpus identity.
     return {
         "generator": WORLD_GENERATOR,
         "selection_command_sha256": SELECTION_COMMAND_SHA256,
@@ -254,6 +307,62 @@ def _validate_world_generation(
         "batch_count": batch_count,
         "batch_settle_seconds": settle_seconds,
     }
+
+
+def _validate_rust_dimensions(
+    rust: dict[str, Any],
+    expected_dimensions: dict[str, int],
+    global_cardinality: Counter[str],
+    global_candidates: dict[str, dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    raw_dimensions = _object(rust.get("per_dimension"), "Rust per_dimension")
+    _equal(set(raw_dimensions), set(expected_dimensions), "Rust per-dimension key set")
+
+    merged_cardinality: Counter[str] = Counter()
+    merged_candidates = _empty_candidate_totals()
+    validated: dict[str, dict[str, object]] = {}
+
+    for dimension, expected_sections in expected_dimensions.items():
+        label = f"Rust per_dimension {dimension}"
+        summary = _object(raw_dimensions.get(dimension), label)
+        _equal(
+            _integer(summary, "section_count", label),
+            expected_sections,
+            f"{dimension} section count",
+        )
+        _equal(
+            _integer(summary, "total_cells", label),
+            expected_sections * 4096,
+            f"{dimension} total cells",
+        )
+        distinct = _integer(summary, "distinct_state_ids", label)
+        if distinct <= 0:
+            raise CorpusSetError(f"{dimension} distinct_state_ids must be positive")
+        histogram = _counter(summary.get("cardinality_histogram"), f"{label} histogram")
+        if sum(histogram.values()) != expected_sections:
+            raise CorpusSetError(f"{dimension} histogram does not sum to section count")
+        candidates = _validate_candidate_rows(
+            summary.get("candidates"), expected_sections, label
+        )
+        merged_cardinality.update(histogram)
+        _merge_candidate_metrics(merged_candidates, candidates)
+        validated[dimension] = {
+            "section_count": expected_sections,
+            "total_cells": expected_sections * 4096,
+            "distinct_state_ids": distinct,
+            "cardinality_histogram": dict(
+                sorted(histogram.items(), key=lambda item: int(item[0]))
+            ),
+            "candidates": candidates,
+        }
+
+    _equal(merged_cardinality, global_cardinality, "per-dimension/global Rust histogram")
+    _equal(
+        _normalize_candidate_totals(merged_candidates),
+        global_candidates,
+        "per-dimension/global Rust candidate diagnostics",
+    )
+    return validated
 
 
 def validate_member(
@@ -365,18 +474,28 @@ def validate_member(
         section_count,
         "Rust section count",
     )
-    _equal(rust.get("dimensions"), expected_dimensions, "Rust dimensions")
     _equal(
-        rust.get("cardinality_histogram"),
-        manifest.get("cardinality_histogram"),
-        "Python/Rust cardinality histogram",
+        _integer(rust, "total_cells", "Rust member evidence"),
+        section_count * 4096,
+        "Rust total cells",
     )
+    _equal(rust.get("dimensions"), expected_dimensions, "Rust dimensions")
+    rust_cardinality = _counter(rust.get("cardinality_histogram"), "Rust cardinality histogram")
+    _equal(rust_cardinality, cardinality, "Python/Rust cardinality histogram")
     _equal(
         _integer(rust, "distinct_state_ids", "Rust member evidence"),
         _integer(manifest, "distinct_state_ids", "member manifest"),
         "Python/Rust distinct states",
     )
-    candidates = _validate_candidate_rows(rust, section_count)
+    global_candidates = _validate_candidate_rows(
+        rust.get("candidates"), section_count, "Rust member"
+    )
+    per_dimension = _validate_rust_dimensions(
+        rust,
+        expected_dimensions,
+        rust_cardinality,
+        global_candidates,
+    )
 
     return {
         "seed_index": seed_index,
@@ -387,14 +506,14 @@ def validate_member(
         "section_count": section_count,
         "total_cells": section_count * 4096,
         "distinct_state_ids": _integer(manifest, "distinct_state_ids", "member manifest"),
-        "dimensions": expected_dimensions,
         "section_lattice": lattice,
         "cardinality_histogram": dict(
             sorted(cardinality.items(), key=lambda item: int(item[0]))
         ),
         "cell_facts": manifest.get("cell_facts"),
         "section_classes": manifest.get("section_classes"),
-        "candidates": candidates,
+        "per_dimension": per_dimension,
+        "candidates": global_candidates,
     }
 
 
@@ -420,6 +539,15 @@ def build_set(
     for key in ("minecraft_version", "protocol_version", "data_version"):
         _equal(plan_target.get(key), state_target[key], f"plan/state target {key}")
 
+    weighting = _object(plan.get("weighting"), "representative weighting")
+    _equal(weighting.get("seed"), "equal", "seed weighting")
+    _equal(weighting.get("dimension"), "report-separately", "dimension weighting")
+    _equal(
+        weighting.get("section"),
+        "natural-within-selected-generated-chunks",
+        "section weighting",
+    )
+
     members = [
         validate_member(
             seed_index=index,
@@ -438,58 +566,58 @@ def build_set(
     for member in members[1:]:
         _equal(member["section_lattice"], reference_lattice, "cross-seed section lattice")
 
-    aggregate_dimensions: Counter[str] = Counter()
-    aggregate_cardinality: Counter[str] = Counter()
-    aggregate_cell_facts: Counter[str] = Counter()
-    aggregate_section_classes: Counter[str] = Counter()
-    candidate_totals: dict[str, dict[str, object]] = {
-        name: {
-            "production_candidate": production,
-            "sections": 0,
-            "total_owned_bytes": 0,
-            "max_owned_bytes": 0,
-            "construction_transitions": 0,
-            "logical_backing_allocations": 0,
-            "representations": Counter(),
+    corpus_shas = [str(member["corpus_sha256"]) for member in members]
+    if len(set(corpus_shas)) != len(corpus_shas):
+        raise CorpusSetError("representative members must have distinct corpus SHA-256 identities")
+
+    per_dimension: dict[str, dict[str, object]] = {}
+    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
+        dimension = descriptor.key
+        histogram: Counter[str] = Counter()
+        candidate_totals = _empty_candidate_totals()
+        member_distinct_states: list[int] = []
+        section_count = 0
+        for member in members:
+            member_dimensions = _object(member["per_dimension"], "member per_dimension")
+            summary = _object(member_dimensions.get(dimension), f"member {dimension}")
+            member_sections = _integer(summary, "section_count", f"member {dimension}")
+            section_count += member_sections
+            histogram.update(
+                _counter(summary.get("cardinality_histogram"), f"member {dimension} histogram")
+            )
+            member_distinct_states.append(
+                _integer(summary, "distinct_state_ids", f"member {dimension}")
+            )
+            candidates = _object(summary.get("candidates"), f"member {dimension} candidates")
+            _merge_candidate_metrics(candidate_totals, candidates)
+
+        normalized_candidates = _normalize_candidate_totals(candidate_totals)
+        for name, metrics in normalized_candidates.items():
+            _equal(
+                metrics["sections"],
+                section_count,
+                f"{dimension} {name} aggregate section count",
+            )
+        if sum(histogram.values()) != section_count:
+            raise CorpusSetError(f"{dimension} aggregate histogram does not sum to sections")
+        per_dimension[dimension] = {
+            "seed_weighting": "equal",
+            "member_count": len(members),
+            "section_count": section_count,
+            "total_cells": section_count * 4096,
+            "member_distinct_state_ids": member_distinct_states,
+            "cardinality_histogram": dict(
+                sorted(histogram.items(), key=lambda item: int(item[0]))
+            ),
+            "candidates": normalized_candidates,
         }
-        for name, production in EXPECTED_CANDIDATES.items()
-    }
-    for member in members:
-        aggregate_dimensions.update(member["dimensions"])
-        aggregate_cardinality.update(member["cardinality_histogram"])
-        aggregate_cell_facts.update(_counter(member["cell_facts"], "member cell_facts"))
-        aggregate_section_classes.update(
-            _counter(member["section_classes"], "member section_classes")
-        )
-        member_candidates = member["candidates"]
-        assert isinstance(member_candidates, dict)
-        for name, metrics in member_candidates.items():
-            target = candidate_totals[name]
-            target["sections"] = int(target["sections"]) + int(member["section_count"])
-            target["total_owned_bytes"] = int(target["total_owned_bytes"]) + int(
-                metrics["total_owned_bytes"]
-            )
-            target["max_owned_bytes"] = max(
-                int(target["max_owned_bytes"]), int(metrics["max_owned_bytes"])
-            )
-            target["construction_transitions"] = int(
-                target["construction_transitions"]
-            ) + int(metrics["construction_transitions"])
-            target["logical_backing_allocations"] = int(
-                target["logical_backing_allocations"]
-            ) + int(metrics["logical_backing_allocations"])
-            reps = target["representations"]
-            assert isinstance(reps, Counter)
-            reps.update(metrics["representations"])
 
     total_sections = sum(int(member["section_count"]) for member in members)
-    normalized_candidates = {}
-    for name, metrics in candidate_totals.items():
-        reps = metrics.pop("representations")
-        assert isinstance(reps, Counter)
-        metrics["sections"] = total_sections
-        metrics["representations"] = dict(sorted(reps.items()))
-        normalized_candidates[name] = metrics
+    descriptive_dimension_counts = {
+        dimension: int(summary["section_count"])
+        for dimension, summary in per_dimension.items()
+    }
+    _equal(sum(descriptive_dimension_counts.values()), total_sections, "descriptive section total")
 
     result: dict[str, object] = {
         "schema": SCHEMA,
@@ -497,22 +625,20 @@ def build_set(
         "policy": plan["policy"],
         "plan_sha256": plan["plan_sha256"],
         "decision_eligible": True,
+        "decision_scope": "dimension-separated-only",
+        "cross_dimension_score_allowed": False,
         "target": state_target,
         "server_sha256": pinned_server_sha256,
-        "weighting": plan["weighting"],
+        "weighting": weighting,
         "section_lattice": reference_lattice,
         "member_count": len(members),
         "members": members,
+        "per_dimension": per_dimension,
         "aggregate": {
+            "descriptive_only": True,
             "section_count": total_sections,
             "total_cells": total_sections * 4096,
-            "dimensions": dict(sorted(aggregate_dimensions.items())),
-            "cardinality_histogram": dict(
-                sorted(aggregate_cardinality.items(), key=lambda item: int(item[0]))
-            ),
-            "cell_facts": dict(sorted(aggregate_cell_facts.items())),
-            "section_classes": dict(sorted(aggregate_section_classes.items())),
-            "candidates": normalized_candidates,
+            "dimensions": descriptive_dimension_counts,
         },
     }
     result["set_sha256"] = _canonical_digest(result)
