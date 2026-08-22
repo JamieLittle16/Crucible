@@ -144,6 +144,9 @@ impl<S: Copy + Eq> Local8<S> {
         true
     }
 
+    // The direct backing is intentionally heap allocated: returning the array by value would place
+    // a full 4096-cell representation on the stack during promotion and defeat the storage design.
+    #[allow(clippy::unnecessary_box_returns)]
     fn into_direct(self) -> Box<[S; BLOCK_SECTION_CELLS]> {
         let first = self.palette[0];
         let mut result = Box::new([first; BLOCK_SECTION_CELLS]);
