@@ -3,7 +3,3 @@ style_edition = "2024"
 max_width = 100
 use_field_init_shorthand = true
 use_try_shorthand = true
-
-# Generated Rust is byte-for-byte owned by its generator and verified separately.
-# Do not let rustfmt rewrite an @generated artifact behind the generator's back.
-format_generated_files = false
