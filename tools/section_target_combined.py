@@ -279,8 +279,9 @@ def decision_blockers(population_eligible: bool, synthetic_eligible: bool) -> li
 
 def artifact_manifest(output_dir: Path, evidence_sha256: str) -> dict[str, object]:
     files: list[dict[str, object]] = []
+    root_manifest = output_dir / "artifact-manifest.json"
     for path in sorted(output_dir.rglob("*")):
-        if not path.is_file() or path.name == "artifact-manifest.json":
+        if not path.is_file() or path == root_manifest:
             continue
         files.append(
             {
