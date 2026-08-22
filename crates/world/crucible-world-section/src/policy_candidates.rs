@@ -538,9 +538,11 @@ impl<S: Copy + Eq> BlockSection<S> for PackedLocalBlockSection<S> {
 mod tests {
     use std::mem;
 
-    use crucible_generated::{AIR, BLOCK_STATE_COUNT_U32, BlockStateId, GeneratedStateFacts};
+    use crucible_generated::{AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
     use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
     use crucible_world_reference::DirectBlockSection;
+
+    use crate::{AdaptiveBlockSection, DirectNBlockSection};
 
     use super::{
         FastLocalBlockSection, FastLocalRepresentation, PackedLocal, PackedLocalBlockSection,
@@ -578,13 +580,14 @@ mod tests {
         seed: u64,
     ) {
         let mut reference = DirectBlockSection::filled(AIR, &GeneratedStateFacts);
+        let target_count = u64::try_from(BLOCK_STATE_COUNT).expect("target state count fits u64");
         let mut rng = seed;
         for step in 0..iterations {
             rng ^= rng << 13;
             rng ^= rng >> 7;
             rng ^= rng << 17;
             let cell = usize::try_from(rng & 4095).expect("masked section index");
-            let raw = u32::try_from((rng >> 17) % u64::from(BLOCK_STATE_COUNT_U32))
+            let raw = u32::try_from((rng >> 17) % target_count)
                 .expect("modulo target state count fits u32");
             let next = state(raw);
             let previous_candidate = candidate.replace(pos(cell), next, &GeneratedStateFacts);
@@ -607,6 +610,24 @@ mod tests {
     }
 
     #[test]
+    fn direct_n_target_trace_matches_reference() {
+        run_target_trace(
+            DirectNBlockSection::filled(AIR, &GeneratedStateFacts),
+            100_000,
+            0x7F0D_A61C_4239_B5E1,
+        );
+    }
+
+    #[test]
+    fn adaptive_target_trace_matches_reference() {
+        run_target_trace(
+            AdaptiveBlockSection::filled(AIR, &GeneratedStateFacts),
+            100_000,
+            0x3C92_5E0B_A147_D8F6,
+        );
+    }
+
+    #[test]
     fn fast_local_starts_uniform_then_uses_local8() {
         let mut section = FastLocalBlockSection::filled(AIR, &GeneratedStateFacts);
         assert_eq!(section.representation(), FastLocalRepresentation::Uniform);
@@ -617,7 +638,10 @@ mod tests {
             FastLocalRepresentation::Local8Stable
         );
         assert_eq!(section.live_palette_entries(), Some(2));
-        assert!(section.backing_bytes() >= BLOCK_SECTION_CELLS);
+        assert_eq!(
+            section.backing_bytes(),
+            BLOCK_SECTION_CELLS + 256 * mem::size_of::<PaletteSlot<BlockStateId>>()
+        );
     }
 
     #[test]
