@@ -237,8 +237,7 @@ fn write_dimension_summaries(
             indent + 4,
         );
         output.push_str(",\n");
-        write!(output, "{entry_prefix}  \"candidates\": ")
-            .expect("writing to String cannot fail");
+        write!(output, "{entry_prefix}  \"candidates\": ").expect("writing to String cannot fail");
         write_candidate_array(output, &summary.candidates, indent + 4);
         output.push('\n');
         write!(output, "{entry_prefix}}}").expect("writing to String cannot fail");
@@ -250,7 +249,11 @@ fn write_dimension_summaries(
     write!(output, "{prefix}}}").expect("writing to String cannot fail");
 }
 
-fn write_candidate_array(output: &mut String, candidates: &[CandidateImportSummary], indent: usize) {
+fn write_candidate_array(
+    output: &mut String,
+    candidates: &[CandidateImportSummary],
+    indent: usize,
+) {
     output.push_str("[\n");
     let item_prefix = " ".repeat(indent + 2);
     for (index, candidate) in candidates.iter().enumerate() {
