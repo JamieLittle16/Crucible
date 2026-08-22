@@ -2,7 +2,7 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use crucible_generated::{BlockStateId, GeneratedStateFacts};
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection};
+use crucible_world_contract::BLOCK_SECTION_CELLS;
 use crucible_world_reference::DirectBlockSection;
 use crucible_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
