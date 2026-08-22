@@ -219,14 +219,14 @@ fn parse_args() -> Result<Option<Invocation>, String> {
     let mut parsed = ParsedArgs::new();
     let mut args = env::args_os().skip(1);
     while let Some(arg) = args.next() {
-        if parse_argument(&mut parsed, arg, &mut args)? {
+        if parse_argument(&mut parsed, &arg, &mut args)? {
             return Ok(None);
         }
     }
     parsed.finish().map(Some)
 }
 
-fn parse_argument<I>(parsed: &mut ParsedArgs, arg: OsString, args: &mut I) -> Result<bool, String>
+fn parse_argument<I>(parsed: &mut ParsedArgs, arg: &OsString, args: &mut I) -> Result<bool, String>
 where
     I: Iterator<Item = OsString>,
 {
