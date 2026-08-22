@@ -182,7 +182,9 @@ pub(super) fn load_candidate<C: BenchSection>(
         let elapsed = start.elapsed().as_nanos();
         let sample = construction_samples
             .get_mut(construction_sample_index)
-            .ok_or_else(|| "population construction sample count exceeded pack header".to_owned())?;
+            .ok_or_else(|| {
+                "population construction sample count exceeded pack header".to_owned()
+            })?;
         *sample = elapsed;
         construction_sample_index += 1;
 
