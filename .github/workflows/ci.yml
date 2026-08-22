@@ -48,6 +48,7 @@ jobs:
           cargo fmt
           --package crucible-types
           --package crucible-component
+          --package crucible-section-qualification
           --package crucible-world-contract
           --package crucible-world-reference
           --package crucible-world-section
@@ -62,6 +63,9 @@ jobs:
 
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
+
+      - name: Section semantic qualification
+        run: cargo xtask qualify section --quick
 
       - name: Vanilla Atlas tests
         run: python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
