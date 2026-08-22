@@ -157,19 +157,13 @@ fn vanilla(args: Vec<OsString>) -> ExitCode {
 
 fn vanilla_state_data(root: &Path, args: &[OsString]) -> ExitCode {
     let Some(command) = args.first().and_then(|arg| arg.to_str()) else {
-        return failure(
-            "usage: cargo xtask vanilla state-data <inspect|generate|verify|diff> ...",
-        );
+        return failure("usage: cargo xtask vanilla state-data <inspect|generate|verify|diff> ...");
     };
 
     match command {
         "inspect" if args.len() == 2 => {
             let script = root.join("tools/state_data.py");
-            run_python(
-                root,
-                &script,
-                &[OsString::from("inspect"), args[1].clone()],
-            )
+            run_python(root, &script, &[OsString::from("inspect"), args[1].clone()])
         }
         "generate" if args.len() == 2 => {
             let script = root.join("tools/state_data.py");
@@ -195,11 +189,7 @@ fn vanilla_state_data(root: &Path, args: &[OsString]) -> ExitCode {
             run_python(
                 root,
                 &script,
-                &[
-                    OsString::from("diff"),
-                    args[1].clone(),
-                    args[2].clone(),
-                ],
+                &[OsString::from("diff"), args[1].clone(), args[2].clone()],
             )
         }
         _ => failure(
