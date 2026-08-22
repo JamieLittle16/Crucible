@@ -10,7 +10,7 @@ use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_V
 use crate::hardware::HardwareMetadata;
 use crate::model::BenchSection;
 
-use super::pack::LoadedCandidate;
+use super::pack::{LoadedCandidate, RSS_PROTOCOL};
 use super::{PopulationMode, PopulationSettings, SampleSummary, TimingRecord};
 
 const REPORT_SCHEMA: u32 = 1;
@@ -203,20 +203,29 @@ fn write_settings(out: &mut String, settings: PopulationSettings) -> Result<(), 
 
 fn write_memory<C>(out: &mut String, loaded: &LoadedCandidate<C>) -> Result<(), String> {
     writeln!(out, "  \"memory\": {{").map_err(fmt_error)?;
-    string(
+    string(out, 4, "rss_protocol", RSS_PROTOCOL, true)?;
+    number(
         out,
         4,
-        "rss_protocol",
-        "candidate-delta-after-common-preallocation",
+        "rss_baseline_kib",
+        u128::from(loaded.rss_baseline_kib),
+        true,
+    )?;
+    number(
+        out,
+        4,
+        "rss_loaded_kib",
+        u128::from(loaded.rss_loaded_kib),
+        true,
+    )?;
+    signed_number(
+        out,
+        4,
+        "rss_loaded_delta_kib",
+        i128::from(loaded.rss_loaded_delta_kib),
         true,
     )?;
     let values = [
-        ("rss_baseline_kib", u128::from(loaded.rss_baseline_kib)),
-        ("rss_loaded_kib", u128::from(loaded.rss_loaded_kib)),
-        (
-            "rss_loaded_delta_kib",
-            u128::from(loaded.rss_loaded_delta_kib),
-        ),
         (
             "rss_baseline_high_water_kib",
             u128::from(loaded.rss_baseline_high_water_kib),
@@ -309,6 +318,24 @@ fn number(
     indent: usize,
     key: &str,
     value: u128,
+    comma: bool,
+) -> Result<(), String> {
+    writeln!(
+        out,
+        "{}\"{}\": {}{}",
+        " ".repeat(indent),
+        escape(key),
+        value,
+        if comma { "," } else { "" }
+    )
+    .map_err(fmt_error)
+}
+
+fn signed_number(
+    out: &mut String,
+    indent: usize,
+    key: &str,
+    value: i128,
     comma: bool,
 ) -> Result<(), String> {
     writeln!(
