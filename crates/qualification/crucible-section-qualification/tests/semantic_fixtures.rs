@@ -1,5 +1,5 @@
 #[path = "../src/fixtures.rs"]
-mod fixtures;
+pub mod fixtures;
 
 const FIXTURE: &str =
     include_str!("../../../../vanilla/fixtures/section/26.2-semantic-fixtures.txt");
