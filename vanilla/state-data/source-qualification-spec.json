@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "target": {
+    "minecraft_version": "26.2",
+    "protocol_version": 776,
+    "data_version": 4903
+  },
+  "locators": [
+    {
+      "id": "STATE-SOURCE-BOOTSTRAP-VERSION",
+      "kind": "method",
+      "owner": "net.minecraft.SharedConstants",
+      "name": "tryDetectVersion",
+      "param_count": 0,
+      "classification": "PROBE_SUPPORT",
+      "role": "establish the target runtime version before registry bootstrap"
+    },
+    {
+      "id": "STATE-SOURCE-BOOTSTRAP-REGISTRIES",
+      "kind": "method",
+      "owner": "net.minecraft.server.Bootstrap",
+      "name": "bootStrap",
+      "param_count": 0,
+      "classification": "PROBE_SUPPORT",
+      "role": "complete vanilla registry bootstrap before state enumeration"
+    },
+    {
+      "id": "STATE-SOURCE-BLOCKS-INITIALIZATION",
+      "kind": "type",
+      "owner": "net.minecraft.world.level.block.Blocks",
+      "classification": "PROBE_SUPPORT",
+      "role": "force target block registration/static initialization before enumeration"
+    },
+    {
+      "id": "STATE-SOURCE-STATE-REGISTRY",
+      "kind": "field",
+      "owner": "net.minecraft.world.level.block.Block",
+      "name": "BLOCK_STATE_REGISTRY",
+      "classification": "SEMANTIC_TARGET_DATA",
+      "role": "complete target block-state enumeration domain and vanilla global state-ID ordering"
+    },
+    {
+      "id": "STATE-SOURCE-VANILLA-ID",
+      "kind": "method",
+      "owner": "net.minecraft.world.level.block.Block",
+      "name": "getId",
+      "param_count": 1,
+      "classification": "SEMANTIC_TARGET_DATA",
+      "role": "map each official block state to the vanilla global numeric state ID"
+    },
+    {
+      "id": "STATE-SOURCE-NON-AIR",
+      "kind": "method",
+      "owner": "net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase",
+      "name": "isAir",
+      "param_count": 0,
+      "classification": "SEMANTIC_TARGET_DATA",
+      "role": "derive the exact non-air predicate used by section mutation accounting"
+    },
+    {
+      "id": "STATE-SOURCE-RANDOM-BLOCK",
+      "kind": "method",
+      "owner": "net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase",
+      "name": "isRandomlyTicking",
+      "param_count": 0,
+      "classification": "SEMANTIC_TARGET_DATA",
+      "role": "derive block-state random-tick eligibility"
+    },
+    {
+      "id": "STATE-SOURCE-FLUID-PROJECTION",
+      "kind": "method",
+      "owner": "net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase",
+      "name": "getFluidState",
+      "param_count": 0,
+      "classification": "SEMANTIC_TARGET_DATA",
+      "role": "project a block state to the fluid state used by LevelChunkSection accounting"
+    },
+    {
+      "id": "STATE-SOURCE-FLUID-EMPTY",
+      "kind": "method",
+      "owner": "net.minecraft.world.level.material.FluidState",
+      "name": "isEmpty",
+      "param_count": 0,
+      "classification": "SEMANTIC_TARGET_DATA",
+      "role": "derive counted-fluid presence from the projected fluid state"
+    },
+    {
+      "id": "STATE-SOURCE-RANDOM-FLUID",
+      "kind": "method",
+      "owner": "net.minecraft.world.level.material.FluidState",
+      "name": "isRandomlyTicking",
+      "param_count": 0,
+      "classification": "SEMANTIC_TARGET_DATA",
+      "role": "derive random-fluid tick eligibility for counted fluid states"
+    }
+  ]
+}

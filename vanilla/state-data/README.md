@@ -4,6 +4,48 @@ This directory owns the **generated semantic input boundary** between the pinned
 
 The live server must not discover section mutation facts by repeatedly traversing registries, Java-shaped block objects, fluid objects, or dynamic property APIs. Instead, target tooling produces a normalized state dataset and `tools/state_data.py` deterministically turns that dataset into compact Rust tables.
 
+## Qualification chain
+
+Production target data is accepted through two independent official evidence paths:
+
+```text
+pinned official mc-src.zip
+        ↓
+Vanilla Atlas
+        ↓
+source-qualification-spec.json
+        ↓
+fingerprint-only qualification artifact
+
+pinned official server runtime + mappings
+        ↓
+official_state_data.py
+        ↓
+normalized complete state/facts dataset
+```
+
+The source archive itself and the disposable Atlas SQLite database are deliberately not committed. The qualification artifact records only source locators, file hashes, normalized/body fingerprints, target identity, Atlas identity, the source-archive digest and a deterministic qualification digest.
+
+`tools/state_source_qualification.py` **fails closed** when:
+
+- the Atlas database was not built from the exact `vanilla.lock.toml` source archive;
+- Minecraft/protocol/data versions differ;
+- Atlas schema/version/fingerprint algorithm differ;
+- a required type, field or method is missing;
+- a method locator is ambiguous at its declared parameter count.
+
+The committed specification currently covers the complete block-state registry, vanilla global state-ID mapping, air predicate, block random-tick predicate, fluid-state projection, fluid emptiness, fluid random-tick predicate, and the minimal official bootstrap surfaces required by the runtime probe.
+
+Generate a local qualification artifact with:
+
+```text
+python3 tools/state_source_qualification.py \
+  --atlas .crucible/vanilla/atlas.sqlite \
+  --output .crucible/vanilla/26.2-state-source-qualification.json
+```
+
+Once an artifact is reviewed/committed, byte-identical regeneration is checked with `--verify`. Runtime-derived state data is not production-qualified merely because the runtime probe succeeds; the source and runtime evidence must be joined before the final generated target crate is frozen.
+
 ## Normalized input schema
 
 ```json
@@ -49,9 +91,9 @@ Future collision, light, heightmap, block-entity, or other metadata must use sep
 
 The representation width is selected from the actual generated state count. `u16` is not a source-level assumption.
 
-## Commands
+## State-data commands
 
-The low-level generator currently exposes:
+The low-level deterministic generator exposes:
 
 ```text
 python3 tools/state_data.py inspect INPUT.json
@@ -59,8 +101,14 @@ python3 tools/state_data.py generate INPUT.json --output generated.rs --manifest
 python3 tools/state_data.py verify INPUT.json --output generated.rs --manifest manifest.json
 ```
 
-M0.3A will connect the authoritative official-runtime/source extractor to this normalized boundary before generated 26.2 Rust data is accepted into the normal workspace.
+The official runtime probe is:
+
+```text
+python3 tools/official_state_data.py --version 26.2 --output INPUT.json
+```
+
+The runtime probe remains useful in hosted CI because it can obtain the official server artifact directly. The source qualification step intentionally requires the separately pinned local official source corpus and therefore runs when the source-backed artifact is created or requalified.
 
 ## Provenance rule
 
-The final committed 26.2 artifact must record at least the target version/protocol/data version, official input hashes, generator version, numeric assignment policy, normalized-input digest, and generation digest. Ordinary Crucible builds must not require Mojang source or server artifacts to be present.
+The final committed 26.2 artifact must record at least the target version/protocol/data version, official runtime input hashes, pinned source-qualification digest, generator version, numeric assignment policy, normalized-input digest, and generation digest. Ordinary Crucible builds must not require Mojang source or server artifacts to be present.
