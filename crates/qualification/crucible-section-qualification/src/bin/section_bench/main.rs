@@ -10,6 +10,7 @@ mod corpus;
 mod hardware;
 mod measure;
 mod model;
+mod population;
 mod report;
 mod workloads;
 
@@ -21,6 +22,7 @@ use std::process::ExitCode;
 use crucible_generated::BLOCK_STATE_COUNT;
 
 use crate::model::Mode;
+use crate::population::PopulationMode;
 
 const HIGHEST_SYNTHETIC_STATE: usize = 5_511;
 
@@ -33,6 +35,12 @@ enum Invocation {
     Corpus {
         path: PathBuf,
         decision_requested: bool,
+        output: Option<PathBuf>,
+    },
+    Population {
+        pack: PathBuf,
+        candidate: String,
+        mode: PopulationMode,
         output: Option<PathBuf>,
     },
 }
@@ -63,6 +71,12 @@ fn run() -> Result<(), String> {
             decision_requested,
             output,
         } => run_corpus(&path, decision_requested, output),
+        Invocation::Population {
+            pack,
+            candidate,
+            mode,
+            output,
+        } => run_population(&pack, &candidate, mode, output),
     }
 }
 
@@ -109,27 +123,48 @@ fn run_corpus(
     Ok(())
 }
 
+fn run_population(
+    pack: &Path,
+    candidate: &str,
+    mode: PopulationMode,
+    output: Option<PathBuf>,
+) -> Result<(), String> {
+    let artifact = population::run(pack, candidate, mode)?;
+    write_artifact(output, &artifact)?;
+    println!(
+        "section population benchmark: mode={} candidate={} pack={} complete",
+        mode.as_str(),
+        candidate,
+        pack.display()
+    );
+    Ok(())
+}
+
 fn parse_args() -> Result<Option<Invocation>, String> {
-    let mut mode = Mode::Qualification;
-    let mut mode_explicit = false;
+    let mut synthetic_mode = Mode::Qualification;
+    let mut synthetic_mode_explicit = false;
     let mut corpus: Option<(PathBuf, bool)> = None;
+    let mut population_pack: Option<PathBuf> = None;
+    let mut population_candidate: Option<String> = None;
+    let mut population_mode: Option<PopulationMode> = None;
     let mut output = None;
     let mut args = env::args_os().skip(1);
+
     while let Some(arg) = args.next() {
         match arg.to_str() {
             Some("--smoke") => {
-                if mode_explicit {
-                    return Err("benchmark mode may be specified only once".to_owned());
+                if synthetic_mode_explicit {
+                    return Err("synthetic benchmark mode may be specified only once".to_owned());
                 }
-                mode = Mode::Smoke;
-                mode_explicit = true;
+                synthetic_mode = Mode::Smoke;
+                synthetic_mode_explicit = true;
             }
             Some("--qualification") => {
-                if mode_explicit {
-                    return Err("benchmark mode may be specified only once".to_owned());
+                if synthetic_mode_explicit {
+                    return Err("synthetic benchmark mode may be specified only once".to_owned());
                 }
-                mode = Mode::Qualification;
-                mode_explicit = true;
+                synthetic_mode = Mode::Qualification;
+                synthetic_mode_explicit = true;
             }
             Some("--corpus-check" | "--corpus-decision-check") => {
                 if corpus.is_some() {
@@ -140,6 +175,39 @@ fn parse_args() -> Result<Option<Invocation>, String> {
                     .next()
                     .ok_or_else(|| "corpus mode requires a corpus path".to_owned())?;
                 corpus = Some((PathBuf::from(path), decision_requested));
+            }
+            Some("--population-pack") => {
+                if population_pack.is_some() {
+                    return Err("--population-pack may be specified only once".to_owned());
+                }
+                population_pack = Some(PathBuf::from(
+                    args.next()
+                        .ok_or_else(|| "--population-pack requires a path".to_owned())?,
+                ));
+            }
+            Some("--candidate") => {
+                if population_candidate.is_some() {
+                    return Err("--candidate may be specified only once".to_owned());
+                }
+                let value = args
+                    .next()
+                    .ok_or_else(|| "--candidate requires a candidate name".to_owned())?;
+                let candidate = value
+                    .into_string()
+                    .map_err(|_| "candidate name must be valid UTF-8".to_owned())?;
+                population_candidate = Some(candidate);
+            }
+            Some("--population-smoke") => {
+                if population_mode.is_some() {
+                    return Err("population benchmark mode may be specified only once".to_owned());
+                }
+                population_mode = Some(PopulationMode::Smoke);
+            }
+            Some("--population-qualification") => {
+                if population_mode.is_some() {
+                    return Err("population benchmark mode may be specified only once".to_owned());
+                }
+                population_mode = Some(PopulationMode::Qualification);
             }
             Some("--output") => {
                 if output.is_some() {
@@ -156,8 +224,33 @@ fn parse_args() -> Result<Option<Invocation>, String> {
         }
     }
 
+    let population_requested =
+        population_pack.is_some() || population_candidate.is_some() || population_mode.is_some();
+    if population_requested {
+        if synthetic_mode_explicit || corpus.is_some() {
+            return Err(
+                "population benchmark options cannot be combined with synthetic/corpus modes"
+                    .to_owned(),
+            );
+        }
+        let pack = population_pack
+            .ok_or_else(|| "population benchmark requires --population-pack PATH".to_owned())?;
+        let candidate = population_candidate
+            .ok_or_else(|| "population benchmark requires --candidate NAME".to_owned())?;
+        let mode = population_mode.ok_or_else(|| {
+            "population benchmark requires --population-smoke or --population-qualification"
+                .to_owned()
+        })?;
+        return Ok(Some(Invocation::Population {
+            pack,
+            candidate,
+            mode,
+            output,
+        }));
+    }
+
     if let Some((path, decision_requested)) = corpus {
-        if mode_explicit {
+        if synthetic_mode_explicit {
             return Err(
                 "--corpus-check/--corpus-decision-check cannot be combined with synthetic modes"
                     .to_owned(),
@@ -170,12 +263,15 @@ fn parse_args() -> Result<Option<Invocation>, String> {
         }));
     }
 
-    Ok(Some(Invocation::Synthetic { mode, output }))
+    Ok(Some(Invocation::Synthetic {
+        mode: synthetic_mode,
+        output,
+    }))
 }
 
 fn print_help() {
     println!(
-        "usage: section_bench [--smoke|--qualification] [--output PATH]\n       section_bench --corpus-check CORPUS [--output PATH]\n       section_bench --corpus-decision-check CORPUS [--output PATH]"
+        "usage: section_bench [--smoke|--qualification] [--output PATH]\n       section_bench --corpus-check CORPUS [--output PATH]\n       section_bench --corpus-decision-check CORPUS [--output PATH]\n       section_bench --population-pack PACK --candidate NAME (--population-smoke|--population-qualification) [--output PATH]"
     );
 }
 
