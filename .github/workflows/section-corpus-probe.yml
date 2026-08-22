@@ -1,0 +1,153 @@
+name: Section Corpus Probe
+
+on:
+  pull_request:
+    paths:
+      - tools/official_state_data.py
+      - tools/qualify_state_data.py
+      - tools/official_section_world.py
+      - tools/vanilla_section_extractor.py
+      - tools/section_corpus.py
+      - tools/tests/test_vanilla_section_extractor.py
+      - tools/tests/test_section_corpus.py
+      - vanilla/state-data/**
+      - vanilla/vanilla.lock.toml
+      - .github/workflows/section-corpus-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Official 26.2 spawn-world corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Corpus and extractor regressions
+        run: |
+          python3 -m unittest discover -s tools/tests -p 'test_section_corpus.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_vanilla_section_extractor.py' -v
+
+      - name: Extract official runtime state identities
+        run: |
+          python3 tools/official_state_data.py \
+            --version 26.2 \
+            --output /tmp/26.2-block-states.raw.json
+
+      - name: Bind runtime identities to committed source qualification
+        run: |
+          python3 tools/qualify_state_data.py \
+            --runtime-data /tmp/26.2-block-states.raw.json \
+            --source-qualification vanilla/state-data/26.2-source-qualification.json \
+            --output /tmp/26.2-block-states.qualified.json
+
+      - name: Verify bound state identity matches frozen generator input
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'tools')
+          import state_data
+
+          qualified = json.loads(Path('/tmp/26.2-block-states.qualified.json').read_text())
+          manifest = json.loads(Path('vanilla/state-data/26.2-state-data-manifest.json').read_text())
+          actual = state_data.digest(qualified)
+          expected = manifest['input_digest']
+          if actual != expected:
+              raise SystemExit(
+                  f'bound qualified-state digest mismatch: expected {expected}, got {actual}'
+              )
+          print(f'verified frozen qualified-state input digest: {actual}')
+          PY
+
+      - name: Generate deterministic official spawn world
+        run: |
+          python3 tools/official_section_world.py \
+            --version 26.2 \
+            --work-dir /tmp/crucible-section-world \
+            --cache /tmp/crucible-vanilla-downloads \
+            --evidence /tmp/official-world-evidence.json
+
+      - name: Extract stored overworld sections
+        run: |
+          python3 tools/vanilla_section_extractor.py \
+            --world /tmp/crucible-section-world/world \
+            --qualified-states /tmp/26.2-block-states.qualified.json \
+            --dimension minecraft:overworld \
+            --output /tmp/26.2-spawn-sections.corpus \
+            --inventory /tmp/26.2-spawn-sections.inventory.json
+
+      - name: Independently validate normalized corpus
+        run: |
+          python3 tools/section_corpus.py validate \
+            /tmp/26.2-spawn-sections.corpus \
+            --manifest /tmp/26.2-spawn-sections.manifest.json
+
+      - name: Verify real-target evidence identities
+        run: |
+          python3 - <<'PY'
+          import json
+          import tomllib
+          from pathlib import Path
+
+          world = json.loads(Path('/tmp/official-world-evidence.json').read_text())
+          inventory = json.loads(Path('/tmp/26.2-spawn-sections.inventory.json').read_text())
+          corpus = json.loads(Path('/tmp/26.2-spawn-sections.manifest.json').read_text())
+          with Path('vanilla/vanilla.lock.toml').open('rb') as handle:
+              lock = tomllib.load(handle)
+          state_manifest = json.loads(
+              Path('vanilla/state-data/26.2-state-data-manifest.json').read_text()
+          )
+
+          if world['server_sha256'] != lock['runtime']['server_sha256']:
+              raise SystemExit('world generator did not use the pinned official server')
+          if world['minecraft_version'] != '26.2':
+              raise SystemExit('world generator target drifted')
+          if inventory['policy'] != 'vanilla-save-region-v1-stored-sections':
+              raise SystemExit('unexpected corpus extraction policy')
+          if inventory['section_count'] <= 0:
+              raise SystemExit('official spawn corpus contains no stored sections')
+          if corpus['corpus_sha256'] != inventory['corpus_sha256']:
+              raise SystemExit('corpus manifest/inventory digest mismatch')
+          if corpus['source']['inventory_sha256'] != inventory['inventory_sha256']:
+              raise SystemExit('corpus source-inventory digest mismatch')
+          if (
+              corpus['target']['state_data_generation_sha256']
+              != state_manifest['generation_digest']
+          ):
+              raise SystemExit('corpus target state-data generation digest mismatch')
+          if corpus['target']['state_data_input_sha256'] != state_manifest['input_digest']:
+              raise SystemExit('corpus target state-data input digest mismatch')
+
+          print(
+              'official section corpus PASS: '
+              f"sections={corpus['section_count']} "
+              f"states={corpus['distinct_state_ids']} "
+              f"inventory={inventory['inventory_sha256']} "
+              f"corpus={corpus['corpus_sha256']}"
+          )
+          PY
+
+      - name: Upload normalized corpus evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: minecraft-26.2-section-corpus-probe
+          path: |
+            /tmp/official-world-evidence.json
+            /tmp/26.2-spawn-sections.inventory.json
+            /tmp/26.2-spawn-sections.manifest.json
+            /tmp/26.2-spawn-sections.corpus
+          if-no-files-found: error
+          retention-days: 7
