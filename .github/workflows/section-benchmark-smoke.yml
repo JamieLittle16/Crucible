@@ -1,0 +1,77 @@
+name: Section Benchmark Smoke
+
+on:
+  pull_request:
+    paths:
+      - crates/qualification/crucible-section-qualification/**
+      - crates/world/crucible-world-contract/**
+      - crates/world/crucible-world-reference/**
+      - crates/world/crucible-world-section/**
+      - crates/data/crucible-generated/**
+      - .github/workflows/section-benchmark-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  smoke:
+    name: Section benchmark smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Run release benchmark smoke
+        run: >-
+          cargo run --release --locked
+          -p crucible-section-qualification
+          --bin section_bench --
+          --smoke
+          --output target/crucible-qualification/section/benchmark-smoke.json
+
+      - name: Validate smoke artifact identity
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('target/crucible-qualification/section/benchmark-smoke.json')
+          data = json.loads(path.read_text())
+          assert data['schema'] == 1
+          assert data['harness_version'] == 'section-bench-v1'
+          assert data['mode'] == 'smoke'
+          assert data['minecraft_version'] == '26.2'
+          assert data['protocol_version'] == 776
+          assert data['data_version'] == 4903
+          assert data['timings']
+          assert data['memory']
+          assert {row['candidate'] for row in data['timings']} == {
+              'direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local'
+          }
+          print(
+              'benchmark smoke records:',
+              len(data['timings']),
+              'timings,',
+              len(data['memory']),
+              'memory'
+          )
+          PY
+
+      - name: Upload diagnostic smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crucible-section-benchmark-smoke
+          path: target/crucible-qualification/section/benchmark-smoke.json
+          if-no-files-found: error
+          retention-days: 7
