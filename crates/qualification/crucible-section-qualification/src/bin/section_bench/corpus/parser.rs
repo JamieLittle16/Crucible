@@ -188,9 +188,9 @@ fn parse_state_id(raw: &str, line_number: usize, cell: usize) -> Result<BlockSta
             "line {line_number} cell {cell}: noncanonical state ID {raw:?}"
         ));
     }
-    let value = raw.parse::<u32>().map_err(|_| {
-        format!("line {line_number} cell {cell}: state ID {raw} does not fit u32")
-    })?;
+    let value = raw
+        .parse::<u32>()
+        .map_err(|_| format!("line {line_number} cell {cell}: state ID {raw} does not fit u32"))?;
     BlockStateId::new(value).ok_or_else(|| {
         format!(
             "line {line_number} cell {cell}: state ID {value} outside 0..{}",
