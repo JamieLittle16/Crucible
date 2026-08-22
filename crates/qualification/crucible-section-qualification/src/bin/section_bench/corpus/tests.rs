@@ -364,9 +364,9 @@ fn find_target_state(mut predicate: impl FnMut(SectionStateFacts) -> bool) -> u3
 fn real_generated_fact_classes_survive_full_import_and_summary_checks() {
     let air = find_target_state(|facts| !facts.non_air());
     let solid = find_target_state(|facts| facts.non_air() && !facts.counted_fluid());
-    let fluid = find_target_state(|facts| facts.counted_fluid());
-    let random_block = find_target_state(|facts| facts.random_block());
-    let random_fluid = find_target_state(|facts| facts.random_fluid());
+    let fluid = find_target_state(SectionStateFacts::counted_fluid);
+    let random_block = find_target_state(SectionStateFacts::random_block);
+    let random_fluid = find_target_state(SectionStateFacts::random_fluid);
 
     let mut states = vec![air; 4096];
     states[1] = solid;
