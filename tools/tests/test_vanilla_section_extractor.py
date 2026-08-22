@@ -49,7 +49,9 @@ def byte_payload(value: int) -> bytes:
 
 
 def long_array_payload(values: list[int]) -> bytes:
-    return struct.pack(">i", len(values)) + b"".join(struct.pack(">q", value) for value in values)
+    return struct.pack(">i", len(values)) + b"".join(
+        struct.pack(">q", value) for value in values
+    )
 
 
 def compound_payload(entries: list[bytes]) -> bytes:
@@ -92,11 +94,18 @@ def block_states_payload(
         named(
             9,
             "palette",
-            list_payload(10, [palette_entry(name, properties) for name, properties in palette]),
+            list_payload(
+                10,
+                [palette_entry(name, properties) for name, properties in palette],
+            ),
         )
     ]
     if len(palette) > 1:
-        data = override_data if override_data is not None else pack_indices(indices or [0] * 4096, len(palette))
+        data = (
+            override_data
+            if override_data is not None
+            else pack_indices(indices or [0] * 4096, len(palette))
+        )
         entries.append(named(12, "data", long_array_payload(data)))
     return compound_payload(entries)
 
@@ -110,7 +119,11 @@ def section_payload(
     return compound_payload(
         [
             named(1, "Y", byte_payload(y)),
-            named(10, "block_states", block_states_payload(palette, indices, override_data)),
+            named(
+                10,
+                "block_states",
+                block_states_payload(palette, indices, override_data),
+            ),
         ]
     )
 
@@ -230,6 +243,14 @@ def write_world(tmp: Path, chunk: bytes, level_version: int = 4903) -> Path:
     return world
 
 
+def typed_palette(values: list[dict[str, object]]) -> extractor.NbtListValue:
+    return extractor.NbtListValue(10, tuple(values))
+
+
+def typed_longs(values: list[int]) -> extractor.NbtLongArray:
+    return extractor.NbtLongArray(tuple(values))
+
+
 class VanillaSectionExtractorTests(unittest.TestCase):
     def test_palette_identity_sorts_properties(self) -> None:
         entry = {
@@ -250,7 +271,7 @@ class VanillaSectionExtractorTests(unittest.TestCase):
         indices = [index % 3 for index in range(4096)]
         data = pack_indices(indices, 3)
         decoded = extractor.decode_block_states(
-            {"palette": palette, "data": data},
+            {"palette": typed_palette(palette), "data": typed_longs(data)},
             {
                 "minecraft:air": 0,
                 "minecraft:stone": 1,
@@ -297,25 +318,38 @@ class VanillaSectionExtractorTests(unittest.TestCase):
             self.assertEqual(inventory_data["policy"], extractor.EXTRACTOR_ID)
             self.assertEqual(inventory_data["section_count"], 1)
             self.assertEqual(len(inventory_data["files"]), 2)
-            self.assertIn("extractor=vanilla-save-region-v1-stored-sections", corpus.read_text())
+            self.assertIn(
+                "extractor=vanilla-save-region-v1-stored-sections",
+                corpus.read_text(),
+            )
 
     def test_level_dat_and_chunk_data_versions_are_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_name:
             tmp = Path(tmp_name)
             world = write_world(tmp, chunk_nbt(), level_version=4902)
-            with self.assertRaisesRegex(extractor.ExtractorError, "level.dat DataVersion"):
+            with self.assertRaisesRegex(
+                extractor.ExtractorError,
+                "level.dat DataVersion",
+            ):
                 extractor.validate_level_dat(world)
 
             region = tmp / "bad-region" / "r.0.0.mca"
             write_region(region, chunk_nbt(data_version=4902))
             with self.assertRaisesRegex(extractor.ExtractorError, "DataVersion 4902"):
-                extractor.extract_region(region, "minecraft:overworld", {"minecraft:air": 0})
+                extractor.extract_region(
+                    region,
+                    "minecraft:overworld",
+                    {"minecraft:air": 0},
+                )
 
     def test_unknown_saved_state_is_rejected(self) -> None:
         section = {
-            "palette": [{"Name": "minecraft:not_in_target"}],
+            "palette": typed_palette([{"Name": "minecraft:not_in_target"}]),
         }
-        with self.assertRaisesRegex(extractor.ExtractorError, "absent from qualified target"):
+        with self.assertRaisesRegex(
+            extractor.ExtractorError,
+            "absent from qualified target",
+        ):
             extractor.decode_block_states(section, {"minecraft:air": 0})
 
     def test_region_slot_must_match_chunk_coordinates(self) -> None:
@@ -324,18 +358,67 @@ class VanillaSectionExtractorTests(unittest.TestCase):
             region = tmp / "r.0.0.mca"
             write_region(region, chunk_nbt(chunk_x=1))
             with self.assertRaisesRegex(extractor.ExtractorError, "contains chunk 1,0"):
-                extractor.extract_region(region, "minecraft:overworld", {"minecraft:air": 0})
+                extractor.extract_region(
+                    region,
+                    "minecraft:overworld",
+                    {"minecraft:air": 0},
+                )
 
     def test_packed_long_count_and_palette_indices_are_checked(self) -> None:
-        palette = [{"Name": "minecraft:air"}, {"Name": "minecraft:stone"}]
+        palette = typed_palette(
+            [{"Name": "minecraft:air"}, {"Name": "minecraft:stone"}]
+        )
         state_ids = {"minecraft:air": 0, "minecraft:stone": 1}
-        with self.assertRaisesRegex(extractor.ExtractorError, "length does not match palette"):
-            extractor.decode_block_states({"palette": palette, "data": [0]}, state_ids)
+        with self.assertRaisesRegex(
+            extractor.ExtractorError,
+            "length does not match palette",
+        ):
+            extractor.decode_block_states(
+                {"palette": palette, "data": typed_longs([0])},
+                state_ids,
+            )
 
         data = pack_indices([0] * 4096, 2)
         data[0] = 2  # First 4-bit palette index is outside a two-entry palette.
-        with self.assertRaisesRegex(extractor.ExtractorError, "palette index 2 outside"):
-            extractor.decode_block_states({"palette": palette, "data": data}, state_ids)
+        with self.assertRaisesRegex(
+            extractor.ExtractorError,
+            "palette index 2 outside",
+        ):
+            extractor.decode_block_states(
+                {"palette": palette, "data": typed_longs(data)},
+                state_ids,
+            )
+
+    def test_list_cannot_masquerade_as_long_array(self) -> None:
+        palette = typed_palette(
+            [{"Name": "minecraft:air"}, {"Name": "minecraft:stone"}]
+        )
+        fake_data = extractor.NbtListValue(4, tuple([0] * 256))
+        with self.assertRaisesRegex(
+            extractor.ExtractorError,
+            "must be an NBT long array",
+        ):
+            extractor.decode_block_states(
+                {"palette": palette, "data": fake_data},
+                {"minecraft:air": 0, "minecraft:stone": 1},
+            )
+
+    def test_palette_and_sections_require_compound_lists(self) -> None:
+        wrong_palette_type = extractor.NbtListValue(8, ("minecraft:air",))
+        with self.assertRaisesRegex(
+            extractor.ExtractorError,
+            "element type 10",
+        ):
+            extractor.decode_block_states(
+                {"palette": wrong_palette_type},
+                {"minecraft:air": 0},
+            )
+
+        parsed = extractor.parse_nbt(
+            root_compound([named(9, "sections", list_payload(8, [string_payload("bad")]))])
+        )
+        with self.assertRaisesRegex(extractor.ExtractorError, "element type 10"):
+            extractor._require_list(parsed["sections"], "chunk sections", element_type=10)
 
     def test_lz4_is_rejected_explicitly_in_v1(self) -> None:
         with self.assertRaisesRegex(extractor.ExtractorError, "LZ4-compressed"):
@@ -348,7 +431,10 @@ class VanillaSectionExtractorTests(unittest.TestCase):
             manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
             manifest_data["input_digest"] = "f" * 64
             manifest.write_text(json.dumps(manifest_data), encoding="utf-8")
-            with self.assertRaisesRegex(extractor.ExtractorError, "does not match committed"):
+            with self.assertRaisesRegex(
+                extractor.ExtractorError,
+                "does not match committed",
+            ):
                 extractor.load_state_identity_map(qualified, manifest)
 
 
