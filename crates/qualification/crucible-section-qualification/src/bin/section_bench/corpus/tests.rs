@@ -402,5 +402,10 @@ fn mixed_real_target_fact_classes_survive_import_reconstruction() {
 
     assert_eq!(checked.section_count, 1);
     assert_eq!(checked.candidates.len(), 5);
-    assert!(checked.candidates.iter().all(|candidate| candidate.sections == 1));
+    assert!(
+        checked
+            .candidates
+            .iter()
+            .all(|candidate| candidate.sections == 1)
+    );
 }
