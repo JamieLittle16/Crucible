@@ -103,9 +103,9 @@ impl Candidate {
         }
     }
 
-    /// Parses the stable CLI/evidence name.
+    /// Resolves a stable CLI/evidence name.
     #[must_use]
-    pub fn parse(value: &str) -> Option<Self> {
+    pub fn from_name(value: &str) -> Option<Self> {
         match value {
             "direct" => Some(Self::Direct),
             "adaptive" => Some(Self::Adaptive),
@@ -145,7 +145,7 @@ impl TraceClass {
         }
     }
 
-    fn parse(value: &str) -> Option<Self> {
+    fn from_name(value: &str) -> Option<Self> {
         match value {
             "all-air" => Some(Self::AllAir),
             "one-cell-reversal" => Some(Self::OneCellReversal),
@@ -249,7 +249,7 @@ impl Trace {
         if schema != TRACE_SCHEMA {
             return Err(QualificationFailure::new("unsupported trace schema"));
         }
-        let class = TraceClass::parse(header_parts[2])
+        let class = TraceClass::from_name(header_parts[2])
             .ok_or_else(|| QualificationFailure::new("unknown trace class"))?;
         let seed = u64::from_str_radix(header_parts[3], 16)
             .map_err(|_| QualificationFailure::new("invalid trace seed"))?;
@@ -298,7 +298,10 @@ impl EvidenceRecord {
         format!(
             "EQUIV-WORLD-SECTION-{}-{}",
             self.mode.as_str().to_ascii_uppercase(),
-            self.candidate.as_str().to_ascii_uppercase().replace('-', "_")
+            self.candidate
+                .as_str()
+                .to_ascii_uppercase()
+                .replace('-', "_")
         )
     }
 
@@ -337,13 +340,27 @@ impl QualificationReport {
         writeln!(output, "  \"schema\": {EVIDENCE_SCHEMA},").expect("String write");
         writeln!(output, "  \"qualification\": \"section\",").expect("String write");
         writeln!(output, "  \"mode\": \"{}\",", self.mode.as_str()).expect("String write");
-        writeln!(output, "  \"minecraft_version\": \"{MINECRAFT_VERSION}\",").expect("String write");
+        writeln!(output, "  \"minecraft_version\": \"{MINECRAFT_VERSION}\",")
+            .expect("String write");
         writeln!(output, "  \"protocol_version\": {PROTOCOL_VERSION},").expect("String write");
         writeln!(output, "  \"data_version\": {DATA_VERSION},").expect("String write");
-        writeln!(output, "  \"commit_sha\": \"{}\",", json_safe_token(commit_sha)).expect("String write");
+        writeln!(
+            output,
+            "  \"commit_sha\": \"{}\",",
+            json_safe_token(commit_sha)
+        )
+        .expect("String write");
         writeln!(output, "  \"state_count\": {BLOCK_STATE_COUNT},").expect("String write");
-        writeln!(output, "  \"state_data_input_sha256\": \"{STATE_DATA_INPUT_SHA256}\",").expect("String write");
-        writeln!(output, "  \"state_data_generation_sha256\": \"{STATE_DATA_GENERATION_SHA256}\",").expect("String write");
+        writeln!(
+            output,
+            "  \"state_data_input_sha256\": \"{STATE_DATA_INPUT_SHA256}\","
+        )
+        .expect("String write");
+        writeln!(
+            output,
+            "  \"state_data_generation_sha256\": \"{STATE_DATA_GENERATION_SHA256}\","
+        )
+        .expect("String write");
         writeln!(output, "  \"trace_schema\": {TRACE_SCHEMA},").expect("String write");
         writeln!(output, "  \"sem_ids\": [").expect("String write");
         for (index, sem_id) in SEM_IDS.iter().enumerate() {
@@ -353,14 +370,39 @@ impl QualificationReport {
         writeln!(output, "  ],").expect("String write");
         writeln!(output, "  \"records\": [").expect("String write");
         for (index, record) in self.records.iter().enumerate() {
-            let suffix = if index + 1 == self.records.len() { "" } else { "," };
+            let suffix = if index + 1 == self.records.len() {
+                ""
+            } else {
+                ","
+            };
             writeln!(output, "    {{").expect("String write");
             writeln!(output, "      \"id\": \"{}\",", record.id()).expect("String write");
-            writeln!(output, "      \"candidate\": \"{}\",", record.candidate.as_str()).expect("String write");
-            writeln!(output, "      \"trace_count\": {},", record.trace_count).expect("String write");
-            writeln!(output, "      \"trace_operations\": {},", record.trace_operations).expect("String write");
-            writeln!(output, "      \"synthetic_operations\": {},", record.synthetic_operations).expect("String write");
-            writeln!(output, "      \"trace_fingerprint_fnv1a64\": \"{:016x}\"", record.trace_fingerprint).expect("String write");
+            writeln!(
+                output,
+                "      \"candidate\": \"{}\",",
+                record.candidate.as_str()
+            )
+            .expect("String write");
+            writeln!(output, "      \"trace_count\": {},", record.trace_count)
+                .expect("String write");
+            writeln!(
+                output,
+                "      \"trace_operations\": {},",
+                record.trace_operations
+            )
+            .expect("String write");
+            writeln!(
+                output,
+                "      \"synthetic_operations\": {},",
+                record.synthetic_operations
+            )
+            .expect("String write");
+            writeln!(
+                output,
+                "      \"trace_fingerprint_fnv1a64\": \"{:016x}\"",
+                record.trace_fingerprint
+            )
+            .expect("String write");
             writeln!(output, "    }}{suffix}").expect("String write");
         }
         writeln!(output, "  ]").expect("String write");
@@ -441,9 +483,13 @@ pub fn qualify(
         }
     }
 
-    let candidates = candidate_filter.map_or_else(|| Candidate::ALL.to_vec(), |candidate| vec![candidate]);
+    let candidates =
+        candidate_filter.map_or_else(|| Candidate::ALL.to_vec(), |candidate| vec![candidate]);
     let fingerprint = trace_fingerprint(&traces);
-    let trace_operations = traces.iter().map(|trace| trace.operations.len()).sum::<usize>();
+    let trace_operations = traces
+        .iter()
+        .map(|trace| trace.operations.len())
+        .sum::<usize>();
     let mut records = Vec::with_capacity(candidates.len());
 
     for candidate in candidates {
@@ -478,7 +524,10 @@ pub fn qualify(
     Ok(QualificationReport { mode, records })
 }
 
-fn qualify_candidate<C>(traces: &[Trace], candidate_name: Candidate) -> Result<(), QualificationFailure>
+fn qualify_candidate<C>(
+    traces: &[Trace],
+    candidate_name: Candidate,
+) -> Result<(), QualificationFailure>
 where
     C: CandidateFactory<BlockStateId>,
 {
@@ -527,10 +576,20 @@ fn run_operation<C: BlockSection<BlockStateId>>(
             let candidate_previous = candidate.replace(position, state, &GeneratedStateFacts);
             let reference_previous = reference.replace(position, state, &GeneratedStateFacts);
             if candidate_previous != reference_previous {
-                return trace_failure(candidate_name, trace, operation_index, "previous-state mismatch");
+                return trace_failure(
+                    candidate_name,
+                    trace,
+                    operation_index,
+                    "previous-state mismatch",
+                );
             }
             if candidate.get(position) != state {
-                return trace_failure(candidate_name, trace, operation_index, "replacement did not install requested state");
+                return trace_failure(
+                    candidate_name,
+                    trace,
+                    operation_index,
+                    "replacement did not install requested state",
+                );
             }
             compare_summaries(candidate, reference, candidate_name, trace, operation_index)?;
         }
@@ -541,10 +600,20 @@ fn run_operation<C: BlockSection<BlockStateId>>(
             let candidate_previous = candidate.replace(position, state, &GeneratedStateFacts);
             let reference_previous = reference.replace(position, state, &GeneratedStateFacts);
             if candidate_previous != reference_previous || candidate_previous != state {
-                return trace_failure(candidate_name, trace, operation_index, "same-state previous-state mismatch");
+                return trace_failure(
+                    candidate_name,
+                    trace,
+                    operation_index,
+                    "same-state previous-state mismatch",
+                );
             }
             if candidate.summary() != before {
-                return trace_failure(candidate_name, trace, operation_index, "same-state replacement changed summary");
+                return trace_failure(
+                    candidate_name,
+                    trace,
+                    operation_index,
+                    "same-state replacement changed summary",
+                );
             }
             compare_summaries(candidate, reference, candidate_name, trace, operation_index)?;
         }
@@ -553,9 +622,15 @@ fn run_operation<C: BlockSection<BlockStateId>>(
         }
         TraceOp::Contains(state) => {
             let state = state_id(state);
-            let exact = (0..BLOCK_SECTION_CELLS).any(|cell| reference.get(pos_from_usize(cell)) == state);
+            let exact =
+                (0..BLOCK_SECTION_CELLS).any(|cell| reference.get(pos_from_usize(cell)) == state);
             if !candidate.maybe_contains(|value| value == state) && exact {
-                return trace_failure(candidate_name, trace, operation_index, "maybe_contains false negative");
+                return trace_failure(
+                    candidate_name,
+                    trace,
+                    operation_index,
+                    "maybe_contains false negative",
+                );
             }
         }
         TraceOp::Checkpoint => {
@@ -575,7 +650,12 @@ fn checkpoint<C: BlockSection<BlockStateId>>(
     for cell in 0..BLOCK_SECTION_CELLS {
         let position = pos_from_usize(cell);
         if candidate.get(position) != reference.get(position) {
-            return trace_failure(candidate_name, trace, operation_index, "checkpoint cell mismatch");
+            return trace_failure(
+                candidate_name,
+                trace,
+                operation_index,
+                "checkpoint cell mismatch",
+            );
         }
     }
     compare_summaries(candidate, reference, candidate_name, trace, operation_index)
@@ -590,10 +670,20 @@ fn compare_summaries<C: BlockSection<BlockStateId>>(
 ) -> Result<(), QualificationFailure> {
     let recomputed = reference.recompute_summary(&GeneratedStateFacts);
     if reference.summary() != recomputed {
-        return trace_failure(candidate_name, trace, operation_index, "reference incremental/recompute mismatch");
+        return trace_failure(
+            candidate_name,
+            trace,
+            operation_index,
+            "reference incremental/recompute mismatch",
+        );
     }
     if candidate.summary() != recomputed {
-        return trace_failure(candidate_name, trace, operation_index, "candidate summary/recompute mismatch");
+        return trace_failure(
+            candidate_name,
+            trace,
+            operation_index,
+            "candidate summary/recompute mismatch",
+        );
     }
     Ok(())
 }
@@ -671,8 +761,12 @@ where
                 candidate_name.as_str()
             )));
         }
-        if step.is_multiple_of(256) && reference.summary() != reference.recompute_summary(&SyntheticFacts) {
-            return Err(QualificationFailure::new("synthetic reference recomputation mismatch"));
+        if step.is_multiple_of(256)
+            && reference.summary() != reference.recompute_summary(&SyntheticFacts)
+        {
+            return Err(QualificationFailure::new(
+                "synthetic reference recomputation mismatch",
+            ));
         }
     }
 
@@ -690,8 +784,10 @@ where
 
 fn validate_generated_facts() -> Result<(), QualificationFailure> {
     for index in 0..BLOCK_STATE_COUNT {
-        let raw = u32::try_from(index).map_err(|_| QualificationFailure::new("state index does not fit u32"))?;
-        let state = BlockStateId::new(raw).ok_or_else(|| QualificationFailure::new("generated state ID rejected"))?;
+        let raw = u32::try_from(index)
+            .map_err(|_| QualificationFailure::new("state index does not fit u32"))?;
+        let state = BlockStateId::new(raw)
+            .ok_or_else(|| QualificationFailure::new("generated state ID rejected"))?;
         let facts = GeneratedStateFacts.facts(state);
         let observed = u8::from(facts.non_air())
             | (u8::from(facts.counted_fluid()) << 1)
@@ -740,7 +836,9 @@ fn traces_for(mode: QualificationMode) -> Vec<Trace> {
 
 fn trace_all_air() -> Trace {
     let mut trace = Trace::new(TraceClass::AllAir, 0);
-    trace.operations.extend([TraceOp::Summary, TraceOp::Contains(0), TraceOp::Contains(1)]);
+    trace
+        .operations
+        .extend([TraceOp::Summary, TraceOp::Contains(0), TraceOp::Contains(1)]);
     for cell in 0_u16..64 {
         trace.operations.push(TraceOp::Get(cell));
         trace.operations.push(TraceOp::ReplaceSame(cell));
@@ -804,7 +902,9 @@ fn trace_high_entropy() -> Trace {
             state: target_state(&mut rng),
         });
         if step.is_multiple_of(256) {
-            trace.operations.push(TraceOp::Contains(target_state(&mut rng)));
+            trace
+                .operations
+                .push(TraceOp::Contains(target_state(&mut rng)));
             trace.operations.push(TraceOp::Checkpoint);
         }
     }
@@ -843,7 +943,10 @@ fn trace_boundary_16() -> Trace {
     trace.operations.extend([
         TraceOp::Checkpoint,
         TraceOp::ReplaceSame(14),
-        TraceOp::Replace { cell: 15, state: 16 },
+        TraceOp::Replace {
+            cell: 15,
+            state: 16,
+        },
         TraceOp::Checkpoint,
         TraceOp::Replace { cell: 15, state: 0 },
         TraceOp::Checkpoint,
@@ -862,9 +965,15 @@ fn trace_boundary_256() -> Trace {
     trace.operations.extend([
         TraceOp::Checkpoint,
         TraceOp::ReplaceSame(254),
-        TraceOp::Replace { cell: 255, state: 256 },
+        TraceOp::Replace {
+            cell: 255,
+            state: 256,
+        },
         TraceOp::Checkpoint,
-        TraceOp::Replace { cell: 255, state: 0 },
+        TraceOp::Replace {
+            cell: 255,
+            state: 0,
+        },
         TraceOp::Checkpoint,
     ]);
     trace
@@ -884,7 +993,9 @@ fn trace_long_seeded(seed: u64, mutations: usize) -> Trace {
             });
         }
         if step.is_multiple_of(1024) {
-            trace.operations.push(TraceOp::Contains(target_state(&mut rng)));
+            trace
+                .operations
+                .push(TraceOp::Contains(target_state(&mut rng)));
             trace.operations.push(TraceOp::Summary);
         }
         if step.is_multiple_of(2048) {
@@ -916,7 +1027,8 @@ fn bounded_u16(value: u64, bound: usize) -> u16 {
 }
 
 fn state_id(raw: u16) -> BlockStateId {
-    BlockStateId::new(u32::from(raw)).expect("trace decoder/generator guarantees target state range")
+    BlockStateId::new(u32::from(raw))
+        .expect("trace decoder/generator guarantees target state range")
 }
 
 fn pos(cell: u16) -> SectionBlockPos {
@@ -936,7 +1048,9 @@ fn parse_cell(value: &str, line: usize) -> Result<u16, QualificationFailure> {
         .parse::<u16>()
         .map_err(|_| QualificationFailure::new(format!("invalid cell at line {line}")))?;
     if usize::from(cell) >= BLOCK_SECTION_CELLS {
-        return Err(QualificationFailure::new(format!("cell out of range at line {line}")));
+        return Err(QualificationFailure::new(format!(
+            "cell out of range at line {line}"
+        )));
     }
     Ok(cell)
 }
@@ -946,7 +1060,9 @@ fn parse_state(value: &str, line: usize) -> Result<u16, QualificationFailure> {
         .parse::<u16>()
         .map_err(|_| QualificationFailure::new(format!("invalid state at line {line}")))?;
     if usize::from(state) >= BLOCK_STATE_COUNT {
-        return Err(QualificationFailure::new(format!("state out of range at line {line}")));
+        return Err(QualificationFailure::new(format!(
+            "state out of range at line {line}"
+        )));
     }
     Ok(state)
 }
