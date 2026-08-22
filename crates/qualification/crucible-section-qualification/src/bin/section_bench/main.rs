@@ -180,10 +180,10 @@ fn parse_args() -> Result<Option<Invocation>, String> {
                 if population_pack.is_some() {
                     return Err("--population-pack may be specified only once".to_owned());
                 }
-                population_pack = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "--population-pack requires a path".to_owned())?,
-                ));
+                population_pack =
+                    Some(PathBuf::from(args.next().ok_or_else(|| {
+                        "--population-pack requires a path".to_owned()
+                    })?));
             }
             Some("--candidate") => {
                 if population_candidate.is_some() {
