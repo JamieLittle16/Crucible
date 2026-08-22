@@ -14,7 +14,10 @@ fn main() -> ExitCode {
     let mut args = env::args_os().skip(1);
     match args.next().as_deref().and_then(OsStr::to_str) {
         Some("guard") => guard(),
-        Some("vanilla") => vanilla(args.collect()),
+        Some("vanilla") => {
+            let remaining_args = args.collect::<Vec<_>>();
+            vanilla(&remaining_args)
+        }
         Some(command) => failure(&format!("unknown xtask command: {command}")),
         None => {
             help();
@@ -142,7 +145,7 @@ fn check_vanilla_pin_consistency(root: &Path, failures: &mut Vec<String>) {
     }
 }
 
-fn vanilla(args: Vec<OsString>) -> ExitCode {
+fn vanilla(args: &[OsString]) -> ExitCode {
     let root = workspace_root();
     if args.first().and_then(|arg| arg.to_str()) == Some("state-data") {
         return vanilla_state_data(&root, &args[1..]);
@@ -152,7 +155,7 @@ fn vanilla(args: Vec<OsString>) -> ExitCode {
     if !script.is_file() {
         return failure("tools/vanilla_atlas.py is missing");
     }
-    run_python(&root, &script, &args)
+    run_python(&root, &script, args)
 }
 
 fn vanilla_state_data(root: &Path, args: &[OsString]) -> ExitCode {
