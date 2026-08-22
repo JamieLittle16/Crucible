@@ -78,7 +78,7 @@ fn parse_args() -> Result<Option<(Mode, Option<PathBuf>)>, String> {
                     .ok_or_else(|| "--output requires a path".to_owned())?;
                 output = Some(PathBuf::from(path));
             }
-            Some("--help") | Some("-h") => return Ok(None),
+            Some("--help" | "-h") => return Ok(None),
             Some(other) => return Err(format!("unknown benchmark option: {other}")),
             None => return Err("benchmark arguments must be valid UTF-8".to_owned()),
         }
