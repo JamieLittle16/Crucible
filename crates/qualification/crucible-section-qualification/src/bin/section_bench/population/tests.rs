@@ -8,16 +8,14 @@ use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_V
 
 use super::PopulationMode;
 use super::measure::percentile;
-use super::pack::{PACK_MAGIC, PAYLOAD_BYTES_PER_SECTION, PackReader, canonical_usize, status_value_kib};
+use super::pack::{
+    PACK_MAGIC, PAYLOAD_BYTES_PER_SECTION, PackReader, canonical_usize, status_value_kib,
+};
 use super::report::single_cpu;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
-fn temp_pack(
-    payload_sections: usize,
-    trailing: &[u8],
-    target_generation: &str,
-) -> PathBuf {
+fn temp_pack(payload_sections: usize, trailing: &[u8], target_generation: &str) -> PathBuf {
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let path = std::env::temp_dir().join(format!(
         "crucible-section-population-pack-{}-{id}.bin",
