@@ -143,6 +143,13 @@ fn write_hardware(
         &hardware.cpus_allowed_list,
         true,
     )?;
+    string(
+        out,
+        2,
+        "mems_allowed_list",
+        &hardware.mems_allowed_list,
+        true,
+    )?;
     string(out, 2, "load_average", &hardware.load_average, true)?;
     string(out, 2, "rustflags", &hardware.rustflags, true)?;
     string(
