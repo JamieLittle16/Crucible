@@ -52,7 +52,11 @@ impl<S: Copy + Eq> Local4<S> {
     #[inline]
     fn local_index(&self, cell: usize) -> u8 {
         let byte = self.indices[cell >> 1];
-        if cell & 1 == 0 { byte & 0x0f } else { byte >> 4 }
+        if cell & 1 == 0 {
+            byte & 0x0f
+        } else {
+            byte >> 4
+        }
     }
 
     #[inline]
@@ -216,9 +220,21 @@ impl<S: Copy + Eq> AdaptiveBlockSection<S> {
         Self {
             storage: Storage::Uniform(state),
             non_air_count: if state_facts.non_air() { CELL_COUNT } else { 0 },
-            fluid_count: if state_facts.counted_fluid() { CELL_COUNT } else { 0 },
-            random_block_count: if state_facts.random_block() { CELL_COUNT } else { 0 },
-            random_fluid_count: if state_facts.random_fluid() { CELL_COUNT } else { 0 },
+            fluid_count: if state_facts.counted_fluid() {
+                CELL_COUNT
+            } else {
+                0
+            },
+            random_block_count: if state_facts.random_block() {
+                CELL_COUNT
+            } else {
+                0
+            },
+            random_fluid_count: if state_facts.random_fluid() {
+                CELL_COUNT
+            } else {
+                0
+            },
         }
     }
 
