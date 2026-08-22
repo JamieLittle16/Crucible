@@ -39,6 +39,8 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.97.1 --profile minimal
 
+      # Full qualification preserves per-mutation candidate/reference semantic checks and
+      # performs complete 4096-cell + fresh-summary recomputation at deterministic barriers.
       - name: Run full multi-seed section qualification
         run: >-
           cargo run --release --locked -p xtask --
