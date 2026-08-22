@@ -105,6 +105,29 @@ pub(crate) struct CaseSpec {
     pub(crate) pool_cardinality: usize,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum RepresentationCode {
+    DirectReference,
+    DirectN,
+    Uniform,
+    Local4Stable,
+    Local8Stable,
+    Packed(u8),
+}
+
+impl RepresentationCode {
+    pub(crate) fn name(self) -> String {
+        match self {
+            Self::DirectReference => "direct-reference".to_owned(),
+            Self::DirectN => "direct-n".to_owned(),
+            Self::Uniform => "uniform".to_owned(),
+            Self::Local4Stable => "local4-stable".to_owned(),
+            Self::Local8Stable => "local8-stable".to_owned(),
+            Self::Packed(bits) => format!("packed-{bits}"),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct SampleSummary {
     pub(crate) samples_ns: Vec<u128>,
@@ -168,9 +191,16 @@ pub(crate) trait BenchSection: BlockSection<BlockStateId> + Clone {
 
     fn filled(state: BlockStateId) -> Self;
     fn owned_bytes(&self) -> usize;
-    fn representation_name(&self) -> String;
+    fn representation_code(&self) -> RepresentationCode;
     fn initial_logical_allocations() -> usize;
-    fn transition_logical_allocations(before: &str, after: &str) -> usize;
+    fn transition_logical_allocations(
+        before: RepresentationCode,
+        after: RepresentationCode,
+    ) -> usize;
+
+    fn representation_name(&self) -> String {
+        self.representation_code().name()
+    }
 }
 
 impl BenchSection for DirectBlockSection<BlockStateId> {
@@ -185,15 +215,18 @@ impl BenchSection for DirectBlockSection<BlockStateId> {
         mem::size_of::<Self>() + BLOCK_SECTION_CELLS * mem::size_of::<BlockStateId>()
     }
 
-    fn representation_name(&self) -> String {
-        "direct-reference".to_owned()
+    fn representation_code(&self) -> RepresentationCode {
+        RepresentationCode::DirectReference
     }
 
     fn initial_logical_allocations() -> usize {
         1
     }
 
-    fn transition_logical_allocations(_before: &str, _after: &str) -> usize {
+    fn transition_logical_allocations(
+        _before: RepresentationCode,
+        _after: RepresentationCode,
+    ) -> usize {
         0
     }
 }
@@ -210,15 +243,18 @@ impl BenchSection for DirectNBlockSection<BlockStateId> {
         self.owned_bytes()
     }
 
-    fn representation_name(&self) -> String {
-        "direct-n".to_owned()
+    fn representation_code(&self) -> RepresentationCode {
+        RepresentationCode::DirectN
     }
 
     fn initial_logical_allocations() -> usize {
         1
     }
 
-    fn transition_logical_allocations(_before: &str, _after: &str) -> usize {
+    fn transition_logical_allocations(
+        _before: RepresentationCode,
+        _after: RepresentationCode,
+    ) -> usize {
         0
     }
 }
@@ -235,12 +271,12 @@ impl BenchSection for AdaptiveBlockSection<BlockStateId> {
         self.owned_bytes()
     }
 
-    fn representation_name(&self) -> String {
+    fn representation_code(&self) -> RepresentationCode {
         match self.representation() {
-            RepresentationKind::Uniform => "uniform".to_owned(),
-            RepresentationKind::Local4Stable => "local4-stable".to_owned(),
-            RepresentationKind::Local8Stable => "local8-stable".to_owned(),
-            RepresentationKind::DirectN => "direct-n".to_owned(),
+            RepresentationKind::Uniform => RepresentationCode::Uniform,
+            RepresentationKind::Local4Stable => RepresentationCode::Local4Stable,
+            RepresentationKind::Local8Stable => RepresentationCode::Local8Stable,
+            RepresentationKind::DirectN => RepresentationCode::DirectN,
         }
     }
 
@@ -248,10 +284,14 @@ impl BenchSection for AdaptiveBlockSection<BlockStateId> {
         0
     }
 
-    fn transition_logical_allocations(before: &str, after: &str) -> usize {
+    fn transition_logical_allocations(
+        before: RepresentationCode,
+        after: RepresentationCode,
+    ) -> usize {
         match (before, after) {
-            ("uniform", "local4-stable") | ("local4-stable", "local8-stable") => 2,
-            ("local8-stable", "direct-n") => 1,
+            (RepresentationCode::Uniform, RepresentationCode::Local4Stable)
+            | (RepresentationCode::Local4Stable, RepresentationCode::Local8Stable) => 2,
+            (RepresentationCode::Local8Stable, RepresentationCode::DirectN) => 1,
             _ => 0,
         }
     }
@@ -269,11 +309,11 @@ impl BenchSection for FastLocalBlockSection<BlockStateId> {
         self.owned_bytes()
     }
 
-    fn representation_name(&self) -> String {
+    fn representation_code(&self) -> RepresentationCode {
         match self.representation() {
-            FastLocalRepresentation::Uniform => "uniform".to_owned(),
-            FastLocalRepresentation::Local8Stable => "local8-stable".to_owned(),
-            FastLocalRepresentation::DirectN => "direct-n".to_owned(),
+            FastLocalRepresentation::Uniform => RepresentationCode::Uniform,
+            FastLocalRepresentation::Local8Stable => RepresentationCode::Local8Stable,
+            FastLocalRepresentation::DirectN => RepresentationCode::DirectN,
         }
     }
 
@@ -281,10 +321,13 @@ impl BenchSection for FastLocalBlockSection<BlockStateId> {
         0
     }
 
-    fn transition_logical_allocations(before: &str, after: &str) -> usize {
+    fn transition_logical_allocations(
+        before: RepresentationCode,
+        after: RepresentationCode,
+    ) -> usize {
         match (before, after) {
-            ("uniform", "local8-stable") => 2,
-            ("local8-stable", "direct-n") => 1,
+            (RepresentationCode::Uniform, RepresentationCode::Local8Stable) => 2,
+            (RepresentationCode::Local8Stable, RepresentationCode::DirectN) => 1,
             _ => 0,
         }
     }
@@ -302,11 +345,11 @@ impl BenchSection for PackedLocalBlockSection<BlockStateId> {
         self.owned_bytes()
     }
 
-    fn representation_name(&self) -> String {
+    fn representation_code(&self) -> RepresentationCode {
         match self.representation() {
-            PackedLocalRepresentation::Uniform => "uniform".to_owned(),
-            PackedLocalRepresentation::Packed(bits) => format!("packed-{bits}"),
-            PackedLocalRepresentation::DirectN => "direct-n".to_owned(),
+            PackedLocalRepresentation::Uniform => RepresentationCode::Uniform,
+            PackedLocalRepresentation::Packed(bits) => RepresentationCode::Packed(bits),
+            PackedLocalRepresentation::DirectN => RepresentationCode::DirectN,
         }
     }
 
@@ -314,20 +357,26 @@ impl BenchSection for PackedLocalBlockSection<BlockStateId> {
         0
     }
 
-    fn transition_logical_allocations(before: &str, after: &str) -> usize {
-        let packed_backing_created = (before == "uniform" && after.starts_with("packed-"))
-            || (before.starts_with("packed-") && after.starts_with("packed-") && before != after);
-        if packed_backing_created {
-            2
-        } else {
-            usize::from(before.starts_with("packed-") && after == "direct-n")
+    fn transition_logical_allocations(
+        before: RepresentationCode,
+        after: RepresentationCode,
+    ) -> usize {
+        match (before, after) {
+            (RepresentationCode::Uniform, RepresentationCode::Packed(_)) => 2,
+            (RepresentationCode::Packed(before_bits), RepresentationCode::Packed(after_bits))
+                if before_bits != after_bits =>
+            {
+                2
+            }
+            (RepresentationCode::Packed(_), RepresentationCode::DirectN) => 1,
+            _ => 0,
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{BenchSection, SampleSummary};
+    use super::{BenchSection, RepresentationCode, SampleSummary};
     use crucible_generated::{AIR, GeneratedStateFacts};
     use crucible_world_contract::{BlockSection, SectionBlockPos};
     use crucible_world_section::PackedLocalBlockSection;
@@ -349,7 +398,8 @@ mod tests {
     fn packed_width_transition_has_two_logical_backing_allocations() {
         assert_eq!(
             <PackedLocalBlockSection<_> as BenchSection>::transition_logical_allocations(
-                "packed-1", "packed-2"
+                RepresentationCode::Packed(1),
+                RepresentationCode::Packed(2),
             ),
             2
         );
@@ -359,10 +409,20 @@ mod tests {
     fn packed_to_direct_has_one_logical_backing_allocation() {
         assert_eq!(
             <PackedLocalBlockSection<_> as BenchSection>::transition_logical_allocations(
-                "packed-8", "direct-n"
+                RepresentationCode::Packed(8),
+                RepresentationCode::DirectN,
             ),
             1
         );
+    }
+
+    #[test]
+    fn representation_code_names_are_stable() {
+        assert_eq!(RepresentationCode::Uniform.name(), "uniform");
+        assert_eq!(RepresentationCode::Local4Stable.name(), "local4-stable");
+        assert_eq!(RepresentationCode::Local8Stable.name(), "local8-stable");
+        assert_eq!(RepresentationCode::Packed(7).name(), "packed-7");
+        assert_eq!(RepresentationCode::DirectN.name(), "direct-n");
     }
 
     #[test]
