@@ -49,6 +49,7 @@ jobs:
           --package crucible-types
           --package crucible-component
           --package crucible-section-qualification
+          --package crucible-section-vanilla-fixture
           --package crucible-world-contract
           --package crucible-world-reference
           --package crucible-world-section
@@ -64,14 +65,26 @@ jobs:
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
 
+      - name: Verify source-reviewed fixture provenance
+        run: >-
+          python3 tools/verify_section_fixture.py
+          vanilla/fixtures/world/section/26.2-source-reviewed-count-gates.fixture
+
       - name: Section semantic qualification
-        run: cargo xtask qualify section --quick
+        run: >-
+          cargo xtask qualify section --quick
+          --vanilla vanilla/fixtures/world/section/26.2-source-reviewed-count-gates.fixture
 
       - name: Vanilla Atlas tests
         run: python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
 
       - name: Python syntax
-        run: python3 -m py_compile tools/vanilla_atlas.py tools/tests/test_vanilla_atlas.py
+        run: >-
+          python3 -m py_compile
+          tools/vanilla_atlas.py
+          tools/verify_section_fixture.py
+          tools/tests/test_vanilla_atlas.py
+          tools/tests/test_verify_section_fixture.py
 
       - name: Rustdoc
         env:
