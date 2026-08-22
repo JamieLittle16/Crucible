@@ -21,14 +21,20 @@ VERSION-PINNED EXTRACTOR
         ↓
 NORMALIZED SEMANTIC STATE IDS
         ↓
-FAIL-CLOSED CORPUS VALIDATOR
+FAIL-CLOSED PYTHON CORPUS VALIDATOR
         ↓
 RECOMPUTED CORPUS MANIFEST
+        ↓
+INDEPENDENT RUST STREAMING IMPORTER
+        ↓
+FIVE-CANDIDATE EXACT IMAGE + SUMMARY RECONSTRUCTION
+        ↓
+PYTHON ↔ RUST EVIDENCE CROSS-CHECK
         ↓
 SECTION BENCHMARK LAB
 ```
 
-The extractor is not trusted to attest to its own correctness. The validator independently checks the normalized cells against the frozen 26.2 state universe and recomputes all derived statistics from the generated target fact table.
+The extractor is not trusted to attest to its own correctness. The Python validator independently checks the normalized cells against the frozen 26.2 state universe and recomputes all derived statistics from the generated target fact table. The Rust importer independently reparses the canonical corpus boundary and requires exact reconstruction through every current section mechanism before the corpus can enter the benchmark lab.
 
 ## What is normalized
 
@@ -112,7 +118,7 @@ The example is schematic; an actual record contains exactly 4096 IDs.
 
 ## Canonicalization rules
 
-The validator requires:
+Both independent consumers require:
 - lowercase canonical resource locations such as `minecraft:overworld`;
 - canonical decimal coordinates (`0`, `12`, `-4`; never `00`, `+4`, or `-0`);
 - canonical non-negative decimal state IDs;
@@ -126,7 +132,7 @@ The validator requires:
 
 Strict ordering is intentional. Equivalent source snapshots must normalize byte-identically if the extractor version and selection policy are unchanged.
 
-## Recomputed manifest
+## Recomputed Python manifest
 
 `tools/section_corpus.py` never accepts derived statistics from the extractor. It recomputes a manifest from the normalized cells and frozen target evidence.
 
@@ -145,9 +151,54 @@ The manifest includes:
 
 The four semantic facts are recomputed from the committed generated target table, not copied from the save extractor.
 
+## Independent Rust import boundary
+
+`section_bench --corpus-check` is a second consumer of the normalized format, not a wrapper around the Python parser.
+
+Its trust boundaries are deliberately separated:
+- `corpus/parser.rs` validates untrusted canonical bytes and target/provenance identity;
+- `corpus/verify.rs` reconstructs semantic images and diagnostics;
+- `corpus.rs` owns purpose/decision policy and evidence serialization;
+- `corpus/tests.rs` attacks those boundaries adversarially.
+
+The normal import uses one authoritative streaming pass over section bodies. A section is parsed once, checked against all five current mechanisms, and discarded. Whole-corpus cell arrays are never retained. Per-section cardinality uses a fixed target-state bitset; state tokens are parsed directly; representation transition bookkeeping uses typed identities rather than mutation-time string allocation.
+
+For every section, Rust independently recomputes the exact semantic summary from generated 26.2 facts, reconstructs:
+- direct reference;
+- direct production;
+- adaptive;
+- fast-local;
+- packed-local;
+
+and then requires:
+- all 4096 cell states to read back exactly;
+- maintained non-air count to match;
+- maintained counted-fluid count to match;
+- random-block presence to match;
+- random-fluid presence to match.
+
+Only after those checks may representation/memory/transition diagnostics be emitted.
+
+The importer also emits both generated state-data digests, source inventory identity, extractor/purpose identity and corpus statistics. It deliberately does not reimplement SHA-256 in the dependency-light Rust binary; canonical corpus byte identity is computed by the Python validator and bound to Rust evidence in the official workflow.
+
+## Corpus purpose is a machine-enforced property
+
+Schema validity does not imply permission to affect a production decision.
+
+The current `vanilla-save-region-v1-stored-sections` extractor is classified as:
+
+```text
+purpose = parser-admission
+decision_eligible = false
+```
+
+Unknown canonical extractor policies are `unclassified` and are also fail-closed. A future representative policy must be introduced explicitly before `--corpus-decision-check` can succeed.
+
+This prevents the first official spawn-world corpus—whose stored sections are overwhelmingly all-air/homogeneous—from silently becoming production workload weighting merely because it came from a real server.
+
 ## Validation commands
 
-Direct tooling:
+Python structural/semantic validator:
 
 ```bash
 python3 tools/section_corpus.py validate .crucible/vanilla/section-corpus.txt \
@@ -156,7 +207,34 @@ python3 tools/section_corpus.py validate .crucible/vanilla/section-corpus.txt \
 python3 tools/section_corpus.py inspect .crucible/vanilla/section-corpus.txt
 ```
 
-The full real-corpus workflow will later receive a stable `cargo xtask vanilla section-corpus ...` wrapper once extraction/import is connected.
+Independent Rust reconstruction:
+
+```bash
+cargo run --release --locked \
+  -p crucible-section-qualification \
+  --bin section_bench -- \
+  --corpus-check .crucible/vanilla/section-corpus.txt \
+  --output .crucible/vanilla/section-corpus-rust-import.json
+```
+
+Decision-policy gate:
+
+```bash
+cargo run --release --locked \
+  -p crucible-section-qualification \
+  --bin section_bench -- \
+  --corpus-decision-check .crucible/vanilla/section-corpus.txt
+```
+
+Python↔Rust evidence agreement:
+
+```bash
+python3 tools/section_corpus_import_evidence.py \
+  --manifest .crucible/vanilla/section-corpus-manifest.json \
+  --rust-import .crucible/vanilla/section-corpus-rust-import.json
+```
+
+`Section Corpus Probe` performs the entire chain from a fresh pinned official 26.2 server world and archives both evidence outputs plus the expected decision-rejection record.
 
 ## What may be committed
 
@@ -167,8 +245,9 @@ Default policy:
 - canonical source inventory: local/artifact unless deliberately selected for publication;
 - full normalized corpus: local or qualification artifact by default;
 - corpus manifest/digest: commit-worthy evidence;
+- Rust import summary / cross-check evidence: commit-worthy when part of a qualification record;
 - tiny synthetic/adversarial test material: commit-worthy;
-- extractor and validator: commit-worthy.
+- extractor and validators/importer: commit-worthy.
 
 No Mojang source body or server artifact is introduced by this format.
 
@@ -193,14 +272,14 @@ Changing the selection policy creates a new corpus identity even if the source s
 
 Synthetic cases remain essential because they deliberately hit exact representation boundaries such as 16/17 and 256/257 states.
 
-The real corpus serves a different purpose: it supplies the empirical weighting and spatial distributions needed to answer whether an optimization that wins at a synthetic boundary matters in representative vanilla worlds.
+A representative real corpus later supplies the empirical weighting and spatial distributions needed to answer whether an optimization that wins at a synthetic boundary matters in real vanilla gameplay. The currently admitted spawn corpus proves the extraction/import boundary only; it is explicitly not that weighting corpus.
 
-A production representation decision therefore requires both:
+A production representation decision therefore requires:
 
 ```text
 controlled synthetic boundary curves
               +
-provenance-bound vanilla corpus curves
+representative provenance-bound vanilla corpus curves
               +
 controlled target-hardware/RSS evidence
               ↓
@@ -211,7 +290,7 @@ No candidate wins merely because it performs best on one corpus, one seed, or on
 
 ## Evidence retention
 
-When #19 selects a winner and deletes dominated implementation code, the corpus manifest/digest and the corresponding benchmark artifacts remain part of the decision record.
+When #19 selects a winner and deletes dominated implementation code, the corpus manifest/digest, Rust import evidence and corresponding benchmark artifacts remain part of the decision record.
 
 This follows the project rule:
 

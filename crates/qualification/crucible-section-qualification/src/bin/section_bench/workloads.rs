@@ -112,12 +112,12 @@ pub(crate) fn prepare<C: BenchSection>(case: CaseSpec) -> Prepared<C> {
     for cell in 0..BLOCK_SECTION_CELLS {
         let state_index = pattern_state_index(case.pattern, cell, states.len(), &mut rng);
         seen[state_index] = true;
-        let before = section.representation_name();
+        let before = section.representation_code();
         let _ = section.replace(pos(cell), states[state_index], &GeneratedStateFacts);
-        let after = section.representation_name();
+        let after = section.representation_code();
         if before != after {
             construction_transitions += 1;
-            construction_logical_allocations += C::transition_logical_allocations(&before, &after);
+            construction_logical_allocations += C::transition_logical_allocations(before, after);
         }
         peak_owned_bytes = peak_owned_bytes.max(section.owned_bytes());
     }

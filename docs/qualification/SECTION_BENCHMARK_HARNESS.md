@@ -12,7 +12,7 @@ Canonical companion records:
 - [`SECTION_VANILLA_CORPUS.md`](SECTION_VANILLA_CORPUS.md);
 - [`section/SECTION_REAL_CORPUS_ADMISSION.md`](section/SECTION_REAL_CORPUS_ADMISSION.md).
 
-## Command
+## Commands
 
 Hosted smoke / harness validation:
 
@@ -34,21 +34,45 @@ cargo run --release --locked \
   --output target/crucible-qualification/section/benchmark.json
 ```
 
-The harness refuses debug builds.
+Strict real-corpus import/reconstruction:
 
-`--qualification` means “full benchmark sampling settings”; it does **not** by itself make the resulting timing production-qualified. The hardware/run protocol and representative-corpus gate still apply.
+```text
+cargo run --release --locked \
+  -p crucible-section-qualification \
+  --bin section_bench -- \
+  --corpus-check CORPUS \
+  --output corpus-import.json
+```
+
+Production-decision eligibility gate:
+
+```text
+cargo run --release --locked \
+  -p crucible-section-qualification \
+  --bin section_bench -- \
+  --corpus-decision-check CORPUS
+```
+
+The currently admitted spawn corpus must fail the last command because its extraction policy is parser-admission evidence, not representative weighting evidence.
+
+The harness refuses debug builds. `--qualification` means “full benchmark sampling settings”; it does **not** by itself make the resulting timing production-qualified. The hardware/run protocol and representative-corpus gate still apply.
 
 ## Harness architecture
 
 The binary is split into small modules so benchmark semantics can be regression-tested independently:
-- `model` — candidate adapters, settings, records and logical allocation model;
+- `model` — candidate adapters, typed representation identities, settings, records and logical allocation model;
 - `workloads` — state selection, spatial construction, actual-cardinality and contains needles;
 - `measure` — timing/lifetime execution and promotion tails;
 - `hardware` — machine/toolchain/environment provenance;
-- `report` — deterministic machine-readable evidence serialization;
+- `report` — deterministic synthetic-benchmark evidence serialization;
+- `corpus/parser` — fail-closed consumer of untrusted canonical corpus bytes;
+- `corpus/verify` — independent semantic reconstruction and aggregate diagnostics;
+- `corpus` — corpus-purpose policy and machine-readable import evidence;
 - `main` — CLI/release enforcement only.
 
-The next M0.3D slice adds a dedicated `corpus` boundary module rather than mixing untrusted corpus parsing into synthetic workload construction.
+The corpus importer uses one authoritative streaming pass over section bodies. Each section is parsed once, contributes metadata once, is reconstructed through all five mechanisms, verified, and discarded. Whole-corpus cells are never retained in memory. Parser-admission/unknown policy is checked before expensive reconstruction in decision mode.
+
+The parser reuses its section-line buffer, computes per-section cardinality with a fixed target-state bitset, and parses state IDs directly rather than building token trees or sets. Representation-transition bookkeeping uses the typed `RepresentationCode` rather than allocating strings on each mutation; text is produced only for evidence output.
 
 Benchmark observability does not add fields, locks, counters, trait objects, or other instrumentation to production section structs.
 
@@ -139,9 +163,23 @@ Uniform local candidates begin with zero 4096-cell backing allocation. Direct/re
 
 Process/RSS measurement remains a separate #19 qualification slice. We will not add a custom allocator to production simply to count benchmark allocations.
 
+## Real-corpus semantic reconstruction
+
+`--corpus-check` is not a timing shortcut. It is a correctness boundary before corpus timing is allowed.
+
+For each imported 4096-cell image it:
+1. validates canonical target/provenance/order/state-ID structure;
+2. recomputes the expected `SectionSummary` directly from frozen generated 26.2 facts;
+3. reconstructs direct-reference, direct, adaptive, fast-local and packed-local storage;
+4. rereads all 4096 cells from every candidate and requires exact state identity;
+5. requires every candidate's maintained non-air/fluid/random-block/random-fluid summary to equal the independently recomputed summary;
+6. only then records final representation, owned bytes, transitions and logical backing-allocation diagnostics.
+
+Cells equal to the section's initial fill state need not receive redundant replacement calls during image reconstruction. This is intentionally an image-reconstruction optimization, not a substitute for same-state mutation qualification; same-state replacement behavior remains covered by M0.3C and the synthetic benchmark regressions.
+
 ## Reproducibility metadata
 
-Every artifact records:
+Every synthetic benchmark artifact records:
 
 - exact commit SHA;
 - Minecraft/protocol/data versions;
@@ -161,26 +199,36 @@ Every artifact records:
 - warmup/sample/operation parameters;
 - raw timing samples.
 
+Corpus import evidence records the exact target generation and input digests, source-inventory digest, extractor/purpose identity, decision eligibility, section/cell/state statistics and per-candidate representation/memory/transition aggregates. The canonical corpus SHA-256 remains independently recomputed by `tools/section_corpus.py` and is bound to the Rust result through the workflow evidence chain rather than adding a hashing dependency to the qualification binary.
+
 Target-hardware qualification should pin CPU affinity externally where practical; the artifact records the resulting allowed set so an unpinned run cannot masquerade as pinned.
 
 ## Regression policy
 
 The benchmark harness is itself qualification-critical software. Bugs in benchmark construction can select the wrong production mechanism, so material benchmark bugs receive permanent tests.
 
-Current explicit regressions cover:
-- observed cardinality equals an independent rescan of the final image;
-- positive membership needle is actually present;
-- fluid workload contains a qualified counted-fluid state;
-- survival workload contains AIR and only qualified plain-solid non-air states otherwise;
-- integer timing normalization avoids float precision loss;
-- packed width transitions remain represented as logical allocation events;
-- packed first-width growth installs the requested state (in addition to the core representation regression);
-- report JSON escaping;
-- benchmark metadata has basic immutable identity fields.
+Synthetic-harness regressions cover observed cardinality, membership needles, target semantic state classes, timing normalization, allocation-transition accounting, packed widening, JSON escaping and immutable benchmark identity metadata.
+
+The real-corpus importer adds a heavy fail-closed family covering:
+- target Minecraft/protocol/data/state-generation drift;
+- canonical LF/final-newline/no-blank-line rules;
+- source kind/inventory/extractor syntax;
+- parser-admission and unknown-policy decision rejection;
+- resource locations and canonical signed coordinates;
+- strict section ordering and duplicate rejection;
+- 4095/4097-cell rejection;
+- noncanonical and out-of-range state IDs;
+- exact cell order and independently observed cardinality;
+- empty-corpus rejection;
+- aggregate metadata across multiple sections;
+- exact reconstruction through all five candidates;
+- 17-state transition-boundary reconstruction;
+- exact maintained summary equivalence;
+- real generated 26.2 states spanning air, solid, counted-fluid, random-block and random-fluid fact classes.
+
+The Python↔Rust evidence checker is separately unit-tested against target drift, provenance/purpose drift, corpus summary disagreement, missing/duplicate/wrongly-classified candidates, representation-count mismatches and impossible memory totals.
 
 The release-only packed widening defect itself remains documented in the candidate registry and experiment log and is permanently regression-tested in the section implementation.
-
-The real-corpus importer adds another explicit regression family: canonical format parsing, target/digest binding, state-range validation, 4096-cell section completeness, strict ordering/duplicate rejection, corpus-purpose policy, deterministic section selection and candidate image equivalence.
 
 ## Hosted-runner rule
 
@@ -200,12 +248,14 @@ The first hosted real-target admission used a deterministic official spawn world
 
 That corpus is **parser-admission evidence**, not representative production weighting. It contains 12,452 all-air sections and 12,453 cardinality-1 sections, so treating it as a final workload distribution would strongly bias the decision toward Uniform-heavy behavior.
 
+`Section Corpus Probe` now regenerates that class of official-world evidence from the pinned server, independently validates it in Python, reconstructs the exact corpus through the Rust importer, requires `--corpus-decision-check` to reject it, and cross-checks Python/Rust target/provenance/cardinality/dimension/candidate evidence before retaining the artifact.
+
 Corpus evidence therefore has two independent questions:
 
 1. **Is this corpus structurally/semantically admitted?**
 2. **Is this corpus sampling/weighting policy eligible to influence production selection?**
 
-A corpus may pass (1) while failing (2). The benchmark importer must preserve that distinction mechanically rather than relying on human memory.
+A corpus may pass (1) while failing (2). This distinction is mechanically enforced.
 
 ## Remaining production-decision gates
 

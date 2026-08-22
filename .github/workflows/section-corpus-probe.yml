@@ -8,10 +8,20 @@ on:
       - tools/official_section_world.py
       - tools/vanilla_section_extractor.py
       - tools/section_corpus.py
+      - tools/section_corpus_import_evidence.py
       - tools/tests/test_vanilla_section_extractor.py
       - tools/tests/test_section_corpus.py
+      - tools/tests/test_section_corpus_import_evidence.py
+      - crates/qualification/crucible-section-qualification/src/bin/section_bench/**
+      - crates/data/crucible-generated/**
+      - crates/world/crucible-world-contract/**
+      - crates/world/crucible-world-reference/**
+      - crates/world/crucible-world-section/**
       - vanilla/state-data/**
       - vanilla/vanilla.lock.toml
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
       - .github/workflows/section-corpus-probe.yml
 
 permissions:
@@ -21,7 +31,7 @@ jobs:
   probe:
     name: Official 26.2 spawn-world corpus
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -34,10 +44,14 @@ jobs:
           distribution: temurin
           java-version: "25"
 
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
       - name: Corpus and extractor regressions
         run: |
           python3 -m unittest discover -s tools/tests -p 'test_section_corpus.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_vanilla_section_extractor.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_corpus_import_evidence.py' -v
 
       - name: Extract official runtime state identities
         run: |
@@ -95,6 +109,42 @@ jobs:
             /tmp/26.2-spawn-sections.corpus \
             --manifest /tmp/26.2-spawn-sections.manifest.json
 
+      - name: Reconstruct official corpus through every Rust candidate
+        run: |
+          cargo run --release --locked \
+            -p crucible-section-qualification \
+            --bin section_bench -- \
+            --corpus-check /tmp/26.2-spawn-sections.corpus \
+            --output /tmp/26.2-spawn-sections.rust-import.json
+
+      - name: Require parser-admission corpus to fail production-decision gate
+        run: |
+          set +e
+          cargo run --release --locked \
+            -p crucible-section-qualification \
+            --bin section_bench -- \
+            --corpus-decision-check /tmp/26.2-spawn-sections.corpus \
+            > /tmp/26.2-spawn-sections.decision-rejection.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            cat /tmp/26.2-spawn-sections.decision-rejection.log
+            echo "parser-admission corpus unexpectedly passed decision gate" >&2
+            exit 1
+          fi
+          if ! grep -q 'not decision-eligible' /tmp/26.2-spawn-sections.decision-rejection.log; then
+            cat /tmp/26.2-spawn-sections.decision-rejection.log
+            echo "decision gate failed for an unexpected reason" >&2
+            exit 1
+          fi
+          cat /tmp/26.2-spawn-sections.decision-rejection.log
+
+      - name: Cross-check independent Python and Rust corpus evidence
+        run: |
+          python3 tools/section_corpus_import_evidence.py \
+            --manifest /tmp/26.2-spawn-sections.manifest.json \
+            --rust-import /tmp/26.2-spawn-sections.rust-import.json
+
       - name: Verify real-target evidence identities
         run: |
           python3 - <<'PY'
@@ -105,6 +155,7 @@ jobs:
           world = json.loads(Path('/tmp/official-world-evidence.json').read_text())
           inventory = json.loads(Path('/tmp/26.2-spawn-sections.inventory.json').read_text())
           corpus = json.loads(Path('/tmp/26.2-spawn-sections.manifest.json').read_text())
+          rust = json.loads(Path('/tmp/26.2-spawn-sections.rust-import.json').read_text())
           with Path('vanilla/vanilla.lock.toml').open('rb') as handle:
               lock = tomllib.load(handle)
           state_manifest = json.loads(
@@ -130,6 +181,10 @@ jobs:
               raise SystemExit('corpus target state-data generation digest mismatch')
           if corpus['target']['state_data_input_sha256'] != state_manifest['input_digest']:
               raise SystemExit('corpus target state-data input digest mismatch')
+          if rust['state_data_generation_sha256'] != state_manifest['generation_digest']:
+              raise SystemExit('Rust importer generation digest mismatch')
+          if rust['state_data_input_sha256'] != state_manifest['input_digest']:
+              raise SystemExit('Rust importer input digest mismatch')
 
           print(
               'official section corpus PASS: '
@@ -148,6 +203,8 @@ jobs:
             /tmp/official-world-evidence.json
             /tmp/26.2-spawn-sections.inventory.json
             /tmp/26.2-spawn-sections.manifest.json
+            /tmp/26.2-spawn-sections.rust-import.json
+            /tmp/26.2-spawn-sections.decision-rejection.log
             /tmp/26.2-spawn-sections.corpus
           if-no-files-found: error
           retention-days: 7

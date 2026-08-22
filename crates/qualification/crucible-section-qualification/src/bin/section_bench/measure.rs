@@ -83,16 +83,16 @@ fn lifetime_record<C: BenchSection>(
     let mut peak_owned_bytes = prepared.peak_owned_bytes;
 
     for operation in 0..settings.lifetime_mutations {
-        let before = section.representation_name();
+        let before = section.representation_code();
         let _ = section.replace(
             positions[operation],
             stream[operation],
             &GeneratedStateFacts,
         );
-        let after = section.representation_name();
+        let after = section.representation_code();
         if before != after {
             transitions += 1;
-            allocations += C::transition_logical_allocations(&before, &after);
+            allocations += C::transition_logical_allocations(before, after);
         }
         peak_owned_bytes = peak_owned_bytes.max(section.owned_bytes());
     }
