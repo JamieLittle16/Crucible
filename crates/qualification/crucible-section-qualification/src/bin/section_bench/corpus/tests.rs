@@ -59,13 +59,7 @@ fn zeros(count: usize) -> Vec<u32> {
 
 fn one_section(states: &[u32]) -> String {
     corpus(
-        &[section_line(
-            "minecraft:overworld",
-            "0",
-            "0",
-            "0",
-            states,
-        )],
+        &[section_line("minecraft:overworld", "0", "0", "0", states)],
         "vanilla-save-region-v1-stored-sections",
     )
 }
@@ -76,13 +70,7 @@ fn valid_corpus_preserves_cell_order_and_cardinality() {
         .map(|index| u32::try_from(index % 17).expect("bounded"))
         .collect::<Vec<_>>();
     let text = corpus(
-        &[section_line(
-            "minecraft:overworld",
-            "-1",
-            "2",
-            "0",
-            &states,
-        )],
+        &[section_line("minecraft:overworld", "-1", "2", "0", &states)],
         "vanilla-save-region-v1-stored-sections",
     );
     let parsed = parse_all(&text).expect("valid corpus");
@@ -140,7 +128,8 @@ fn source_header_and_purpose_are_strict() {
     assert!(!reader.header().decision_eligible());
 
     let unknown = corpus(&[line], "future-policy-v9");
-    let reader = CorpusReader::from_reader(Cursor::new(unknown.as_bytes())).expect("canonical policy");
+    let reader =
+        CorpusReader::from_reader(Cursor::new(unknown.as_bytes())).expect("canonical policy");
     assert_eq!(reader.header().purpose, CorpusPurpose::Unclassified);
     assert!(!reader.header().decision_eligible());
 
