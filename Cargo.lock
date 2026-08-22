@@ -24,6 +24,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "crucible-section-vanilla-fixture"
+version = "0.0.0"
+dependencies = [
+ "crucible-generated",
+ "crucible-section-qualification",
+ "crucible-world-contract",
+ "crucible-world-reference",
+ "crucible-world-section",
+]
+
+[[package]]
 name = "crucible-types"
 version = "0.0.0"
 
@@ -52,4 +63,5 @@ name = "xtask"
 version = "0.0.0"
 dependencies = [
  "crucible-section-qualification",
+ "crucible-section-vanilla-fixture",
 ]
