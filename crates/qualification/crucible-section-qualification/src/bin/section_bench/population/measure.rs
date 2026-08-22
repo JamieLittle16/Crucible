@@ -100,7 +100,7 @@ pub(super) fn steady_state_timings<C: BenchSection>(
     ])
 }
 
-fn positive_needles<C: BenchSection>(
+pub(super) fn positive_needles<C: BenchSection>(
     sections: &[C],
     plan: &[(usize, usize)],
 ) -> Vec<BlockStateId> {
@@ -117,9 +117,7 @@ fn verify_positive_queries<C: BenchSection>(
     if plan.len() != needles.len() {
         return Err("positive membership plan/needle length mismatch".to_owned());
     }
-    for (operation, (&(section_index, _), &needle)) in
-        plan.iter().zip(needles.iter()).enumerate()
-    {
+    for (operation, (&(section_index, _), &needle)) in plan.iter().zip(needles.iter()).enumerate() {
         if !sections[section_index].maybe_contains(|state| state == needle) {
             return Err(format!(
                 "positive membership preflight produced false at operation {operation}"
