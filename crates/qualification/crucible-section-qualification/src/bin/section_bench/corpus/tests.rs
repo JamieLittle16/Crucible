@@ -4,8 +4,10 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crucible_generated::{
-    BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256,
+    BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
+    STATE_DATA_INPUT_SHA256,
 };
+use crucible_world_contract::{BlockStateFacts, SectionStateFacts};
 use crucible_world_reference::DirectBlockSection;
 use crucible_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
@@ -14,7 +16,7 @@ use crucible_world_section::{
 use crate::model::BenchSection;
 
 use super::parser::CorpusReader;
-use super::verify::inspect_candidate_section;
+use super::verify::{inspect_candidate_section, recompute_section_summary_for_test};
 use super::{CorpusPurpose, CorpusSection, SectionKey, check_corpus};
 
 static TEMP_CORPUS_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -332,12 +334,14 @@ fn corpus_section(cardinality: usize) -> CorpusSection {
 }
 
 fn assert_candidate_equivalent<C: BenchSection>(section: &CorpusSection) {
-    let inspected = inspect_candidate_section::<C>(section).expect("candidate reconstructs corpus");
+    let expected_summary = recompute_section_summary_for_test(section);
+    let inspected = inspect_candidate_section::<C>(section, expected_summary)
+        .expect("candidate reconstructs corpus");
     assert!(inspected.owned_bytes > 0 || inspected.representation == "uniform");
 }
 
 #[test]
-fn every_benchmark_candidate_reconstructs_exact_corpus_image() {
+fn every_benchmark_candidate_reconstructs_exact_corpus_image_and_summary() {
     let section = corpus_section(17);
     assert_candidate_equivalent::<DirectBlockSection<BlockStateId>>(&section);
     assert_candidate_equivalent::<DirectNBlockSection<BlockStateId>>(&section);
@@ -349,12 +353,54 @@ fn every_benchmark_candidate_reconstructs_exact_corpus_image() {
 #[test]
 fn imported_boundary_image_exercises_real_representation_transitions() {
     let section = corpus_section(17);
-    let adaptive = inspect_candidate_section::<AdaptiveBlockSection<BlockStateId>>(&section)
-        .expect("adaptive reconstructs corpus");
-    let packed = inspect_candidate_section::<PackedLocalBlockSection<BlockStateId>>(&section)
-        .expect("packed reconstructs corpus");
+    let expected_summary = recompute_section_summary_for_test(&section);
+    let adaptive =
+        inspect_candidate_section::<AdaptiveBlockSection<BlockStateId>>(&section, expected_summary)
+            .expect("adaptive reconstructs corpus");
+    let packed = inspect_candidate_section::<PackedLocalBlockSection<BlockStateId>>(
+        &section,
+        expected_summary,
+    )
+    .expect("packed reconstructs corpus");
     assert!(adaptive.transitions >= 2);
     assert!(adaptive.logical_allocations >= 4);
     assert!(packed.transitions >= 2);
     assert!(packed.logical_allocations >= 4);
+}
+
+fn find_target_state(mut predicate: impl FnMut(SectionStateFacts) -> bool) -> BlockStateId {
+    for raw in 0..BLOCK_STATE_COUNT {
+        let raw = u32::try_from(raw).expect("target state ID fits u32");
+        let state = BlockStateId::new(raw).expect("bounded target state");
+        let facts = <GeneratedStateFacts as BlockStateFacts<BlockStateId>>::facts(
+            &GeneratedStateFacts,
+            state,
+        );
+        if predicate(facts) {
+            return state;
+        }
+    }
+    panic!("target state universe lacks required semantic fact class");
+}
+
+#[test]
+fn mixed_real_target_fact_classes_survive_import_reconstruction() {
+    let air = find_target_state(|facts| !facts.non_air());
+    let solid = find_target_state(|facts| facts.non_air() && !facts.counted_fluid());
+    let fluid = find_target_state(|facts| facts.counted_fluid());
+    let random_block = find_target_state(|facts| facts.random_block());
+    let random_fluid = find_target_state(|facts| facts.random_fluid());
+
+    let mut states = vec![air.as_u32(); 4096];
+    states[1] = solid.as_u32();
+    states[2] = fluid.as_u32();
+    states[3] = random_block.as_u32();
+    states[4] = random_fluid.as_u32();
+    let text = one_section(&states);
+    let file = TempCorpus::write(&text);
+    let checked = check_corpus(file.path(), false).expect("mixed target-fact corpus passes");
+
+    assert_eq!(checked.section_count, 1);
+    assert_eq!(checked.candidates.len(), 5);
+    assert!(checked.candidates.iter().all(|candidate| candidate.sections == 1));
 }
