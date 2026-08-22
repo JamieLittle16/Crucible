@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ import section_representative_plan
 
 SCHEMA = 1
 KIND = "section-representative-set-admission"
+SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 CELL_FACT_KEYS = frozenset(
     {"non_air", "counted_fluid", "random_block", "random_fluid"}
 )
@@ -45,6 +47,12 @@ def _string(mapping: dict[str, Any], key: str, label: str) -> str:
     value = mapping.get(key)
     if not isinstance(value, str) or not value:
         raise AdmissionError(f"{label}.{key} must be a non-empty string")
+    return value
+
+
+def _sha256_value(value: object, label: str) -> str:
+    if not isinstance(value, str) or SHA256.fullmatch(value) is None:
+        raise AdmissionError(f"{label} must be canonical lowercase SHA-256")
     return value
 
 
@@ -173,9 +181,21 @@ def _validate_member_semantics(
             "section_classes": classes,
         }
 
-    _equal(sum(int(item["section_count"]) for item in validated.values()), section_count, f"{label} dimension section total")
-    _equal(dict(merged_cells), global_cell_facts, f"{label} per-dimension/global cell facts")
-    _equal(dict(merged_classes), global_classes, f"{label} per-dimension/global section classes")
+    _equal(
+        sum(int(item["section_count"]) for item in validated.values()),
+        section_count,
+        f"{label} dimension section total",
+    )
+    _equal(
+        dict(merged_cells),
+        global_cell_facts,
+        f"{label} per-dimension/global cell facts",
+    )
+    _equal(
+        dict(merged_classes),
+        global_classes,
+        f"{label} per-dimension/global section classes",
+    )
     return global_cell_facts, global_classes, validated
 
 
@@ -184,34 +204,62 @@ def _validate_set_record(
     plan: dict[str, object],
 ) -> tuple[list[dict[str, Any]], set[str]]:
     _equal(_integer(record, "schema", "corpus set"), 1, "corpus set schema")
-    _equal(_string(record, "kind", "corpus set"), section_corpus_set.KIND, "corpus set kind")
+    _equal(
+        _string(record, "kind", "corpus set"), section_corpus_set.KIND, "corpus set kind"
+    )
     _equal(record.get("policy"), plan["policy"], "corpus set policy")
     _equal(record.get("plan_sha256"), plan["plan_sha256"], "corpus set plan digest")
-    _equal(_boolean(record, "decision_eligible", "corpus set"), True, "corpus set structural decision eligibility")
-    _equal(record.get("decision_scope"), "dimension-separated-only", "corpus set decision scope")
-    _equal(_boolean(record, "cross_dimension_score_allowed", "corpus set"), False, "cross-dimension score guard")
-    _equal(_integer(record, "member_count", "corpus set"), section_representative_plan.SEED_COUNT, "corpus set member count")
+    _equal(
+        _boolean(record, "decision_eligible", "corpus set"),
+        True,
+        "corpus set structural decision eligibility",
+    )
+    _equal(
+        record.get("decision_scope"),
+        "dimension-separated-only",
+        "corpus set decision scope",
+    )
+    _equal(
+        _boolean(record, "cross_dimension_score_allowed", "corpus set"),
+        False,
+        "cross-dimension score guard",
+    )
+    _equal(
+        _integer(record, "member_count", "corpus set"),
+        section_representative_plan.SEED_COUNT,
+        "corpus set member count",
+    )
 
     population_identity = _object(record.get("population_identity"), "population identity")
     _equal(
         _canonical_digest(population_identity),
-        _string(record, "population_sha256", "corpus set"),
+        _sha256_value(record.get("population_sha256"), "corpus set population_sha256"),
         "population identity digest",
     )
     evidence_without_digest = dict(record)
-    evidence_digest = _string(evidence_without_digest.pop("evidence_sha256", None) or {}, "missing", "invalid") if False else None
-    expected_evidence = record.get("evidence_sha256")
-    if not isinstance(expected_evidence, str) or len(expected_evidence) != 64:
-        raise AdmissionError("corpus set evidence_sha256 must be a 64-character digest")
-    _equal(_canonical_digest(evidence_without_digest), expected_evidence, "corpus set evidence digest")
+    expected_evidence = _sha256_value(
+        evidence_without_digest.pop("evidence_sha256", None),
+        "corpus set evidence_sha256",
+    )
+    _equal(
+        _canonical_digest(evidence_without_digest),
+        expected_evidence,
+        "corpus set evidence digest",
+    )
 
     members = record.get("members")
     if not isinstance(members, list) or len(members) != section_representative_plan.SEED_COUNT:
         raise AdmissionError("corpus set must contain exactly four member records")
     dimensions = _object(record.get("per_dimension"), "corpus set per_dimension")
-    expected_dimensions = {descriptor.key for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS}
+    expected_dimensions = {
+        descriptor.key
+        for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS
+    }
     _equal(set(dimensions), expected_dimensions, "corpus set dimension keys")
-    return [_object(member, f"corpus set member[{index}]") for index, member in enumerate(members)], expected_dimensions
+    return [
+        _object(member, f"corpus set member[{index}]")
+        for index, member in enumerate(members)
+    ], expected_dimensions
 
 
 def build_admission(
@@ -222,6 +270,7 @@ def build_admission(
     set_file_sha256: str,
 ) -> dict[str, object]:
     section_representative_plan.validate_plan(plan)
+    set_file_sha256 = _sha256_value(set_file_sha256, "corpus-set file SHA-256")
     set_members, expected_dimensions = _validate_set_record(set_record, plan)
     seeds = plan["seeds"]
     assert isinstance(seeds, list)
@@ -233,17 +282,33 @@ def build_admission(
     for seed_index, expected_seed_raw in enumerate(seeds):
         expected_seed = int(expected_seed_raw)
         set_member = set_members[seed_index]
-        _equal(_integer(set_member, "seed_index", f"set member {seed_index}"), seed_index, "set member seed index")
-        _equal(_integer(set_member, "seed", f"set member {seed_index}"), expected_seed, "set member seed")
+        _equal(
+            _integer(set_member, "seed_index", f"set member {seed_index}"),
+            seed_index,
+            "set member seed index",
+        )
+        _equal(
+            _integer(set_member, "seed", f"set member {seed_index}"),
+            expected_seed,
+            "set member seed",
+        )
 
         directory = members_root / f"seed-{seed_index}"
         world = _load_json(directory / "world-evidence.json")
         manifest = _load_json(directory / "corpus-manifest.json")
-        _equal(_integer(world, "seed_index", "world evidence"), seed_index, "world seed index")
-        _equal(_integer(world, "seed", "world evidence"), expected_seed, "world seed")
+        _equal(
+            _integer(world, "seed_index", "world evidence"),
+            seed_index,
+            "world seed index",
+        )
+        _equal(
+            _integer(world, "seed", "world evidence"), expected_seed, "world seed"
+        )
         property_sha = _validate_server_properties(world, expected_seed)
 
-        corpus_sha = _string(manifest, "corpus_sha256", "member manifest")
+        corpus_sha = _sha256_value(
+            manifest.get("corpus_sha256"), "member manifest corpus_sha256"
+        )
         _equal(corpus_sha, set_member.get("corpus_sha256"), "set/member corpus identity")
         global_cells, global_classes, dimensions = _validate_member_semantics(
             manifest, expected_dimensions, f"seed-{seed_index} manifest"
@@ -267,9 +332,13 @@ def build_admission(
     raw_set_dimensions = _object(set_record.get("per_dimension"), "corpus set per_dimension")
     for dimension in sorted(expected_dimensions):
         raw_summary = _object(raw_set_dimensions.get(dimension), f"corpus set {dimension}")
+        section_count = _integer(raw_summary, "section_count", f"corpus set {dimension}")
+        total_cells = _integer(raw_summary, "total_cells", f"corpus set {dimension}")
+        if total_cells != section_count * 4096:
+            raise AdmissionError(f"corpus set {dimension}: invalid section/cell totals")
         per_dimension[dimension] = {
-            "section_count": _integer(raw_summary, "section_count", f"corpus set {dimension}"),
-            "total_cells": _integer(raw_summary, "total_cells", f"corpus set {dimension}"),
+            "section_count": section_count,
+            "total_cells": total_cells,
             "cell_facts": dict(sorted(per_dimension_cells[dimension].items())),
             "section_classes": dict(sorted(per_dimension_classes[dimension].items())),
         }
