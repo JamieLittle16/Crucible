@@ -1,6 +1,11 @@
+use std::fs;
 use std::io::Cursor;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256};
+use crucible_generated::{
+    BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256,
+};
 use crucible_world_reference::DirectBlockSection;
 use crucible_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
@@ -10,7 +15,35 @@ use crate::model::BenchSection;
 
 use super::parser::CorpusReader;
 use super::verify::inspect_candidate_section;
-use super::{CorpusPurpose, CorpusSection, SectionKey};
+use super::{CorpusPurpose, CorpusSection, SectionKey, check_corpus};
+
+static TEMP_CORPUS_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+struct TempCorpus {
+    path: PathBuf,
+}
+
+impl TempCorpus {
+    fn write(text: &str) -> Self {
+        let serial = TEMP_CORPUS_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!(
+            "crucible-section-corpus-test-{}-{serial}.corpus",
+            std::process::id()
+        ));
+        fs::write(&path, text).expect("write temporary corpus");
+        Self { path }
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TempCorpus {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
+}
 
 fn target_header() -> String {
     format!(
@@ -57,6 +90,12 @@ fn zeros(count: usize) -> Vec<u32> {
     vec![0; count]
 }
 
+fn states_with_cardinality(cardinality: usize) -> Vec<u32> {
+    (0..4096)
+        .map(|index| u32::try_from(index % cardinality).expect("bounded"))
+        .collect()
+}
+
 fn one_section(states: &[u32]) -> String {
     corpus(
         &[section_line("minecraft:overworld", "0", "0", "0", states)],
@@ -66,9 +105,7 @@ fn one_section(states: &[u32]) -> String {
 
 #[test]
 fn valid_corpus_preserves_cell_order_and_cardinality() {
-    let states = (0..4096)
-        .map(|index| u32::try_from(index % 17).expect("bounded"))
-        .collect::<Vec<_>>();
+    let states = states_with_cardinality(17);
     let text = corpus(
         &[section_line("minecraft:overworld", "-1", "2", "0", &states)],
         "vanilla-save-region-v1-stored-sections",
@@ -122,7 +159,10 @@ fn canonical_line_rules_are_fail_closed() {
 #[test]
 fn source_header_and_purpose_are_strict() {
     let line = section_line("minecraft:overworld", "0", "0", "0", &zeros(4096));
-    let known = corpus(&[line.clone()], "vanilla-save-region-v1-stored-sections");
+    let known = corpus(
+        std::slice::from_ref(&line),
+        "vanilla-save-region-v1-stored-sections",
+    );
     let reader = CorpusReader::from_reader(Cursor::new(known.as_bytes())).expect("known corpus");
     assert_eq!(reader.header().purpose, CorpusPurpose::ParserAdmission);
     assert!(!reader.header().decision_eligible());
@@ -209,12 +249,64 @@ fn exact_cell_count_and_state_spelling_are_strict() {
     assert!(parse_all(&text).is_err());
 }
 
+#[test]
+fn empty_corpus_is_rejected_by_full_import_gate() {
+    let text = corpus(&[], "vanilla-save-region-v1-stored-sections");
+    let file = TempCorpus::write(&text);
+    assert!(check_corpus(file.path(), false).is_err());
+}
+
+#[test]
+fn parser_admission_and_unknown_corpora_are_never_decision_eligible() {
+    for extractor in ["vanilla-save-region-v1-stored-sections", "future-policy-v9"] {
+        let text = corpus(
+            &[section_line("minecraft:overworld", "0", "0", "0", &zeros(4096))],
+            extractor,
+        );
+        let file = TempCorpus::write(&text);
+        let error = check_corpus(file.path(), true).expect_err("decision check must fail closed");
+        assert!(error.contains("not decision-eligible"));
+    }
+}
+
+#[test]
+fn full_import_aggregates_metadata_and_all_candidates_from_one_image() {
+    let text = corpus(
+        &[
+            section_line("minecraft:overworld", "0", "0", "0", &zeros(4096)),
+            section_line(
+                "minecraft:overworld",
+                "0",
+                "0",
+                "1",
+                &states_with_cardinality(17),
+            ),
+        ],
+        "vanilla-save-region-v1-stored-sections",
+    );
+    let file = TempCorpus::write(&text);
+    let checked = check_corpus(file.path(), false).expect("full import passes");
+
+    assert_eq!(checked.section_count, 2);
+    assert_eq!(checked.total_cells, 8192);
+    assert_eq!(checked.distinct_state_ids, 17);
+    assert_eq!(checked.cardinality_histogram.get(&1), Some(&1));
+    assert_eq!(checked.cardinality_histogram.get(&17), Some(&1));
+    assert_eq!(checked.dimensions.get("minecraft:overworld"), Some(&2));
+    assert_eq!(checked.candidates.len(), 5);
+    assert!(checked.candidates.iter().all(|candidate| candidate.sections == 2));
+
+    let json = checked.to_json(false);
+    assert!(json.contains(STATE_DATA_GENERATION_SHA256));
+    assert!(json.contains(STATE_DATA_INPUT_SHA256));
+    assert!(json.contains("\"purpose\": \"parser-admission\""));
+    assert!(json.contains("\"decision_eligible\": false"));
+}
+
 fn corpus_section(cardinality: usize) -> CorpusSection {
-    let states = (0..4096)
-        .map(|index| {
-            let raw = u32::try_from(index % cardinality).expect("bounded state ID");
-            BlockStateId::new(raw).expect("test state exists")
-        })
+    let states = states_with_cardinality(cardinality)
+        .into_iter()
+        .map(|raw| BlockStateId::new(raw).expect("test state exists"))
         .collect::<Vec<_>>();
     CorpusSection {
         key: SectionKey {
