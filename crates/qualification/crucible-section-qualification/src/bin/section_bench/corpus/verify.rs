@@ -25,6 +25,11 @@ pub(super) struct VerifiedCorpus {
     pub(super) candidates: Vec<CandidateImportSummary>,
 }
 
+pub(super) fn read_header(path: &Path) -> Result<CorpusHeader, String> {
+    let reader = CorpusReader::open(path)?;
+    Ok(reader.header().clone())
+}
+
 pub(super) fn verify_corpus(path: &Path) -> Result<VerifiedCorpus, String> {
     let mut reader = CorpusReader::open(path)?;
     let header = reader.header().clone();
