@@ -17,27 +17,37 @@ ALLOWLIST_ENTRY = re.compile(r"^[A-Za-z0-9_-]+@[0-9A-Za-z.+_-]+$")
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 
 
+def display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
 def workflow_action_errors(workflows: Path = WORKFLOWS) -> list[str]:
     errors: list[str] = []
     for path in sorted(workflows.glob("*.yml")):
         for line_number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             stripped = raw.strip()
-            if "uses:" not in stripped:
+            if stripped.startswith("- uses:"):
+                value = stripped[len("- uses:") :].strip()
+            elif stripped.startswith("uses:"):
+                value = stripped[len("uses:") :].strip()
+            else:
                 continue
-            _, value = stripped.split("uses:", 1)
-            value = value.strip()
             if " #" in value:
                 value = value.split(" #", 1)[0].rstrip()
             value = value.strip("'\"")
             if value.startswith("./"):
                 continue
+            location = f"{display_path(path)}:{line_number}"
             if "@" not in value:
-                errors.append(f"{path.relative_to(ROOT)}:{line_number}: action is not pinned: {value}")
+                errors.append(f"{location}: action is not pinned: {value}")
                 continue
             action, revision = value.rsplit("@", 1)
             if not action or FULL_SHA.fullmatch(revision) is None:
                 errors.append(
-                    f"{path.relative_to(ROOT)}:{line_number}: external action must use a full 40-hex commit SHA: {value}"
+                    f"{location}: external action must use a full 40-hex commit SHA: {value}"
                 )
     return errors
 
@@ -49,11 +59,12 @@ def load_allowlist(path: Path = ALLOWLIST) -> tuple[set[str], list[str]]:
         value = raw.split("#", 1)[0].strip()
         if not value:
             continue
+        location = f"{display_path(path)}:{line_number}"
         if ALLOWLIST_ENTRY.fullmatch(value) is None:
-            errors.append(f"{path.relative_to(ROOT)}:{line_number}: invalid allowlist entry {value!r}")
+            errors.append(f"{location}: invalid allowlist entry {value!r}")
             continue
         if value in entries:
-            errors.append(f"{path.relative_to(ROOT)}:{line_number}: duplicate allowlist entry {value}")
+            errors.append(f"{location}: duplicate allowlist entry {value}")
         entries.add(value)
     return entries, errors
 
