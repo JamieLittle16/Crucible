@@ -53,6 +53,14 @@ SMOKE_CASES = tuple(
 CONTROL_MAX_RELATIVE_MAD_PPM = 50_000
 REPLACEMENT_MAX_RELATIVE_MAD_PPM = 100_000
 PROMOTION_P99_MAX_RELATIVE_MAD_PPM = 150_000
+OUTLIER_GUARD_MULTIPLIER = 3
+CONTROL_MAX_RELATIVE_DEVIATION_PPM = CONTROL_MAX_RELATIVE_MAD_PPM * OUTLIER_GUARD_MULTIPLIER
+REPLACEMENT_MAX_RELATIVE_DEVIATION_PPM = (
+    REPLACEMENT_MAX_RELATIVE_MAD_PPM * OUTLIER_GUARD_MULTIPLIER
+)
+PROMOTION_P99_MAX_RELATIVE_DEVIATION_PPM = (
+    PROMOTION_P99_MAX_RELATIVE_MAD_PPM * OUTLIER_GUARD_MULTIPLIER
+)
 
 
 class SyntheticEvidenceError(RuntimeError):
@@ -153,10 +161,7 @@ def validate_summary(
     samples = summary.get("samples_ns")
     if not isinstance(samples, list) or len(samples) != expected_samples:
         raise SyntheticEvidenceError(f"{label} sample count mismatch")
-    values = [
-        _integer(value, f"{label}.samples_ns")
-        for value in samples
-    ]
+    values = [_integer(value, f"{label}.samples_ns") for value in samples]
     if any(value < 0 for value in values):
         raise SyntheticEvidenceError(f"{label} contains negative timing samples")
     operations = _integer(summary.get("operations_per_sample"), f"{label}.operations_per_sample")
@@ -350,12 +355,17 @@ def median_int(values: Iterable[int]) -> int:
 
 def aggregate_int(values: list[int]) -> dict[str, int]:
     median = median_int(values)
-    mad = median_int([abs(value - median) for value in values])
+    deviations = [abs(value - median) for value in values]
+    mad = median_int(deviations)
+    max_deviation = max(deviations)
+    scale = max(abs(median), 1)
     return {
         "count": len(values),
         "median": median,
         "mad": mad,
-        "relative_mad_ppm": mad * 1_000_000 // max(abs(median), 1),
+        "relative_mad_ppm": mad * 1_000_000 // scale,
+        "max_deviation": max_deviation,
+        "max_relative_deviation_ppm": max_deviation * 1_000_000 // scale,
         "min": min(values),
         "max": max(values),
     }
@@ -403,6 +413,12 @@ def aggregate_children(children: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
+def _noise_ok(summary: dict[str, object], mad_limit: int, deviation_limit: int) -> tuple[bool, bool]:
+    mad_ok = int(summary["relative_mad_ppm"]) <= mad_limit
+    deviation_ok = int(summary["max_relative_deviation_ppm"]) <= deviation_limit
+    return mad_ok, deviation_ok
+
+
 def classify_noise(
     aggregates: dict[str, object],
     *,
@@ -415,9 +431,16 @@ def classify_noise(
         reasons.append("synthetic qualification requires at least five rounds and a multiple of five")
 
     control = dict(aggregates["global_control_p50_ps_per_op"])
-    control_ok = int(control["relative_mad_ppm"]) <= CONTROL_MAX_RELATIVE_MAD_PPM
-    if not control_ok:
-        reasons.append("synthetic candidate-independent control exceeded noise threshold")
+    control_mad_ok, control_deviation_ok = _noise_ok(
+        control,
+        CONTROL_MAX_RELATIVE_MAD_PPM,
+        CONTROL_MAX_RELATIVE_DEVIATION_PPM,
+    )
+    control_ok = control_mad_ok and control_deviation_ok
+    if not control_mad_ok:
+        reasons.append("synthetic candidate-independent control exceeded MAD noise threshold")
+    if not control_deviation_ok:
+        reasons.append("synthetic candidate-independent control exceeded isolated-excursion threshold")
 
     replacement_ok = True
     promotion_ok = True
@@ -426,14 +449,38 @@ def classify_noise(
         candidate_data = dict(candidates[candidate])
         for key, raw_summary in dict(candidate_data["replacement_p50_ps_per_op"]).items():
             summary = dict(raw_summary)
-            if int(summary["relative_mad_ppm"]) > REPLACEMENT_MAX_RELATIVE_MAD_PPM:
+            mad_ok, deviation_ok = _noise_ok(
+                summary,
+                REPLACEMENT_MAX_RELATIVE_MAD_PPM,
+                REPLACEMENT_MAX_RELATIVE_DEVIATION_PPM,
+            )
+            if not mad_ok:
                 replacement_ok = False
-                reasons.append(f"synthetic replacement noise exceeded threshold: {candidate}/{key}")
+                reasons.append(
+                    f"synthetic replacement MAD noise exceeded threshold: {candidate}/{key}"
+                )
+            if not deviation_ok:
+                replacement_ok = False
+                reasons.append(
+                    f"synthetic replacement isolated excursion exceeded threshold: {candidate}/{key}"
+                )
         for key, raw_summary in dict(candidate_data["promotion_p99_ns"]).items():
             summary = dict(raw_summary)
-            if int(summary["relative_mad_ppm"]) > PROMOTION_P99_MAX_RELATIVE_MAD_PPM:
+            mad_ok, deviation_ok = _noise_ok(
+                summary,
+                PROMOTION_P99_MAX_RELATIVE_MAD_PPM,
+                PROMOTION_P99_MAX_RELATIVE_DEVIATION_PPM,
+            )
+            if not mad_ok:
                 promotion_ok = False
-                reasons.append(f"synthetic promotion-p99 noise exceeded threshold: {candidate}/{key}")
+                reasons.append(
+                    f"synthetic promotion-p99 MAD noise exceeded threshold: {candidate}/{key}"
+                )
+            if not deviation_ok:
+                promotion_ok = False
+                reasons.append(
+                    f"synthetic promotion-p99 isolated excursion exceeded threshold: {candidate}/{key}"
+                )
 
     eligible = protocol_eligible and control_ok and replacement_ok and promotion_ok
     return {
@@ -444,8 +491,11 @@ def classify_noise(
         "synthetic_evidence_eligible": eligible,
         "thresholds_ppm": {
             "control_relative_mad": CONTROL_MAX_RELATIVE_MAD_PPM,
+            "control_max_relative_deviation": CONTROL_MAX_RELATIVE_DEVIATION_PPM,
             "replacement_p50_relative_mad": REPLACEMENT_MAX_RELATIVE_MAD_PPM,
+            "replacement_p50_max_relative_deviation": REPLACEMENT_MAX_RELATIVE_DEVIATION_PPM,
             "promotion_p99_relative_mad": PROMOTION_P99_MAX_RELATIVE_MAD_PPM,
+            "promotion_p99_max_relative_deviation": PROMOTION_P99_MAX_RELATIVE_DEVIATION_PPM,
         },
         "reasons": sorted(set(reasons)),
     }
