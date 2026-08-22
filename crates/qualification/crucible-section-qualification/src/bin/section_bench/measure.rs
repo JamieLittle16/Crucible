@@ -9,12 +9,12 @@ use crucible_world_section::{
 };
 
 use crate::model::{
-    BenchSection, CaseSpec, LifetimeRecord, MemoryRecord, PROMOTION_TARGETS, SampleSummary, Settings,
-    TimingRecord,
+    BenchSection, CaseSpec, LifetimeRecord, MemoryRecord, PROMOTION_TARGETS, SampleSummary,
+    Settings, TimingRecord,
 };
 use crate::workloads::{
-    Prepared, make_positions, make_state_stream, negative_contains_state, pos, positive_contains_state,
-    prepare, state_id,
+    Prepared, make_positions, make_state_stream, negative_contains_state, pos,
+    positive_contains_state, prepare, state_id,
 };
 
 #[derive(Debug, Default)]
@@ -49,9 +49,7 @@ fn run_candidate<C: BenchSection>(
     }
 
     for target in PROMOTION_TARGETS {
-        output
-            .timings
-            .push(bench_promotion::<C>(target, settings));
+        output.timings.push(bench_promotion::<C>(target, settings));
     }
 }
 
@@ -86,7 +84,11 @@ fn lifetime_record<C: BenchSection>(
 
     for operation in 0..settings.lifetime_mutations {
         let before = section.representation_name();
-        let _ = section.replace(positions[operation], stream[operation], &GeneratedStateFacts);
+        let _ = section.replace(
+            positions[operation],
+            stream[operation],
+            &GeneratedStateFacts,
+        );
         let after = section.representation_name();
         if before != after {
             transitions += 1;
@@ -117,13 +119,7 @@ fn bench_prepared<C: BenchSection>(
     let positions = make_positions(settings.random_reads.max(settings.mutations), 0xA11C_E001);
     let mutation_positions = make_positions(settings.mutations, 0xA11C_E002);
     bench_reads::<C>(prepared, case, settings, &positions, timings);
-    bench_replacements::<C>(
-        prepared,
-        case,
-        settings,
-        &mutation_positions,
-        timings,
-    );
+    bench_replacements::<C>(prepared, case, settings, &mutation_positions, timings);
     bench_contains::<C>(prepared, case, settings, timings);
 }
 
@@ -140,9 +136,14 @@ fn bench_reads<C: BenchSection>(
         case,
         "random-read",
         "cell-read",
-        measure_immutable(settings, settings.random_reads, &prepared.section, |section, operation| {
-            black_box(section.get(positions[operation % positions.len()]));
-        }),
+        measure_immutable(
+            settings,
+            settings.random_reads,
+            &prepared.section,
+            |section, operation| {
+                black_box(section.get(positions[operation % positions.len()]));
+            },
+        ),
     );
 
     push_timing::<C>(
@@ -151,11 +152,16 @@ fn bench_reads<C: BenchSection>(
         case,
         "sequential-full-read",
         "section-scan",
-        measure_immutable(settings, settings.full_scans, &prepared.section, |section, _| {
-            for cell in 0..BLOCK_SECTION_CELLS {
-                black_box(section.get(pos(cell)));
-            }
-        }),
+        measure_immutable(
+            settings,
+            settings.full_scans,
+            &prepared.section,
+            |section, _| {
+                for cell in 0..BLOCK_SECTION_CELLS {
+                    black_box(section.get(pos(cell)));
+                }
+            },
+        ),
     );
 
     push_timing::<C>(
@@ -164,10 +170,15 @@ fn bench_reads<C: BenchSection>(
         case,
         "small-volume-read",
         "4x4x4-volume",
-        measure_immutable(settings, settings.volume_queries, &prepared.section, |section, operation| {
-            let base = positions[operation % positions.len()].index();
-            read_volume(section, base);
-        }),
+        measure_immutable(
+            settings,
+            settings.volume_queries,
+            &prepared.section,
+            |section, operation| {
+                let base = positions[operation % positions.len()].index();
+                read_volume(section, base);
+            },
+        ),
     );
 }
 
@@ -246,10 +257,6 @@ fn bench_replacements<C: BenchSection>(
     );
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "benchmark record identity and operation stream are intentionally explicit"
-)]
 fn push_replace_timing<C: BenchSection>(
     timings: &mut Vec<TimingRecord>,
     prepared: &Prepared<C>,
@@ -265,10 +272,15 @@ fn push_replace_timing<C: BenchSection>(
         case,
         workload,
         "replace",
-        measure_mutating(settings, settings.mutations, &prepared.section, |section, operation| {
-            let index = operation % positions.len();
-            black_box(section.replace(positions[index], states[index], &GeneratedStateFacts));
-        }),
+        measure_mutating(
+            settings,
+            settings.mutations,
+            &prepared.section,
+            |section, operation| {
+                let index = operation % positions.len();
+                black_box(section.replace(positions[index], states[index], &GeneratedStateFacts));
+            },
+        ),
     );
 }
 
@@ -285,9 +297,14 @@ fn bench_contains<C: BenchSection>(
         case,
         "maybe-contains-positive",
         "query",
-        measure_immutable(settings, settings.contains_queries, &prepared.section, |section, _| {
-            black_box(section.maybe_contains(|state| state == positive));
-        }),
+        measure_immutable(
+            settings,
+            settings.contains_queries,
+            &prepared.section,
+            |section, _| {
+                black_box(section.maybe_contains(|state| state == positive));
+            },
+        ),
     );
 
     let negative = negative_contains_state(prepared);
@@ -297,9 +314,14 @@ fn bench_contains<C: BenchSection>(
         case,
         "maybe-contains-negative",
         "query",
-        measure_immutable(settings, settings.contains_queries, &prepared.section, |section, _| {
-            black_box(section.maybe_contains(|state| state == negative));
-        }),
+        measure_immutable(
+            settings,
+            settings.contains_queries,
+            &prepared.section,
+            |section, _| {
+                black_box(section.maybe_contains(|state| state == negative));
+            },
+        ),
     );
 }
 
@@ -356,10 +378,6 @@ fn measure_promotion<C: BenchSection>(
     summarize(samples, 1)
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "timing rows deliberately repeat all workload identity instead of relying on implicit context"
-)]
 fn push_timing<C: BenchSection>(
     timings: &mut Vec<TimingRecord>,
     prepared: &Prepared<C>,
