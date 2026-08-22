@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 SCHEMA = 1
-GENERATOR_VERSION = "0.2.0"
+GENERATOR_VERSION = "0.2.1"
 FLAG_BITS = {
     "non_air": 0,
     "counted_fluid": 1,
@@ -159,7 +159,7 @@ def render_rust(data: dict[str, object], policy: str) -> tuple[str, dict[str, ob
         conversion = f"""
 #[inline]
 #[must_use]
-pub const fn to_vanilla_state_id(id: BlockStateId) -> u32 {{
+pub fn to_vanilla_state_id(id: BlockStateId) -> u32 {{
     {identity_to_vanilla}
 }}
 
@@ -241,6 +241,16 @@ impl BlockStateId {{
 pub const AIR: BlockStateId = BlockStateId({key_to_internal[air_key]});
 pub static STATE_MUTATION_FLAGS: [u8; BLOCK_STATE_COUNT] = [{flag_values}];
 {conversion}
+#[inline]
+fn facts_from_mutation_flags(bits: u8) -> SectionStateFacts {{
+    SectionStateFacts::new(
+        bits & 1 != 0,
+        bits & 2 != 0,
+        bits & 4 != 0,
+        bits & 8 != 0,
+    )
+}}
+
 /// Zero-sized provider for target-version section mutation facts.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GeneratedStateFacts;
@@ -248,13 +258,7 @@ pub struct GeneratedStateFacts;
 impl BlockStateFacts<BlockStateId> for GeneratedStateFacts {{
     #[inline]
     fn facts(&self, state: BlockStateId) -> SectionStateFacts {{
-        let bits = STATE_MUTATION_FLAGS[state.as_usize()];
-        SectionStateFacts::new(
-            bits & 1 != 0,
-            bits & 2 != 0,
-            bits & 4 != 0,
-            bits & 8 != 0,
-        )
+        facts_from_mutation_flags(STATE_MUTATION_FLAGS[state.as_usize()])
     }}
 }}
 
@@ -275,6 +279,19 @@ mod tests {{
         for raw in 0..BLOCK_STATE_COUNT as u32 {{
             let state = from_vanilla_state_id(raw).expect("generated external id is in range");
             assert_eq!(to_vanilla_state_id(state), raw);
+        }}
+    }}
+
+    #[test]
+    fn mutation_flag_decoder_covers_all_sixteen_combinations() {{
+        for bits in 0_u8..16 {{
+            let expected = SectionStateFacts::new(
+                bits & 1 != 0,
+                bits & 2 != 0,
+                bits & 4 != 0,
+                bits & 8 != 0,
+            );
+            assert_eq!(facts_from_mutation_flags(bits), expected, "bits={{bits:#06b}}");
         }}
     }}
 }}
@@ -337,15 +354,30 @@ def command_verify(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def command_diff(args: argparse.Namespace) -> int:
+    old = json.loads(Path(args.old_manifest).read_text(encoding="utf-8"))
+    new = json.loads(Path(args.new_manifest).read_text(encoding="utf-8"))
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        raise ValueError("state-data manifests must be JSON objects")
+
+    changed = {
+        key: {"old": old.get(key), "new": new.get(key)}
+        for key in sorted(set(old) | set(new))
+        if old.get(key) != new.get(key)
+    }
+    print(json.dumps({"changed": changed}, indent=2, sort_keys=True))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Crucible target block-state data generator")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    commands = {
+
+    for name, handler in {
         "inspect": command_inspect,
         "generate": command_generate,
         "verify": command_verify,
-    }
-    for name, handler in commands.items():
+    }.items():
         subparser = subparsers.add_parser(name)
         subparser.add_argument("input")
         subparser.add_argument(
@@ -357,6 +389,11 @@ def main() -> int:
             subparser.add_argument("--output", required=True)
             subparser.add_argument("--manifest", required=True)
         subparser.set_defaults(handler=handler)
+
+    diff_parser = subparsers.add_parser("diff")
+    diff_parser.add_argument("old_manifest")
+    diff_parser.add_argument("new_manifest")
+    diff_parser.set_defaults(handler=command_diff)
 
     args = parser.parse_args()
     try:
