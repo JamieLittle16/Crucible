@@ -33,28 +33,24 @@ fn write_identity(
     writeln!(output, "  \"harness_version\": \"{HARNESS_VERSION}\",").map_err(fmt_error)?;
     writeln!(output, "  \"mode\": \"{}\",", mode.as_str()).map_err(fmt_error)?;
     write_string(output, "commit_sha", &hardware.commit_sha)?;
-    writeln!(
-        output,
-        "  \"minecraft_version\": \"{MINECRAFT_VERSION}\"," 
-    )
-    .map_err(fmt_error)?;
+    writeln!(output, "  \"minecraft_version\": \"{MINECRAFT_VERSION}\",").map_err(fmt_error)?;
     writeln!(output, "  \"protocol_version\": {PROTOCOL_VERSION},").map_err(fmt_error)?;
     writeln!(output, "  \"data_version\": {DATA_VERSION},").map_err(fmt_error)?;
     writeln!(
         output,
-        "  \"state_data_input_sha256\": \"{STATE_DATA_INPUT_SHA256}\"," 
+        "  \"state_data_input_sha256\": \"{STATE_DATA_INPUT_SHA256}\","
     )
     .map_err(fmt_error)?;
     writeln!(
         output,
-        "  \"state_data_generation_sha256\": \"{STATE_DATA_GENERATION_SHA256}\"," 
+        "  \"state_data_generation_sha256\": \"{STATE_DATA_GENERATION_SHA256}\","
     )
     .map_err(fmt_error)?;
     writeln!(output, "  \"benchmark_seed\": \"{BENCH_SEED:016x}\",").map_err(fmt_error)?;
     writeln!(output, "  \"build_profile\": \"release\",").map_err(fmt_error)?;
     writeln!(
         output,
-        "  \"codegen_policy\": \"lto=thin,codegen-units=1,panic=abort\"," 
+        "  \"codegen_policy\": \"lto=thin,codegen-units=1,panic=abort\","
     )
     .map_err(fmt_error)?;
     write_string(output, "target_triple", &hardware.target_triple)?;
