@@ -30,10 +30,7 @@ class OfficialSectionWorldTests(unittest.TestCase):
         self.assertTrue(first.endswith("\n"))
         lines = first.splitlines()
         self.assertEqual(lines, sorted(lines))
-        self.assertIn(
-            f"level-seed={official_section_world.DEFAULT_SEED}",
-            lines,
-        )
+        self.assertIn(f"level-seed={official_section_world.DEFAULT_SEED}", lines)
         self.assertIn("level-name=world", lines)
         self.assertIn("view-distance=2", lines)
         self.assertIn("simulation-distance=2", lines)
@@ -42,11 +39,15 @@ class OfficialSectionWorldTests(unittest.TestCase):
         self.assertIn("allow-nether=false", lines)
         self.assertIn("sync-chunk-writes=true", lines)
 
-    def test_probe_seed_is_stable_decimal_text(self) -> None:
+    def test_probe_seed_and_target_overworld_path_are_stable(self) -> None:
         seed = official_section_world.DEFAULT_SEED
         self.assertTrue(seed.isascii())
         self.assertTrue(seed.isdecimal())
         self.assertEqual(seed, "6842363988700132471")
+        self.assertEqual(
+            official_section_world.OVERWORLD_REGION,
+            Path("dimensions/minecraft/overworld/region"),
+        )
 
 
 if __name__ == "__main__":
