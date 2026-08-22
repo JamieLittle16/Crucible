@@ -9,7 +9,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 try:
     from tools import section_target_combined as combined
@@ -30,6 +30,7 @@ FULL_TRACE_FINGERPRINT = "6a4814a1551a9e5a"
 CPU_MATERIAL_IMPROVEMENT_PPM = 50_000
 MEMORY_MATERIAL_IMPROVEMENT_PPM = 100_000
 LOWER_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+LOWER_GIT_SHA1 = re.compile(r"[0-9a-f]{40}\Z")
 FULL_SEM_IDS = (
     "SEM-WORLD-SECTION-001",
     "SEM-WORLD-SECTION-002",
@@ -55,8 +56,6 @@ class CorrectnessIdentity:
     candidate: str
     path: Path
     file_sha256: str
-    commit_sha: str
-    target: dict[str, object]
     evidence_id: str
 
 
@@ -68,16 +67,16 @@ class MetricRegistry:
     synthetic_promotions: tuple[str, ...]
 
     @property
-    def all_latency(self) -> tuple[str, ...]:
+    def latency(self) -> tuple[str, ...]:
         return self.population_latency + self.synthetic_replacements + self.synthetic_promotions
 
     @property
-    def all_memory(self) -> tuple[str, ...]:
+    def memory(self) -> tuple[str, ...]:
         return self.population_memory
 
     @property
-    def all_metrics(self) -> tuple[str, ...]:
-        return self.all_latency + self.all_memory
+    def all(self) -> tuple[str, ...]:
+        return self.latency + self.memory
 
 
 def canonical_digest(value: object) -> str:
@@ -102,25 +101,31 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def require_bool(record: dict[str, Any], key: str, expected: bool, label: str) -> None:
-    if record.get(key) is not expected:
-        raise ParetoEvidenceError(f"{label}.{key} must be {expected}")
-
-
-def require_int(value: object, label: str) -> int:
+def integer(value: object, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ParetoEvidenceError(f"{label} must be an integer")
     return value
 
 
-def require_sha(value: object, label: str) -> str:
+def sha256(value: object, label: str) -> str:
     if not isinstance(value, str) or LOWER_SHA256.fullmatch(value) is None:
         raise ParetoEvidenceError(f"{label} must be canonical lowercase SHA-256")
     return value
 
 
-def verify_digest_field(record: dict[str, Any], field: str, label: str) -> str:
-    expected = require_sha(record.get(field), f"{label}.{field}")
+def git_sha(value: object, label: str) -> str:
+    if not isinstance(value, str) or LOWER_GIT_SHA1.fullmatch(value) is None:
+        raise ParetoEvidenceError(f"{label} must be a canonical 40-hex Git commit SHA")
+    return value
+
+
+def require_flag(record: dict[str, Any], key: str, expected: bool, label: str) -> None:
+    if record.get(key) is not expected:
+        raise ParetoEvidenceError(f"{label}.{key} must be {expected}")
+
+
+def verify_digest(record: dict[str, Any], field: str, label: str) -> str:
+    expected = sha256(record.get(field), f"{label}.{field}")
     payload = dict(record)
     payload.pop(field)
     actual = canonical_digest(payload)
@@ -131,7 +136,7 @@ def verify_digest_field(record: dict[str, Any], field: str, label: str) -> str:
     return expected
 
 
-def safe_relative_path(raw: object, label: str) -> Path:
+def safe_relative(raw: object, label: str) -> Path:
     if not isinstance(raw, str) or not raw:
         raise ParetoEvidenceError(f"{label} must be a non-empty relative path")
     path = Path(raw)
@@ -155,87 +160,93 @@ def target_contract(repo_root: Path) -> dict[str, object]:
     }
     if result["minecraft_version"] != "26.2":
         raise ParetoEvidenceError("Pareto analysis target must be Minecraft 26.2")
-    require_sha(result["state_data_generation_sha256"], "target generation digest")
-    require_sha(result["state_data_input_sha256"], "target input digest")
+    sha256(result["state_data_generation_sha256"], "target generation digest")
+    sha256(result["state_data_input_sha256"], "target input digest")
     return result
 
 
-def validate_root_artifact(root: Path) -> tuple[dict[str, Any], dict[str, dict[str, object]], str]:
-    manifest_path = root / "artifact-manifest.json"
-    manifest = load_json(manifest_path)
-    if manifest.get("schema") != combined.ARTIFACT_SCHEMA or manifest.get("kind") != combined.ARTIFACT_KIND:
+def validate_root_artifact(
+    root: Path,
+) -> tuple[dict[str, Any], dict[str, dict[str, object]], str]:
+    manifest = load_json(root / "artifact-manifest.json")
+    if (
+        manifest.get("schema") != combined.ARTIFACT_SCHEMA
+        or manifest.get("kind") != combined.ARTIFACT_KIND
+    ):
         raise ParetoEvidenceError("combined artifact schema/kind mismatch")
-    manifest_sha = verify_digest_field(manifest, "manifest_sha256", "combined artifact")
-    files = manifest.get("files")
-    if not isinstance(files, list) or not files:
+    manifest_sha = verify_digest(manifest, "manifest_sha256", "combined artifact")
+    raw_files = manifest.get("files")
+    if not isinstance(raw_files, list) or not raw_files:
         raise ParetoEvidenceError("combined artifact file inventory is missing")
-    indexed: dict[str, dict[str, object]] = {}
-    for index, raw in enumerate(files):
+    files: dict[str, dict[str, object]] = {}
+    for index, raw in enumerate(raw_files):
         if not isinstance(raw, dict):
             raise ParetoEvidenceError(f"combined artifact file {index} is malformed")
-        relative = safe_relative_path(raw.get("path"), f"artifact file {index}.path")
+        relative = safe_relative(raw.get("path"), f"artifact file {index}.path")
         key = relative.as_posix()
-        if key in indexed:
+        if key in files:
             raise ParetoEvidenceError(f"duplicate artifact path: {key}")
-        expected_size = require_int(raw.get("size"), f"artifact {key}.size")
-        expected_sha = require_sha(raw.get("sha256"), f"artifact {key}.sha256")
+        expected_size = integer(raw.get("size"), f"artifact {key}.size")
+        expected_sha = sha256(raw.get("sha256"), f"artifact {key}.sha256")
         path = root / relative
         if not path.is_file():
             raise ParetoEvidenceError(f"artifact file is missing: {key}")
         if path.stat().st_size != expected_size or sha256_file(path) != expected_sha:
             raise ParetoEvidenceError(f"artifact file identity mismatch: {key}")
-        indexed[key] = dict(raw)
+        files[key] = dict(raw)
     required = {
         "combined-orchestration.json",
         "population/orchestration.json",
         "population/artifact-manifest.json",
         "population/benchmark-executable",
     }
-    missing = required - set(indexed)
+    missing = required - set(files)
     if missing:
         raise ParetoEvidenceError(f"combined artifact omitted required files: {sorted(missing)}")
-    return manifest, indexed, manifest_sha
+    return manifest, files, manifest_sha
 
 
-def validate_combined_record(
+def validate_combined(
     root: Path,
     manifest: dict[str, Any],
-    indexed: dict[str, dict[str, object]],
+    files: dict[str, dict[str, object]],
 ) -> tuple[dict[str, Any], str]:
     record = load_json(root / "combined-orchestration.json")
     if record.get("schema") != combined.SCHEMA or record.get("kind") != combined.KIND:
         raise ParetoEvidenceError("combined orchestration schema/kind mismatch")
-    evidence_sha = verify_digest_field(record, "evidence_sha256", "combined orchestration")
+    evidence_sha = verify_digest(record, "evidence_sha256", "combined orchestration")
     if manifest.get("combined_evidence_sha256") != evidence_sha:
         raise ParetoEvidenceError("artifact manifest is not bound to combined orchestration")
     if record.get("mode") != "qualification":
         raise ParetoEvidenceError("Pareto analysis refuses non-qualification combined evidence")
-    require_bool(record, "qualification_complete", True, "combined")
-    require_bool(record, "population_evidence_eligible", True, "combined")
-    require_bool(record, "synthetic_evidence_eligible", True, "combined")
-    require_bool(record, "combined_measurement_evidence_eligible", True, "combined")
-    if record.get("decision_evidence_eligible") is not False:
-        raise ParetoEvidenceError("pre-Pareto combined evidence must not claim final decision eligibility")
+    for key in (
+        "qualification_complete",
+        "population_evidence_eligible",
+        "synthetic_evidence_eligible",
+        "combined_measurement_evidence_eligible",
+    ):
+        require_flag(record, key, True, "combined")
+    require_flag(record, "decision_evidence_eligible", False, "combined")
+    require_flag(record, "cross_dimension_score_allowed", False, "combined")
     if record.get("decision_scope") != DECISION_SCOPE:
         raise ParetoEvidenceError("combined decision scope drifted")
-    require_bool(record, "cross_dimension_score_allowed", False, "combined")
-    rounds = require_int(record.get("rounds"), "combined.rounds")
+    rounds = integer(record.get("rounds"), "combined.rounds")
     if rounds < 5 or rounds % 5 != 0:
         raise ParetoEvidenceError("combined qualification requires >=5 balanced rounds, multiple of five")
     if record.get("candidates") != list(population.CANDIDATES):
         raise ParetoEvidenceError("combined candidate registry drifted")
     if record.get("production_candidates") != list(population.PRODUCTION_CANDIDATES):
-        raise ParetoEvidenceError("combined production-candidate registry drifted")
+        raise ParetoEvidenceError("combined production candidate registry drifted")
     if record.get("dimensions") != list(population.DIMENSIONS):
         raise ParetoEvidenceError("combined dimension registry drifted")
 
-    identities = record.get("identities")
-    if not isinstance(identities, dict):
+    ids = record.get("identities")
+    if not isinstance(ids, dict):
         raise ParetoEvidenceError("combined identities are missing")
-    if identities.get("representative_policy") != population.REPRESENTATIVE_POLICY:
+    git_sha(ids.get("repository_commit_sha"), "combined repository commit")
+    if ids.get("representative_policy") != population.REPRESENTATIVE_POLICY:
         raise ParetoEvidenceError("combined representative policy drifted")
     for field in (
-        "repository_commit_sha",
         "benchmark_executable_sha256",
         "pack_manifest_sha256",
         "population_sha256",
@@ -243,10 +254,8 @@ def validate_combined_record(
         "population_orchestration_evidence_sha256",
         "population_artifact_manifest_sha256",
     ):
-        require_sha(identities.get(field), f"combined.identities.{field}")
-
-    executable_entry = indexed["population/benchmark-executable"]
-    if executable_entry["sha256"] != identities["benchmark_executable_sha256"]:
+        sha256(ids.get(field), f"combined.identities.{field}")
+    if files["population/benchmark-executable"]["sha256"] != ids["benchmark_executable_sha256"]:
         raise ParetoEvidenceError("combined executable identity disagrees with artifact inventory")
     return record, evidence_sha
 
@@ -255,26 +264,27 @@ def validate_population_nested(root: Path, combined_record: dict[str, Any]) -> d
     record = load_json(root / "population/orchestration.json")
     if record.get("schema") != population.SCHEMA or record.get("kind") != population.KIND:
         raise ParetoEvidenceError("nested population orchestration schema/kind mismatch")
-    evidence_sha = verify_digest_field(record, "evidence_sha256", "population orchestration")
-    require_bool(record, "qualification_complete", True, "population")
-    require_bool(record, "population_evidence_eligible", True, "population")
-    if record.get("mode") != "qualification":
-        raise ParetoEvidenceError("nested population orchestration is not qualification evidence")
-    if record.get("decision_scope") != DECISION_SCOPE:
-        raise ParetoEvidenceError("nested population decision scope drifted")
-    require_bool(record, "cross_dimension_score_allowed", False, "population")
+    evidence_sha = verify_digest(record, "evidence_sha256", "population orchestration")
+    require_flag(record, "qualification_complete", True, "population")
+    require_flag(record, "population_evidence_eligible", True, "population")
+    require_flag(record, "decision_evidence_eligible", False, "population")
+    require_flag(record, "cross_dimension_score_allowed", False, "population")
+    if record.get("mode") != "qualification" or record.get("decision_scope") != DECISION_SCOPE:
+        raise ParetoEvidenceError("nested population mode/decision scope drifted")
     if record.get("rounds") != combined_record.get("rounds") or record.get("cpu") != combined_record.get("cpu"):
         raise ParetoEvidenceError("population round/CPU identity disagrees with combined evidence")
     if record.get("candidates") != list(population.CANDIDATES):
         raise ParetoEvidenceError("population candidate registry drifted")
+    if record.get("production_candidates") != list(population.PRODUCTION_CANDIDATES):
+        raise ParetoEvidenceError("population production candidate registry drifted")
     if record.get("dimensions") != list(population.DIMENSIONS):
         raise ParetoEvidenceError("population dimension registry drifted")
 
-    combined_ids = combined_record["identities"]
     ids = record.get("identities")
+    combined_ids = combined_record["identities"]
     if not isinstance(ids, dict):
         raise ParetoEvidenceError("population identities are missing")
-    expected_pairs = (
+    pairs = (
         ("repository_commit_sha", "repository_commit_sha"),
         ("benchmark_executable_sha256", "benchmark_executable_sha256"),
         ("pack_manifest_sha256", "pack_manifest_sha256"),
@@ -282,68 +292,99 @@ def validate_population_nested(root: Path, combined_record: dict[str, Any]) -> d
         ("population_sha256", "population_sha256"),
         ("admission_sha256", "population_admission_sha256"),
     )
-    for population_key, combined_key in expected_pairs:
+    for population_key, combined_key in pairs:
         if ids.get(population_key) != combined_ids.get(combined_key):
             raise ParetoEvidenceError(f"population identity drift at {population_key}")
     if evidence_sha != combined_ids["population_orchestration_evidence_sha256"]:
         raise ParetoEvidenceError("combined record references the wrong population orchestration")
+
+    raw_children = record.get("children")
+    if not isinstance(raw_children, list):
+        raise ParetoEvidenceError("population children are missing")
+    recomputed = population.aggregate_children(raw_children)
+    if record.get("aggregates") != recomputed:
+        raise ParetoEvidenceError("population aggregate table does not recompute from child evidence")
+    recomputed_noise = population.classify_noise(
+        recomputed, smoke=False, rounds=integer(record.get("rounds"), "population rounds")
+    )
+    if record.get("noise_qualification") != recomputed_noise:
+        raise ParetoEvidenceError("population noise qualification does not recompute")
+    if recomputed_noise.get("population_evidence_eligible") is not True:
+        raise ParetoEvidenceError("population evidence is not noise/protocol eligible")
     return record
 
 
-def validate_population_artifact(root: Path, combined_record: dict[str, Any]) -> None:
+def validate_population_manifest(root: Path, combined_record: dict[str, Any]) -> None:
     manifest = load_json(root / "population/artifact-manifest.json")
-    if manifest.get("schema") != population.ARTIFACT_SCHEMA or manifest.get("kind") != population.ARTIFACT_KIND:
+    if (
+        manifest.get("schema") != population.ARTIFACT_SCHEMA
+        or manifest.get("kind") != population.ARTIFACT_KIND
+    ):
         raise ParetoEvidenceError("nested population artifact schema/kind mismatch")
-    manifest_sha = verify_digest_field(manifest, "manifest_sha256", "population artifact")
+    manifest_sha = verify_digest(manifest, "manifest_sha256", "population artifact")
     if manifest_sha != combined_record["identities"]["population_artifact_manifest_sha256"]:
         raise ParetoEvidenceError("combined record references the wrong population artifact manifest")
-    expected_orchestration = combined_record["identities"]["population_orchestration_evidence_sha256"]
-    if manifest.get("orchestration_sha256") != expected_orchestration:
+    if (
+        manifest.get("orchestration_sha256")
+        != combined_record["identities"]["population_orchestration_evidence_sha256"]
+    ):
         raise ParetoEvidenceError("population artifact is not bound to population orchestration")
-    files = manifest.get("files")
-    if not isinstance(files, list) or not files:
+    raw_files = manifest.get("files")
+    if not isinstance(raw_files, list) or not raw_files:
         raise ParetoEvidenceError("population artifact inventory is missing")
     seen: set[str] = set()
     population_root = root / "population"
-    for index, raw in enumerate(files):
+    for index, raw in enumerate(raw_files):
         if not isinstance(raw, dict):
             raise ParetoEvidenceError(f"population artifact file {index} malformed")
-        relative = safe_relative_path(raw.get("path"), f"population artifact file {index}")
+        relative = safe_relative(raw.get("path"), f"population artifact file {index}")
         key = relative.as_posix()
         if key in seen:
             raise ParetoEvidenceError(f"duplicate population artifact path: {key}")
         seen.add(key)
         path = population_root / relative
-        expected_size = require_int(raw.get("size"), f"population artifact {key}.size")
-        expected_sha = require_sha(raw.get("sha256"), f"population artifact {key}.sha256")
+        expected_size = integer(raw.get("size"), f"population artifact {key}.size")
+        expected_sha = sha256(raw.get("sha256"), f"population artifact {key}.sha256")
         if not path.is_file() or path.stat().st_size != expected_size or sha256_file(path) != expected_sha:
             raise ParetoEvidenceError(f"population artifact file identity mismatch: {key}")
 
 
+def validate_synthetic(combined_record: dict[str, Any]) -> dict[str, Any]:
+    block = combined_record.get("synthetic")
+    if not isinstance(block, dict):
+        raise ParetoEvidenceError("combined synthetic evidence block is missing")
+    children = block.get("children")
+    if not isinstance(children, list):
+        raise ParetoEvidenceError("combined synthetic child summaries are missing")
+    recomputed = synthetic.aggregate_children(children)
+    if block.get("aggregates") != recomputed:
+        raise ParetoEvidenceError("synthetic aggregate table does not recompute from child evidence")
+    noise = synthetic.classify_noise(
+        recomputed,
+        smoke=False,
+        rounds=integer(combined_record.get("rounds"), "combined rounds"),
+    )
+    if block.get("noise_qualification") != noise:
+        raise ParetoEvidenceError("synthetic noise qualification does not recompute")
+    if noise.get("synthetic_evidence_eligible") is not True:
+        raise ParetoEvidenceError("synthetic evidence is not noise/protocol eligible")
+    return recomputed
+
+
 def validate_correctness(
-    paths: list[Path],
-    *,
-    expected_commit: str,
-    target: dict[str, object],
+    paths: list[Path], *, expected_commit: str, target: dict[str, object]
 ) -> dict[str, CorrectnessIdentity]:
     if len(paths) != len(population.PRODUCTION_CANDIDATES):
         raise ParetoEvidenceError("exactly four full correctness files are required")
     records: dict[str, CorrectnessIdentity] = {}
-    expected_target = {
-        "minecraft_version": target["minecraft_version"],
-        "protocol_version": target["protocol_version"],
-        "data_version": target["data_version"],
-        "state_count": target["state_count"],
-        "state_data_generation_sha256": target["state_data_generation_sha256"],
-        "state_data_input_sha256": target["state_data_input_sha256"],
-    }
     for path in paths:
         raw = load_json(path)
         if raw.get("schema") != 1 or raw.get("qualification") != "section" or raw.get("mode") != "full":
             raise ParetoEvidenceError(f"{path} is not full section correctness evidence")
         if raw.get("commit_sha") != expected_commit:
             raise ParetoEvidenceError(f"{path} correctness commit differs from measurement commit")
-        for key, value in expected_target.items():
+        git_sha(raw.get("commit_sha"), f"{path} correctness commit")
+        for key, value in target.items():
             if raw.get(key) != value:
                 raise ParetoEvidenceError(f"{path} correctness target drift at {key}")
         if raw.get("trace_schema") != 1 or raw.get("sem_ids") != list(FULL_SEM_IDS):
@@ -355,25 +396,26 @@ def validate_correctness(
         candidate = record.get("candidate")
         if candidate not in population.PRODUCTION_CANDIDATES:
             raise ParetoEvidenceError(f"{path} has unknown production candidate {candidate!r}")
+        candidate = str(candidate)
         if candidate in records:
             raise ParetoEvidenceError(f"duplicate correctness candidate: {candidate}")
-        expected_id = f"EQUIV-WORLD-SECTION-FULL-{str(candidate).upper().replace('-', '_')}"
+        expected_id = f"EQUIV-WORLD-SECTION-FULL-{candidate.upper().replace('-', '_')}"
+        checks = (
+            (record.get("trace_count"), FULL_TRACE_COUNT, "trace count"),
+            (record.get("trace_operations"), FULL_TRACE_OPERATIONS, "trace operations"),
+            (record.get("synthetic_operations"), FULL_SYNTHETIC_OPERATIONS, "synthetic operations"),
+        )
         if record.get("id") != expected_id:
-            raise ParetoEvidenceError(f"{path} correctness evidence ID mismatch")
-        if require_int(record.get("trace_count"), f"{candidate}.trace_count") != FULL_TRACE_COUNT:
-            raise ParetoEvidenceError(f"{candidate} full trace count drifted")
-        if require_int(record.get("trace_operations"), f"{candidate}.trace_operations") != FULL_TRACE_OPERATIONS:
-            raise ParetoEvidenceError(f"{candidate} full trace operation count drifted")
-        if require_int(record.get("synthetic_operations"), f"{candidate}.synthetic_operations") != FULL_SYNTHETIC_OPERATIONS:
-            raise ParetoEvidenceError(f"{candidate} full synthetic operation count drifted")
+            raise ParetoEvidenceError(f"{candidate} correctness evidence ID drifted")
+        for observed, expected, label in checks:
+            if integer(observed, f"{candidate} {label}") != expected:
+                raise ParetoEvidenceError(f"{candidate} full {label} drifted")
         if record.get("trace_fingerprint_fnv1a64") != FULL_TRACE_FINGERPRINT:
             raise ParetoEvidenceError(f"{candidate} full trace fingerprint drifted")
-        records[str(candidate)] = CorrectnessIdentity(
-            candidate=str(candidate),
+        records[candidate] = CorrectnessIdentity(
+            candidate=candidate,
             path=path,
             file_sha256=sha256_file(path),
-            commit_sha=expected_commit,
-            target=expected_target,
             evidence_id=expected_id,
         )
     if set(records) != set(population.PRODUCTION_CANDIDATES):
@@ -381,67 +423,27 @@ def validate_correctness(
     return records
 
 
-def validate_population_aggregates(record: dict[str, Any]) -> dict[str, Any]:
-    aggregates = record.get("aggregates")
-    if not isinstance(aggregates, dict):
-        raise ParetoEvidenceError("population aggregates are missing")
-    dimensions = aggregates.get("dimensions")
-    if not isinstance(dimensions, dict) or set(dimensions) != set(population.DIMENSIONS):
-        raise ParetoEvidenceError("population aggregate dimensions drifted")
-    for dimension in population.DIMENSIONS:
-        raw_dimension = dimensions[dimension]
-        if not isinstance(raw_dimension, dict):
-            raise ParetoEvidenceError(f"population aggregate {dimension} malformed")
-        candidates = raw_dimension.get("candidates")
-        if not isinstance(candidates, dict) or set(candidates) != set(population.CANDIDATES):
-            raise ParetoEvidenceError(f"population aggregate candidate set drifted for {dimension}")
-        for candidate, raw_candidate in candidates.items():
-            if not isinstance(raw_candidate, dict):
-                raise ParetoEvidenceError(f"population aggregate {dimension}/{candidate} malformed")
-            workloads = raw_candidate.get("workloads_p50_ps_per_op")
-            if not isinstance(workloads, dict) or set(workloads) != set(population.WORKLOADS):
-                raise ParetoEvidenceError(f"population workload set drifted for {dimension}/{candidate}")
-            for workload, summary in workloads.items():
-                validate_aggregate_summary(summary, f"population {dimension}/{candidate}/{workload}")
-            validate_aggregate_summary(raw_candidate.get("rss_loaded_delta_kib"), f"population {dimension}/{candidate}/rss")
-            validate_aggregate_summary(raw_candidate.get("construction_p99_ns"), f"population {dimension}/{candidate}/construction")
-    return aggregates
-
-
-def validate_aggregate_summary(raw: object, label: str) -> dict[str, int]:
-    if not isinstance(raw, dict):
-        raise ParetoEvidenceError(f"{label} aggregate must be an object")
-    result = {
-        key: require_int(raw.get(key), f"{label}.{key}")
-        for key in ("count", "median", "mad", "relative_mad_ppm", "min", "max")
-    }
-    if result["count"] <= 0 or result["min"] > result["median"] or result["median"] > result["max"]:
-        raise ParetoEvidenceError(f"{label} aggregate ordering/count is invalid")
-    return result
-
-
-def population_child_diagnostics(
+def population_deterministic_diagnostics(
     root: Path,
     record: dict[str, Any],
     target: dict[str, object],
 ) -> dict[str, dict[str, dict[str, object]]]:
-    children = record.get("children")
-    if not isinstance(children, list):
-        raise ParetoEvidenceError("population child index is missing")
-    expected_rounds = require_int(record.get("rounds"), "population.rounds")
-    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    children = record["children"]
+    rounds = integer(record.get("rounds"), "population rounds")
+    grouped: dict[tuple[str, str], list[dict[str, object]]] = {}
     for index, raw in enumerate(children):
         if not isinstance(raw, dict):
             raise ParetoEvidenceError(f"population child {index} malformed")
         dimension = raw.get("dimension")
         candidate = raw.get("candidate")
         if dimension not in population.DIMENSIONS or candidate not in population.CANDIDATES:
-            raise ParetoEvidenceError("population child dimension/candidate identity invalid")
-        relative = safe_relative_path(raw.get("child_evidence_path"), f"population child {index} path")
-        child_path = root / "population" / relative
-        if sha256_file(child_path) != require_sha(raw.get("child_evidence_sha256"), f"population child {index} SHA"):
+            raise ParetoEvidenceError(f"population child {index} has invalid dimension/candidate")
+        relative = safe_relative(raw.get("child_evidence_path"), f"population child {index} path")
+        path = root / "population" / relative
+        expected_sha = sha256(raw.get("child_evidence_sha256"), f"population child {index} SHA")
+        if not path.is_file() or sha256_file(path) != expected_sha:
             raise ParetoEvidenceError(f"population child evidence changed: {relative}")
-        child = load_json(child_path)
+        child = load_json(path)
         if child.get("candidate") != candidate or child.get("dimension") != dimension:
             raise ParetoEvidenceError("population raw child identity disagrees with orchestration")
         if child.get("commit_sha") != record["identities"]["repository_commit_sha"]:
@@ -453,21 +455,28 @@ def population_child_diagnostics(
         representations = child.get("representations")
         if not isinstance(memory, dict) or not isinstance(representations, dict):
             raise ParetoEvidenceError("population raw child memory/representation evidence missing")
-        deterministic = {
-            "section_count": require_int(child.get("section_count"), "population child section_count"),
-            "logical_owned_bytes": require_int(memory.get("logical_owned_bytes"), "population child logical_owned_bytes"),
-            "max_owned_bytes": require_int(memory.get("max_owned_bytes"), "population child max_owned_bytes"),
-            "construction_transitions": require_int(memory.get("construction_transitions"), "population child construction_transitions"),
-            "logical_backing_allocations": require_int(memory.get("logical_backing_allocations"), "population child logical_backing_allocations"),
-            "representations": {str(key): require_int(value, f"representation {key}") for key, value in representations.items()},
+        deterministic: dict[str, object] = {
+            "section_count": integer(child.get("section_count"), "population child section_count"),
+            "logical_owned_bytes": integer(memory.get("logical_owned_bytes"), "logical_owned_bytes"),
+            "max_owned_bytes": integer(memory.get("max_owned_bytes"), "max_owned_bytes"),
+            "construction_transitions": integer(memory.get("construction_transitions"), "construction_transitions"),
+            "logical_backing_allocations": integer(
+                memory.get("logical_backing_allocations"), "logical_backing_allocations"
+            ),
+            "representations": {
+                str(name): integer(count, f"representation {name}")
+                for name, count in representations.items()
+            },
         }
         grouped.setdefault((str(dimension), str(candidate)), []).append(deterministic)
 
-    result: dict[str, dict[str, dict[str, object]]] = {dimension: {} for dimension in population.DIMENSIONS}
+    result: dict[str, dict[str, dict[str, object]]] = {
+        dimension: {} for dimension in population.DIMENSIONS
+    }
     for dimension in population.DIMENSIONS:
         for candidate in population.CANDIDATES:
             entries = grouped.get((dimension, candidate), [])
-            if len(entries) != expected_rounds:
+            if len(entries) != rounds:
                 raise ParetoEvidenceError(
                     f"population child count mismatch for {dimension}/{candidate}: {len(entries)}"
                 )
@@ -476,195 +485,206 @@ def population_child_diagnostics(
                 raise ParetoEvidenceError(
                     f"deterministic population evidence drifted across rounds for {dimension}/{candidate}"
                 )
-            if sum(first["representations"].values()) != first["section_count"]:  # type: ignore[union-attr]
-                raise ParetoEvidenceError(f"representation census does not recompose for {dimension}/{candidate}")
+            representations = first["representations"]
+            if not isinstance(representations, dict):
+                raise ParetoEvidenceError("internal representation census shape failure")
+            if sum(integer(value, "representation count") for value in representations.values()) != first["section_count"]:
+                raise ParetoEvidenceError(
+                    f"representation census does not recompose for {dimension}/{candidate}"
+                )
             result[dimension][candidate] = first
     return result
 
 
-def normalized_synthetic_metrics(record: dict[str, Any]) -> tuple[dict[str, dict[str, int]], tuple[str, ...], tuple[str, ...]]:
-    synthetic_block = record.get("synthetic")
-    if not isinstance(synthetic_block, dict):
-        raise ParetoEvidenceError("combined synthetic block is missing")
-    aggregates = synthetic_block.get("aggregates")
-    if not isinstance(aggregates, dict):
-        raise ParetoEvidenceError("synthetic aggregates are missing")
-    candidates = aggregates.get("candidates")
-    if not isinstance(candidates, dict) or set(candidates) != set(synthetic.CANDIDATES):
+def synthetic_medians(
+    aggregates: dict[str, Any],
+) -> tuple[dict[str, dict[str, int]], tuple[str, ...], tuple[str, ...]]:
+    raw_candidates = aggregates.get("candidates")
+    if not isinstance(raw_candidates, dict) or set(raw_candidates) != set(synthetic.CANDIDATES):
         raise ParetoEvidenceError("synthetic aggregate candidate set drifted")
-
-    normalized: dict[str, dict[str, int]] = {}
+    result: dict[str, dict[str, int]] = {}
     replacement_registry: tuple[str, ...] | None = None
     promotion_registry: tuple[str, ...] | None = None
     for candidate in synthetic.CANDIDATES:
-        raw = candidates[candidate]
+        raw = raw_candidates[candidate]
         if not isinstance(raw, dict):
             raise ParetoEvidenceError(f"synthetic candidate aggregate malformed: {candidate}")
         replacements = raw.get("replacement_p50_ps_per_op")
         promotions = raw.get("promotion_p99_ns")
         if not isinstance(replacements, dict) or not isinstance(promotions, dict):
-            raise ParetoEvidenceError(f"synthetic candidate metric maps missing: {candidate}")
-        replacement_values: dict[str, int] = {}
-        representation_diagnostics: dict[str, str] = {}
+            raise ParetoEvidenceError(f"synthetic metric maps missing: {candidate}")
+        values: dict[str, int] = {}
+        replacement_keys: list[str] = []
+        promotion_keys: list[str] = []
         for key, summary in replacements.items():
             if not isinstance(key, str):
                 raise ParetoEvidenceError("synthetic replacement key must be a string")
             parts = key.split("|")
             if len(parts) != 5:
                 raise ParetoEvidenceError(f"synthetic replacement key has wrong shape: {key}")
-            workload, pattern, pool, actual, representation = parts
-            normalized_key = f"replace:{workload}|{pattern}|{pool}|{actual}"
-            if normalized_key in replacement_values:
-                raise ParetoEvidenceError(f"duplicate normalized replacement key: {normalized_key}")
-            replacement_values[normalized_key] = synthetic_summary_median(summary, f"{candidate}/{key}")
-            representation_diagnostics[normalized_key] = representation
-        promotion_values: dict[str, int] = {}
+            workload, pattern, pool, actual, _representation = parts
+            normalized = f"replace:{workload}|{pattern}|{pool}|{actual}"
+            if normalized in values:
+                raise ParetoEvidenceError(f"duplicate normalized replacement key: {normalized}")
+            values[normalized] = synthetic_median(summary, f"{candidate}/{key}")
+            replacement_keys.append(normalized)
         for key, summary in promotions.items():
             if not isinstance(key, str):
                 raise ParetoEvidenceError("synthetic promotion key must be a string")
             parts = key.split("|", maxsplit=1)
             if len(parts) != 2:
                 raise ParetoEvidenceError(f"synthetic promotion key has wrong shape: {key}")
-            workload, _representation = parts
-            normalized_key = f"promotion:{workload}"
-            if normalized_key in promotion_values:
-                raise ParetoEvidenceError(f"duplicate normalized promotion key: {normalized_key}")
-            promotion_values[normalized_key] = synthetic_summary_median(summary, f"{candidate}/{key}")
-        current_replacements = tuple(sorted(replacement_values))
-        current_promotions = tuple(sorted(promotion_values))
+            normalized = f"promotion:{parts[0]}"
+            if normalized in values:
+                raise ParetoEvidenceError(f"duplicate normalized promotion key: {normalized}")
+            values[normalized] = synthetic_median(summary, f"{candidate}/{key}")
+            promotion_keys.append(normalized)
+        current_replacements = tuple(sorted(replacement_keys))
+        current_promotions = tuple(sorted(promotion_keys))
         if replacement_registry is None:
             replacement_registry = current_replacements
             promotion_registry = current_promotions
-        elif current_replacements != replacement_registry or current_promotions != promotion_registry:
+        elif (
+            current_replacements != replacement_registry
+            or current_promotions != promotion_registry
+        ):
             raise ParetoEvidenceError("normalized synthetic metric surface drifted between candidates")
-        normalized[candidate] = {**replacement_values, **promotion_values}
-        normalized[candidate]["__representation_count"] = len(representation_diagnostics)
-
+        result[candidate] = values
     assert replacement_registry is not None and promotion_registry is not None
-    expected_promotions = tuple(sorted(f"promotion:promotion-to-{target}" for target in synthetic.PROMOTION_TARGETS))
+    expected_promotions = tuple(
+        sorted(f"promotion:promotion-to-{target}" for target in synthetic.PROMOTION_TARGETS)
+    )
     if promotion_registry != expected_promotions:
         raise ParetoEvidenceError("synthetic promotion boundary registry drifted")
-    return normalized, replacement_registry, promotion_registry
+    return result, replacement_registry, promotion_registry
 
 
-def synthetic_summary_median(raw: object, label: str) -> int:
+def synthetic_median(raw: object, label: str) -> int:
     if not isinstance(raw, dict):
         raise ParetoEvidenceError(f"synthetic aggregate {label} malformed")
-    value = require_int(raw.get("median"), f"synthetic {label}.median")
+    value = integer(raw.get("median"), f"synthetic {label}.median")
     if value < 0:
         raise ParetoEvidenceError(f"synthetic aggregate {label} has negative median")
     return value
 
 
-def build_metric_registry(
+def metric_registry(
     replacement_keys: tuple[str, ...], promotion_keys: tuple[str, ...]
 ) -> MetricRegistry:
-    population_latency = tuple(f"population:{workload}" for workload in population.STEADY_WORKLOADS) + (
-        "population:construction-p99",
-    )
-    population_memory = (
-        "memory:rss-loaded-delta-kib",
-        "memory:logical-owned-bytes",
-        "memory:max-owned-bytes",
-    )
     return MetricRegistry(
-        population_latency=population_latency,
-        population_memory=population_memory,
+        population_latency=tuple(
+            f"population:{workload}" for workload in population.STEADY_WORKLOADS
+        )
+        + ("population:construction-p99",),
+        population_memory=(
+            "memory:rss-loaded-delta-kib",
+            "memory:logical-owned-bytes",
+            "memory:max-owned-bytes",
+        ),
         synthetic_replacements=replacement_keys,
         synthetic_promotions=promotion_keys,
     )
 
 
 def build_vectors(
-    population_aggregates: dict[str, Any],
+    population_record: dict[str, Any],
     deterministic: dict[str, dict[str, dict[str, object]]],
-    synthetic_metrics: dict[str, dict[str, int]],
+    synthetic_values: dict[str, dict[str, int]],
     registry: MetricRegistry,
 ) -> dict[str, dict[str, dict[str, int]]]:
+    dimensions = population_record["aggregates"]["dimensions"]
     result: dict[str, dict[str, dict[str, int]]] = {}
-    aggregate_dimensions = population_aggregates["dimensions"]
     for dimension in population.DIMENSIONS:
-        by_candidate: dict[str, dict[str, int]] = {}
-        aggregate_candidates = aggregate_dimensions[dimension]["candidates"]
+        result[dimension] = {}
         for candidate in population.CANDIDATES:
-            source = aggregate_candidates[candidate]
-            vector: dict[str, int] = {}
-            for workload in population.STEADY_WORKLOADS:
-                vector[f"population:{workload}"] = require_int(
+            source = dimensions[dimension]["candidates"][candidate]
+            vector: dict[str, int] = {
+                f"population:{workload}": integer(
                     source["workloads_p50_ps_per_op"][workload]["median"],
                     f"{dimension}/{candidate}/{workload} median",
                 )
-            vector["population:construction-p99"] = require_int(
+                for workload in population.STEADY_WORKLOADS
+            }
+            vector["population:construction-p99"] = integer(
                 source["construction_p99_ns"]["median"],
                 f"{dimension}/{candidate}/construction median",
             )
-            vector["memory:rss-loaded-delta-kib"] = require_int(
+            vector["memory:rss-loaded-delta-kib"] = integer(
                 source["rss_loaded_delta_kib"]["median"],
                 f"{dimension}/{candidate}/rss median",
             )
             deterministic_record = deterministic[dimension][candidate]
-            vector["memory:logical-owned-bytes"] = int(deterministic_record["logical_owned_bytes"])
-            vector["memory:max-owned-bytes"] = int(deterministic_record["max_owned_bytes"])
-            for key in registry.synthetic_replacements + registry.synthetic_promotions:
-                vector[key] = synthetic_metrics[candidate][key]
-            if set(vector) != set(registry.all_metrics):
-                raise ParetoEvidenceError(f"metric vector shape drifted for {dimension}/{candidate}")
+            vector["memory:logical-owned-bytes"] = integer(
+                deterministic_record["logical_owned_bytes"], "logical owned bytes"
+            )
+            vector["memory:max-owned-bytes"] = integer(
+                deterministic_record["max_owned_bytes"], "max owned bytes"
+            )
+            vector.update(synthetic_values[candidate])
+            if set(vector) != set(registry.all):
+                raise ParetoEvidenceError(
+                    f"metric vector shape drifted for {dimension}/{candidate}"
+                )
             if any(value < 0 for value in vector.values()):
-                raise ParetoEvidenceError(f"negative lower-is-better metric for {dimension}/{candidate}")
-            by_candidate[candidate] = vector
-        result[dimension] = by_candidate
+                raise ParetoEvidenceError(
+                    f"negative decision metric for {dimension}/{candidate}"
+                )
+            result[dimension][candidate] = vector
     return result
 
 
 def strictly_dominates(left: dict[str, int], right: dict[str, int]) -> bool:
     if set(left) != set(right):
-        raise ParetoEvidenceError("cannot compare Pareto vectors with different metric registries")
-    weak = all(left[key] <= right[key] for key in left)
-    strict = any(left[key] < right[key] for key in left)
-    return weak and strict
+        raise ParetoEvidenceError("cannot compare vectors with different metric registries")
+    return all(left[key] <= right[key] for key in left) and any(
+        left[key] < right[key] for key in left
+    )
 
 
-def dimension_frontier(vectors: dict[str, dict[str, int]]) -> tuple[list[str], dict[str, list[str]]]:
-    production = tuple(population.PRODUCTION_CANDIDATES)
+def dimension_frontier(
+    vectors: dict[str, dict[str, int]],
+) -> tuple[list[str], dict[str, list[str]]]:
     dominators: dict[str, list[str]] = {}
     frontier: list[str] = []
-    for candidate in production:
-        candidate_dominators = [
+    for candidate in population.PRODUCTION_CANDIDATES:
+        found = sorted(
             other
-            for other in production
-            if other != candidate and strictly_dominates(vectors[other], vectors[candidate])
-        ]
-        dominators[candidate] = sorted(candidate_dominators)
-        if not candidate_dominators:
+            for other in population.PRODUCTION_CANDIDATES
+            if other != candidate
+            and strictly_dominates(vectors[other], vectors[candidate])
+        )
+        dominators[candidate] = found
+        if not found:
             frontier.append(candidate)
     return sorted(frontier), dominators
 
 
-def global_dominators(
+def all_dimension_dominators(
     vectors: dict[str, dict[str, dict[str, int]]]
 ) -> dict[str, list[str]]:
     result: dict[str, list[str]] = {}
     for candidate in population.PRODUCTION_CANDIDATES:
-        valid: list[str] = []
-        for other in population.PRODUCTION_CANDIDATES:
-            if other == candidate:
-                continue
-            if all(
-                strictly_dominates(vectors[dimension][other], vectors[dimension][candidate])
+        result[candidate] = sorted(
+            other
+            for other in population.PRODUCTION_CANDIDATES
+            if other != candidate
+            and all(
+                strictly_dominates(
+                    vectors[dimension][other], vectors[dimension][candidate]
+                )
                 for dimension in population.DIMENSIONS
-            ):
-                valid.append(other)
-        result[candidate] = sorted(valid)
+            )
+        )
     return result
 
 
-def improvement_ppm(baseline: int, candidate: int) -> int:
+def improvement_ppm(baseline: int, observed: int) -> int:
     if baseline <= 0:
         return 0
-    return (baseline - candidate) * 1_000_000 // baseline
+    return (baseline - observed) * 1_000_000 // baseline
 
 
-def material_benefit(
+def materiality(
     vectors: dict[str, dict[str, dict[str, int]]], registry: MetricRegistry
 ) -> dict[str, object]:
     result: dict[str, object] = {}
@@ -682,18 +702,22 @@ def material_benefit(
         best_memory = 0
         qualifying: list[dict[str, object]] = []
         for dimension in population.DIMENSIONS:
-            baseline = vectors[dimension]["direct"]
-            candidate_vector = vectors[dimension][candidate]
-            for metric in registry.all_latency:
-                gain = improvement_ppm(baseline[metric], candidate_vector[metric])
+            base = vectors[dimension]["direct"]
+            candidate_values = vectors[dimension][candidate]
+            for metric in registry.latency:
+                gain = improvement_ppm(base[metric], candidate_values[metric])
                 best_latency = max(best_latency, gain)
                 if gain >= CPU_MATERIAL_IMPROVEMENT_PPM:
-                    qualifying.append({"dimension": dimension, "metric": metric, "improvement_ppm": gain})
-            for metric in registry.all_memory:
-                gain = improvement_ppm(baseline[metric], candidate_vector[metric])
+                    qualifying.append(
+                        {"dimension": dimension, "metric": metric, "improvement_ppm": gain}
+                    )
+            for metric in registry.memory:
+                gain = improvement_ppm(base[metric], candidate_values[metric])
                 best_memory = max(best_memory, gain)
                 if gain >= MEMORY_MATERIAL_IMPROVEMENT_PPM:
-                    qualifying.append({"dimension": dimension, "metric": metric, "improvement_ppm": gain})
+                    qualifying.append(
+                        {"dimension": dimension, "metric": metric, "improvement_ppm": gain}
+                    )
         result[candidate] = {
             "baseline": False,
             "material": bool(qualifying),
@@ -708,31 +732,32 @@ def material_benefit(
 
 
 def analyze(
-    *,
-    repo_root: Path,
-    combined_artifact: Path,
-    correctness_paths: list[Path],
+    *, repo_root: Path, combined_artifact: Path, correctness_paths: list[Path]
 ) -> dict[str, object]:
     repo_root = repo_root.resolve()
     root = combined_artifact.resolve()
     if not root.is_dir():
         raise ParetoEvidenceError(f"combined artifact is not a directory: {root}")
     target = target_contract(repo_root)
-    artifact, indexed, artifact_sha = validate_root_artifact(root)
-    combined_record, combined_sha = validate_combined_record(root, artifact, indexed)
+    artifact, files, artifact_sha = validate_root_artifact(root)
+    combined_record, combined_sha = validate_combined(root, artifact, files)
     population_record = validate_population_nested(root, combined_record)
-    validate_population_artifact(root, combined_record)
+    validate_population_manifest(root, combined_record)
+    synthetic_aggregates = validate_synthetic(combined_record)
     correctness = validate_correctness(
         correctness_paths,
         expected_commit=str(combined_record["identities"]["repository_commit_sha"]),
         target=target,
     )
-    population_aggregates = validate_population_aggregates(population_record)
-    deterministic = population_child_diagnostics(root, population_record, target)
-    synthetic_metrics, replacement_keys, promotion_keys = normalized_synthetic_metrics(combined_record)
-    registry = build_metric_registry(replacement_keys, promotion_keys)
+    deterministic = population_deterministic_diagnostics(
+        root, population_record, target
+    )
+    synthetic_values, replacement_keys, promotion_keys = synthetic_medians(
+        synthetic_aggregates
+    )
+    registry = metric_registry(replacement_keys, promotion_keys)
     vectors = build_vectors(
-        population_aggregates, deterministic, synthetic_metrics, registry
+        population_record, deterministic, synthetic_values, registry
     )
 
     dimension_results: dict[str, object] = {}
@@ -744,42 +769,37 @@ def analyze(
             "metrics": vectors[dimension],
             "diagnostics": deterministic[dimension],
         }
-    all_dimension_dominators = global_dominators(vectors)
-    strictly_dominated_candidates = sorted(
-        candidate for candidate, dominators in all_dimension_dominators.items() if dominators
+    global_dominators = all_dimension_dominators(vectors)
+    dominated = sorted(
+        candidate for candidate, found in global_dominators.items() if found
     )
     survivors = sorted(
         candidate
         for candidate in population.PRODUCTION_CANDIDATES
-        if candidate not in strictly_dominated_candidates
+        if candidate not in dominated
     )
-    common_frontier = sorted(
-        set(population.PRODUCTION_CANDIDATES).intersection(
-            *(set(dimension_results[dimension]["production_pareto_frontier"]) for dimension in population.DIMENSIONS)  # type: ignore[index]
-        )
-    )
-    material = material_benefit(vectors, registry)
-    blockers: list[str] = ["explicit production-policy selection record not yet committed"]
+    frontier_sets = [
+        set(dimension_results[dimension]["production_pareto_frontier"])  # type: ignore[index]
+        for dimension in population.DIMENSIONS
+    ]
+    common_frontier = sorted(set.intersection(*frontier_sets))
+    benefit = materiality(vectors, registry)
+    blockers = ["explicit production-policy selection record not yet committed"]
     if not common_frontier:
-        blockers.append("no single production candidate lies on every standard-dimension frontier")
+        blockers.append(
+            "no single production candidate lies on every standard-dimension frontier"
+        )
     unjustified = [
         candidate
         for candidate in survivors
-        if candidate != "direct" and not bool(material[candidate]["material"])  # type: ignore[index]
+        if candidate != "direct" and not bool(benefit[candidate]["material"])  # type: ignore[index]
     ]
     if unjustified:
         blockers.append(
-            "Pareto survivors without material complexity justification: " + ", ".join(sorted(unjustified))
+            "Pareto survivors without material complexity justification: "
+            + ", ".join(sorted(unjustified))
         )
 
-    correctness_files = {
-        candidate: {
-            "path": identity.path.name,
-            "sha256": identity.file_sha256,
-            "evidence_id": identity.evidence_id,
-        }
-        for candidate, identity in sorted(correctness.items())
-    }
     analysis: dict[str, object] = {
         "schema": SCHEMA,
         "kind": KIND,
@@ -797,7 +817,14 @@ def analyze(
             "population_admission_sha256": combined_record["identities"]["population_admission_sha256"],
             "combined_evidence_sha256": combined_sha,
             "combined_artifact_manifest_sha256": artifact_sha,
-            "correctness": correctness_files,
+            "correctness": {
+                candidate: {
+                    "path": identity.path.name,
+                    "sha256": identity.file_sha256,
+                    "evidence_id": identity.evidence_id,
+                }
+                for candidate, identity in sorted(correctness.items())
+            },
             "target": target,
         },
         "hardware": {
@@ -806,7 +833,7 @@ def analyze(
             "rounds": combined_record["rounds"],
         },
         "metric_registry": {
-            "lower_is_better": list(registry.all_metrics),
+            "lower_is_better": list(registry.all),
             "population_latency": list(registry.population_latency),
             "population_memory": list(registry.population_memory),
             "synthetic_replacements": list(registry.synthetic_replacements),
@@ -823,11 +850,11 @@ def analyze(
         },
         "dimensions": dimension_results,
         "global": {
-            "strictly_dominated_candidates": strictly_dominated_candidates,
-            "global_dominators": all_dimension_dominators,
+            "strictly_dominated_candidates": dominated,
+            "global_dominators": global_dominators,
             "pareto_survivors": survivors,
             "common_all_dimension_frontier": common_frontier,
-            "material_benefit_vs_direct": material,
+            "material_benefit_vs_direct": benefit,
         },
         "interpretation": {
             "direct_reference_selectable": False,
@@ -864,10 +891,12 @@ def main() -> int:
     except (ParetoEvidenceError, OSError, json.JSONDecodeError) as error:
         print(f"section Pareto analysis error: {error}")
         return 1
+    global_record = record["global"]
+    assert isinstance(global_record, dict)
     print(
         "section Pareto analysis: "
-        f"survivors={record['global']['pareto_survivors']} "  # type: ignore[index]
-        f"common_frontier={record['global']['common_all_dimension_frontier']} "  # type: ignore[index]
+        f"survivors={global_record['pareto_survivors']} "
+        f"common_frontier={global_record['common_all_dimension_frontier']} "
         f"analysis={record['analysis_sha256']}"
     )
     return 0
