@@ -6,9 +6,11 @@ on:
       - tools/state_data.py
       - tools/official_state_data.py
       - tools/state_source_qualification.py
+      - tools/qualify_state_data.py
       - tools/tests/test_state_data.py
       - tools/tests/test_official_state_data.py
       - tools/tests/test_state_source_qualification.py
+      - tools/tests/test_qualify_state_data.py
       - vanilla/state-data/**
       - vanilla/vanilla.lock.toml
       - .github/workflows/state-data-probe.yml
@@ -33,34 +35,59 @@ jobs:
           distribution: temurin
           java-version: "25"
 
-      - name: Qualification gate tests
-        run: python3 -m unittest discover -s tools/tests -p 'test_state_source_qualification.py' -v
+      - name: State qualification tests
+        run: |
+          python3 -m unittest discover -s tools/tests -p 'test_state_source_qualification.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_qualify_state_data.py' -v
 
       - name: Extract official state facts
         run: |
           python3 tools/official_state_data.py \
             --version 26.2 \
-            --output /tmp/26.2-block-states.json
+            --output /tmp/26.2-block-states.raw.json
 
-      - name: Inspect normalized data
-        run: python3 tools/state_data.py inspect /tmp/26.2-block-states.json
-
-      - name: Generate Rust target data
+      - name: Verify official runtime pin
         run: |
-          python3 tools/state_data.py generate /tmp/26.2-block-states.json \
-            --output /tmp/target_26_2.rs \
-            --manifest /tmp/26.2-state-data-manifest.json
-          python3 tools/state_data.py verify /tmp/26.2-block-states.json \
-            --output /tmp/target_26_2.rs \
-            --manifest /tmp/26.2-state-data-manifest.json
+          python3 - <<'PY'
+          import json
+          import tomllib
+          from pathlib import Path
 
-      - name: Upload qualification artifact
+          data = json.loads(Path('/tmp/26.2-block-states.raw.json').read_text())
+          with Path('vanilla/vanilla.lock.toml').open('rb') as handle:
+              lock = tomllib.load(handle)
+          actual = data['provenance']['server_sha256']
+          expected = lock['runtime']['server_sha256']
+          if actual != expected:
+              raise SystemExit(
+                  f'official 26.2 runtime SHA-256 mismatch: expected {expected}, got {actual}'
+              )
+          if data['provenance']['source'] != lock['runtime']['probe']:
+              raise SystemExit('official runtime probe identity does not match vanilla.lock.toml')
+          print(f'verified official runtime SHA-256: {actual}')
+          PY
+
+      - name: Inspect raw normalized data
+        run: python3 tools/state_data.py inspect /tmp/26.2-block-states.raw.json
+
+      - name: Generate unqualified smoke output
+        run: |
+          # This proves the low-level generator still consumes the runtime schema. Production
+          # target data is generated only from the source+runtime-bound dataset.
+          python3 tools/state_data.py generate /tmp/26.2-block-states.raw.json \
+            --output /tmp/target_26_2.unqualified.rs \
+            --manifest /tmp/26.2-state-data-unqualified-manifest.json
+          python3 tools/state_data.py verify /tmp/26.2-block-states.raw.json \
+            --output /tmp/target_26_2.unqualified.rs \
+            --manifest /tmp/26.2-state-data-unqualified-manifest.json
+
+      - name: Upload runtime evidence artifact
         uses: actions/upload-artifact@v4
         with:
-          name: minecraft-26.2-state-data
+          name: minecraft-26.2-state-data-runtime-evidence
           path: |
-            /tmp/26.2-block-states.json
-            /tmp/target_26_2.rs
-            /tmp/26.2-state-data-manifest.json
+            /tmp/26.2-block-states.raw.json
+            /tmp/target_26_2.unqualified.rs
+            /tmp/26.2-state-data-unqualified-manifest.json
           if-no-files-found: error
           retention-days: 7

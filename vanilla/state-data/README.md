@@ -6,7 +6,7 @@ The live server must not discover section mutation facts by repeatedly traversin
 
 ## Qualification chain
 
-Production target data is accepted through two independent official evidence paths:
+Production target data is accepted through two independent official evidence paths and an explicit binding step:
 
 ```text
 pinned official mc-src.zip
@@ -15,16 +15,28 @@ Vanilla Atlas
         ↓
 source-qualification-spec.json
         ↓
-fingerprint-only qualification artifact
-
-pinned official server runtime + mappings
+fingerprint-only source qualification
+                 ┐
+                 │
+                 ├─→ qualify_state_data.py
+                 │          ↓
+                 │   source+runtime-qualified dataset
+                 │          ↓
+                 │     state_data.py
+                 │          ↓
+                 │   generated Rust + manifest
+                 │
+official 26.2 server runtime
         ↓
 official_state_data.py
         ↓
-normalized complete state/facts dataset
+raw complete state/facts dataset
+                 ┘
 ```
 
-The source archive itself and the disposable Atlas SQLite database are deliberately not committed. The qualification artifact records only source locators, file hashes, normalized/body fingerprints, target identity, Atlas identity, the source-archive digest and a deterministic qualification digest.
+The source archive, official server and disposable Atlas SQLite database are deliberately not committed. Durable evidence records hashes/fingerprints and deterministic qualification digests rather than Mojang source bodies or binaries.
+
+## Source qualification
 
 `tools/state_source_qualification.py` **fails closed** when:
 
@@ -34,7 +46,7 @@ The source archive itself and the disposable Atlas SQLite database are deliberat
 - a required type, field or method is missing;
 - a method locator is ambiguous at its declared parameter count.
 
-The committed specification currently covers the complete block-state registry, vanilla global state-ID mapping, air predicate, block random-tick predicate, fluid-state projection, fluid emptiness, fluid random-tick predicate, and the minimal official bootstrap surfaces required by the runtime probe.
+The committed specification covers the complete block-state registry, vanilla global state-ID mapping, air predicate, block random-tick predicate, fluid-state projection, fluid emptiness, fluid random-tick predicate, and the minimal official bootstrap surfaces required by the runtime probe.
 
 Generate a local qualification artifact with:
 
@@ -44,7 +56,33 @@ python3 tools/state_source_qualification.py \
   --output .crucible/vanilla/26.2-state-source-qualification.json
 ```
 
-Once an artifact is reviewed/committed, byte-identical regeneration is checked with `--verify`. Runtime-derived state data is not production-qualified merely because the runtime probe succeeds; the source and runtime evidence must be joined before the final generated target crate is frozen.
+Once an artifact is reviewed/committed, byte-identical regeneration is checked with `--verify`.
+
+## Source/runtime binding
+
+Runtime-derived state data is deliberately **not production-qualified** merely because the official probe succeeds. `tools/qualify_state_data.py` joins the two evidence paths and rejects any mismatch in:
+
+- target Minecraft/protocol/data version;
+- pinned source archive;
+- Atlas version/fingerprint algorithm;
+- committed source-qualification specification;
+- source-qualification digest/evidence set;
+- pinned official-server SHA-256;
+- runtime probe identity;
+- complete/dense runtime state universe invariants.
+
+The official Minecraft 26.2 runtime is pinned in `vanilla.lock.toml`. The current qualified-runtime candidate exposes 32,366 dense vanilla state IDs (`0..32365`), which proves `u16` sufficient for this target when the final source binding is accepted.
+
+Bind raw runtime evidence with:
+
+```text
+python3 tools/qualify_state_data.py \
+  --runtime-data .crucible/vanilla/26.2-block-states.raw.json \
+  --source-qualification vanilla/state-data/26.2-source-qualification.json \
+  --output .crucible/vanilla/26.2-block-states.qualified.json
+```
+
+The qualified dataset provenance includes the raw runtime input digest, exact official-server SHA-256, source archive SHA-256, source-qualification digest, and binder version. The subsequent generator input digest therefore commits to both independent oracle paths.
 
 ## Normalized input schema
 
@@ -70,7 +108,7 @@ Once an artifact is reviewed/committed, byte-identical regeneration is checked w
 }
 ```
 
-`key` is a canonical state identity including properties when present. The normalized dataset is authoritative generated evidence, not handwritten gameplay configuration.
+`key` is a canonical state identity including properties when present. The normalized dataset is generated evidence, not handwritten gameplay configuration.
 
 ## Semantic facts
 
@@ -81,7 +119,7 @@ Only facts required by the current section contract belong in the first hot tabl
 - `random_block` — the block state itself may receive random block ticks;
 - `random_fluid` — its counted fluid may receive random fluid ticks.
 
-`counted_fluid => non_air` and `random_fluid => counted_fluid` are validated by the generator. These relations follow the reviewed `LevelChunkSection` counting domain rather than being generic statements about every Minecraft API.
+`counted_fluid => non_air` and `random_fluid => counted_fluid` are validated by both binding/generation paths. These relations follow the reviewed `LevelChunkSection` counting domain rather than being generic statements about every Minecraft API.
 
 Future collision, light, heightmap, block-entity, or other metadata must use separate SoA tables unless evidence shows a combined layout is better.
 
@@ -96,19 +134,19 @@ The representation width is selected from the actual generated state count. `u16
 The low-level deterministic generator exposes:
 
 ```text
-python3 tools/state_data.py inspect INPUT.json
-python3 tools/state_data.py generate INPUT.json --output generated.rs --manifest manifest.json
-python3 tools/state_data.py verify INPUT.json --output generated.rs --manifest manifest.json
+python3 tools/state_data.py inspect QUALIFIED.json
+python3 tools/state_data.py generate QUALIFIED.json --output generated.rs --manifest manifest.json
+python3 tools/state_data.py verify QUALIFIED.json --output generated.rs --manifest manifest.json
 ```
 
-The official runtime probe is:
+The raw official runtime probe is:
 
 ```text
-python3 tools/official_state_data.py --version 26.2 --output INPUT.json
+python3 tools/official_state_data.py --version 26.2 --output RAW.json
 ```
 
 The runtime probe remains useful in hosted CI because it can obtain the official server artifact directly. The source qualification step intentionally requires the separately pinned local official source corpus and therefore runs when the source-backed artifact is created or requalified.
 
 ## Provenance rule
 
-The final committed 26.2 artifact must record at least the target version/protocol/data version, official runtime input hashes, pinned source-qualification digest, generator version, numeric assignment policy, normalized-input digest, and generation digest. Ordinary Crucible builds must not require Mojang source or server artifacts to be present.
+The final committed 26.2 generated artifact must record at least the target version/protocol/data version, exact official runtime hash, pinned source-qualification digest, generator version, numeric assignment policy, qualified normalized-input digest, and generation digest. Ordinary Crucible builds must not require Mojang source or server artifacts to be present.
