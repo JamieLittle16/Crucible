@@ -226,11 +226,7 @@ fn parse_args() -> Result<Option<Invocation>, String> {
     parsed.finish().map(Some)
 }
 
-fn parse_argument<I>(
-    parsed: &mut ParsedArgs,
-    arg: OsString,
-    args: &mut I,
-) -> Result<bool, String>
+fn parse_argument<I>(parsed: &mut ParsedArgs, arg: OsString, args: &mut I) -> Result<bool, String>
 where
     I: Iterator<Item = OsString>,
 {
@@ -277,10 +273,7 @@ where
             if parsed.output.is_some() {
                 return Err("--output may be specified only once".to_owned());
             }
-            parsed.output = Some(PathBuf::from(next_value(
-                args,
-                "--output requires a path",
-            )?));
+            parsed.output = Some(PathBuf::from(next_value(args, "--output requires a path")?));
         }
         Some("--help" | "-h") => return Ok(true),
         Some(other) => return Err(format!("unknown benchmark option: {other}")),
