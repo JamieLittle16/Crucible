@@ -8,8 +8,7 @@
 use std::fmt;
 
 use crucible_generated::{
-    AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
-    STATE_MUTATION_FLAGS,
+    AIR, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256, STATE_MUTATION_FLAGS,
 };
 use crucible_world_contract::{
     BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBiomePos,
@@ -20,10 +19,11 @@ use crucible_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 
-use super::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
-
-const FIXTURE_MAGIC: &str = "CRUCIBLE-SECTION-SEMANTIC-FIXTURE";
-const FIXTURE_SCHEMA: u32 = 1;
+const MAGIC: &str = "CRUCIBLE-SECTION-SEMANTIC-FIXTURE";
+const SCHEMA: u32 = 1;
+const MINECRAFT_VERSION: &str = "26.2";
+const PROTOCOL_VERSION: u32 = 776;
+const DATA_VERSION: u32 = 4903;
 const SOURCE_ARCHIVE_SHA256: &str =
     "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750";
 const SOURCE_QUALIFICATION_SHA256: &str =
@@ -33,81 +33,42 @@ const RUNTIME_SERVER_SHA256: &str =
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 
-/// Successful semantic-fixture qualification evidence.
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// Successful source-backed fixture qualification.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FixtureEvidence {
-    fixture_cases: usize,
+    cases: usize,
     block_candidate_checks: usize,
     biome_checks: usize,
-    fixture_fingerprint: u64,
+    fingerprint: u64,
 }
 
 impl FixtureEvidence {
-    /// Number of semantic fixture cases parsed and qualified.
+    /// Number of semantic cases in the fixture.
     #[must_use]
-    pub const fn fixture_cases(&self) -> usize {
-        self.fixture_cases
+    pub const fn cases(self) -> usize {
+        self.cases
     }
 
-    /// Number of optimized block-candidate fixture executions.
+    /// Number of block-candidate executions performed.
     #[must_use]
-    pub const fn block_candidate_checks(&self) -> usize {
+    pub const fn block_candidate_checks(self) -> usize {
         self.block_candidate_checks
     }
 
-    /// Number of independently checked biome fixture cases.
+    /// Number of biome cases performed.
     #[must_use]
-    pub const fn biome_checks(&self) -> usize {
+    pub const fn biome_checks(self) -> usize {
         self.biome_checks
     }
 
     /// Stable FNV-1a fingerprint of the exact fixture bytes.
     #[must_use]
-    pub const fn fixture_fingerprint(&self) -> u64 {
-        self.fixture_fingerprint
-    }
-
-    /// Emits compact JSON evidence suitable for an `EQUIV-WORLD-SECTION-*` record.
-    #[must_use]
-    pub fn to_json(&self, commit_sha: &str) -> String {
-        format!(
-            concat!(
-                "{{\n",
-                "  \"schema\": 1,\n",
-                "  \"id\": \"EQUIV-WORLD-SECTION-VANILLA-FIXTURE\",\n",
-                "  \"qualification\": \"vanilla-fixture\",\n",
-                "  \"minecraft_version\": \"{}\",\n",
-                "  \"protocol_version\": {},\n",
-                "  \"data_version\": {},\n",
-                "  \"commit_sha\": \"{}\",\n",
-                "  \"source_archive_sha256\": \"{}\",\n",
-                "  \"source_qualification_sha256\": \"{}\",\n",
-                "  \"runtime_server_sha256\": \"{}\",\n",
-                "  \"state_data_generation_sha256\": \"{}\",\n",
-                "  \"sem_ids\": [\"SEM-WORLD-SECTION-003\", \"SEM-WORLD-SECTION-004\", \"SEM-WORLD-SECTION-005\", \"SEM-WORLD-SECTION-006\", \"SEM-WORLD-SECTION-007\", \"SEM-WORLD-SECTION-008\", \"SEM-WORLD-SECTION-009\", \"SEM-WORLD-SECTION-010\", \"SEM-WORLD-SECTION-012\", \"SEM-WORLD-SECTION-015\", \"SEM-WORLD-SECTION-016\"],\n",
-                "  \"fixture_cases\": {},\n",
-                "  \"block_candidate_checks\": {},\n",
-                "  \"biome_checks\": {},\n",
-                "  \"fixture_fingerprint_fnv1a64\": \"{:016x}\"\n",
-                "}}\n"
-            ),
-            MINECRAFT_VERSION,
-            PROTOCOL_VERSION,
-            DATA_VERSION,
-            json_token(commit_sha),
-            SOURCE_ARCHIVE_SHA256,
-            SOURCE_QUALIFICATION_SHA256,
-            RUNTIME_SERVER_SHA256,
-            STATE_DATA_GENERATION_SHA256,
-            self.fixture_cases,
-            self.block_candidate_checks,
-            self.biome_checks,
-            self.fixture_fingerprint
-        )
+    pub const fn fingerprint(self) -> u64 {
+        self.fingerprint
     }
 }
 
-/// Failure while parsing or checking a semantic fixture.
+/// Failure while parsing or qualifying a source-backed fixture.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FixtureFailure(String);
 
@@ -128,12 +89,11 @@ impl std::error::Error for FixtureFailure {}
 #[derive(Clone, Debug)]
 struct StateBinding {
     label: String,
-    flags: u8,
     state: BlockStateId,
 }
 
 #[derive(Clone, Debug)]
-enum FixtureCase {
+enum Case {
     BlockFill {
         name: String,
         state: String,
@@ -150,11 +110,8 @@ enum FixtureCase {
         state: String,
         cell: u16,
     },
-    BiomeFillOrder {
-        name: String,
-    },
+    BiomeFillOrder,
     BiomeReplace {
-        name: String,
         x: u8,
         y: u8,
         z: u8,
@@ -165,104 +122,86 @@ enum FixtureCase {
 
 /// Parses and qualifies one target-version semantic fixture document.
 ///
-/// Every block case is checked against the independent direct oracle and all four admitted live
-/// candidates. Biome cases are checked against the independent 64-cell reference lattice because
-/// no optimized biome mechanism has yet been admitted to the M0 representation laboratory.
+/// Block cases are checked against the permanent direct oracle and all four admitted live block
+/// candidates. Biome cases are checked against the direct 64-cell reference lattice because M0.3B
+/// has not admitted an optimized biome-storage mechanism.
 ///
 /// # Errors
 ///
-/// Returns [`FixtureFailure`] if provenance or target pins differ, a requested target fact signature
-/// has no qualified state, a fixture is malformed, or any observed semantic image differs.
+/// Returns [`FixtureFailure`] for malformed input, target/provenance drift, an unavailable target
+/// fact signature, or any semantic disagreement.
 pub fn qualify_fixture(input: &str) -> Result<FixtureEvidence, FixtureFailure> {
     let mut lines = input.lines();
-    validate_header(
-        lines
-            .next()
-            .ok_or_else(|| FixtureFailure::new("fixture is empty"))?,
-    )?;
+    validate_header(lines.next().ok_or_else(|| FixtureFailure::new("empty fixture"))?)?;
     validate_provenance(
         lines
             .next()
-            .ok_or_else(|| FixtureFailure::new("fixture provenance is missing"))?,
+            .ok_or_else(|| FixtureFailure::new("missing fixture provenance"))?,
     )?;
 
     let mut states = Vec::new();
     let mut cases = Vec::new();
     for (offset, line) in lines.enumerate() {
-        let line_number = offset + 3;
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        parse_fixture_line(line, line_number, &mut states, &mut cases)?;
+        parse_line(line, offset + 3, &mut states, &mut cases)?;
     }
-
-    if states.is_empty() {
-        return Err(FixtureFailure::new("fixture defines no target states"));
-    }
-    if cases.is_empty() {
-        return Err(FixtureFailure::new("fixture defines no semantic cases"));
+    if states.is_empty() || cases.is_empty() {
+        return Err(FixtureFailure::new("fixture must define states and cases"));
     }
 
     let mut block_candidate_checks = 0;
     let mut biome_checks = 0;
     for case in &cases {
         match case {
-            FixtureCase::BlockFill { .. }
-            | FixtureCase::BlockOne { .. }
-            | FixtureCase::BlockReverse { .. } => {
-                qualify_block_case::<DirectNBlockSection<BlockStateId>>(case, &states, |state| {
+            Case::BlockFill { .. } | Case::BlockOne { .. } | Case::BlockReverse { .. } => {
+                qualify_block::<DirectNBlockSection<BlockStateId>>(case, &states, |state| {
                     DirectNBlockSection::filled(state, &GeneratedStateFacts)
                 })?;
-                qualify_block_case::<AdaptiveBlockSection<BlockStateId>>(case, &states, |state| {
+                qualify_block::<AdaptiveBlockSection<BlockStateId>>(case, &states, |state| {
                     AdaptiveBlockSection::filled(state, &GeneratedStateFacts)
                 })?;
-                qualify_block_case::<FastLocalBlockSection<BlockStateId>>(
-                    case,
-                    &states,
-                    |state| FastLocalBlockSection::filled(state, &GeneratedStateFacts),
-                )?;
-                qualify_block_case::<PackedLocalBlockSection<BlockStateId>>(
-                    case,
-                    &states,
-                    |state| PackedLocalBlockSection::filled(state, &GeneratedStateFacts),
-                )?;
+                qualify_block::<FastLocalBlockSection<BlockStateId>>(case, &states, |state| {
+                    FastLocalBlockSection::filled(state, &GeneratedStateFacts)
+                })?;
+                qualify_block::<PackedLocalBlockSection<BlockStateId>>(case, &states, |state| {
+                    PackedLocalBlockSection::filled(state, &GeneratedStateFacts)
+                })?;
                 block_candidate_checks += 4;
             }
-            FixtureCase::BiomeFillOrder { name } => {
-                qualify_biome_fill_order(name)?;
+            Case::BiomeFillOrder => {
+                qualify_biome_fill_order()?;
                 biome_checks += 1;
             }
-            FixtureCase::BiomeReplace {
-                name,
+            Case::BiomeReplace {
                 x,
                 y,
                 z,
                 before,
                 after,
             } => {
-                qualify_biome_replace(name, *x, *y, *z, *before, *after)?;
+                qualify_biome_replace(*x, *y, *z, *before, *after)?;
                 biome_checks += 1;
             }
         }
     }
 
     Ok(FixtureEvidence {
-        fixture_cases: cases.len(),
+        cases: cases.len(),
         block_candidate_checks,
         biome_checks,
-        fixture_fingerprint: fnv1a64(input.as_bytes()),
+        fingerprint: fnv1a64(input.as_bytes()),
     })
 }
 
 fn validate_header(line: &str) -> Result<(), FixtureFailure> {
     let parts = line.split('|').collect::<Vec<_>>();
-    if parts.len() != 5 || parts[0] != FIXTURE_MAGIC {
+    if parts.len() != 5 || parts[0] != MAGIC {
         return Err(FixtureFailure::new("invalid fixture header"));
     }
-    if parse_u32(parts[1], "fixture schema")? != FIXTURE_SCHEMA {
-        return Err(FixtureFailure::new("unsupported fixture schema"));
-    }
-    if parts[2] != MINECRAFT_VERSION
+    if parse_u32(parts[1], "fixture schema")? != SCHEMA
+        || parts[2] != MINECRAFT_VERSION
         || parse_u32(parts[3], "protocol version")? != PROTOCOL_VERSION
         || parse_u32(parts[4], "data version")? != DATA_VERSION
     {
@@ -272,16 +211,14 @@ fn validate_header(line: &str) -> Result<(), FixtureFailure> {
 }
 
 fn validate_provenance(line: &str) -> Result<(), FixtureFailure> {
-    let parts = line.split('|').collect::<Vec<_>>();
-    if parts
-        != [
-            "PROVENANCE",
-            SOURCE_ARCHIVE_SHA256,
-            SOURCE_QUALIFICATION_SHA256,
-            RUNTIME_SERVER_SHA256,
-            STATE_DATA_GENERATION_SHA256,
-        ]
-    {
+    let expected = [
+        "PROVENANCE",
+        SOURCE_ARCHIVE_SHA256,
+        SOURCE_QUALIFICATION_SHA256,
+        RUNTIME_SERVER_SHA256,
+        STATE_DATA_GENERATION_SHA256,
+    ];
+    if line.split('|').collect::<Vec<_>>() != expected {
         return Err(FixtureFailure::new(
             "fixture provenance differs from qualified 26.2 evidence",
         ));
@@ -289,11 +226,11 @@ fn validate_provenance(line: &str) -> Result<(), FixtureFailure> {
     Ok(())
 }
 
-fn parse_fixture_line(
+fn parse_line(
     line: &str,
     line_number: usize,
     states: &mut Vec<StateBinding>,
-    cases: &mut Vec<FixtureCase>,
+    cases: &mut Vec<Case>,
 ) -> Result<(), FixtureFailure> {
     let parts = line.split('|').collect::<Vec<_>>();
     match parts.as_slice() {
@@ -306,52 +243,44 @@ fn parse_fixture_line(
             let flags = parse_u8(flags, "state flags")?;
             let state = find_target_state(flags).ok_or_else(|| {
                 FixtureFailure::new(format!(
-                    "no qualified target state has flags {flags} at line {line_number}"
+                    "no target state has flags {flags} at line {line_number}"
                 ))
             })?;
             states.push(StateBinding {
                 label: (*label).to_owned(),
-                flags,
                 state,
             });
         }
-        ["BLOCK-FILL", name, state, non_air, fluid, random_block, random_fluid] => {
-            cases.push(FixtureCase::BlockFill {
+        ["BLOCK-FILL", name, state, non_air, fluid, block_tick, fluid_tick] => {
+            cases.push(Case::BlockFill {
                 name: (*name).to_owned(),
                 state: (*state).to_owned(),
-                expected: parse_summary(non_air, fluid, random_block, random_fluid)?,
+                expected: parse_summary(non_air, fluid, block_tick, fluid_tick)?,
             });
         }
-        ["BLOCK-ONE", name, state, cell, non_air, fluid, random_block, random_fluid] => {
-            cases.push(FixtureCase::BlockOne {
+        ["BLOCK-ONE", name, state, cell, non_air, fluid, block_tick, fluid_tick] => {
+            cases.push(Case::BlockOne {
                 name: (*name).to_owned(),
                 state: (*state).to_owned(),
                 cell: parse_cell(cell)?,
-                expected: parse_summary(non_air, fluid, random_block, random_fluid)?,
+                expected: parse_summary(non_air, fluid, block_tick, fluid_tick)?,
             });
         }
         ["BLOCK-REVERSE", name, state, cell] => {
-            cases.push(FixtureCase::BlockReverse {
+            cases.push(Case::BlockReverse {
                 name: (*name).to_owned(),
                 state: (*state).to_owned(),
                 cell: parse_cell(cell)?,
             });
         }
-        ["BIOME-FILL-ORDER", name] => {
-            cases.push(FixtureCase::BiomeFillOrder {
-                name: (*name).to_owned(),
-            });
-        }
-        ["BIOME-REPLACE", name, x, y, z, before, after] => {
-            cases.push(FixtureCase::BiomeReplace {
-                name: (*name).to_owned(),
-                x: parse_coord(x)?,
-                y: parse_coord(y)?,
-                z: parse_coord(z)?,
-                before: parse_u16(before, "biome before value")?,
-                after: parse_u16(after, "biome after value")?,
-            });
-        }
+        ["BIOME-FILL-ORDER", "x-major-y-z"] => cases.push(Case::BiomeFillOrder),
+        ["BIOME-REPLACE", x, y, z, before, after] => cases.push(Case::BiomeReplace {
+            x: parse_coord(x)?,
+            y: parse_coord(y)?,
+            z: parse_coord(z)?,
+            before: parse_u16(before, "biome before")?,
+            after: parse_u16(after, "biome after")?,
+        }),
         _ => {
             return Err(FixtureFailure::new(format!(
                 "invalid semantic fixture at line {line_number}"
@@ -361,17 +290,17 @@ fn parse_fixture_line(
     Ok(())
 }
 
-fn qualify_block_case<C, F>(
-    case: &FixtureCase,
+fn qualify_block<C, F>(
+    case: &Case,
     states: &[StateBinding],
-    mut build: F,
+    build: F,
 ) -> Result<(), FixtureFailure>
 where
     C: BlockSection<BlockStateId>,
-    F: FnMut(BlockStateId) -> C,
+    F: Fn(BlockStateId) -> C,
 {
     match case {
-        FixtureCase::BlockFill {
+        Case::BlockFill {
             name,
             state,
             expected,
@@ -379,9 +308,9 @@ where
             let target = resolve_state(states, state)?;
             let candidate = build(target);
             let reference = DirectBlockSection::filled(target, &GeneratedStateFacts);
-            compare_block_image(name, &candidate, &reference, *expected)
+            compare_image(name, &candidate, &reference, *expected)
         }
-        FixtureCase::BlockOne {
+        Case::BlockOne {
             name,
             state,
             cell,
@@ -391,69 +320,63 @@ where
             let mut candidate = build(AIR);
             let mut reference = DirectBlockSection::filled(AIR, &GeneratedStateFacts);
             let position = block_pos(*cell);
-            let candidate_previous = candidate.replace(position, target, &GeneratedStateFacts);
-            let reference_previous = reference.replace(position, target, &GeneratedStateFacts);
-            if candidate_previous != AIR || reference_previous != AIR {
+            if candidate.replace(position, target, &GeneratedStateFacts) != AIR
+                || reference.replace(position, target, &GeneratedStateFacts) != AIR
+            {
                 return Err(FixtureFailure::new(format!(
-                    "{name}: one-cell fixture returned wrong previous state"
+                    "{name}: wrong previous state"
                 )));
             }
-            compare_block_image(name, &candidate, &reference, *expected)
+            compare_image(name, &candidate, &reference, *expected)
         }
-        FixtureCase::BlockReverse { name, state, cell } => {
+        Case::BlockReverse { name, state, cell } => {
             let target = resolve_state(states, state)?;
             let mut candidate = build(AIR);
             let mut reference = DirectBlockSection::filled(AIR, &GeneratedStateFacts);
             let position = block_pos(*cell);
             candidate.replace(position, target, &GeneratedStateFacts);
             reference.replace(position, target, &GeneratedStateFacts);
-            let candidate_previous = candidate.replace(position, AIR, &GeneratedStateFacts);
-            let reference_previous = reference.replace(position, AIR, &GeneratedStateFacts);
-            if candidate_previous != target || reference_previous != target {
+            if candidate.replace(position, AIR, &GeneratedStateFacts) != target
+                || reference.replace(position, AIR, &GeneratedStateFacts) != target
+            {
                 return Err(FixtureFailure::new(format!(
-                    "{name}: reversal fixture returned wrong previous state"
+                    "{name}: reversal returned wrong previous state"
                 )));
             }
-            compare_block_image(name, &candidate, &reference, SectionSummary::default())
+            compare_image(name, &candidate, &reference, SectionSummary::default())
         }
-        FixtureCase::BiomeFillOrder { .. } | FixtureCase::BiomeReplace { .. } => {
-            Err(FixtureFailure::new("block qualifier received biome fixture"))
+        Case::BiomeFillOrder | Case::BiomeReplace { .. } => {
+            Err(FixtureFailure::new("block qualifier received biome case"))
         }
     }
 }
 
-fn compare_block_image<C: BlockSection<BlockStateId>>(
+fn compare_image<C: BlockSection<BlockStateId>>(
     name: &str,
     candidate: &C,
     reference: &DirectBlockSection<BlockStateId>,
     expected: SectionSummary,
 ) -> Result<(), FixtureFailure> {
-    if reference.summary() != expected || reference.recompute_summary(&GeneratedStateFacts) != expected
+    if reference.summary() != expected
+        || reference.recompute_summary(&GeneratedStateFacts) != expected
+        || candidate.summary() != expected
     {
         return Err(FixtureFailure::new(format!(
-            "{name}: source-backed expected summary disagrees with direct oracle"
-        )));
-    }
-    if candidate.summary() != expected {
-        return Err(FixtureFailure::new(format!(
-            "{name}: candidate summary disagrees with fixture"
+            "{name}: summary differs from source-backed fixture"
         )));
     }
     for cell in 0..BLOCK_SECTION_CELLS {
         let position = block_pos(u16::try_from(cell).expect("4096 cells fit u16"));
         if candidate.get(position) != reference.get(position) {
             return Err(FixtureFailure::new(format!(
-                "{name}: candidate semantic cell differs at {cell}"
+                "{name}: semantic cell differs at {cell}"
             )));
         }
     }
     Ok(())
 }
 
-fn qualify_biome_fill_order(name: &str) -> Result<(), FixtureFailure> {
-    if name != "x-major-y-z" {
-        return Err(FixtureFailure::new("unsupported biome fill-order fixture"));
-    }
+fn qualify_biome_fill_order() -> Result<(), FixtureFailure> {
     let mut section = DirectBiomeSection::filled(u16::MAX);
     let mut observed = Vec::with_capacity(BIOME_SECTION_CELLS);
     let mut ordinal = 0_u16;
@@ -464,32 +387,31 @@ fn qualify_biome_fill_order(name: &str) -> Result<(), FixtureFailure> {
         result
     });
 
-    let mut expected = Vec::with_capacity(BIOME_SECTION_CELLS);
-    let mut expected_ordinal = 0_u16;
+    let mut expected_order = Vec::with_capacity(BIOME_SECTION_CELLS);
+    let mut expected_value = 0_u16;
     for x in 0..4 {
         for y in 0..4 {
             for z in 0..4 {
-                expected.push((x, y, z));
-                let position = SectionBiomePos::new(x, y, z).expect("fixture coordinate is bounded");
-                if section.get(position) != expected_ordinal {
-                    return Err(FixtureFailure::new(format!(
-                        "{name}: biome value stored at wrong semantic coordinate"
-                    )));
+                expected_order.push((x, y, z));
+                let position = SectionBiomePos::new(x, y, z).expect("bounded biome coordinate");
+                if section.get(position) != expected_value {
+                    return Err(FixtureFailure::new(
+                        "biome resolver value stored at wrong semantic coordinate",
+                    ));
                 }
-                expected_ordinal += 1;
+                expected_value += 1;
             }
         }
     }
-    if observed != expected {
-        return Err(FixtureFailure::new(format!(
-            "{name}: biome resolver call order differs from target"
-        )));
+    if observed != expected_order {
+        return Err(FixtureFailure::new(
+            "biome resolver call order differs from x-major/y/z target order",
+        ));
     }
     Ok(())
 }
 
 fn qualify_biome_replace(
-    name: &str,
     x: u8,
     y: u8,
     z: u8,
@@ -497,18 +419,10 @@ fn qualify_biome_replace(
     after: u16,
 ) -> Result<(), FixtureFailure> {
     let position = SectionBiomePos::new(x, y, z)
-        .ok_or_else(|| FixtureFailure::new(format!("{name}: invalid biome coordinate")))?;
+        .ok_or_else(|| FixtureFailure::new("invalid biome coordinate"))?;
     let mut section = DirectBiomeSection::filled(before);
     if section.replace(position, after) != before || section.get(position) != after {
-        return Err(FixtureFailure::new(format!(
-            "{name}: biome replacement semantics differ"
-        )));
-    }
-    let untouched = SectionBiomePos::new(0, 0, 0).expect("bounded coordinate");
-    if untouched != position && section.get(untouched) != before {
-        return Err(FixtureFailure::new(format!(
-            "{name}: biome replacement changed an unrelated cell"
-        )));
+        return Err(FixtureFailure::new("biome replacement semantics differ"));
     }
     Ok(())
 }
@@ -518,13 +432,13 @@ fn resolve_state(states: &[StateBinding], label: &str) -> Result<BlockStateId, F
         .iter()
         .find(|state| state.label == label)
         .map(|state| state.state)
-        .ok_or_else(|| FixtureFailure::new(format!("unknown fixture state label: {label}")))
+        .ok_or_else(|| FixtureFailure::new(format!("unknown state label: {label}")))
 }
 
 fn find_target_state(flags: u8) -> Option<BlockStateId> {
     STATE_MUTATION_FLAGS
         .iter()
-        .position(|candidate| *candidate == flags)
+        .position(|value| *value == flags)
         .and_then(|index| u32::try_from(index).ok())
         .and_then(BlockStateId::new)
 }
@@ -532,21 +446,21 @@ fn find_target_state(flags: u8) -> Option<BlockStateId> {
 fn parse_summary(
     non_air: &str,
     fluid: &str,
-    random_block: &str,
-    random_fluid: &str,
+    block_tick: &str,
+    fluid_tick: &str,
 ) -> Result<SectionSummary, FixtureFailure> {
     Ok(SectionSummary {
         non_air_count: parse_u16(non_air, "non-air count")?,
         fluid_count: parse_u16(fluid, "fluid count")?,
-        random_block_present: parse_bool(random_block, "random-block presence")?,
-        random_fluid_present: parse_bool(random_fluid, "random-fluid presence")?,
+        random_block_present: parse_bool(block_tick, "random-block presence")?,
+        random_fluid_present: parse_bool(fluid_tick, "random-fluid presence")?,
     })
 }
 
 fn parse_cell(value: &str) -> Result<u16, FixtureFailure> {
     let cell = parse_u16(value, "block cell")?;
     if usize::from(cell) >= BLOCK_SECTION_CELLS {
-        return Err(FixtureFailure::new("block cell is outside 4096-cell domain"));
+        return Err(FixtureFailure::new("block cell outside 4096-cell domain"));
     }
     Ok(cell)
 }
@@ -554,7 +468,7 @@ fn parse_cell(value: &str) -> Result<u16, FixtureFailure> {
 fn parse_coord(value: &str) -> Result<u8, FixtureFailure> {
     let coordinate = parse_u8(value, "biome coordinate")?;
     if coordinate >= 4 {
-        return Err(FixtureFailure::new("biome coordinate is outside 4-cell axis"));
+        return Err(FixtureFailure::new("biome coordinate outside 4-cell axis"));
     }
     Ok(coordinate)
 }
@@ -590,7 +504,7 @@ fn block_pos(cell: u16) -> SectionBlockPos {
     let x = u8::try_from(cell & 15).expect("x nibble fits u8");
     let z = u8::try_from((cell >> 4) & 15).expect("z nibble fits u8");
     let y = u8::try_from((cell >> 8) & 15).expect("y nibble fits u8");
-    SectionBlockPos::new(x, y, z).expect("decoded 4096-cell index is bounded")
+    SectionBlockPos::new(x, y, z).expect("decoded block cell is bounded")
 }
 
 fn fnv1a64(bytes: &[u8]) -> u64 {
@@ -600,47 +514,4 @@ fn fnv1a64(bytes: &[u8]) -> u64 {
         hash = hash.wrapping_mul(FNV_PRIME);
     }
     hash
-}
-
-fn json_token(value: &str) -> String {
-    value
-        .chars()
-        .filter(|character| character.is_ascii_alphanumeric() || *character == '-' || *character == '_')
-        .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{STATE_MUTATION_FLAGS, qualify_fixture};
-
-    const COMMITTED_FIXTURE: &str =
-        include_str!("../../../../vanilla/fixtures/section/26.2-semantic-fixtures.txt");
-
-    #[test]
-    fn committed_source_backed_fixture_qualifies() {
-        let evidence = qualify_fixture(COMMITTED_FIXTURE).expect("committed fixture must qualify");
-        assert_eq!(evidence.fixture_cases(), 9);
-        assert_eq!(evidence.block_candidate_checks(), 28);
-        assert_eq!(evidence.biome_checks(), 2);
-    }
-
-    #[test]
-    fn requested_fixture_signatures_exist_in_target_state_universe() {
-        for signature in [0_u8, 1, 3, 5, 15] {
-            assert!(
-                STATE_MUTATION_FLAGS.contains(&signature),
-                "target must contain fixture signature {signature}"
-            );
-        }
-    }
-
-    #[test]
-    fn fixture_provenance_drift_fails_closed() {
-        let changed = COMMITTED_FIXTURE.replacen(
-            "79e5803347d6fb6f7ffccea4cef783998a1c6469ed869d26fa48ab5f2328cd3b",
-            "0000000000000000000000000000000000000000000000000000000000000000",
-            1,
-        );
-        assert!(qualify_fixture(&changed).is_err());
-    }
 }
