@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
-use crucible_world_contract::{
-    BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary,
-};
+use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary};
 use crucible_world_reference::DirectBlockSection;
 use crucible_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
@@ -65,8 +63,7 @@ pub(super) fn verify_corpus(
         }
 
         let expected_summary = recompute_section_summary(&section);
-        direct_reference
-            .record::<DirectBlockSection<BlockStateId>>(&section, expected_summary)?;
+        direct_reference.record::<DirectBlockSection<BlockStateId>>(&section, expected_summary)?;
         direct.record::<DirectNBlockSection<BlockStateId>>(&section, expected_summary)?;
         adaptive.record::<AdaptiveBlockSection<BlockStateId>>(&section, expected_summary)?;
         fast_local.record::<FastLocalBlockSection<BlockStateId>>(&section, expected_summary)?;
@@ -256,7 +253,10 @@ pub(super) fn inspect_candidate_section<C: BenchSection>(
     if actual_summary != expected_summary {
         return Err(format!(
             "{} corpus summary mismatch at {:?}: expected {:?}, got {:?}",
-            C::NAME, section.key, expected_summary, actual_summary
+            C::NAME,
+            section.key,
+            expected_summary,
+            actual_summary
         ));
     }
 
