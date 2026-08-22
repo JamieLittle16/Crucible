@@ -1,0 +1,90 @@
+name: Section Benchmark Smoke
+
+on:
+  pull_request:
+    paths:
+      - crates/qualification/crucible-section-qualification/**
+      - crates/world/crucible-world-contract/**
+      - crates/world/crucible-world-reference/**
+      - crates/world/crucible-world-section/**
+      - crates/data/crucible-generated/**
+      - .github/workflows/section-benchmark-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  smoke:
+    name: Section benchmark smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Run release benchmark smoke
+        run: >-
+          cargo run --release --locked
+          -p crucible-section-qualification
+          --bin section_bench --
+          --smoke
+          --output target/crucible-qualification/section/benchmark-smoke.json
+
+      - name: Validate smoke artifact semantics
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('target/crucible-qualification/section/benchmark-smoke.json')
+          data = json.loads(path.read_text())
+          assert data['schema'] == 2
+          assert data['harness_version'] == 'section-bench-v2'
+          assert data['mode'] == 'smoke'
+          assert data['minecraft_version'] == '26.2'
+          assert data['protocol_version'] == 776
+          assert data['data_version'] == 4903
+          assert data['cpus_allowed_list']
+          assert data['timings']
+          assert data['memory']
+          assert data['lifetimes']
+
+          candidates = {
+              'direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local'
+          }
+          assert {row['candidate'] for row in data['timings']} == candidates
+          assert {row['candidate'] for row in data['memory']} == candidates
+          assert {row['candidate'] for row in data['lifetimes']} == candidates
+
+          assert any(row['pattern'] == 'fluid-containing' for row in data['memory'])
+          assert any(row['pattern'] == 'survival-like' for row in data['memory'])
+          assert all(row['actual_cardinality'] <= row['pool_cardinality'] for row in data['memory'])
+          assert all(row['actual_cardinality'] <= row['pool_cardinality'] for row in data['timings'])
+          assert all(row['logical_backing_allocations'] >= 0 for row in data['lifetimes'])
+          assert all(row['peak_owned_bytes'] >= row['final_owned_bytes'] for row in data['lifetimes'])
+
+          print(
+              'benchmark smoke records:',
+              len(data['timings']), 'timings,',
+              len(data['memory']), 'memory,',
+              len(data['lifetimes']), 'lifetimes'
+          )
+          PY
+
+      - name: Upload diagnostic smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crucible-section-benchmark-smoke
+          path: target/crucible-qualification/section/benchmark-smoke.json
+          if-no-files-found: error
+          retention-days: 7
