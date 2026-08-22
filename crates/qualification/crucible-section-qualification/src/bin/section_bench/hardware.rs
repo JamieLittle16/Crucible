@@ -62,8 +62,7 @@ fn command_output(program: &str, args: &[&str]) -> Result<String, String> {
 }
 
 fn read_trimmed(path: &str) -> String {
-    fs::read_to_string(path)
-        .map_or_else(|_| "unknown".to_owned(), |value| value.trim().to_owned())
+    fs::read_to_string(path).map_or_else(|_| "unknown".to_owned(), |value| value.trim().to_owned())
 }
 
 fn cpu_model() -> String {
