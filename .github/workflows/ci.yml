@@ -67,11 +67,21 @@ jobs:
       - name: Section semantic qualification
         run: cargo xtask qualify section --quick
 
+      - name: Source-backed section fixture qualification
+        run: >-
+          cargo xtask qualify section
+          --vanilla vanilla/fixtures/section/26.2-semantic-fixtures.txt
+
       - name: Vanilla Atlas tests
         run: python3 -m unittest discover -s tools/tests -p 'test_*.py' -v
 
       - name: Python syntax
-        run: python3 -m py_compile tools/vanilla_atlas.py tools/tests/test_vanilla_atlas.py
+        run: >-
+          python3 -m py_compile
+          tools/vanilla_atlas.py
+          tools/section_runtime_fixture.py
+          tools/tests/test_vanilla_atlas.py
+          tools/tests/test_section_runtime_fixture.py
 
       - name: Rustdoc
         env:

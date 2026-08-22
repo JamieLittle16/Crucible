@@ -8,12 +8,15 @@ on:
       - tools/state_source_qualification.py
       - tools/qualify_state_data.py
       - tools/finalize_state_data.py
+      - tools/section_runtime_fixture.py
       - tools/tests/test_state_data.py
       - tools/tests/test_official_state_data.py
       - tools/tests/test_state_source_qualification.py
       - tools/tests/test_qualify_state_data.py
       - tools/tests/test_finalize_state_data.py
+      - tools/tests/test_section_runtime_fixture.py
       - vanilla/state-data/**
+      - vanilla/fixtures/section/**
       - vanilla/vanilla.lock.toml
       - .github/workflows/state-data-probe.yml
 
@@ -42,6 +45,7 @@ jobs:
           python3 -m unittest discover -s tools/tests -p 'test_state_source_qualification.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_qualify_state_data.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_finalize_state_data.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_runtime_fixture.py' -v
 
       - name: Extract official state facts
         run: |
@@ -73,6 +77,13 @@ jobs:
       - name: Inspect raw normalized data
         run: python3 tools/state_data.py inspect /tmp/26.2-block-states.raw.json
 
+      - name: Bind section fixture to official runtime facts
+        run: |
+          python3 tools/section_runtime_fixture.py \
+            --runtime-data /tmp/26.2-block-states.raw.json \
+            --fixture vanilla/fixtures/section/26.2-semantic-fixtures.txt \
+            --output /tmp/26.2-section-runtime-facts-fixture.json
+
       - name: Generate unqualified smoke output
         run: |
           # This proves the low-level generator still consumes the runtime schema. Production
@@ -90,6 +101,7 @@ jobs:
           name: minecraft-26.2-state-data-runtime-evidence
           path: |
             /tmp/26.2-block-states.raw.json
+            /tmp/26.2-section-runtime-facts-fixture.json
             /tmp/target_26_2.unqualified.rs
             /tmp/26.2-state-data-unqualified-manifest.json
           if-no-files-found: error
