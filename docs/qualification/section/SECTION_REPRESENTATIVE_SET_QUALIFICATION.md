@@ -1,46 +1,34 @@
 # Section representative-set qualification
 
-Status: **M0.3D qualification workflow; no performance decision**  
+Status: **M0.3D population qualification; no performance decision**  
 Parent: #19  
 Depends on: `vanilla-section-representative-v1`
 
-This document defines how Crucible materializes the complete four-seed vanilla section population after the representative sampling law has been admitted.
+This document defines how Crucible materializes and admits the complete four-seed representative vanilla section population for later target-hardware performance qualification.
 
-The workflow is deliberately separate from target-hardware benchmarking. Its job is to prove that the workload population exists, is exactly the frozen population, and can be reconstructed by every qualified section mechanism. It does not use GitHub-hosted timing to choose a representation.
+The central distinction is:
 
-## Workflow
+> A structurally valid four-member set is not yet a benchmark handoff. The complete population must also pass an independent admission firewall and receive a self-describing artifact manifest.
 
-The manual workflow is:
+GitHub-hosted timings are never production-selection evidence.
 
-```text
-.github/workflows/section-representative-set-qualification.yml
-```
-
-It is `workflow_dispatch` only. Routine pull requests continue to use the single-member representative probe plus synthetic/full semantic qualification; generating four official worlds on every code change would add substantial cost without improving the semantic gate.
-
-One qualification run performs:
+## Evidence pipeline
 
 ```text
 frozen representative-v1 plan
         ↓
-fresh official 26.2 runtime state identities
+fresh official 26.2 state identities
         ↓
-committed source-qualification binding
+source qualification / frozen state-data binding
         ↓
-exact frozen generated-state input digest
-        ↓
-┌──────── seed 0 ────────┐
-├──────── seed 1 ────────┤
-├──────── seed 2 ────────┤  sequential; same pinned runner/toolchain
-└──────── seed 3 ────────┘
+seed 0 ─┐
+seed 1 ─┼─ exact official worlds, sequentially generated
+seed 2 ─┼─ bounded 8-ticket batches
+seed 3 ─┘
         ↓ per seed
-pinned official server world
-        ↓
-bounded 8-ticket generation batches
-        ↓
 exact 64 × 3 selected chunk columns
         ↓
-`minecraft:full` saved-status census
+`minecraft:full` census
         ↓
 representative-member extraction
         ↓
@@ -50,55 +38,59 @@ all-five Rust reconstruction
         ↓
 individual decision gate MUST reject
         ↓
-four-member set firewall
+structural four-member set validator
         ↓
-`decision_eligible = true`
-`decision_scope = dimension-separated-only`
-`cross_dimension_score_allowed = false`
+independent population-admission firewall
+        ↓
+self-describing artifact manifest
+        ↓
+`benchmark_handoff_eligible = true`
 ```
 
-## Why members are generated sequentially
+The manual workflow is:
 
-The workflow intentionally runs the four official server worlds sequentially on one hosted runner.
+```text
+.github/workflows/section-representative-set-qualification.yml
+```
 
-This is not a throughput benchmark, so parallel wall-clock speed has no evidentiary value. Sequential generation has useful engineering properties:
-
-- bounds Java heap and disk pressure to one active world at a time;
-- avoids accidental shared-resource contention between four official servers;
-- keeps one toolchain/runner identity for the complete population materialization;
-- makes failure localization and artifacts straightforward;
-- avoids introducing artifact-transfer machinery merely to join a four-job matrix.
-
-The world generator itself remains bounded internally: eight same-dimension force-load tickets are admitted at a time, separated by explicit command markers and synchronous `save-all flush` barriers.
-
-If qualification runtime later becomes operationally unreasonable, orchestration may be parallelized without changing the representative sampling policy. Such a change must retain independent per-member evidence and the same set firewall.
+It is `workflow_dispatch` only.
 
 ## Frozen workload identity
 
-The set workflow does not choose seeds or coordinates. Those are already frozen by representative-v1:
+Representative-v1 remains unchanged by this qualification layer:
 
 - policy: `vanilla-section-representative-v1`;
 - plan SHA-256: `fecb9c9bc77aa9689ceaf6d88fa9af96019a48d9533269f3bd15824f7dfc7191`;
-- four algorithmically derived seeds;
-- 64 chunk columns in each standard dimension per seed;
+- four content-independent seeds;
+- 64 chunk columns per standard dimension per seed;
 - 768 selected chunk columns total;
 - equal seed weighting;
-- dimension-separated decision evidence;
-- natural vertical-section weighting inside selected generated chunks.
+- natural vertical-section weighting;
+- dimensions reported separately.
 
-The generator's stable 192-command member-selection identity is:
+The stable 192-command member-selection digest is:
 
 ```text
 cb97b7490c28e38293251561749a87dbda2d0f78d78c7cf98471e5eff825a354
 ```
 
-Changing generation mechanics does not silently change workload identity. Changing seeds, coordinates, dimensions or weighting creates a new representative policy.
+Changing seeds, coordinates, dimensions or weighting creates a new population policy. Qualification hardening does not alter the sampling law.
 
-## Independent member gates
+## Why four worlds are generated sequentially
 
-Each seed is admitted independently before it may reach the set validator.
+This is population materialization, not a throughput benchmark. Sequential generation on one pinned runner:
 
-Required artifacts per seed:
+- bounds Java heap/disk pressure;
+- avoids four official servers contending for shared resources;
+- keeps one runner/toolchain identity for the complete materialization;
+- simplifies failure localization;
+- avoids unnecessary inter-job artifact joining.
+
+Each world generator remains internally bounded to eight same-dimension force-load tickets at a time with explicit command barriers and synchronous `save-all flush` barriers.
+
+## Member gate
+
+Every seed must independently produce:
 
 ```text
 world-evidence.json
@@ -110,42 +102,127 @@ server.log
 member.corpus
 ```
 
-The member must prove:
+Each member proves at least:
 
-- exact official server identity;
-- exact representative plan and seed identity;
-- complete bounded generation command coverage;
-- exactly 192 selected chunks saved at `minecraft:full`;
-- exact selected coordinate schedule;
+- exact pinned official server identity;
+- representative plan and exact derived seed;
+- bounded generation command coverage;
+- exact selected coordinates;
+- all 192 selected chunks saved at `minecraft:full`;
 - contiguous per-dimension section lattices;
-- source inventory and normalized corpus SHA-256 identities;
-- Python target/cardinality/dimension summaries;
-- Rust target/cardinality/dimension summaries;
-- exact reconstruction by direct-reference, direct, adaptive, fast-local and packed-local;
-- per-dimension candidate evidence recomposes the member evidence;
+- canonical source inventory/corpus identities;
+- independent Python semantic/cardinality summaries;
+- independent Rust reconstruction through direct-reference, direct, adaptive, fast-local and packed-local;
+- per-dimension Rust candidate evidence recomposes global candidate evidence;
 - `purpose = representative-member`;
-- `decision_eligible = false` for the member itself.
+- `decision_eligible = false` individually.
 
-A missing or malformed seed fails the population. There is no substitute seed and no content-based retry rule.
+There is no substitute seed and no content-based retry/cherry-picking rule.
 
-## Population gate
+## Structural set firewall
 
-`tools/section_corpus_set.py` is the only mechanism that turns the four member records into decision-eligible workload evidence.
+`tools/section_corpus_set.py` validates the complete population structure. It requires:
 
-It requires all four frozen seed identities and distinct member corpus SHA-256 values, a common target/server/plan identity, common per-dimension section lattices, and agreement between Python and Rust evidence.
+- exactly the four frozen seed identities;
+- distinct member corpus SHA-256 values;
+- common target/server/plan identity;
+- identical selected-coordinate schedule;
+- common target dimension lattices across seeds;
+- Python/Rust cardinality agreement;
+- all-five candidate reconstruction diagnostics;
+- exact per-dimension/global candidate recomposition;
+- no individual member decision eligibility.
 
-The resulting record deliberately carries two conceptual identities:
+It emits:
 
-- `population_sha256` identifies **which workload population** was materialized. It binds the frozen policy/plan/target/server/weighting/lattice and member seed/corpus identities. Candidate implementation diagnostics and runner timing do not alter this identity.
-- `evidence_sha256` identifies the **validated set evidence record** produced by the current qualification tooling. Candidate diagnostics therefore change this digest even when the workload population is unchanged.
+```text
+decision_eligible = true
+decision_scope = dimension-separated-only
+cross_dimension_score_allowed = false
+```
 
-This separation prevents changes in benchmark implementation or runner speed from masquerading as a new vanilla workload population.
+This is **structural decision eligibility**. It is necessary but not sufficient for benchmark handoff.
+
+## Independent population-admission firewall
+
+`tools/section_population_admission.py` independently re-opens the four member evidence records and the structural set.
+
+This second layer exists because redundant evidence can be internally wrong even when the normalized section images themselves are valid.
+
+### Exact generation-property identity
+
+For each frozen seed, admission recomputes the canonical `server.properties` text via the admitted official representative-world generator and requires the recorded line sequence to match exactly.
+
+This prevents a member generated with the right server SHA, seed and coordinate plan but different terrain-affecting settings from entering the population—for example:
+
+- `generate-structures=false`;
+- a different level-generation mode;
+- altered dimension-generation/server settings.
+
+The exact seed-specific properties are retained by SHA-256 in the admission record.
+
+### Semantic-summary coherence
+
+For each member, global and per-dimension semantic summaries must contain exactly:
+
+```text
+cell_facts:
+  non_air
+  counted_fluid
+  random_block
+  random_fluid
+
+section_classes:
+  all_air
+  contains_fluid
+  random_block_present
+  random_fluid_present
+```
+
+Admission enforces:
+
+- no missing or invented keys;
+- non-negative counts;
+- cell counts bounded by total cells;
+- class counts bounded by section count;
+- `counted_fluid <= non_air`;
+- `random_block <= non_air`;
+- `random_fluid <= counted_fluid`;
+- `random_fluid_present <= contains_fluid`;
+- per-dimension section totals recompose the member;
+- per-dimension fact/class counts recompose the member's global counts exactly.
+
+The four-seed admission then preserves aggregate fact/class counts **per dimension**, never as a cross-dimension ranking score.
+
+### Final admission record
+
+A successful second firewall emits:
+
+```text
+kind = section-representative-set-admission
+decision_eligible = true
+benchmark_handoff_eligible = true
+decision_scope = dimension-separated-only
+cross_dimension_score_allowed = false
+```
+
+It binds:
+
+- `population_sha256`;
+- structural-set `evidence_sha256`;
+- raw `corpus-set.json` file SHA-256;
+- all four seed/corpus identities;
+- seed-specific server-property digests;
+- per-dimension semantic aggregates;
+- its own canonical `admission_sha256`.
+
+A later performance harness must consume an admitted population, not merely a raw member corpus or structural set file.
 
 ## Dimension-weighting firewall
 
-The set may not collapse dimensions into a production decision score.
+No global candidate ranking is allowed across Overworld, Nether and End without a later explicitly justified workload model.
 
-The only decision-bearing aggregate is per dimension across equal-weight seeds:
+The decision-bearing strata remain:
 
 ```text
 per_dimension.minecraft:overworld
@@ -153,83 +230,113 @@ per_dimension.minecraft:the_nether
 per_dimension.minecraft:the_end
 ```
 
-The whole-set `aggregate` object is descriptive only and may contain section/cell counts, but not candidate totals or a global cardinality histogram suitable for ranking candidates.
+The cross-dimension `aggregate` object is descriptive only. It cannot contain candidate totals or a global cardinality histogram usable as an implicit score.
 
-This rule exists because summing section populations directly would silently weight dimensions according to their vertical lattice size rather than observed server usage. For the admitted 26.2 lattice that accidental ratio would be 3:2:2.
+This prevents the target's 24:16:16 vertical lattice from silently creating a 3:2:2 gameplay weighting.
 
 See [`SECTION_DIMENSION_WEIGHTING_GUARD.md`](SECTION_DIMENSION_WEIGHTING_GUARD.md).
 
-## Artifact manifest
+## Population identity versus evidence identity
 
-The workflow writes `artifact-manifest.json` containing the relative path, byte size and SHA-256 of every evidence file present before the manifest itself is written.
+The structural set deliberately exposes two identities:
 
-The GitHub artifact is transport/retention, not the canonical workload identity. The canonical workload identity is `population_sha256`; the set record and per-member hashes are the machine-readable evidence graph.
+- `population_sha256` — which vanilla workload population was materialized;
+- `evidence_sha256` — the validated structural evidence produced by the current mechanism/tooling diagnostics.
 
-The artifact includes the normalized member corpora so the exact population can later be consumed by target-hardware CPU/RSS qualification without regenerating worlds on the benchmark machine.
+The independent admission layer adds:
 
-## Failure policy
+- `set_file_sha256` — exact serialized structural-set record;
+- `admission_sha256` — canonical digest of the hardened admission record.
 
-The workflow fails closed on any member or set inconsistency.
+Candidate implementation diagnostics may change `evidence_sha256` without changing `population_sha256`. Tooling/handoff changes may change the admission/artifact identity without pretending vanilla terrain changed.
 
-A failure may motivate a generator/parser/tooling fix, but must not silently:
+## Self-describing workflow artifact
 
-- remove a seed;
-- replace a coordinate;
-- omit a dimension;
-- ignore a non-`full` chunk;
-- fill an unknown section lattice from a guessed height;
-- accept a member that failed Python or Rust reconstruction;
-- make a single member decision-eligible;
-- introduce a cross-dimension score.
+`tools/representative_set_artifact_manifest.py` runs with `if: always()` so failed qualifications still preserve diagnostics.
 
-If an orchestration mechanism is replaced, the failed mechanism and reason remain in the experiment record.
+The resulting schema-2 artifact manifest explicitly records:
+
+- `qualification_complete`;
+- `decision_eligible`;
+- `benchmark_handoff_eligible`;
+- repository commit SHA;
+- GitHub run ID and attempt;
+- Python version;
+- verbose Rust compiler identity;
+- Java version;
+- population/set/admission identities when present;
+- relative path, size and SHA-256 for every evidence file.
+
+Therefore an uploaded diagnostic ZIP from a failed run cannot masquerade as qualified population evidence merely because it has the expected artifact name.
+
+For complete runs, the artifact generator re-verifies the canonical admission digest and proves `corpus-set.json` has not changed since admission.
+
+## Regression obligations
+
+Permanent tests cover both firewall layers and workflow orchestration. They must reject at least:
+
+- missing/extra population members;
+- duplicate member corpus identity;
+- seed/plan/server mismatch;
+- selected-coordinate drift;
+- non-`full` selected chunks;
+- section-lattice drift;
+- Python/Rust cardinality disagreement;
+- candidate-set/representation corruption;
+- accidental individual decision eligibility;
+- implicit cross-dimension scoring;
+- missing/reordered/changed canonical server properties;
+- semantic-summary missing/extra keys;
+- semantic counts outside section/cell bounds;
+- invalid semantic subset relationships;
+- per-dimension/global semantic recomposition mismatch;
+- structural set mutation after evidence digesting;
+- corpus-set mutation after population admission;
+- population-admission digest corruption;
+- partial diagnostic artifact claiming qualification completion.
+
+The manual workflow itself runs its own workflow-contract regression.
+
+## First real member
+
+The completed seed-0 official probe established the real 26.2 member path and produced 3,584 sections / 14,680,064 cells / 432 states.
+
+Its exact evidence identities, semantic distributions and deterministic representation-byte sanity signals are preserved in [`SECTION_REPRESENTATIVE_SEED0_ADMISSION.md`](SECTION_REPRESENTATIVE_SEED0_ADMISSION.md).
+
+That member remains individually decision-ineligible.
 
 ## Relationship to performance qualification
 
-A green four-member set is necessary but not sufficient for #19.
+A green four-member admitted artifact supplies **workload population evidence**, not qualifying timing.
 
-It supplies real vanilla **population evidence**:
+The next layer consumes the exact admitted corpora on controlled target hardware and must preserve dimensions separately while recording:
 
-- natural section cardinalities;
-- spatial state images;
-- representation distributions;
-- deterministic logical storage totals;
-- per-dimension prevalence of representation regimes.
+- exact population/admission identities;
+- commit/toolchain/codegen identity;
+- CPU/core affinity;
+- governor/frequency/turbo context;
+- repeated raw samples/noise;
+- steady-state real-corpus read/query measurements;
+- controlled synthetic mutation/promotion tail measurements;
+- isolated process/RSS evidence per candidate/dimension.
 
-It does not supply qualifying CPU latency or process RSS because GitHub-hosted hardware is noisy and uncontrolled.
+Corpus parsing and construction setup must not be accidentally timed as steady-state section access. Process-RSS runs must isolate candidates so input/parser memory does not become candidate representation memory.
 
-The subsequent target-hardware layer consumes the exact admitted member corpora and must record CPU/core/frequency/governor/toolchain/build provenance, repetitions/noise, per-dimension CPU/tail measurements and isolated process/RSS evidence. Only that combined evidence may enter the Pareto decision.
+Only the combined correctness + real-population + target-hardware + RSS/tail evidence may enter the #19 Pareto decision.
 
-## First-member sanity signal
+## Exit condition
 
-The first completed seed-0 real-member probe is useful as admission evidence, not as a population verdict. It produced the expected 26.2 lattices:
+This population layer is complete only when one exact workflow run proves:
 
-```text
-Overworld  -4..19  = 24 sections/chunk
-Nether      0..15  = 16 sections/chunk
-End         0..15  = 16 sections/chunk
-```
+1. all four frozen members pass independently;
+2. every member remains individually decision-ineligible;
+3. member corpus identities are distinct;
+4. target dimension lattices agree;
+5. structural set validation passes;
+6. independent population admission passes;
+7. `benchmark_handoff_eligible = true`;
+8. dimensions remain separate;
+9. population/evidence/admission identities are archived;
+10. the schema-2 artifact manifest says `qualification_complete = true` on the exact run/commit.
 
-Therefore one member contains:
-
-```text
-64 × (24 + 16 + 16) = 3,584 sections
-```
-
-The complete four-member population is expected to contain 14,336 sections if all four seeds reproduce the same target lattice. The set validator derives and checks the actual result rather than accepting that count as a hardcoded substitute for evidence.
-
-## Exit condition for this layer
-
-This layer is complete when a workflow artifact exists for a single exact commit in which:
-
-1. all four frozen members PASS independently;
-2. every member is individually decision-ineligible;
-3. all member corpus SHA-256 values are distinct;
-4. cross-seed dimension lattices agree;
-5. `section_corpus_set.py` emits `decision_eligible = true`;
-6. `decision_scope = dimension-separated-only`;
-7. `cross_dimension_score_allowed = false`;
-8. population and evidence identities are archived;
-9. the result is recorded in the section experiment log and #19.
-
-Only then should the target-hardware Pareto/RSS slice consume representative-v1 as production-decision workload evidence.
+Only then may representative-v1 be used as production-decision workload evidence.
