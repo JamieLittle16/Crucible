@@ -1,0 +1,334 @@
+name: Section Representative Member Probe
+
+on:
+  pull_request:
+    paths:
+      - tools/official_state_data.py
+      - tools/qualify_state_data.py
+      - tools/vanilla_dimensions.py
+      - tools/vanilla_section_extractor.py
+      - tools/section_corpus.py
+      - tools/section_representative_plan.py
+      - tools/official_representative_section_world.py
+      - tools/representative_section_corpus.py
+      - tools/section_corpus_set.py
+      - tools/tests/test_vanilla_dimensions.py
+      - tools/tests/test_section_representative_plan.py
+      - tools/tests/test_official_representative_section_world.py
+      - tools/tests/test_representative_section_corpus.py
+      - tools/tests/test_section_corpus_set.py
+      - crates/qualification/crucible-section-qualification/src/bin/section_bench/**
+      - crates/data/crucible-generated/**
+      - crates/world/crucible-world-contract/**
+      - crates/world/crucible-world-reference/**
+      - crates/world/crucible-world-section/**
+      - vanilla/state-data/**
+      - vanilla/vanilla.lock.toml
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - .github/workflows/section-representative-member-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Official 26.2 representative member
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Representative policy regressions
+        run: |
+          python3 -m unittest discover -s tools/tests -p 'test_vanilla_dimensions.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_representative_plan.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_official_representative_section_world.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_representative_section_corpus.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_section_corpus_set.py' -v
+
+      - name: Materialize and verify frozen representative plan
+        run: |
+          python3 tools/section_representative_plan.py write /tmp/representative-plan.json
+          python3 tools/section_representative_plan.py verify /tmp/representative-plan.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          plan = json.loads(Path('/tmp/representative-plan.json').read_text())
+          expected = 'fecb9c9bc77aa9689ceaf6d88fa9af96019a48d9533269f3bd15824f7dfc7191'
+          if plan['plan_sha256'] != expected:
+              raise SystemExit(f"representative plan digest drifted: {plan['plan_sha256']}")
+          if len(plan['seeds']) != 4:
+              raise SystemExit('representative plan seed count drifted')
+          for dimension, entry in plan['dimensions'].items():
+              if len(entry['chunks']) != 64:
+                  raise SystemExit(f'{dimension} representative chunk count drifted')
+          print(f'representative plan PASS: {expected}')
+          PY
+
+      - name: Extract official runtime state identities
+        run: |
+          python3 tools/official_state_data.py \
+            --version 26.2 \
+            --output /tmp/26.2-block-states.raw.json
+
+      - name: Bind runtime identities to committed source qualification
+        run: |
+          python3 tools/qualify_state_data.py \
+            --runtime-data /tmp/26.2-block-states.raw.json \
+            --source-qualification vanilla/state-data/26.2-source-qualification.json \
+            --output /tmp/26.2-block-states.qualified.json
+
+      - name: Verify bound state identity matches frozen generator input
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'tools')
+          import state_data
+          qualified = json.loads(Path('/tmp/26.2-block-states.qualified.json').read_text())
+          manifest = json.loads(Path('vanilla/state-data/26.2-state-data-manifest.json').read_text())
+          actual = state_data.digest(qualified)
+          expected = manifest['input_digest']
+          if actual != expected:
+              raise SystemExit(f'qualified-state digest mismatch: expected {expected}, got {actual}')
+          print(f'qualified target state input PASS: {actual}')
+          PY
+
+      - name: Generate official representative seed-0 world in bounded batches
+        run: |
+          python3 tools/official_representative_section_world.py \
+            --version 26.2 \
+            --plan /tmp/representative-plan.json \
+            --seed-index 0 \
+            --work-dir /tmp/crucible-representative-seed-0 \
+            --cache .crucible/vanilla/downloads \
+            --timeout-seconds 900 \
+            --batch-size 8 \
+            --batch-settle-seconds 2 \
+            --evidence /tmp/world-evidence.json
+
+      - name: Extract exact selected representative member
+        run: |
+          python3 tools/representative_section_corpus.py \
+            --world /tmp/crucible-representative-seed-0/world \
+            --plan /tmp/representative-plan.json \
+            --seed-index 0 \
+            --qualified-states /tmp/26.2-block-states.qualified.json \
+            --output /tmp/representative-seed-0.corpus \
+            --evidence /tmp/extraction-evidence.json
+
+      - name: Independently validate representative member
+        run: |
+          python3 tools/section_corpus.py validate \
+            /tmp/representative-seed-0.corpus \
+            --manifest /tmp/corpus-manifest.json
+
+      - name: Reconstruct representative member through every Rust candidate
+        run: |
+          cargo run --release --locked \
+            -p crucible-section-qualification \
+            --bin section_bench -- \
+            --corpus-check /tmp/representative-seed-0.corpus \
+            --output /tmp/rust-import.json
+
+      - name: Require individual representative member to fail decision gate
+        run: |
+          set +e
+          cargo run --release --locked \
+            -p crucible-section-qualification \
+            --bin section_bench -- \
+            --corpus-decision-check /tmp/representative-seed-0.corpus \
+            > /tmp/decision-rejection.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            cat /tmp/decision-rejection.log
+            echo 'individual representative member unexpectedly passed decision gate' >&2
+            exit 1
+          fi
+          if ! grep -q 'purpose representative-member and is not decision-eligible' /tmp/decision-rejection.log; then
+            cat /tmp/decision-rejection.log
+            echo 'representative member failed decision gate for an unexpected reason' >&2
+            exit 1
+          fi
+          cat /tmp/decision-rejection.log
+
+      - name: Cross-check representative member evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          import tomllib
+          from collections import Counter
+          from pathlib import Path
+          world = json.loads(Path('/tmp/world-evidence.json').read_text())
+          extraction = json.loads(Path('/tmp/extraction-evidence.json').read_text())
+          manifest = json.loads(Path('/tmp/corpus-manifest.json').read_text())
+          rust = json.loads(Path('/tmp/rust-import.json').read_text())
+          plan = json.loads(Path('/tmp/representative-plan.json').read_text())
+          with Path('vanilla/vanilla.lock.toml').open('rb') as handle:
+              lock = tomllib.load(handle)
+          if world['server_sha256'] != lock['runtime']['server_sha256']:
+              raise SystemExit('representative world used the wrong official server')
+          if world['generator'] != 'official-server-representative-section-world-v2-batched':
+              raise SystemExit('representative world generator identity mismatch')
+          if world['plan_sha256'] != plan['plan_sha256'] or extraction['plan_sha256'] != plan['plan_sha256']:
+              raise SystemExit('representative member plan binding mismatch')
+          if world['seed_index'] != 0 or extraction['seed_index'] != 0:
+              raise SystemExit('representative seed index mismatch')
+          if world['seed'] != plan['seeds'][0] or extraction['seed'] != plan['seeds'][0]:
+              raise SystemExit('representative seed identity mismatch')
+          if world['selection_command_count'] != 192:
+              raise SystemExit('representative selection command count mismatch')
+          if world['selection_command_sha256'] != 'cb97b7490c28e38293251561749a87dbda2d0f78d78c7cf98471e5eff825a354':
+              raise SystemExit('representative selection command identity mismatch')
+          if world['batch_size'] != 8 or world['batch_count'] != 24:
+              raise SystemExit('representative bounded batch policy mismatch')
+          if len(world['batch_timings']) != 24:
+              raise SystemExit('representative batch timing evidence incomplete')
+          batch_dimensions = Counter(item['dimension'] for item in world['batch_timings'])
+          if batch_dimensions != Counter({
+              'minecraft:overworld': 8,
+              'minecraft:the_nether': 8,
+              'minecraft:the_end': 8,
+          }):
+              raise SystemExit(f'representative batch dimension coverage mismatch: {batch_dimensions}')
+          if any(item['ticket_count'] != 8 or item['elapsed_ms'] < 0 for item in world['batch_timings']):
+              raise SystemExit('representative batch timing record is malformed')
+          if extraction['policy'] != 'vanilla-save-region-v2-representative-member':
+              raise SystemExit('representative extractor identity mismatch')
+          if manifest['source']['inventory_sha256'] != extraction['inventory_sha256']:
+              raise SystemExit('representative source inventory mismatch')
+          if manifest['corpus_sha256'] != extraction['corpus_sha256']:
+              raise SystemExit('representative corpus digest mismatch')
+          if rust['source_inventory_sha256'] != extraction['inventory_sha256']:
+              raise SystemExit('Rust representative source mismatch')
+          if rust['purpose'] != 'representative-member' or rust['decision_eligible']:
+              raise SystemExit('Rust representative purpose/eligibility mismatch')
+          if rust['section_count'] != manifest['section_count']:
+              raise SystemExit('Python/Rust representative section count mismatch')
+          if rust['cardinality_histogram'] != manifest['cardinality_histogram']:
+              raise SystemExit('Python/Rust representative cardinality mismatch')
+          if rust['dimensions'] != manifest['dimensions']:
+              raise SystemExit('Python/Rust representative dimension counts mismatch')
+
+          expected_candidates = {
+              'direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local'
+          }
+          per_dimension = rust.get('per_dimension')
+          if not isinstance(per_dimension, dict) or set(per_dimension) != set(manifest['dimensions']):
+              raise SystemExit('Rust representative per-dimension evidence is incomplete')
+          merged_histogram = Counter()
+          merged_candidate_sections = Counter()
+          merged_candidate_bytes = Counter()
+          merged_candidate_transitions = Counter()
+          merged_candidate_allocations = Counter()
+          merged_candidate_representations = {
+              candidate: Counter() for candidate in expected_candidates
+          }
+          merged_candidate_max = Counter()
+
+          lattice = extraction['section_lattice']
+          for dimension in ('minecraft:overworld', 'minecraft:the_nether', 'minecraft:the_end'):
+              if dimension not in lattice or dimension not in manifest['dimensions']:
+                  raise SystemExit(f'missing representative dimension {dimension}')
+              expected = 64 * len(lattice[dimension])
+              if manifest['dimensions'][dimension] != expected:
+                  raise SystemExit(f'{dimension} section count does not match selected chunks × lattice')
+              summary = per_dimension[dimension]
+              if summary['section_count'] != expected or summary['total_cells'] != expected * 4096:
+                  raise SystemExit(f'{dimension} Rust section/cell totals mismatch')
+              histogram = Counter(summary['cardinality_histogram'])
+              if sum(histogram.values()) != expected:
+                  raise SystemExit(f'{dimension} Rust histogram does not sum to sections')
+              merged_histogram.update(histogram)
+              rows = summary.get('candidates')
+              if not isinstance(rows, list) or {row['candidate'] for row in rows} != expected_candidates:
+                  raise SystemExit(f'{dimension} Rust candidate set mismatch')
+              for row in rows:
+                  candidate = row['candidate']
+                  if row['sections'] != expected:
+                      raise SystemExit(f'{dimension} {candidate} section count mismatch')
+                  if sum(row['representations'].values()) != expected:
+                      raise SystemExit(f'{dimension} {candidate} representation total mismatch')
+                  merged_candidate_sections[candidate] += row['sections']
+                  merged_candidate_bytes[candidate] += row['total_owned_bytes']
+                  merged_candidate_transitions[candidate] += row['construction_transitions']
+                  merged_candidate_allocations[candidate] += row['logical_backing_allocations']
+                  merged_candidate_max[candidate] = max(
+                      merged_candidate_max[candidate], row['max_owned_bytes']
+                  )
+                  merged_candidate_representations[candidate].update(row['representations'])
+
+          if dict(merged_histogram) != rust['cardinality_histogram']:
+              raise SystemExit('Rust per-dimension histogram does not recompose global histogram')
+          global_rows = {row['candidate']: row for row in rust['candidates']}
+          if set(global_rows) != expected_candidates:
+              raise SystemExit('Rust global candidate set mismatch')
+          for candidate, row in global_rows.items():
+              if row['sections'] != merged_candidate_sections[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global section mismatch')
+              if row['total_owned_bytes'] != merged_candidate_bytes[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global byte mismatch')
+              if row['max_owned_bytes'] != merged_candidate_max[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global max-byte mismatch')
+              if row['construction_transitions'] != merged_candidate_transitions[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global transition mismatch')
+              if row['logical_backing_allocations'] != merged_candidate_allocations[candidate]:
+                  raise SystemExit(f'{candidate} per-dimension/global allocation mismatch')
+              if row['representations'] != dict(merged_candidate_representations[candidate]):
+                  raise SystemExit(f'{candidate} per-dimension/global representation mismatch')
+
+          if manifest['section_count'] != sum(manifest['dimensions'].values()):
+              raise SystemExit('representative member dimension totals do not sum to sections')
+          print(
+              'representative member PASS: '
+              f"sections={manifest['section_count']} "
+              f"states={manifest['distinct_state_ids']} "
+              f"lattice={lattice} "
+              f"corpus={manifest['corpus_sha256']}"
+          )
+          PY
+
+      - name: Upload representative member evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: minecraft-26.2-section-representative-member
+          path: |
+            /tmp/representative-plan.json
+            /tmp/world-evidence.json
+            /tmp/extraction-evidence.json
+            /tmp/corpus-manifest.json
+            /tmp/rust-import.json
+            /tmp/decision-rejection.log
+            /tmp/crucible-representative-seed-0/server.log
+            /tmp/representative-seed-0.corpus
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload representative generation diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: minecraft-26.2-section-representative-member-failure
+          path: |
+            /tmp/representative-plan.json
+            /tmp/crucible-representative-seed-0/server.log
+            /tmp/world-evidence.json
+          if-no-files-found: warn
+          retention-days: 7
