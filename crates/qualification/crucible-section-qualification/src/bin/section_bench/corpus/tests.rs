@@ -260,7 +260,13 @@ fn empty_corpus_is_rejected_by_full_import_gate() {
 fn parser_admission_and_unknown_corpora_are_never_decision_eligible() {
     for extractor in ["vanilla-save-region-v1-stored-sections", "future-policy-v9"] {
         let text = corpus(
-            &[section_line("minecraft:overworld", "0", "0", "0", &zeros(4096))],
+            &[section_line(
+                "minecraft:overworld",
+                "0",
+                "0",
+                "0",
+                &zeros(4096),
+            )],
             extractor,
         );
         let file = TempCorpus::write(&text);
@@ -294,7 +300,12 @@ fn full_import_aggregates_metadata_and_all_candidates_from_one_image() {
     assert_eq!(checked.cardinality_histogram.get(&17), Some(&1));
     assert_eq!(checked.dimensions.get("minecraft:overworld"), Some(&2));
     assert_eq!(checked.candidates.len(), 5);
-    assert!(checked.candidates.iter().all(|candidate| candidate.sections == 2));
+    assert!(
+        checked
+            .candidates
+            .iter()
+            .all(|candidate| candidate.sections == 2)
+    );
 
     let json = checked.to_json(false);
     assert!(json.contains(STATE_DATA_GENERATION_SHA256));
