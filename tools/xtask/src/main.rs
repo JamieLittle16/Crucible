@@ -339,7 +339,7 @@ fn qualify_section_fixture(fixture: &OsString, runtime_data: Option<&OsString>) 
     match status {
         Ok(status) if status.success() => {}
         Ok(status) => return exit_from_status(status.code()),
-        Err(error) => return failure(&format!("could not launch section fixture qualifier: {error}")),
+        Err(error) => return failure(&format!("fixture qualifier launch failed: {error}")),
     }
 
     if let Some(runtime_data) = runtime_data {
@@ -453,7 +453,7 @@ fn help() {
     println!("  qualify section --full        run extended multi-seed section qualification");
     println!("  qualify section --candidate   restrict qualification to one candidate");
     println!("  qualify section --vanilla     qualify a source-backed semantic fixture");
-    println!("  qualify section --runtime-data additionally bind fixture to official runtime facts");
+    println!("  qualify section --runtime-data bind fixture to official runtime facts");
     println!();
     println!("examples:");
     println!("  cargo xtask vanilla verify-source /path/to/mc-src.zip");
@@ -463,7 +463,7 @@ fn help() {
     println!("  cargo xtask vanilla state-data verify");
     println!("  cargo xtask qualify section --quick");
     println!("  cargo xtask qualify section --full --candidate packed-local");
-    println!("  cargo xtask qualify section --vanilla vanilla/fixtures/section/26.2-semantic-fixtures.txt");
+    println!("  cargo xtask qualify section --vanilla FIXTURE");
 }
 
 fn failure(message: &str) -> ExitCode {
