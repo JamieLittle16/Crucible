@@ -26,10 +26,12 @@ EXTRACTOR_ID = "vanilla-save-region-v1-stored-sections"
 SECTOR_BYTES = 4096
 REGION_HEADER_BYTES = 8192
 TARGET_DATA_VERSION = 4903
+# Minecraft 26.1 moved all default dimensions below dimensions/<namespace>/<dimension>.
+# Crucible targets 26.2 exactly, so legacy root/DIM-1/DIM1 paths are deliberately not accepted here.
 STANDARD_DIMENSIONS = (
-    ("minecraft:overworld", Path("region")),
-    ("minecraft:the_nether", Path("DIM-1/region")),
-    ("minecraft:the_end", Path("DIM1/region")),
+    ("minecraft:overworld", Path("dimensions/minecraft/overworld/region")),
+    ("minecraft:the_nether", Path("dimensions/minecraft/the_nether/region")),
+    ("minecraft:the_end", Path("dimensions/minecraft/the_end/region")),
 )
 REGION_NAME = re.compile(r"r\.(-?[0-9]+)\.(-?[0-9]+)\.mca\Z")
 
@@ -74,17 +76,15 @@ class NbtReader:
         end = self.offset + size
         if size < 0 or end > len(self.data):
             raise ExtractorError("truncated NBT payload")
-        value = self.data[self.offset : end]
+        value = self.data[self.offset:end]
         self.offset = end
         return value
 
     def _unpack(self, fmt: str):
-        size = struct.calcsize(fmt)
-        return struct.unpack(fmt, self._take(size))[0]
+        return struct.unpack(fmt, self._take(struct.calcsize(fmt)))[0]
 
     def _string(self) -> str:
-        length = self._unpack(">H")
-        raw = self._take(length)
+        raw = self._take(self._unpack(">H"))
         try:
             return raw.decode("utf-8")
         except UnicodeDecodeError as error:
@@ -119,8 +119,8 @@ class NbtReader:
             if element_type == 0 and length != 0:
                 raise ExtractorError("non-empty NBT list cannot have TAG_End element type")
             return NbtListValue(
-                element_type=element_type,
-                values=tuple(self.payload(element_type) for _ in range(length)),
+                element_type,
+                tuple(self.payload(element_type) for _ in range(length)),
             )
         if tag_type == 10:
             result: dict[str, object] = {}
@@ -143,11 +143,10 @@ class NbtReader:
         raise ExtractorError(f"unsupported NBT tag type: {tag_type}")
 
     def root(self) -> dict[str, object]:
-        tag_type = self._unpack(">B")
-        if tag_type != 10:
+        if self._unpack(">B") != 10:
             raise ExtractorError("Java NBT root must be a compound")
-        self._string()  # Root name is semantically irrelevant here.
-        value = self.payload(tag_type)
+        self._string()
+        value = self.payload(10)
         if self.offset != len(self.data):
             raise ExtractorError("trailing bytes after NBT root")
         assert isinstance(value, dict)
@@ -194,20 +193,18 @@ def _require_str(value: object, label: str) -> str:
 def canonical_palette_key(entry: object) -> str:
     compound = _require_compound(entry, "block-state palette entry")
     name = _require_str(compound.get("Name"), "block-state palette Name")
-    properties_raw = compound.get("Properties")
-    if properties_raw is None:
+    raw_properties = compound.get("Properties")
+    if raw_properties is None:
         return name
-    properties = _require_compound(properties_raw, "block-state palette Properties")
-    items: list[str] = []
+    properties = _require_compound(raw_properties, "block-state palette Properties")
+    parts: list[str] = []
     for key, value in properties.items():
         if not key or not isinstance(value, str) or not value:
             raise ExtractorError(
                 "block-state palette Properties must map non-empty strings to strings"
             )
-        items.append(f"{key}={value}")
-    if not items:
-        return name
-    return name + "[" + ",".join(sorted(items)) + "]"
+        parts.append(f"{key}={value}")
+    return name if not parts else name + "[" + ",".join(sorted(parts)) + "]"
 
 
 def load_state_identity_map(
@@ -215,35 +212,31 @@ def load_state_identity_map(
     state_manifest_path: Path,
 ) -> tuple[dict[str, int], dict[str, object]]:
     qualified = state_data.load(qualified_path)
-    manifest_raw = json.loads(state_manifest_path.read_text(encoding="utf-8"))
-    if not isinstance(manifest_raw, dict):
+    manifest = json.loads(state_manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
         raise ExtractorError("state-data manifest root must be an object")
     if (
-        manifest_raw.get("assignment_policy") != "vanilla-identity"
-        or manifest_raw.get("mapping") != "identity"
+        manifest.get("assignment_policy") != "vanilla-identity"
+        or manifest.get("mapping") != "identity"
     ):
         raise ExtractorError(
             "section save extraction currently requires frozen vanilla-identity state IDs"
         )
-    digest = state_data.digest(qualified)
-    if digest != manifest_raw.get("input_digest"):
+    if state_data.digest(qualified) != manifest.get("input_digest"):
         raise ExtractorError(
             "qualified state dataset does not match committed state-data input digest"
         )
-    target = qualified.get("target")
-    if target != manifest_raw.get("target"):
+    if qualified.get("target") != manifest.get("target"):
         raise ExtractorError("qualified state dataset target disagrees with state-data manifest")
-
-    states_raw = qualified.get("states")
-    assert isinstance(states_raw, list)
-    ordered = sorted(states_raw, key=lambda state: int(state["vanilla_id"]))
-    ids = [int(state["vanilla_id"]) for state in ordered]
-    if ids != list(range(len(ordered))):
+    states = qualified.get("states")
+    assert isinstance(states, list)
+    ordered = sorted(states, key=lambda state: int(state["vanilla_id"]))
+    if [int(state["vanilla_id"]) for state in ordered] != list(range(len(ordered))):
         raise ExtractorError("qualified state dataset is not dense vanilla identity")
     mapping = {str(state["key"]): int(state["vanilla_id"]) for state in ordered}
     if len(mapping) != len(ordered):
         raise ExtractorError("qualified state dataset has duplicate canonical state identities")
-    return mapping, manifest_raw
+    return mapping, manifest
 
 
 def decode_block_states(
@@ -251,16 +244,15 @@ def decode_block_states(
     state_ids: dict[str, int],
 ) -> tuple[int, ...]:
     compound = _require_compound(block_states, "section block_states")
-    palette_raw = _require_list(
+    raw_palette = _require_list(
         compound.get("palette"),
         "section block_states.palette",
         element_type=10,
     )
-    if not palette_raw:
+    if not raw_palette:
         raise ExtractorError("section block-state palette must not be empty")
-
     palette: list[int] = []
-    for raw_entry in palette_raw:
+    for raw_entry in raw_palette:
         key = canonical_palette_key(raw_entry)
         state = state_ids.get(key)
         if state is None:
@@ -269,34 +261,32 @@ def decode_block_states(
             )
         palette.append(state)
 
-    data_raw = compound.get("data")
+    raw_data = compound.get("data")
     if len(palette) == 1:
-        if data_raw is not None and (
-            not isinstance(data_raw, NbtLongArray) or data_raw.values
+        if raw_data is not None and (
+            not isinstance(raw_data, NbtLongArray) or raw_data.values
         ):
             raise ExtractorError(
                 "single-state section must omit block_states.data or store an empty long array"
             )
         return (palette[0],) * section_corpus.SECTION_CELLS
-
-    if not isinstance(data_raw, NbtLongArray):
+    if not isinstance(raw_data, NbtLongArray):
         raise ExtractorError("section block_states.data must be an NBT long array")
-    data = data_raw.values
 
     bits = max(4, (len(palette) - 1).bit_length())
     values_per_long = 64 // bits
     expected_longs = math.ceil(section_corpus.SECTION_CELLS / values_per_long)
-    if len(data) != expected_longs:
+    if len(raw_data.values) != expected_longs:
         raise ExtractorError(
             "section block_states.data length does not match palette cardinality: "
-            f"palette={len(palette)} bits={bits} longs={len(data)} expected={expected_longs}"
+            f"palette={len(palette)} bits={bits} longs={len(raw_data.values)} "
+            f"expected={expected_longs}"
         )
     mask = (1 << bits) - 1
     states: list[int] = []
     for cell in range(section_corpus.SECTION_CELLS):
-        word = data[cell // values_per_long] & 0xFFFF_FFFF_FFFF_FFFF
-        shift = (cell % values_per_long) * bits
-        palette_index = (word >> shift) & mask
+        word = raw_data.values[cell // values_per_long] & 0xFFFF_FFFF_FFFF_FFFF
+        palette_index = (word >> ((cell % values_per_long) * bits)) & mask
         if palette_index >= len(palette):
             raise ExtractorError(
                 f"section block-state palette index {palette_index} outside 0..{len(palette) - 1}"
@@ -353,12 +343,9 @@ def _chunk_payload(
         try:
             payload = external_path.read_bytes()
         except OSError as error:
-            raise ExtractorError(
-                f"missing external chunk payload: {external_path}"
-            ) from error
+            raise ExtractorError(f"missing external chunk payload: {external_path}") from error
     else:
-        payload_end = start + 4 + length
-        payload = region_bytes[start + 5 : payload_end]
+        payload = region_bytes[start + 5 : start + 4 + length]
     return _decompress_chunk(payload, compression)
 
 
@@ -367,6 +354,30 @@ def _region_coordinates(path: Path) -> tuple[int, int]:
     if match is None:
         raise ExtractorError(f"invalid region filename: {path.name}")
     return int(match.group(1)), int(match.group(2))
+
+
+def _region_locations(raw: bytes, path: Path) -> list[tuple[int, int]]:
+    locations: list[tuple[int, int]] = []
+    occupied = {0, 1}
+    sector_total = len(raw) // SECTOR_BYTES
+    for slot in range(1024):
+        location = int.from_bytes(raw[slot * 4 : slot * 4 + 4], "big")
+        if location == 0:
+            locations.append((0, 0))
+            continue
+        offset = location >> 8
+        count = location & 0xFF
+        if offset < 2 or count <= 0 or offset + count > sector_total:
+            raise ExtractorError(f"invalid region location entry {slot} in {path}")
+        allocated = set(range(offset, offset + count))
+        overlap = occupied.intersection(allocated)
+        if overlap:
+            raise ExtractorError(
+                f"overlapping region sector allocation in {path}: slot={slot} sectors={sorted(overlap)}"
+            )
+        occupied.update(allocated)
+        locations.append((offset, count))
+    return locations
 
 
 def extract_region(
@@ -378,27 +389,17 @@ def extract_region(
     raw = region_path.read_bytes()
     if len(raw) < REGION_HEADER_BYTES or len(raw) % SECTOR_BYTES != 0:
         raise ExtractorError(f"region file is not sector-aligned: {region_path}")
+    locations = _region_locations(raw, region_path)
 
     sections: list[ExtractedSection] = []
-    for slot in range(1024):
-        location = int.from_bytes(raw[slot * 4 : slot * 4 + 4], "big")
-        if location == 0:
+    for slot, (offset, count) in enumerate(locations):
+        if offset == 0:
             continue
-        offset_sectors = location >> 8
-        sector_count = location & 0xFF
-        local_x = slot % 32
-        local_z = slot // 32
-        chunk_x = region_x * 32 + local_x
-        chunk_z = region_z * 32 + local_z
-        payload = _chunk_payload(
-            region_path,
-            raw,
-            chunk_x,
-            chunk_z,
-            offset_sectors,
-            sector_count,
+        chunk_x = region_x * 32 + slot % 32
+        chunk_z = region_z * 32 + slot // 32
+        root = parse_nbt(
+            _chunk_payload(region_path, raw, chunk_x, chunk_z, offset, count)
         )
-        root = parse_nbt(payload)
         data_version = _require_int(root.get("DataVersion"), "chunk DataVersion")
         if data_version != TARGET_DATA_VERSION:
             raise ExtractorError(
@@ -410,13 +411,11 @@ def extract_region(
             raise ExtractorError(
                 f"region slot {chunk_x},{chunk_z} contains chunk {stored_x},{stored_z}"
             )
-        section_list = _require_list(
-            root.get("sections"),
-            "chunk sections",
-            element_type=10,
+        raw_sections = _require_list(
+            root.get("sections"), "chunk sections", element_type=10
         )
         seen_y: set[int] = set()
-        for raw_section in section_list:
+        for raw_section in raw_sections:
             section = _require_compound(raw_section, "chunk section")
             section_y = _require_int(section.get("Y"), "chunk section Y")
             if section_y in seen_y:
@@ -426,29 +425,25 @@ def extract_region(
             seen_y.add(section_y)
             if "block_states" not in section:
                 continue
-            states = decode_block_states(section["block_states"], state_ids)
             sections.append(
                 ExtractedSection(
-                    dimension=dimension,
-                    chunk_x=chunk_x,
-                    chunk_z=chunk_z,
-                    section_y=section_y,
-                    states=states,
+                    dimension,
+                    chunk_x,
+                    chunk_z,
+                    section_y,
+                    decode_block_states(section["block_states"], state_ids),
                 )
             )
     return sections
 
 
 def validate_level_dat(world: Path) -> None:
-    level_path = world / "level.dat"
+    path = world / "level.dat"
     try:
-        raw = gzip.decompress(level_path.read_bytes())
+        raw = gzip.decompress(path.read_bytes())
     except (OSError, EOFError) as error:
-        raise ExtractorError(
-            f"could not read gzip-compressed level.dat: {level_path}"
-        ) from error
-    root = parse_nbt(raw)
-    data = _require_compound(root.get("Data"), "level.dat Data")
+        raise ExtractorError(f"could not read gzip-compressed level.dat: {path}") from error
+    data = _require_compound(parse_nbt(raw).get("Data"), "level.dat Data")
     data_version = _require_int(data.get("DataVersion"), "level.dat DataVersion")
     if data_version != TARGET_DATA_VERSION:
         raise ExtractorError(
@@ -470,32 +465,24 @@ def source_inventory(
 ) -> tuple[str, list[dict[str, str]]]:
     paths: set[Path] = {world / "level.dat"}
     for directory in selected_region_dirs:
-        paths.update(directory.glob("*.mca"))
+        paths.update(path for path in directory.glob("r.*.*.mca") if REGION_NAME.fullmatch(path.name))
         paths.update(directory.glob("c.*.*.mcc"))
     if any(not path.is_file() for path in paths):
         raise ExtractorError("source inventory contains a missing/non-file path")
-
     entries: list[dict[str, str]] = []
-    canonical_lines: list[str] = []
-    for path in sorted(
-        paths,
-        key=lambda candidate: candidate.relative_to(world).as_posix(),
-    ):
+    records: list[str] = []
+    for path in sorted(paths, key=lambda item: item.relative_to(world).as_posix()):
         relative = path.relative_to(world).as_posix()
         digest = sha256_file(path)
         entries.append({"path": relative, "sha256": digest})
-        canonical_lines.append(f"{relative}\t{digest}\n")
-    inventory_sha256 = hashlib.sha256(
-        "".join(canonical_lines).encode("utf-8")
-    ).hexdigest()
-    return inventory_sha256, entries
+        records.append(f"{relative}\t{digest}\n")
+    return hashlib.sha256("".join(records).encode("utf-8")).hexdigest(), entries
 
 
 def discover_dimensions(
     world: Path,
     requested: set[str] | None,
 ) -> list[tuple[str, Path]]:
-    selected: list[tuple[str, Path]] = []
     known = {name for name, _ in STANDARD_DIMENSIONS}
     if requested is not None:
         unknown = sorted(requested - known)
@@ -503,14 +490,13 @@ def discover_dimensions(
             raise ExtractorError(
                 f"extractor v1 does not support requested dimensions: {unknown}"
             )
-    for name, relative in STANDARD_DIMENSIONS:
-        if requested is not None and name not in requested:
-            continue
-        directory = world / relative
-        if directory.is_dir():
-            selected.append((name, directory))
+    selected = [
+        (name, world / relative)
+        for name, relative in STANDARD_DIMENSIONS
+        if (requested is None or name in requested) and (world / relative).is_dir()
+    ]
     if not selected:
-        raise ExtractorError("no selected vanilla dimension region directories exist")
+        raise ExtractorError("no selected Minecraft 26.2 dimension region directories exist")
     return selected
 
 
@@ -527,10 +513,8 @@ def render_corpus(
     lines = [
         section_corpus.MAGIC,
         "TARGET|"
-        f"minecraft={target['minecraft_version']}|"
-        f"protocol={target['protocol_version']}|"
-        f"data={target['data_version']}|"
-        f"state_count={state_manifest['state_count']}|"
+        f"minecraft={target['minecraft_version']}|protocol={target['protocol_version']}|"
+        f"data={target['data_version']}|state_count={state_manifest['state_count']}|"
         f"generation_sha256={state_manifest['generation_digest']}",
         "SOURCE|"
         f"kind=vanilla-save|inventory_sha256={inventory_sha256}|extractor={EXTRACTOR_ID}",
@@ -555,30 +539,27 @@ def extract_world(
 ) -> section_corpus.ParsedCorpus:
     validate_level_dat(world)
     state_ids, state_manifest = load_state_identity_map(
-        qualified_states,
-        state_manifest_path,
+        qualified_states, state_manifest_path
     )
     selected = discover_dimensions(world, dimensions)
     inventory_sha256, inventory_entries = source_inventory(
-        world,
-        [directory for _, directory in selected],
+        world, [directory for _, directory in selected]
     )
-
     sections: list[ExtractedSection] = []
     for dimension, directory in selected:
-        region_files = sorted(directory.glob("r.*.*.mca"), key=lambda path: path.name)
-        for region_path in region_files:
-            sections.extend(extract_region(region_path, dimension, state_ids))
-
-    corpus = render_corpus(sections, state_manifest, inventory_sha256)
+        for region_path in sorted(directory.glob("r.*.*.mca"), key=lambda path: path.name):
+            if REGION_NAME.fullmatch(region_path.name):
+                sections.extend(extract_region(region_path, dimension, state_ids))
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(corpus, encoding="utf-8", newline="\n")
-
-    target_evidence = section_corpus.load_target_evidence(
-        state_manifest_path,
-        generated_rust_path,
+    output.write_text(
+        render_corpus(sections, state_manifest, inventory_sha256),
+        encoding="utf-8",
+        newline="\n",
     )
-    parsed = section_corpus.validate_corpus(output, target_evidence)
+    target = section_corpus.load_target_evidence(
+        state_manifest_path, generated_rust_path
+    )
+    parsed = section_corpus.validate_corpus(output, target)
     if inventory_output is not None:
         inventory_output.parent.mkdir(parents=True, exist_ok=True)
         inventory_output.write_text(
@@ -632,15 +613,18 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _parser().parse_args()
+    if not args.world.is_dir():
+        print(f"section extraction error: world directory does not exist: {args.world}", file=sys.stderr)
+        return 1
     try:
         parsed = extract_world(
-            world=args.world,
-            qualified_states=args.qualified_states,
-            state_manifest_path=args.state_manifest,
-            generated_rust_path=args.generated_rust,
-            output=args.output,
-            inventory_output=args.inventory,
-            dimensions=set(args.dimension) if args.dimension else None,
+            args.world,
+            args.qualified_states,
+            args.state_manifest,
+            args.generated_rust,
+            args.output,
+            args.inventory,
+            set(args.dimension) if args.dimension else None,
         )
     except (
         ExtractorError,
