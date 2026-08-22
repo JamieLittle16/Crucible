@@ -1,0 +1,170 @@
+name: Section Target Benchmark Smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/section-target-benchmark-smoke.yml"
+      - "crates/qualification/crucible-section-qualification/**"
+      - "crates/world/**"
+      - "crates/data/crucible-generated/**"
+      - "tools/section_benchmark_pack.py"
+      - "tools/tests/test_section_benchmark_pack.py"
+      - "docs/qualification/section/SECTION_TARGET_HARDWARE_QUALIFICATION.md"
+      - "Cargo.toml"
+      - "Cargo.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Candidate-isolated population smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Benchmark pack regressions
+        run: python3 -m unittest discover -s tools/tests -p 'test_section_benchmark_pack.py' -v
+
+      - name: Build tiny transition-covering smoke pack
+        run: |
+          mkdir -p target/crucible-qualification/section/target-smoke
+          python3 - <<'PY'
+          import json
+          import struct
+          from pathlib import Path
+
+          root = Path('target/crucible-qualification/section/target-smoke')
+          manifest = json.loads(Path('vanilla/state-data/26.2-state-data-manifest.json').read_text())
+          target = manifest['target']
+          state_count = manifest['state_count']
+          generation = manifest['generation_digest']
+          if state_count != 32366:
+              raise SystemExit(f'unexpected state count: {state_count}')
+
+          path = root / 'smoke.section-pack'
+          population = 'a' * 64
+          admission = 'b' * 64
+          header = (
+              'CRUCIBLE-SECTION-BENCH-PACK|1\n'
+              f"TARGET|minecraft={target['minecraft_version']}|protocol={target['protocol_version']}|"
+              f"data={target['data_version']}|state_count={state_count}|generation_sha256={generation}\n"
+              f'POPULATION|population_sha256={population}|admission_sha256={admission}\n'
+              'DIMENSION|name=minecraft:overworld|section_count=3\n'
+              'DATA\n'
+          ).encode('ascii')
+          sections = [
+              [0] * 4096,
+              [index % 17 for index in range(4096)],
+              [index % 257 for index in range(4096)],
+          ]
+          with path.open('wb') as handle:
+              handle.write(header)
+              for states in sections:
+                  handle.write(struct.pack('<4096H', *states))
+          print(f'smoke pack: {path} bytes={path.stat().st_size}')
+          PY
+
+      - name: Run all candidate-isolated release smokes
+        run: |
+          set -euo pipefail
+          root=target/crucible-qualification/section/target-smoke
+          for candidate in direct-reference direct adaptive fast-local packed-local; do
+            cargo run --release --locked \
+              -p crucible-section-qualification \
+              --bin section_bench -- \
+              --population-pack "$root/smoke.section-pack" \
+              --candidate "$candidate" \
+              --population-smoke \
+              --output "$root/$candidate.json"
+          done
+
+      - name: Validate smoke evidence structure
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('target/crucible-qualification/section/target-smoke')
+          candidates = ['direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local']
+          workloads = {
+              'random-read',
+              'sequential-full-read',
+              'small-volume-read',
+              'maybe-contains-positive',
+              'maybe-contains-negative',
+              'control-integer-loop',
+          }
+          for candidate in candidates:
+              record = json.loads((root / f'{candidate}.json').read_text())
+              if record['schema'] != 1 or record['harness_version'] != 'section-population-bench-v1':
+                  raise SystemExit(f'{candidate}: report schema/version mismatch')
+              if record['mode'] != 'smoke' or record['candidate'] != candidate:
+                  raise SystemExit(f'{candidate}: report identity mismatch')
+              if record['production_candidate'] != (candidate != 'direct-reference'):
+                  raise SystemExit(f'{candidate}: production flag mismatch')
+              if record.get('build_profile') != 'release':
+                  raise SystemExit(f'{candidate}: build profile provenance mismatch')
+              if record.get('codegen_policy') != 'lto=thin,codegen-units=1,panic=abort,strip=debuginfo':
+                  raise SystemExit(f'{candidate}: codegen policy provenance mismatch')
+              if record['minecraft_version'] != '26.2' or record['protocol_version'] != 776 or record['data_version'] != 4903:
+                  raise SystemExit(f'{candidate}: target identity mismatch')
+              if record['population_sha256'] != 'a' * 64 or record['admission_sha256'] != 'b' * 64:
+                  raise SystemExit(f'{candidate}: population identity mismatch')
+              if record['dimension'] != 'minecraft:overworld' or record['section_count'] != 3:
+                  raise SystemExit(f'{candidate}: dimension/section mismatch')
+              memory = record['memory']
+              required_memory = {
+                  'rss_protocol', 'rss_baseline_kib', 'rss_loaded_kib', 'rss_loaded_delta_kib',
+                  'rss_baseline_high_water_kib', 'rss_loaded_high_water_kib',
+                  'logical_owned_bytes', 'max_owned_bytes', 'known_prebaseline_harness_bytes',
+                  'construction_transitions', 'logical_backing_allocations',
+              }
+              if not required_memory <= set(memory):
+                  raise SystemExit(f'{candidate}: memory evidence incomplete')
+              if memory['rss_protocol'] != 'candidate-delta-after-explicit-prefaulted-common-scratch':
+                  raise SystemExit(f'{candidate}: RSS protocol mismatch')
+              if not isinstance(memory['rss_loaded_delta_kib'], int):
+                  raise SystemExit(f'{candidate}: RSS delta must be a signed JSON integer')
+              expected_delta = memory['rss_loaded_kib'] - memory['rss_baseline_kib']
+              if memory['rss_loaded_delta_kib'] != expected_delta:
+                  raise SystemExit(
+                      f"{candidate}: RSS delta mismatch: expected {expected_delta}, got {memory['rss_loaded_delta_kib']}"
+                  )
+              if not record['representations']:
+                  raise SystemExit(f'{candidate}: representation evidence empty')
+              if len(record['construction']['samples_ns']) != 3:
+                  raise SystemExit(f'{candidate}: construction sample count mismatch')
+              timing_by_name = {entry['workload']: entry for entry in record['timings']}
+              if set(timing_by_name) != workloads:
+                  raise SystemExit(f'{candidate}: workload set mismatch: {set(timing_by_name)}')
+              for workload, entry in timing_by_name.items():
+                  timing = entry['timing']
+                  if len(timing['samples_ns']) != 3 or timing['operations_per_sample'] <= 0:
+                      raise SystemExit(f'{candidate}/{workload}: timing sample structure mismatch')
+              if not record['commit_sha'] or not record['rustc_verbose'] or not record['cpus_allowed_list']:
+                  raise SystemExit(f'{candidate}: hardware/toolchain provenance incomplete')
+              if not record.get('mems_allowed_list'):
+                  raise SystemExit(f'{candidate}: memory-node affinity provenance incomplete')
+          print('candidate-isolated population smoke PASS')
+          PY
+
+      - name: Upload diagnostic smoke evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: section-target-benchmark-smoke
+          path: target/crucible-qualification/section/target-smoke
+          if-no-files-found: error
+          retention-days: 7
