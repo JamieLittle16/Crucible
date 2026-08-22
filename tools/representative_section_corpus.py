@@ -16,6 +16,7 @@ if str(TOOLS) not in sys.path:
 
 import section_corpus  # noqa: E402
 import section_representative_plan  # noqa: E402
+import vanilla_dimensions  # noqa: E402
 import vanilla_section_extractor as base  # noqa: E402
 
 EXTRACTOR_ID = "vanilla-save-region-v2-representative-member"
@@ -29,17 +30,20 @@ def selected_chunks(plan: dict[str, object]) -> dict[str, set[tuple[int, int]]]:
     dimensions = plan["dimensions"]
     assert isinstance(dimensions, dict)
     result: dict[str, set[tuple[int, int]]] = {}
-    for dimension in section_representative_plan.DIMENSIONS:
-        entry = dimensions[dimension]
+    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
+        entry = dimensions[descriptor.key]
         assert isinstance(entry, dict)
         chunks = entry["chunks"]
         assert isinstance(chunks, list)
-        result[dimension] = {(int(chunk[0]), int(chunk[1])) for chunk in chunks}
+        result[descriptor.key] = {(int(chunk[0]), int(chunk[1])) for chunk in chunks}
     return result
 
 
 def _dimension_dirs(world: Path) -> dict[str, Path]:
-    return {name: world / relative for name, relative in base.STANDARD_DIMENSIONS}
+    return {
+        descriptor.key: world / descriptor.region_path
+        for descriptor in vanilla_dimensions.STANDARD_DIMENSIONS
+    }
 
 
 def selected_region_paths(
@@ -48,7 +52,9 @@ def selected_region_paths(
 ) -> dict[str, set[Path]]:
     directories = _dimension_dirs(world)
     result: dict[str, set[Path]] = {}
-    for dimension, chunks in selection.items():
+    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
+        dimension = descriptor.key
+        chunks = selection[dimension]
         directory = directories[dimension]
         if not directory.is_dir():
             raise RepresentativeCorpusError(
@@ -100,7 +106,8 @@ def extract_selected_sections(
     state_ids: dict[str, int],
 ) -> list[base.ExtractedSection]:
     sections: list[base.ExtractedSection] = []
-    for dimension in section_representative_plan.DIMENSIONS:
+    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
+        dimension = descriptor.key
         selected = selection[dimension]
         for region_path in sorted(regions[dimension], key=lambda path: path.as_posix()):
             for section in base.extract_region(region_path, dimension, state_ids):
@@ -118,7 +125,8 @@ def validate_selected_sections(
         by_chunk[(section.dimension, section.chunk_x, section.chunk_z)].append(section.section_y)
 
     lattice: dict[str, list[int]] = {}
-    for dimension in section_representative_plan.DIMENSIONS:
+    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
+        dimension = descriptor.key
         expected_chunks = selection[dimension]
         observed_chunks = {
             (chunk_x, chunk_z)
@@ -217,8 +225,8 @@ def extract_member(
     lattice = validate_selected_sections(sections, selection)
 
     expected_sections = sum(
-        len(selection[dimension]) * len(lattice[dimension])
-        for dimension in section_representative_plan.DIMENSIONS
+        len(selection[descriptor.key]) * len(lattice[descriptor.key])
+        for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS
     )
     if len(sections) != expected_sections:
         raise RepresentativeCorpusError(
@@ -245,8 +253,8 @@ def extract_member(
         "inventory_sha256": inventory_sha256,
         "files": inventory_entries,
         "selected_chunks": {
-            dimension: [[x, z] for x, z in sorted(selection[dimension])]
-            for dimension in section_representative_plan.DIMENSIONS
+            descriptor.key: [[x, z] for x, z in sorted(selection[descriptor.key])]
+            for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS
         },
         "section_lattice": lattice,
         "corpus_sha256": parsed.corpus_sha256,
