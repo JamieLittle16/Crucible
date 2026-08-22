@@ -1,14 +1,16 @@
 # Section benchmark harness — M0.3D
 
 Parent: #19  
-Status: **benchmark instrumentation; not yet a production-policy decision**
+Status: **benchmark instrumentation; real corpus boundary admitted; production policy not yet selected**
 
 The section benchmark harness measures already-correct live block-section mechanisms. Correctness is not traded against speed and is not inferred from benchmark output; M0.3C qualification remains a separate prerequisite.
 
 Canonical companion records:
 - [`EVIDENCE_AND_EXPERIMENT_RECORDS.md`](EVIDENCE_AND_EXPERIMENT_RECORDS.md);
 - [`section/SECTION_CANDIDATE_REGISTRY.md`](section/SECTION_CANDIDATE_REGISTRY.md);
-- [`section/SECTION_EXPERIMENT_LOG.md`](section/SECTION_EXPERIMENT_LOG.md).
+- [`section/SECTION_EXPERIMENT_LOG.md`](section/SECTION_EXPERIMENT_LOG.md);
+- [`SECTION_VANILLA_CORPUS.md`](SECTION_VANILLA_CORPUS.md);
+- [`section/SECTION_REAL_CORPUS_ADMISSION.md`](section/SECTION_REAL_CORPUS_ADMISSION.md).
 
 ## Command
 
@@ -34,7 +36,7 @@ cargo run --release --locked \
 
 The harness refuses debug builds.
 
-`--qualification` means “full benchmark sampling settings”; it does **not** by itself make the resulting timing production-qualified. The hardware/run protocol and real-corpus gate still apply.
+`--qualification` means “full benchmark sampling settings”; it does **not** by itself make the resulting timing production-qualified. The hardware/run protocol and representative-corpus gate still apply.
 
 ## Harness architecture
 
@@ -45,6 +47,8 @@ The binary is split into small modules so benchmark semantics can be regression-
 - `hardware` — machine/toolchain/environment provenance;
 - `report` — deterministic machine-readable evidence serialization;
 - `main` — CLI/release enforcement only.
+
+The next M0.3D slice adds a dedicated `corpus` boundary module rather than mixing untrusted corpus parsing into synthetic workload construction.
 
 Benchmark observability does not add fields, locks, counters, trait objects, or other instrumentation to production section structs.
 
@@ -176,26 +180,49 @@ Current explicit regressions cover:
 
 The release-only packed widening defect itself remains documented in the candidate registry and experiment log and is permanently regression-tested in the section implementation.
 
+The real-corpus importer adds another explicit regression family: canonical format parsing, target/digest binding, state-range validation, 4096-cell section completeness, strict ordering/duplicate rejection, corpus-purpose policy, deterministic section selection and candidate image equivalence.
+
 ## Hosted-runner rule
 
 `Section Benchmark Smoke` proves only that the release harness compiles, runs, emits a valid artifact, includes all candidates/workload classes, and satisfies structural invariants.
 
 GitHub-hosted timing numbers are **diagnostic and non-qualifying**. They must not be copied into the production-policy decision or used to freeze thresholds.
 
+## Real corpus evidence
+
+The normalized `CRUCIBLE-SECTION-CORPUS/1` boundary and a real official 26.2 extractor are now admitted.
+
+The first hosted real-target admission used a deterministic official spawn world and produced:
+- 12,696 stored Overworld sections;
+- 52,002,816 cells;
+- 81 distinct state IDs;
+- corpus SHA-256 `8f1b623f4cd323ff8072c3c2722f96190dfe49b624ae65cf612f1e5ba785febf`.
+
+That corpus is **parser-admission evidence**, not representative production weighting. It contains 12,452 all-air sections and 12,453 cardinality-1 sections, so treating it as a final workload distribution would strongly bias the decision toward Uniform-heavy behavior.
+
+Corpus evidence therefore has two independent questions:
+
+1. **Is this corpus structurally/semantically admitted?**
+2. **Is this corpus sampling/weighting policy eligible to influence production selection?**
+
+A corpus may pass (1) while failing (2). The benchmark importer must preserve that distinction mechanically rather than relying on human memory.
+
 ## Remaining production-decision gates
 
-Two major evidence layers deliberately remain after this harness slice.
+Two major evidence layers remain before policy freeze.
 
-### 1. Vanilla-derived section corpus
+### 1. Representative vanilla-derived workload policy
 
-Synthetic curves cannot freeze adaptive thresholds. We require a real vanilla-derived corpus large enough to reveal actual:
+The save/corpus path itself is now admitted, but the parser-admission spawn corpus is not representative enough to freeze thresholds. We still require an explicit policy large/broad enough to reveal realistic:
 - cardinality distributions;
 - homogeneous/low-entropy frequency;
 - air/solid/fluid mixtures;
 - spatial locality;
-- high-entropy outliers.
+- high-entropy outliers;
+- standard-dimension differences;
+- semantically present all-air sections omitted by stored-section-only serialization.
 
-The corpus format/import path must carry target/provenance identity and must not commit Mojang-owned implementation artifacts unnecessarily.
+The final policy must record sampling and weighting rather than silently treating every serialized section as equally representative.
 
 ### 2. Controlled process/RSS and target-hardware qualification
 
