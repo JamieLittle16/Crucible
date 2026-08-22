@@ -85,7 +85,6 @@ class RepresentativeSetWorkflowTests(unittest.TestCase):
             "server.log",
             "corpus-set.json",
             "population-admission.json",
-            "artifact-manifest.json",
             "tools/representative_set_artifact_manifest.py",
             "if: always()",
             "retention-days: 30",
