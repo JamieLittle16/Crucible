@@ -1,0 +1,217 @@
+name: Section Target Orchestrator Smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/section-target-orchestrator-smoke.yml"
+      - "tools/section_target_hardware.py"
+      - "tools/tests/test_section_target_hardware.py"
+      - "docs/qualification/section/SECTION_TARGET_HARDWARE_ORCHESTRATOR.md"
+      - "docs/qualification/section/SECTION_TARGET_HARDWARE_ORCHESTRATOR_ADMISSION.md"
+      - "crates/qualification/crucible-section-qualification/**"
+      - "crates/world/**"
+      - "crates/data/crucible-generated/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/config.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Controlled orchestration smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_TERM_COLOR: always
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Controller regressions
+        run: python3 -m unittest discover -s tools/tests -p 'test_section_target_hardware.py' -v
+
+      - name: Build content-addressed three-dimension smoke packs
+        env:
+          PACK_ROOT: ${{ runner.temp }}/crucible-section-orchestrator-packs
+        run: |
+          set -euo pipefail
+          rm -rf "$PACK_ROOT"
+          mkdir -p "$PACK_ROOT"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import struct
+          from pathlib import Path
+
+          root = Path(os.environ['PACK_ROOT'])
+          state_manifest = json.loads(Path('vanilla/state-data/26.2-state-data-manifest.json').read_text())
+          target = {
+              'minecraft_version': state_manifest['target']['minecraft_version'],
+              'protocol_version': state_manifest['target']['protocol_version'],
+              'data_version': state_manifest['target']['data_version'],
+              'state_count': state_manifest['state_count'],
+              'state_data_generation_sha256': state_manifest['generation_digest'],
+              'state_data_input_sha256': state_manifest['input_digest'],
+          }
+          population = 'a' * 64
+          admission = 'b' * 64
+          dimensions = (
+              'minecraft:overworld',
+              'minecraft:the_nether',
+              'minecraft:the_end',
+          )
+          packs = {}
+          member_counts = [1, 1, 1, 0]
+          for dimension_index, dimension in enumerate(dimensions):
+              name = f'dimension-{dimension_index}.section-pack'
+              path = root / name
+              header = (
+                  'CRUCIBLE-SECTION-BENCH-PACK|1\n'
+                  f"TARGET|minecraft={target['minecraft_version']}|protocol={target['protocol_version']}|"
+                  f"data={target['data_version']}|state_count={target['state_count']}|"
+                  f"generation_sha256={target['state_data_generation_sha256']}\n"
+                  f'POPULATION|population_sha256={population}|admission_sha256={admission}\n'
+                  f'DIMENSION|name={dimension}|section_count=3\n'
+                  'DATA\n'
+              ).encode('ascii')
+              sections = [
+                  [0] * 4096,
+                  [index % 17 for index in range(4096)],
+                  [index % 257 for index in range(4096)],
+              ]
+              with path.open('wb') as handle:
+                  handle.write(header)
+                  for states in sections:
+                      handle.write(struct.pack('<4096H', *states))
+              packs[dimension] = {
+                  'path': name,
+                  'section_count': 3,
+                  'total_cells': 3 * 4096,
+                  'size': path.stat().st_size,
+                  'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+              }
+
+          members = []
+          for seed_index, count in enumerate(member_counts):
+              members.append({
+                  'seed_index': seed_index,
+                  'corpus_sha256': hashlib.sha256(f'corpus-{seed_index}'.encode()).hexdigest(),
+                  'per_dimension_sections': {dimension: count for dimension in dimensions},
+              })
+
+          manifest = {
+              'schema': 1,
+              'kind': 'section-target-benchmark-pack-set',
+              'policy': 'vanilla-section-representative-v1',
+              'population_sha256': population,
+              'admission_sha256': admission,
+              'source_artifact_manifest_sha256': 'c' * 64,
+              'target': target,
+              'members': members,
+              'decision_scope': 'dimension-separated-only',
+              'cross_dimension_score_allowed': False,
+              'packs': packs,
+          }
+          encoded = json.dumps(manifest, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()
+          manifest['manifest_sha256'] = hashlib.sha256(encoded).hexdigest()
+          (root / 'pack-manifest.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
+          print(f'pack root: {root}')
+          PY
+
+      - name: Pick one allowed CPU
+        id: cpu
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          allowed = sorted(os.sched_getaffinity(0))
+          if not allowed:
+              raise SystemExit('runner has no allowed CPU')
+          print(f'cpu={allowed[0]}')
+          PY
+
+      - name: Run real controller and all 15 child processes
+        env:
+          PACK_ROOT: ${{ runner.temp }}/crucible-section-orchestrator-packs
+          OUTPUT_ROOT: ${{ runner.temp }}/crucible-section-orchestrator-output
+          QUAL_CPU: ${{ steps.cpu.outputs.cpu }}
+        run: |
+          set -euo pipefail
+          rm -rf "$OUTPUT_ROOT"
+          python3 tools/section_target_hardware.py \
+            --repo-root . \
+            --pack-root "$PACK_ROOT" \
+            --output-dir "$OUTPUT_ROOT" \
+            --cpu "$QUAL_CPU" \
+            --rounds 1 \
+            --smoke
+
+      - name: Validate smoke evidence boundary
+        env:
+          OUTPUT_ROOT: ${{ runner.temp }}/crucible-section-orchestrator-output
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ['OUTPUT_ROOT'])
+          record = json.loads((root / 'orchestration.json').read_text())
+          if record['schema'] != 1 or record['kind'] != 'section-target-hardware-orchestration':
+              raise SystemExit('orchestration schema/kind mismatch')
+          if record['mode'] != 'smoke' or record['rounds'] != 1:
+              raise SystemExit('orchestration smoke identity mismatch')
+          if record['qualification_complete'] is not True:
+              raise SystemExit('completed smoke did not record completion')
+          if record['population_evidence_eligible'] is not False:
+              raise SystemExit('one-round hosted smoke must not qualify population evidence')
+          if record['decision_evidence_eligible'] is not False or not record['decision_blockers']:
+              raise SystemExit('population controller must not claim final decision eligibility')
+          if record['cross_dimension_score_allowed'] is not False:
+              raise SystemExit('cross-dimension firewall weakened')
+          if record['identities']['representative_policy'] != 'vanilla-section-representative-v1':
+              raise SystemExit('representative policy identity mismatch')
+          if record['build']['offline'] is not True:
+              raise SystemExit('controlled build was not recorded offline')
+          if len(record['children']) != 15:
+              raise SystemExit(f"expected 15 candidate/dimension children, got {len(record['children'])}")
+          if record['noise_qualification']['protocol_eligible'] is not False:
+              raise SystemExit('one-round smoke unexpectedly passed population protocol')
+          binary = root / 'benchmark-executable'
+          binary_sha = hashlib.sha256(binary.read_bytes()).hexdigest()
+          if binary_sha != record['identities']['benchmark_executable_sha256']:
+              raise SystemExit('retained executable does not match recorded executable SHA')
+          for child in record['children']:
+              if child['benchmark_executable_sha256'] != binary_sha:
+                  raise SystemExit('child executable identity drifted')
+              evidence = root / child['child_evidence_path']
+              if hashlib.sha256(evidence.read_bytes()).hexdigest() != child['child_evidence_sha256']:
+                  raise SystemExit('child evidence hash mismatch')
+          artifact = json.loads((root / 'artifact-manifest.json').read_text())
+          if artifact['kind'] != 'section-target-hardware-artifact':
+              raise SystemExit('artifact kind mismatch')
+          paths = {entry['path'] for entry in artifact['files']}
+          if 'benchmark-executable' not in paths:
+              raise SystemExit('exact executed binary was not retained')
+          if any(path.startswith('build-target/') or path.startswith('build-cargo-home/') for path in paths):
+              raise SystemExit('Cargo scratch leaked into qualification artifact')
+          print('target-hardware orchestrator smoke PASS')
+          PY
+
+      - name: Upload diagnostic orchestration evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: section-target-orchestrator-smoke
+          path: ${{ runner.temp }}/crucible-section-orchestrator-output
+          if-no-files-found: error
+          retention-days: 7
