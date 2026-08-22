@@ -123,13 +123,15 @@ jobs:
                   raise SystemExit(f'{candidate}: dimension/section mismatch')
               memory = record['memory']
               required_memory = {
-                  'rss_baseline_kib', 'rss_loaded_kib', 'rss_loaded_delta_kib',
-                  'rss_high_water_kib', 'logical_owned_bytes', 'max_owned_bytes',
-                  'harness_bookkeeping_bytes_at_rss', 'construction_transitions',
-                  'logical_backing_allocations',
+                  'rss_protocol', 'rss_baseline_kib', 'rss_loaded_kib', 'rss_loaded_delta_kib',
+                  'rss_baseline_high_water_kib', 'rss_loaded_high_water_kib',
+                  'logical_owned_bytes', 'max_owned_bytes', 'known_prebaseline_harness_bytes',
+                  'construction_transitions', 'logical_backing_allocations',
               }
               if not required_memory <= set(memory):
                   raise SystemExit(f'{candidate}: memory evidence incomplete')
+              if memory['rss_protocol'] != 'candidate-delta-after-common-preallocation':
+                  raise SystemExit(f'{candidate}: RSS protocol mismatch')
               if not record['representations']:
                   raise SystemExit(f'{candidate}: representation evidence empty')
               if len(record['construction']['samples_ns']) != 3:
