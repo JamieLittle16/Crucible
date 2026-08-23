@@ -7,7 +7,7 @@
 
 use std::collections::HashMap;
 
-use crucible_generated::{BlockStateId, GeneratedStateFacts, BLOCK_STATE_COUNT};
+use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
 use crucible_types::{BlockPos, ChunkGeneration, ChunkPos};
 use crucible_world_chunk::{
     ChunkCoreError, LiveChunkCore, ResolvedChunkWindow, ResolvedChunkWindowError,
@@ -96,10 +96,10 @@ impl PreparedCase {
         );
         for z_offset in 0..spec.depth {
             for x_offset in 0..spec.width {
-                let x_offset = i32::try_from(x_offset)
-                    .map_err(|_| WorldAccessError::CoordinateOverflow)?;
-                let z_offset = i32::try_from(z_offset)
-                    .map_err(|_| WorldAccessError::CoordinateOverflow)?;
+                let x_offset =
+                    i32::try_from(x_offset).map_err(|_| WorldAccessError::CoordinateOverflow)?;
+                let z_offset =
+                    i32::try_from(z_offset).map_err(|_| WorldAccessError::CoordinateOverflow)?;
                 let position = ChunkPos {
                     x: spec
                         .origin
@@ -152,8 +152,10 @@ impl PreparedCase {
     /// Propagates fail-closed resolved-window construction errors.
     pub fn resolved_window(
         &self,
-    ) -> Result<ResolvedChunkWindow<'_, BlockStateId, DirectBlockSection<BlockStateId>>, WorldAccessError>
-    {
+    ) -> Result<
+        ResolvedChunkWindow<'_, BlockStateId, DirectBlockSection<BlockStateId>>,
+        WorldAccessError,
+    > {
         Ok(ResolvedChunkWindow::new(
             self.spec.origin,
             self.spec.width,
@@ -170,7 +172,8 @@ impl PreparedCase {
     pub fn validate_equivalence(&self) -> Result<u64, WorldAccessError> {
         let reference = self.reference_router();
         let window = self.resolved_window()?;
-        let reference_checksum = checksum(self.trace.iter().copied(), |pos| reference.get_block(pos))?;
+        let reference_checksum =
+            checksum(self.trace.iter().copied(), |pos| reference.get_block(pos))?;
         let resolved_checksum = checksum(self.trace.iter().copied(), |pos| {
             window.get_block(pos).map_err(WorldAccessError::from)
         })?;
@@ -327,15 +330,16 @@ fn build_chunk(position: ChunkPos) -> Result<BenchChunk, WorldAccessError> {
 }
 
 fn state_for(position: ChunkPos, section_index: usize) -> Result<BlockStateId, WorldAccessError> {
-    let section_index = u64::try_from(section_index).map_err(|_| WorldAccessError::InvalidStateIdentity)?;
+    let section_index =
+        u64::try_from(section_index).map_err(|_| WorldAccessError::InvalidStateIdentity)?;
     let x = i64::from(position.x).unsigned_abs();
     let z = i64::from(position.z).unsigned_abs();
     let mixed = x
         .wrapping_mul(0x9E37_79B1)
         .wrapping_add(z.wrapping_mul(0x85EB_CA77))
         .wrapping_add(section_index.wrapping_mul(0xC2B2_AE3D));
-    let non_air_universe = u64::try_from(BLOCK_STATE_COUNT - 1)
-        .map_err(|_| WorldAccessError::InvalidStateIdentity)?;
+    let non_air_universe =
+        u64::try_from(BLOCK_STATE_COUNT - 1).map_err(|_| WorldAccessError::InvalidStateIdentity)?;
     let raw = u32::try_from(mixed % non_air_universe + 1)
         .map_err(|_| WorldAccessError::InvalidStateIdentity)?;
     BlockStateId::new(raw).ok_or(WorldAccessError::InvalidStateIdentity)
@@ -397,7 +401,10 @@ fn collision_trace(spec: CaseSpec, query_count: usize) -> Result<Vec<BlockPos>, 
     Ok(trace)
 }
 
-fn pathfinding_trace(spec: CaseSpec, query_count: usize) -> Result<Vec<BlockPos>, WorldAccessError> {
+fn pathfinding_trace(
+    spec: CaseSpec,
+    query_count: usize,
+) -> Result<Vec<BlockPos>, WorldAccessError> {
     let bounds = checked_block_bounds(spec)?;
     let mut rng = Rng::new(case_seed(spec) ^ 0xA076_1D64_78BD_642F);
     let mut x = bounds.min_x + (bounds.max_x_exclusive - bounds.min_x) / 2;
@@ -450,8 +457,9 @@ fn streaming_trace(spec: CaseSpec, query_count: usize) -> Result<Vec<BlockPos>, 
         let depth = i64::from(bounds.max_z_exclusive - bounds.min_z);
         let x_offset = (index.wrapping_mul(131) + i64::try_from(rng.next() & 0xff).unwrap_or(0))
             .rem_euclid(width);
-        let z_offset = (index.wrapping_mul(977) + i64::try_from((rng.next() >> 8) & 0xff).unwrap_or(0))
-            .rem_euclid(depth);
+        let z_offset = (index.wrapping_mul(977)
+            + i64::try_from((rng.next() >> 8) & 0xff).unwrap_or(0))
+        .rem_euclid(depth);
         trace.push(BlockPos {
             x: bounds.min_x
                 + i32::try_from(x_offset).map_err(|_| WorldAccessError::CoordinateOverflow)?,
@@ -565,7 +573,9 @@ mod tests {
     fn smoke_cases_are_exactly_equivalent() {
         for spec in smoke_cases() {
             let case = PreparedCase::new(spec, 8_192).expect("valid smoke case");
-            let checksum = case.validate_equivalence().expect("exact routing equivalence");
+            let checksum = case
+                .validate_equivalence()
+                .expect("exact routing equivalence");
             assert_ne!(checksum, 0);
         }
     }
