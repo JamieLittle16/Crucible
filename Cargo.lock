@@ -35,6 +35,16 @@ name = "crucible-types"
 version = "0.0.0"
 
 [[package]]
+name = "crucible-world-chunk"
+version = "0.0.0"
+dependencies = [
+ "crucible-generated",
+ "crucible-types",
+ "crucible-world-contract",
+ "crucible-world-reference",
+]
+
+[[package]]
 name = "crucible-world-contract"
 version = "0.0.0"
 
