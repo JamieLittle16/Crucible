@@ -18,6 +18,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "crucible-composition-qualification"
+version = "0.0.0"
+dependencies = [
+ "crucible-benchmark-support",
+ "crucible-composition",
+ "crucible-generated",
+ "crucible-world-contract",
+ "crucible-world-reference",
+]
+
+[[package]]
 name = "crucible-generated"
 version = "0.0.0"
 dependencies = [
