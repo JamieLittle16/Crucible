@@ -25,6 +25,7 @@ default-members = [
 edition = "2024"
 rust-version = "1.97.1"
 repository = "https://github.com/JamieLittle16/Crucible"
+license = "MPL-2.0"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
