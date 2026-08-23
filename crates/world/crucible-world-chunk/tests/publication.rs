@@ -73,12 +73,7 @@ fn section_pos(index: usize) -> SectionBlockPos {
     SectionBlockPos::new(x, y, z).expect("decoded section index is valid")
 }
 
-fn world_pos(
-    chunk: ChunkPos,
-    min_section_y: i32,
-    section_index: usize,
-    index: usize,
-) -> BlockPos {
+fn world_pos(chunk: ChunkPos, min_section_y: i32, section_index: usize, index: usize) -> BlockPos {
     let local = section_pos(index);
     let section_offset = i32::try_from(section_index).expect("test section index fits i32");
     BlockPos {
@@ -147,8 +142,8 @@ fn publication_is_canonical_and_matches_live_reads() {
 fn publication_freshness_is_position_generation_and_revision_bound() {
     let position = ChunkPos { x: 4, z: -7 };
     let sections = vec![DirectBlockSection::filled(0_u16, &Facts)];
-    let mut chunk = LiveChunkCore::new(position, ChunkGeneration(20), -2, sections)
-        .expect("valid live chunk");
+    let mut chunk =
+        LiveChunkCore::new(position, ChunkGeneration(20), -2, sections).expect("valid live chunk");
     let publication = chunk.publish_semantic_image();
     let original_stamp = publication.stamp();
 
