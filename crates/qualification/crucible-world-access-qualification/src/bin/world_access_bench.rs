@@ -1,4 +1,5 @@
 use std::env;
+use std::fmt::Write as _;
 use std::fs;
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -175,19 +176,19 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Config, String> 
                 query_count = Some(parse_positive(
                     &next_value(&mut args, "--queries")?,
                     "queries",
-                )?)
+                )?);
             }
             "--warmup-rounds" => {
                 warmup_rounds = Some(parse_positive(
                     &next_value(&mut args, "--warmup-rounds")?,
                     "warmup rounds",
-                )?)
+                )?);
             }
             "--measured-rounds" => {
                 measured_rounds = Some(parse_positive(
                     &next_value(&mut args, "--measured-rounds")?,
                     "measured rounds",
-                )?)
+                )?);
             }
             "--help" | "-h" => {
                 return Err("usage: world_access_bench (--smoke|--full) [--output PATH] [--require-single-cpu] [--queries N] [--warmup-rounds N] [--measured-rounds N]".to_owned());
@@ -498,7 +499,8 @@ fn render_report(config: &Config, hardware: &HardwareMetadata, reports: &[CaseRe
     output.push_str(",\n  \"target_state_generation_sha256\":");
     push_json_string(&mut output, STATE_DATA_GENERATION_SHA256);
     output.push_str(",\n  \"settings\":{");
-    output.push_str(&format!(
+    write!(
+        output,
         "\"query_count\":{},\"warmup_rounds\":{},\"measured_rounds\":{},\"setup_samples\":{},\"amortization_samples\":{},\"require_single_cpu\":{}",
         config.query_count,
         config.warmup_rounds,
@@ -506,7 +508,8 @@ fn render_report(config: &Config, hardware: &HardwareMetadata, reports: &[CaseRe
         config.setup_samples,
         config.amortization_samples,
         config.require_single_cpu
-    ));
+    )
+    .expect("writing to String cannot fail");
     output.push_str(",\"amortization_counts\":[");
     push_usize_array(&mut output, &config.amortization_counts);
     output.push_str("]},\n  \"hardware\":");
@@ -526,7 +529,8 @@ fn render_report(config: &Config, hardware: &HardwareMetadata, reports: &[CaseRe
 fn render_case(output: &mut String, report: &CaseReport, query_count: usize) {
     output.push_str("    {\"name\":");
     push_json_string(output, report.spec.name);
-    output.push_str(&format!(
+    write!(
+        output,
         ",\"origin_x\":{},\"origin_z\":{},\"width\":{},\"depth\":{},\"semantic_checksum\":{},\"query_count\":{}",
         report.spec.origin.x,
         report.spec.origin.z,
@@ -534,7 +538,8 @@ fn render_case(output: &mut String, report: &CaseReport, query_count: usize) {
         report.spec.depth,
         report.semantic_checksum,
         query_count
-    ));
+    )
+    .expect("writing to String cannot fail");
     output.push_str(",\"reference_summary\":");
     render_summary(output, &report.reference_summary, query_count);
     output.push_str(",\"resolved_summary\":");
@@ -553,38 +558,44 @@ fn render_case(output: &mut String, report: &CaseReport, query_count: usize) {
         if index != 0 {
             output.push(',');
         }
-        output.push_str(&format!(
+        write!(
+            output,
             "{{\"round\":{},\"reference_first\":{},\"reference_ns\":{},\"resolved_ns\":{}}}",
             sample.round, sample.reference_first, sample.reference_ns, sample.resolved_ns
-        ));
+        )
+        .expect("writing to String cannot fail");
     }
     output.push_str("],\"whole_cost_samples\":[");
     for (index, sample) in report.whole_cost_samples.iter().enumerate() {
         if index != 0 {
             output.push(',');
         }
-        output.push_str(&format!(
+        write!(
+            output,
             "{{\"round\":{},\"query_count\":{},\"reference_first\":{},\"reference_ns\":{},\"resolved_total_ns\":{}}}",
             sample.round,
             sample.query_count,
             sample.reference_first,
             sample.reference_ns,
             sample.resolved_total_ns
-        ));
+        )
+        .expect("writing to String cannot fail");
     }
     output.push_str("]}");
 }
 
 fn render_summary(output: &mut String, summary: &Summary, operations: usize) {
     let operations = u128::try_from(operations).unwrap_or(1).max(1);
-    output.push_str(&format!(
+    write!(
+        output,
         "{{\"p50_ns\":{},\"p95_ns\":{},\"p99_ns\":{},\"max_ns\":{},\"p50_ns_per_operation\":{}}}",
         summary.p50,
         summary.p95,
         summary.p99,
         summary.max,
         summary.p50 / operations
-    ));
+    )
+    .expect("writing to String cannot fail");
 }
 
 fn push_u128_array(output: &mut String, values: &[u128]) {
