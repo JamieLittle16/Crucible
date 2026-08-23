@@ -244,14 +244,15 @@ fn long_mutation_trace_keeps_publications_exact_and_immutable() {
     )
     .expect("trace chunk");
     let mut expected = vec![0_u16; 2 * BLOCK_SECTION_CELLS];
+    let expected_len = u64::try_from(expected.len()).expect("test image length fits u64");
     let mut rng = 0xD1B5_4A32_D192_ED03_u64;
 
     for operation in 0..20_000_usize {
         rng ^= rng << 13;
         rng ^= rng >> 7;
         rng ^= rng << 17;
-        let flat_index = usize::try_from(rng % (expected.len() as u64))
-            .expect("bounded trace index fits usize");
+        let flat_index =
+            usize::try_from(rng % expected_len).expect("bounded trace index fits usize");
         let section_index = flat_index / BLOCK_SECTION_CELLS;
         let cell_index = flat_index % BLOCK_SECTION_CELLS;
         let state = u16::try_from(((rng >> 32) % 2_048) + 1).expect("bounded trace state");
@@ -283,7 +284,10 @@ fn long_mutation_trace_keeps_publications_exact_and_immutable() {
             }
 
             let frozen_first = publication.states()[0];
-            let changed = if frozen_first == 1 { 2 } else { 1 };
+            let changed = match frozen_first {
+                1 => 2,
+                _ => 1,
+            };
             chunk
                 .replace_block(world_pos(position, min_section_y, 0, 0), changed, &Facts)
                 .expect("post-publication mutation");
