@@ -1,6 +1,6 @@
 <div align="center">
 
-# Crucible
+<img src="docs/assets/branding/crucible-lockup.png" alt="Crucible" width="900">
 
 ### Same game. Different engine.
 
