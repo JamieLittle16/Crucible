@@ -36,6 +36,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "crucible-executor-baseline"
+version = "0.0.0"
+dependencies = [
+ "crucible-benchmark-support",
+ "crucible-generated",
+ "crucible-ownership-qualification",
+ "crucible-world-contract",
+ "crucible-world-reference",
+]
+
+[[package]]
 name = "crucible-generated"
 version = "0.0.0"
 dependencies = [
