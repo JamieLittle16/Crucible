@@ -291,14 +291,7 @@ where
         self.masks == self.recompute_masks()
     }
 
-    fn get_pre_resolved_block(
-        &self,
-        pos: BlockPos,
-        local_x: u8,
-        local_z: u8,
-    ) -> Result<S, ChunkCoreError> {
-        debug_assert!(local_x < 16);
-        debug_assert!(local_z < 16);
+    fn get_pre_resolved_block(&self, pos: BlockPos) -> Result<S, ChunkCoreError> {
         debug_assert_eq!(
             ChunkPos {
                 x: pos.x.div_euclid(BLOCKS_PER_CHUNK_AXIS),
@@ -306,6 +299,10 @@ where
             },
             self.position
         );
+        let local_x = u8::try_from(pos.x.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
+            .expect("Euclidean chunk-local x is in 0..16");
+        let local_z = u8::try_from(pos.z.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
+            .expect("Euclidean chunk-local z is in 0..16");
         let (section_index, local) = self.resolve_vertical(pos, local_x, local_z)?;
         Ok(self.sections[section_index].get(local))
     }
