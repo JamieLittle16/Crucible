@@ -60,6 +60,7 @@ jobs:
           --package crucible-protocol-core
           --package crucible-benchmark-support
           --package crucible-composition-qualification
+          --package crucible-executor-baseline
           --package crucible-ownership-qualification
           --package crucible-section-qualification
           --package crucible-world-access-qualification
@@ -106,6 +107,34 @@ jobs:
           assert artifact["structural"]["exact_type_identity"] is True
           assert artifact["paired_rounds"]
           assert artifact["semantic_checksum"] != 0
+          PY
+
+      # Hosted timing is smoke-only. The permanent assertion here is semantic
+      # topology independence plus evidence shape; target-hardware timing selects nothing.
+      - name: Executor worker baseline smoke
+        run: |
+          cargo run --release --locked \
+            --package crucible-executor-baseline \
+            --bin executor_baseline_bench -- \
+            --smoke \
+            --output target/executor-baseline-smoke.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(Path("target/executor-baseline-smoke.json").read_text())
+          assert artifact["schema"] == 1
+          assert artifact["benchmark"] == "executor-worker-memory-baseline"
+          assert artifact["mode"] == "smoke"
+          assert artifact["hosted_ci_is_diagnostic_only"] is True
+          assert artifact["semantic_reference"]["stage_count"] == 4
+          assert artifact["semantic_reference"]["useful_operations"] == 65536
+          assert artifact["semantic_reference"]["work_checksum"] != 0
+          assert [candidate["workers"] for candidate in artifact["candidates"]] == [1, 2, 4]
+          assert len(artifact["rounds"]) == 9
+          for candidate in artifact["candidates"]:
+              assert candidate["p50_ns"] > 0
+              assert candidate["logical_memory"]["total_accounted_bytes"] > 0
           PY
 
       # Hosted timing is diagnostic only. This step proves the release harness runs,

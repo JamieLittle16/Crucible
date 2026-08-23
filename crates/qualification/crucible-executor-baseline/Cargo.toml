@@ -1,0 +1,18 @@
+[package]
+name = "crucible-executor-baseline"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+crucible-benchmark-support = { path = "../crucible-benchmark-support" }
+crucible-generated = { path = "../../data/crucible-generated" }
+crucible-ownership-qualification = { path = "../crucible-ownership-qualification" }
+crucible-world-contract = { path = "../../world/crucible-world-contract" }
+crucible-world-reference = { path = "../../world/crucible-world-reference" }
+
+[lints]
+workspace = true
