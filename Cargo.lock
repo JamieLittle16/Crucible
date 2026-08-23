@@ -76,6 +76,10 @@ name = "crucible-protocol-core"
 version = "0.0.0"
 
 [[package]]
+name = "crucible-session-core"
+version = "0.0.0"
+
+[[package]]
 name = "crucible-section-qualification"
 version = "0.0.0"
 dependencies = [

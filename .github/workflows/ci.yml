@@ -60,6 +60,7 @@ jobs:
           --package crucible-connection-driver
           --package crucible-packet-core
           --package crucible-protocol-core
+          --package crucible-session-core
           --package crucible-benchmark-support
           --package crucible-composition-qualification
           --package crucible-executor-baseline
@@ -90,6 +91,9 @@ jobs:
 
       - name: Connection driver qualification
         run: cargo test --package crucible-connection-driver --locked
+
+      - name: Session state qualification
+        run: cargo test --package crucible-session-core --locked
 
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
