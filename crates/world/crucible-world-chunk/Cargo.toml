@@ -1,0 +1,19 @@
+[package]
+name = "crucible-world-chunk"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+crucible-types = { path = "../../crucible-types" }
+crucible-world-contract = { path = "../crucible-world-contract" }
+
+[dev-dependencies]
+crucible-generated = { path = "../../data/crucible-generated" }
+crucible-world-reference = { path = "../crucible-world-reference" }
+
+[lints]
+workspace = true
