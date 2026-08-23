@@ -79,7 +79,6 @@ pub const fn var_int_len(value: i32) -> usize {
 ///
 /// Returns [`WireError::VarIntTooLong`] once five continuation bytes have been observed. A short
 /// prefix that could still become valid returns [`DecodeResult::Incomplete`] instead.
-#[must_use]
 pub fn decode_var_int(input: &[u8]) -> Result<DecodeResult<i32>, WireError> {
     let mut value = 0_u32;
     let mut index = 0_usize;
@@ -109,7 +108,6 @@ pub fn decode_var_int(input: &[u8]) -> Result<DecodeResult<i32>, WireError> {
 /// Returns an error for a three-byte continuation prefix, a zero frame, a length above either the
 /// vanilla `VarInt21` ceiling or `max_body_len`, or arithmetic overflow. A valid fragmented frame
 /// returns [`DecodeResult::Incomplete`].
-#[must_use]
 pub fn decode_frame(input: &[u8], max_body_len: usize) -> Result<DecodeResult<&[u8]>, WireError> {
     let mut body_len = 0_usize;
     for index in 0..MAX_FRAME_LENGTH_BYTES {
@@ -190,7 +188,6 @@ pub fn encode_frame(
 /// Returns an error for invalid length prefixes, byte/UTF-16 limits, arithmetic overflow, or
 /// invalid UTF-8. Fragmented but otherwise potentially valid input returns
 /// [`DecodeResult::Incomplete`].
-#[must_use]
 pub fn decode_string(
     input: &[u8],
     max_utf16_units: usize,
