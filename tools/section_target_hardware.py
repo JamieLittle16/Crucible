@@ -56,6 +56,10 @@ STEADY_WORKLOADS = WORKLOADS[:-1]
 CONTROL_MAX_RELATIVE_MAD_PPM = 50_000
 WORKLOAD_MAX_RELATIVE_MAD_PPM = 100_000
 RSS_MAX_RELATIVE_MAD_PPM = 100_000
+OUTLIER_GUARD_MULTIPLIER = 3
+CONTROL_MAX_RELATIVE_DEVIATION_PPM = CONTROL_MAX_RELATIVE_MAD_PPM * OUTLIER_GUARD_MULTIPLIER
+WORKLOAD_MAX_RELATIVE_DEVIATION_PPM = WORKLOAD_MAX_RELATIVE_MAD_PPM * OUTLIER_GUARD_MULTIPLIER
+RSS_MAX_RELATIVE_DEVIATION_PPM = RSS_MAX_RELATIVE_MAD_PPM * OUTLIER_GUARD_MULTIPLIER
 LOWER_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
@@ -790,12 +794,17 @@ def median_int(values: Iterable[int]) -> int:
 
 def aggregate_int(values: list[int]) -> dict[str, int]:
     median = median_int(values)
-    mad = median_int([abs(value - median) for value in values])
+    deviations = [abs(value - median) for value in values]
+    mad = median_int(deviations)
+    max_deviation = max(deviations)
+    scale = max(abs(median), 1)
     return {
         "count": len(values),
         "median": median,
         "mad": mad,
-        "relative_mad_ppm": mad * 1_000_000 // max(abs(median), 1),
+        "relative_mad_ppm": mad * 1_000_000 // scale,
+        "max_deviation": max_deviation,
+        "max_relative_deviation_ppm": max_deviation * 1_000_000 // scale,
         "min": min(values),
         "max": max(values),
     }
@@ -840,15 +849,29 @@ def aggregate_children(children: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
+def _noise_ok(summary: dict[str, object], mad_limit: int, deviation_limit: int) -> tuple[bool, bool]:
+    mad_ok = int(summary["relative_mad_ppm"]) <= mad_limit
+    deviation_ok = int(summary["max_relative_deviation_ppm"]) <= deviation_limit
+    return mad_ok, deviation_ok
+
+
 def classify_noise(aggregates: dict[str, object], *, smoke: bool, rounds: int) -> dict[str, object]:
     reasons: list[str] = []
     protocol_eligible = not smoke and rounds >= 5 and rounds % 5 == 0
     if not protocol_eligible:
         reasons.append("population qualification requires at least five rounds and a multiple of five")
-    control = aggregates["global_control_p50_ps_per_op"]  # type: ignore[index]
-    control_ok = int(control["relative_mad_ppm"]) <= CONTROL_MAX_RELATIVE_MAD_PPM  # type: ignore[index]
-    if not control_ok:
-        reasons.append("candidate-independent control workload exceeded noise threshold")
+
+    control = dict(aggregates["global_control_p50_ps_per_op"])  # type: ignore[arg-type]
+    control_mad_ok, control_deviation_ok = _noise_ok(
+        control,
+        CONTROL_MAX_RELATIVE_MAD_PPM,
+        CONTROL_MAX_RELATIVE_DEVIATION_PPM,
+    )
+    control_ok = control_mad_ok and control_deviation_ok
+    if not control_mad_ok:
+        reasons.append("candidate-independent control workload exceeded MAD noise threshold")
+    if not control_deviation_ok:
+        reasons.append("candidate-independent control workload exceeded isolated-excursion threshold")
 
     workload_ok = True
     rss_ok = True
@@ -857,14 +880,41 @@ def classify_noise(aggregates: dict[str, object], *, smoke: bool, rounds: int) -
         for candidate in PRODUCTION_CANDIDATES:
             candidate_data = dimensions[dimension]["candidates"][candidate]  # type: ignore[index]
             for workload in STEADY_WORKLOADS:
-                summary = candidate_data["workloads_p50_ps_per_op"][workload]
-                if int(summary["relative_mad_ppm"]) > WORKLOAD_MAX_RELATIVE_MAD_PPM:
+                summary = dict(candidate_data["workloads_p50_ps_per_op"][workload])
+                mad_ok, deviation_ok = _noise_ok(
+                    summary,
+                    WORKLOAD_MAX_RELATIVE_MAD_PPM,
+                    WORKLOAD_MAX_RELATIVE_DEVIATION_PPM,
+                )
+                if not mad_ok:
                     workload_ok = False
-                    reasons.append(f"timing noise exceeded threshold: {dimension}/{candidate}/{workload}")
-            rss = candidate_data["rss_loaded_delta_kib"]
-            if int(rss["median"]) <= 0 or int(rss["relative_mad_ppm"]) > RSS_MAX_RELATIVE_MAD_PPM:
+                    reasons.append(
+                        f"timing MAD noise exceeded threshold: {dimension}/{candidate}/{workload}"
+                    )
+                if not deviation_ok:
+                    workload_ok = False
+                    reasons.append(
+                        f"timing isolated excursion exceeded threshold: {dimension}/{candidate}/{workload}"
+                    )
+            rss = dict(candidate_data["rss_loaded_delta_kib"])
+            if int(rss["median"]) <= 0:
                 rss_ok = False
-                reasons.append(f"RSS evidence unstable/nonpositive: {dimension}/{candidate}")
+                reasons.append(f"RSS evidence nonpositive: {dimension}/{candidate}")
+                continue
+            mad_ok, deviation_ok = _noise_ok(
+                rss,
+                RSS_MAX_RELATIVE_MAD_PPM,
+                RSS_MAX_RELATIVE_DEVIATION_PPM,
+            )
+            if not mad_ok:
+                rss_ok = False
+                reasons.append(f"RSS MAD noise exceeded threshold: {dimension}/{candidate}")
+            if not deviation_ok:
+                rss_ok = False
+                reasons.append(
+                    f"RSS isolated excursion exceeded threshold: {dimension}/{candidate}"
+                )
+
     population_eligible = protocol_eligible and control_ok and workload_ok and rss_ok
     return {
         "protocol_eligible": protocol_eligible,
@@ -874,8 +924,11 @@ def classify_noise(aggregates: dict[str, object], *, smoke: bool, rounds: int) -
         "population_evidence_eligible": population_eligible,
         "thresholds_ppm": {
             "control_relative_mad": CONTROL_MAX_RELATIVE_MAD_PPM,
+            "control_max_relative_deviation": CONTROL_MAX_RELATIVE_DEVIATION_PPM,
             "workload_relative_mad": WORKLOAD_MAX_RELATIVE_MAD_PPM,
+            "workload_max_relative_deviation": WORKLOAD_MAX_RELATIVE_DEVIATION_PPM,
             "rss_relative_mad": RSS_MAX_RELATIVE_MAD_PPM,
+            "rss_max_relative_deviation": RSS_MAX_RELATIVE_DEVIATION_PPM,
         },
         "reasons": sorted(set(reasons)),
     }
