@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "crucible-benchmark-support"
+version = "0.0.0"
+
+[[package]]
 name = "crucible-component"
 version = "0.0.0"
 
@@ -28,6 +32,7 @@ version = "0.0.0"
 name = "crucible-section-qualification"
 version = "0.0.0"
 dependencies = [
+ "crucible-benchmark-support",
  "crucible-generated",
  "crucible-world-contract",
  "crucible-world-reference",
@@ -37,6 +42,17 @@ dependencies = [
 [[package]]
 name = "crucible-types"
 version = "0.0.0"
+
+[[package]]
+name = "crucible-world-access-qualification"
+version = "0.0.0"
+dependencies = [
+ "crucible-benchmark-support",
+ "crucible-generated",
+ "crucible-types",
+ "crucible-world-chunk",
+ "crucible-world-reference",
+]
 
 [[package]]
 name = "crucible-world-chunk"
