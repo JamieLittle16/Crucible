@@ -23,7 +23,6 @@ pub struct PublishedChunk<S: Copy + Eq> {
     position: ChunkPos,
     stamp: ChunkStamp,
     min_section_y: i32,
-    section_count: usize,
     masks: SectionMasks,
     states: Box<[S]>,
 }
@@ -49,8 +48,8 @@ impl<S: Copy + Eq> PublishedChunk<S> {
 
     /// Number of contiguous logical section images.
     #[must_use]
-    pub const fn section_count(&self) -> usize {
-        self.section_count
+    pub fn section_count(&self) -> usize {
+        self.states.len() / BLOCK_SECTION_CELLS
     }
 
     /// Vertical summary masks captured at the same live revision as the state image.
@@ -112,20 +111,16 @@ where
     /// candidates must demonstrate a measured whole-cost win against this transparent baseline.
     #[must_use]
     pub fn publish_semantic_image(&self) -> PublishedChunk<S> {
-        let cell_count = self
-            .sections
-            .len()
-            .checked_mul(BLOCK_SECTION_CELLS)
-            .expect("live chunk section count is bounded to 64");
+        let cell_count = self.sections.len() * BLOCK_SECTION_CELLS;
         let mut states = Vec::with_capacity(cell_count);
 
         for section in &self.sections {
             for y in 0_u8..16 {
                 for z in 0_u8..16 {
                     for x in 0_u8..16 {
-                        let pos = SectionBlockPos::new(x, y, z)
-                            .expect("publication loops only over valid section coordinates");
-                        states.push(section.get(pos));
+                        if let Some(pos) = SectionBlockPos::new(x, y, z) {
+                            states.push(section.get(pos));
+                        }
                     }
                 }
             }
@@ -136,7 +131,6 @@ where
             position: self.position,
             stamp: self.stamp(),
             min_section_y: self.min_section_y,
-            section_count: self.sections.len(),
             masks: self.masks,
             states: states.into_boxed_slice(),
         }
