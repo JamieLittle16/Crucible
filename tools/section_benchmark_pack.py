@@ -13,7 +13,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Iterator
 
-import section_corpus
+try:
+    from tools import section_corpus
+except ModuleNotFoundError:  # Direct execution from tools/.
+    import section_corpus  # type: ignore[no-redef]
 
 PACK_SCHEMA = 1
 PACK_MAGIC = b"CRUCIBLE-SECTION-BENCH-PACK|1\n"
@@ -239,7 +242,6 @@ def _iter_member_sections(
     member: Member,
     target: section_corpus.TargetEvidence,
 ) -> Iterator[tuple[str, tuple[int, ...]]]:
-    # Independent canonical validation is intentionally run before the streaming conversion.
     parsed = section_corpus.validate_corpus(member.corpus_path, target)
     if parsed.corpus_sha256 != member.corpus_sha256:
         raise PackError(
