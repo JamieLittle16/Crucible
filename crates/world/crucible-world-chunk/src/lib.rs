@@ -6,10 +6,14 @@
 
 #![forbid(unsafe_code)]
 
+mod window;
+
 use core::marker::PhantomData;
 
 use crucible_types::{BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp};
 use crucible_world_contract::{BlockSection, BlockStateFacts, SectionBlockPos, SectionSummary};
+
+pub use window::{ResolvedChunkWindow, ResolvedChunkWindowError};
 
 const BLOCKS_PER_CHUNK_AXIS: i32 = 16;
 const MAX_MASKED_SECTIONS: usize = u64::BITS as usize;
@@ -287,6 +291,22 @@ where
         self.masks == self.recompute_masks()
     }
 
+    fn get_pre_resolved_block(&self, pos: BlockPos) -> Result<S, ChunkCoreError> {
+        debug_assert_eq!(
+            ChunkPos {
+                x: pos.x.div_euclid(BLOCKS_PER_CHUNK_AXIS),
+                z: pos.z.div_euclid(BLOCKS_PER_CHUNK_AXIS),
+            },
+            self.position
+        );
+        let local_x = u8::try_from(pos.x.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
+            .expect("Euclidean chunk-local x is in 0..16");
+        let local_z = u8::try_from(pos.z.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
+            .expect("Euclidean chunk-local z is in 0..16");
+        let (section_index, local) = self.resolve_vertical(pos, local_x, local_z)?;
+        Ok(self.sections[section_index].get(local))
+    }
+
     fn resolve_block(&self, pos: BlockPos) -> Result<(usize, SectionBlockPos), ChunkCoreError> {
         let actual_chunk = ChunkPos {
             x: pos.x.div_euclid(BLOCKS_PER_CHUNK_AXIS),
@@ -300,6 +320,19 @@ where
             });
         }
 
+        let local_x = u8::try_from(pos.x.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
+            .expect("Euclidean chunk-local x is in 0..16");
+        let local_z = u8::try_from(pos.z.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
+            .expect("Euclidean chunk-local z is in 0..16");
+        self.resolve_vertical(pos, local_x, local_z)
+    }
+
+    fn resolve_vertical(
+        &self,
+        pos: BlockPos,
+        local_x: u8,
+        local_z: u8,
+    ) -> Result<(usize, SectionBlockPos), ChunkCoreError> {
         let section_y = pos.y.div_euclid(BLOCKS_PER_CHUNK_AXIS);
         let offset = i64::from(section_y) - i64::from(self.min_section_y);
         let section_index = usize::try_from(offset)
@@ -313,14 +346,10 @@ where
             });
         };
 
-        let local_x = u8::try_from(pos.x.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
-            .expect("Euclidean chunk-local x is in 0..16");
         let local_y = u8::try_from(pos.y.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
             .expect("Euclidean section-local y is in 0..16");
-        let local_z = u8::try_from(pos.z.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
-            .expect("Euclidean chunk-local z is in 0..16");
         let local = SectionBlockPos::new(local_x, local_y, local_z)
-            .expect("Euclidean local coordinates are valid section coordinates");
+            .expect("resolved local coordinates are valid section coordinates");
         Ok((section_index, local))
     }
 }
