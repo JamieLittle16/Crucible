@@ -135,9 +135,10 @@ where
 
         let chunks = slots
             .into_iter()
-            .map(|chunk| chunk.expect("all resolved-window slots were checked present"))
+            .flatten()
             .collect::<Vec<_>>()
             .into_boxed_slice();
+        debug_assert_eq!(chunks.len(), area);
         Ok(Self {
             origin,
             width,
@@ -195,12 +196,8 @@ where
             }
         );
 
-        let local_x = u8::try_from(pos.x.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
-            .expect("Euclidean chunk-local x is in 0..16");
-        let local_z = u8::try_from(pos.z.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
-            .expect("Euclidean chunk-local z is in 0..16");
         chunk
-            .get_pre_resolved_block(pos, local_x, local_z)
+            .get_pre_resolved_block(pos)
             .map_err(ResolvedChunkWindowError::Chunk)
     }
 
