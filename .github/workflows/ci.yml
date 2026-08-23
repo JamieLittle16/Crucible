@@ -56,6 +56,7 @@ jobs:
           cargo fmt
           --package crucible-types
           --package crucible-component
+          --package crucible-connection-core
           --package crucible-protocol-core
           --package crucible-benchmark-support
           --package crucible-composition-qualification
@@ -77,6 +78,9 @@ jobs:
 
       - name: Protocol wire qualification
         run: cargo test --package crucible-protocol-core --locked
+
+      - name: Connection buffer qualification
+        run: cargo test --package crucible-connection-core --locked
 
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
