@@ -40,8 +40,16 @@ Performance qualification
 
 The official server is a white-box and black-box semantic oracle. Its class hierarchy is **not** Crucible's architecture.
 
+## Licensing
+
+Crucible is licensed under the **Mozilla Public License 2.0 (MPL-2.0)**. See `LICENSE`.
+
+Contributors retain ownership of their contributions. Contributions are also subject to the project Contributor Licence Agreement in `CLA.md`, which grants the Crucible Project Steward the irrevocable rights needed to maintain, sublicense and relicense the project over its lifetime.
+
 ## Repository policy
 
-This repository is private during the foundational phase. No license is granted yet. Do not copy or commit Mojang source into this repository. The local official source corpus is pinned by digest and indexed by tooling.
+Do not copy or commit Mojang source code, server JARs, game assets, worlds, or other proprietary Minecraft artifacts into this repository. The local official source/runtime corpus is used only as a semantic and qualification oracle and is pinned by digest where needed.
+
+Crucible is an independent project and is not affiliated with, sponsored by, or endorsed by Mojang Studios or Microsoft. Minecraft is a trademark of Microsoft Corporation.
 
 See `docs/README.md` and `docs/execution/EXECUTION_MASTER_PLAN.md` for the current plan.
