@@ -6,16 +6,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import socket
 import sys
 import threading
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 SCHEMA = 1
 CAPTURE_KIND = "preplay-frame-capture-v1"
+HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 
 
 class CaptureError(ValueError):
@@ -98,6 +99,10 @@ class FrameStreamCapture:
     def stream_bytes(self) -> int:
         return self._stream_bytes
 
+    @property
+    def limits(self) -> tuple[int, int, int]:
+        return self.max_frame_bytes, self.max_stream_bytes, self.max_frames
+
     def feed(self, data: bytes) -> None:
         if not data:
             return
@@ -178,9 +183,12 @@ def _read_target(lock_path: Path) -> dict[str, object]:
         raise CaptureError("vanilla lock Minecraft version must be a non-empty string")
     if type(target["protocol"]) is not int:
         raise CaptureError("vanilla lock protocol must be an integer")
-    for field in ("source_archive_sha256", "fingerprint_algorithm"):
-        if not isinstance(target[field], str) or not target[field]:
-            raise CaptureError(f"vanilla lock {field} must be a non-empty string")
+    source_digest = target["source_archive_sha256"]
+    if not isinstance(source_digest, str) or HEX_64.fullmatch(source_digest) is None:
+        raise CaptureError("vanilla lock source archive SHA-256 must be canonical lowercase hex")
+    fingerprint_algorithm = target["fingerprint_algorithm"]
+    if not isinstance(fingerprint_algorithm, str) or not fingerprint_algorithm:
+        raise CaptureError("vanilla lock fingerprint algorithm must be a non-empty string")
     return target
 
 
@@ -190,14 +198,17 @@ def build_artifact(
     client_to_server: FrameStreamCapture,
     server_to_client: FrameStreamCapture,
 ) -> dict[str, object]:
+    if client_to_server.limits != server_to_client.limits:
+        raise CaptureError("both capture directions must use identical evidence limits")
+    max_frame_bytes, max_stream_bytes, max_frames = client_to_server.limits
     artifact: dict[str, object] = {
         "schema": SCHEMA,
         "kind": CAPTURE_KIND,
         "target": target,
         "limits": {
-            "max_frame_bytes": client_to_server.max_frame_bytes,
-            "max_stream_bytes": client_to_server.max_stream_bytes,
-            "max_frames_per_direction": client_to_server.max_frames,
+            "max_frame_bytes": max_frame_bytes,
+            "max_stream_bytes": max_stream_bytes,
+            "max_frames_per_direction": max_frames,
         },
         "streams": [
             client_to_server.to_json("client-to-server"),
