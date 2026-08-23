@@ -391,10 +391,8 @@ mod tests {
     #[test]
     fn fixed_width_fields_use_network_byte_order() {
         let payload = [
-            0x12, 0x34,
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
-            0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
-            0x01,
+            0x12, 0x34, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe, 0x01, 0x23, 0x45, 0x67,
+            0x89, 0xab, 0xcd, 0xef, 0x01,
         ];
         let mut reader = PacketReader::new(&payload);
         assert_eq!(reader.read_u16(), Ok(0x1234));
@@ -442,10 +440,8 @@ mod tests {
         let before = writer.as_slice().to_vec();
         assert!(matches!(
             writer.write_string("😀😀", 3),
-            Err(
-                PacketCodecError::PacketLimitExceeded { .. }
-                    | PacketCodecError::Wire(WireError::StringLengthLimitExceeded { .. })
-            )
+            Err(PacketCodecError::PacketLimitExceeded { .. }
+                | PacketCodecError::Wire(WireError::StringLengthLimitExceeded { .. }))
         ));
         assert_eq!(writer.as_slice(), before);
     }
