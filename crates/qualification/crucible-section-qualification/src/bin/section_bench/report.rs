@@ -55,12 +55,28 @@ fn write_identity(
     .map_err(fmt_error)?;
     write_string(output, "target_triple", &hardware.target_triple)?;
     write_string(output, "cpu_model", &hardware.cpu_model)?;
+    write_string(output, "cpu_vendor", &hardware.cpu_vendor)?;
+    write_string(output, "cpu_family", &hardware.cpu_family)?;
+    write_string(output, "cpu_model_id", &hardware.cpu_model_id)?;
+    write_string(output, "cpu_stepping", &hardware.cpu_stepping)?;
+    write_string(output, "cpu_microcode", &hardware.cpu_microcode)?;
     write_string(output, "kernel", &hardware.kernel)?;
     write_string(output, "cpu_governor", &hardware.cpu_governor)?;
     write_string(output, "cpu_current_khz", &hardware.cpu_current_khz)?;
     write_string(output, "cpu_min_khz", &hardware.cpu_min_khz)?;
     write_string(output, "cpu_max_khz", &hardware.cpu_max_khz)?;
     write_string(output, "cpus_allowed_list", &hardware.cpus_allowed_list)?;
+    write_string(output, "mems_allowed_list", &hardware.mems_allowed_list)?;
+    write_string(output, "online_cpus", &hardware.online_cpus)?;
+    write_string(output, "smt_active", &hardware.smt_active)?;
+    write_string(output, "cache_topology", &hardware.cache_topology)?;
+    write_string(output, "perf_event_paranoid", &hardware.perf_event_paranoid)?;
+    write_string(
+        output,
+        "transparent_hugepage",
+        &hardware.transparent_hugepage,
+    )?;
+    write_string(output, "memory_total_kib", &hardware.memory_total_kib)?;
     write_string(output, "load_average", &hardware.load_average)?;
     write_string(output, "intel_pstate_no_turbo", &hardware.no_turbo)?;
     write_string(output, "rustflags", &hardware.rustflags)?;
@@ -218,7 +234,8 @@ fn json_escape(value: &str) -> String {
             '\r' => result.push_str("\\r"),
             '\t' => result.push_str("\\t"),
             character if character.is_control() => {
-                let _ = write!(result, "\\u{:04x}", u32::from(character));
+                use std::fmt::Write;
+                let _ = write!(&mut result, "\\u{:04x}", u32::from(character));
             }
             character => result.push(character),
         }
@@ -226,16 +243,22 @@ fn json_escape(value: &str) -> String {
     result
 }
 
-fn fmt_error(_: fmt::Error) -> String {
-    "formatting benchmark report unexpectedly failed".to_owned()
+fn fmt_error(error: fmt::Error) -> String {
+    error.to_string()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::json_escape;
+    use super::{comma_suffix, json_escape};
 
     #[test]
-    fn json_escape_handles_control_and_quote_characters() {
-        assert_eq!(json_escape("a\n\"b\\c"), "a\\n\\\"b\\\\c");
+    fn comma_suffix_is_absent_only_for_final_item() {
+        assert_eq!(comma_suffix(0, 2), ",");
+        assert_eq!(comma_suffix(1, 2), "");
+    }
+
+    #[test]
+    fn json_escape_handles_structural_characters() {
+        assert_eq!(json_escape("a\"b\\c\n"), "a\\\"b\\\\c\\n");
     }
 }

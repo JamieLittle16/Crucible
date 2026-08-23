@@ -22,9 +22,10 @@ If you are new to the project, do not try to read everything in repository order
 ### I want to understand how claims become evidence
 
 1. [`qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md`](qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md) — durable evidence and experiment records.
-2. [`execution/CI_QUALIFICATION_ROADMAP.md`](execution/CI_QUALIFICATION_ROADMAP.md) — how qualification becomes enforceable CI/repository policy.
-3. [`qualification/SECTION_BENCHMARK_HARNESS.md`](qualification/SECTION_BENCHMARK_HARNESS.md) — benchmark methodology for the current foundational subsystem.
-4. [`qualification/SECTION_SEMANTIC_FIXTURES.md`](qualification/SECTION_SEMANTIC_FIXTURES.md) — source-backed semantic fixtures.
+2. [`qualification/PERFORMANCE_QUALIFICATION_STANDARD.md`](qualification/PERFORMANCE_QUALIFICATION_STANDARD.md) — project-wide rules for warm-up, machine state, cache/topology effects, counters, statistical discipline and low-level optimization admission.
+3. [`execution/CI_QUALIFICATION_ROADMAP.md`](execution/CI_QUALIFICATION_ROADMAP.md) — how qualification becomes enforceable CI/repository policy.
+4. [`qualification/SECTION_BENCHMARK_HARNESS.md`](qualification/SECTION_BENCHMARK_HARNESS.md) — benchmark methodology for the current foundational subsystem.
+5. [`qualification/SECTION_SEMANTIC_FIXTURES.md`](qualification/SECTION_SEMANTIC_FIXTURES.md) — source-backed semantic fixtures.
 
 ## Architecture
 
@@ -41,6 +42,7 @@ Architecture documents should separate **semantic laws** from **replaceable mech
 | Document | Purpose |
 | --- | --- |
 | [`EVIDENCE_AND_EXPERIMENT_RECORDS.md`](qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md) | Evidence identity, experiment records and decision provenance. |
+| [`PERFORMANCE_QUALIFICATION_STANDARD.md`](qualification/PERFORMANCE_QUALIFICATION_STANDARD.md) | Normative machine-state, warm-up, topology, cache/counter, tail and whole-cost rules for performance claims. |
 | [`SECTION_EQUIVALENCE_LAB.md`](qualification/SECTION_EQUIVALENCE_LAB.md) | Differential/equivalence qualification for section mechanisms. |
 | [`SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) | Section representation experiments and selection criteria. |
 | [`SECTION_BENCHMARK_HARNESS.md`](qualification/SECTION_BENCHMARK_HARNESS.md) | Controlled benchmark harness and measurement rules. |
