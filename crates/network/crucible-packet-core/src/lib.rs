@@ -173,8 +173,7 @@ impl<'a> PacketReader<'a> {
     /// success.
     pub fn read_string(&mut self, max_utf16_units: usize) -> Result<&'a str, PacketCodecError> {
         let remaining: &'a [u8] = self.remaining();
-        let DecodeResult::Complete { value, consumed } =
-            decode_string(remaining, max_utf16_units)?
+        let DecodeResult::Complete { value, consumed } = decode_string(remaining, max_utf16_units)?
         else {
             return Err(self.truncated(PacketField::String));
         };
@@ -203,7 +202,7 @@ impl<'a> PacketReader<'a> {
         }
     }
 
-    const fn remaining(&self) -> &'a [u8] {
+    fn remaining(&self) -> &'a [u8] {
         &self.payload[self.cursor..]
     }
 
@@ -444,7 +443,9 @@ mod tests {
         assert!(matches!(
             writer.write_string("😀😀", 3),
             Err(PacketCodecError::PacketLimitExceeded { .. })
-                | Err(PacketCodecError::Wire(WireError::StringLengthLimitExceeded { .. }))
+                | Err(PacketCodecError::Wire(
+                    WireError::StringLengthLimitExceeded { .. }
+                ))
         ));
         assert_eq!(writer.as_slice(), before);
     }
@@ -473,18 +474,39 @@ mod tests {
             assert_eq!(reader.consumed_len(), 0);
         }
 
-        for width in [2_usize, 8, 8] {
-            for split in 0..width {
-                let bytes = vec![0; split];
-                let mut reader = PacketReader::new(&bytes);
-                let result = match width {
-                    2 => reader.read_u16().map(u64::from),
-                    8 => reader.read_u64(),
-                    _ => unreachable!(),
-                };
-                assert!(matches!(result, Err(PacketCodecError::Truncated { .. })));
-                assert_eq!(reader.consumed_len(), 0);
-            }
+        for split in 0..2 {
+            let bytes = vec![0; split];
+            let mut reader = PacketReader::new(&bytes);
+            assert!(matches!(
+                reader.read_u16(),
+                Err(PacketCodecError::Truncated {
+                    field: PacketField::U16,
+                    ..
+                })
+            ));
+            assert_eq!(reader.consumed_len(), 0);
+        }
+        for split in 0..8 {
+            let bytes = vec![0; split];
+            let mut signed_reader = PacketReader::new(&bytes);
+            assert!(matches!(
+                signed_reader.read_i64(),
+                Err(PacketCodecError::Truncated {
+                    field: PacketField::I64,
+                    ..
+                })
+            ));
+            assert_eq!(signed_reader.consumed_len(), 0);
+
+            let mut unsigned_reader = PacketReader::new(&bytes);
+            assert!(matches!(
+                unsigned_reader.read_u64(),
+                Err(PacketCodecError::Truncated {
+                    field: PacketField::U64,
+                    ..
+                })
+            ));
+            assert_eq!(unsigned_reader.consumed_len(), 0);
         }
 
         let mut string = Vec::new();
@@ -557,7 +579,7 @@ mod tests {
             state ^= state >> 17;
             state ^= state << 5;
             let varint = state.cast_signed();
-            let short = (state & 0xffff) as u16;
+            let short = u16::try_from(state & 0xffff).expect("masked value fits u16");
             let signed = i64::from(varint)
                 .wrapping_mul(0x1_0001)
                 .wrapping_add(i64::try_from(index).expect("bounded index"));
