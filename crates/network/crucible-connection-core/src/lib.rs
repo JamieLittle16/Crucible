@@ -446,10 +446,9 @@ fn validate_frame_body(body: &[u8], max_body_len: usize) -> Result<(), Connectio
 }
 
 fn encoded_frame_len(body_len: usize) -> Result<usize, ConnectionBufferError> {
-    let signed = i32::try_from(body_len)
-        .map_err(|_| ConnectionBufferError::Wire(WireError::LengthDoesNotFitVarInt {
-            length: body_len,
-        }))?;
+    let signed = i32::try_from(body_len).map_err(|_| {
+        ConnectionBufferError::Wire(WireError::LengthDoesNotFitVarInt { length: body_len })
+    })?;
     var_int_len(signed)
         .checked_add(body_len)
         .ok_or(ConnectionBufferError::LengthOverflow)
@@ -459,9 +458,7 @@ fn encoded_frame_len(body_len: usize) -> Result<usize, ConnectionBufferError> {
 mod tests {
     use crucible_protocol_core::{WireError, encode_frame, encode_var_int};
 
-    use super::{
-        BufferKind, ConnectionBufferError, ConnectionLimits, EgressBuffer, IngressBuffer,
-    };
+    use super::{BufferKind, ConnectionBufferError, ConnectionLimits, EgressBuffer, IngressBuffer};
 
     fn limits() -> ConnectionLimits {
         ConnectionLimits::new(1_024, 4_096, 4_096).expect("valid test limits")
@@ -595,8 +592,13 @@ mod tests {
         both.extend_from_slice(&second);
         ingress.push(&both).expect("initial stream");
         ingress.consume(first.len()).expect("consume first");
-        ingress.push(&framed(3, b"third")).expect("append after prefix");
-        let view = ingress.peek_frame().expect("valid").expect("second retained");
+        ingress
+            .push(&framed(3, b"third"))
+            .expect("append after prefix");
+        let view = ingress
+            .peek_frame()
+            .expect("valid")
+            .expect("second retained");
         assert_eq!(view.packet_id(), 2);
         assert_eq!(view.payload(), b"second");
 
