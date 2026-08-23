@@ -84,6 +84,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crucible-preplay-core"
+version = "0.0.0"
+dependencies = [
+ "crucible-connection-core",
+ "crucible-connection-driver",
+ "crucible-packet-core",
+ "crucible-session-core",
+]
+
+[[package]]
 name = "crucible-protocol-core"
 version = "0.0.0"
 
