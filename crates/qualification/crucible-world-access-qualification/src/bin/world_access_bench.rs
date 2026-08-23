@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use crucible_benchmark_support::{HardwareMetadata, collect_hardware_metadata, push_json_string};
+use crucible_generated::BlockStateId;
 use crucible_generated::{STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256};
 use crucible_types::BlockPos;
 use crucible_world_access_qualification::{
@@ -12,7 +13,6 @@ use crucible_world_access_qualification::{
 };
 use crucible_world_chunk::ResolvedChunkWindow;
 use crucible_world_reference::DirectBlockSection;
-use crucible_generated::BlockStateId;
 
 const SCHEMA: u32 = 1;
 
@@ -140,7 +140,10 @@ fn run() -> Result<(), String> {
 
     let artifact = render_report(&config, &hardware, &reports);
     if let Some(path) = config.output {
-        if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+        if let Some(parent) = path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+        {
             fs::create_dir_all(parent)
                 .map_err(|error| format!("could not create {}: {error}", parent.display()))?;
         }
@@ -169,7 +172,10 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Config, String> 
             "--require-single-cpu" => require_single_cpu = true,
             "--output" => output = Some(PathBuf::from(next_value(&mut args, "--output")?)),
             "--queries" => {
-                query_count = Some(parse_positive(&next_value(&mut args, "--queries")?, "queries")?)
+                query_count = Some(parse_positive(
+                    &next_value(&mut args, "--queries")?,
+                    "queries",
+                )?)
             }
             "--warmup-rounds" => {
                 warmup_rounds = Some(parse_positive(
@@ -286,13 +292,8 @@ fn bench_case(spec: CaseSpec, config: &Config) -> Result<CaseReport, String> {
                 .wrapping_add(query_count.wrapping_mul(131))
                 % case.trace().len();
             let reference_first = round % 2 == 0;
-            let (reference_ns, resolved_total_ns) = run_whole_cost_pair(
-                &case,
-                &reference,
-                start_index,
-                query_count,
-                reference_first,
-            )?;
+            let (reference_ns, resolved_total_ns) =
+                run_whole_cost_pair(&case, &reference, start_index, query_count, reference_first)?;
             whole_cost_samples.push(WholeCostSample {
                 round,
                 query_count,
@@ -349,12 +350,16 @@ fn run_pair(
             reference.get_block(pos).map_err(world_error)
         })?;
         let resolved = time_reads(trace, start_index, count, |pos| {
-            resolved.get_block(pos).map_err(|error| world_error(error.into()))
+            resolved
+                .get_block(pos)
+                .map_err(|error| world_error(error.into()))
         })?;
         Ok((reference, resolved))
     } else {
         let resolved_ns = time_reads(trace, start_index, count, |pos| {
-            resolved.get_block(pos).map_err(|error| world_error(error.into()))
+            resolved
+                .get_block(pos)
+                .map_err(|error| world_error(error.into()))
         })?;
         let reference_ns = time_reads(trace, start_index, count, |pos| {
             reference.get_block(pos).map_err(world_error)
@@ -487,7 +492,8 @@ fn render_report(config: &Config, hardware: &HardwareMetadata, reports: &[CaseRe
     output.push_str(&SCHEMA.to_string());
     output.push_str(",\n  \"benchmark\":\"resolved-chunk-window\",\n  \"mode\":");
     push_json_string(&mut output, config.mode.as_str());
-    output.push_str(",\n  \"hosted_ci_is_diagnostic_only\":true,\n  \"target_state_input_sha256\":");
+    output
+        .push_str(",\n  \"hosted_ci_is_diagnostic_only\":true,\n  \"target_state_input_sha256\":");
     push_json_string(&mut output, STATE_DATA_INPUT_SHA256);
     output.push_str(",\n  \"target_state_generation_sha256\":");
     push_json_string(&mut output, STATE_DATA_GENERATION_SHA256);
