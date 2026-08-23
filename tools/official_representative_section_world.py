@@ -1,322 +1,148 @@
 #!/usr/bin/env python3
-"""Generate one deterministic representative-section world with the pinned official server."""
+"""Generate one representative world and finalize its persisted region containers.
+
+The full generation implementation lives in `official_representative_section_world_impl`. This
+wrapper changes only process/container finalization after the implementation has completed its
+normal final synchronous `save-all flush` barrier.
+
+Normal vanilla `stop` performs another large world save and exhausted the hosted runner heap. A
+controlled SIGKILL after a quiescent `save-off` + `save-all flush` prevents that redundant semantic
+save, but it also bypasses `RegionFile.close()`. Minecraft 26.2 still has a close-time
+`padToFullSector()` boundary, so the wrapper reproduces only that physical append-only finalization:
+selected region files receive zero bytes up to the next 4096-byte sector boundary before the
+unchanged corpus extractor reads them.
+"""
 
 from __future__ import annotations
 
-import argparse
-import hashlib
 import json
+import os
 import queue
-import shutil
 import subprocess
 import sys
 import threading
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
-import official_state_data
-import section_representative_plan
+import official_representative_section_world_impl as _impl
 
-DEFAULT_TIMEOUT_SECONDS = 900
-DEFAULT_BATCH_SIZE = 8
-DEFAULT_BATCH_SETTLE_SECONDS = 2
-GENERATOR_ID = "official-server-representative-section-world-v2-batched"
+SECTOR_BYTES = 4096
+REGION_HEADER_BYTES = SECTOR_BYTES * 2
+FINALIZATION_POLICY = "final-flush-save-off-flush-sigkill-pad-region-tail-v3"
+SAVE_OFF_MARKER = "CRUCIBLE_REPRESENTATIVE_SAVE_OFF"
+QUIESCENT_SAVE_MARKER = "CRUCIBLE_REPRESENTATIVE_QUIESCENT_SAVE"
 
-
-class RepresentativeWorldError(RuntimeError):
-    """Raised when the official representative-world generation probe fails."""
+_REGION_FINALIZATION_RECORDS: list[dict[str, object]] = []
 
 
-@dataclass(frozen=True, slots=True)
-class ChunkTicket:
-    """One dimension-scoped chunk requested from the official server."""
+def __getattr__(name: str):
+    """Forward existing helper/test API to the preserved implementation module."""
 
-    dimension: str
-    chunk_x: int
-    chunk_z: int
+    return getattr(_impl, name)
 
-    @property
-    def block_x(self) -> int:
-        return self.chunk_x * 16
 
-    @property
-    def block_z(self) -> int:
-        return self.chunk_z * 16
+def _quiesce_persistence(console: _impl.ServerConsole, deadline: float) -> None:
+    """Disable later autosaves and establish a final synchronous persistence barrier."""
 
-    def add_command(self) -> str:
-        return (
-            f"execute in {self.dimension} run forceload add "
-            f"{self.block_x} {self.block_z}"
+    # The implementation has already completed its normal final save-all flush. Disable automatic
+    # saving before asking for the final quiescent flush so no subsequent server tick can begin a
+    # new semantic save between the admitted barrier and controlled termination.
+    console.send(["save-off", f"say {SAVE_OFF_MARKER}"])
+    console.wait_for(SAVE_OFF_MARKER, deadline, "automatic-save disable barrier")
+    console.barrier(QUIESCENT_SAVE_MARKER, deadline)
+
+
+def _terminate_after_final_flush(process: subprocess.Popen[str]) -> None:
+    """End the oracle after the admitted quiescent synchronous persistence barrier."""
+
+    if process.poll() is not None:
+        raise _impl.RepresentativeWorldError(
+            "official server exited after final save barrier before controlled finalization"
+        )
+    # SIGTERM may execute JVM shutdown hooks. SIGKILL is deliberate here: automatic saving has been
+    # disabled and the final synchronous save barrier completed, so shutdown-time semantic saving is
+    # outside the evidence path and must not be allowed to restart persistence work.
+    process.kill()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired as error:
+        raise _impl.RepresentativeWorldError(
+            "official server did not terminate after final save barrier"
+        ) from error
+
+
+def _region_relative_path(world: Path, path: Path) -> str:
+    """Return one canonical world-relative path and reject any path escape."""
+
+    world_root = world.resolve()
+    try:
+        resolved = path.resolve(strict=True)
+        relative = resolved.relative_to(world_root)
+    except (FileNotFoundError, ValueError) as error:
+        raise _impl.RepresentativeWorldError(
+            f"selected region path escapes or is missing from generated world: {path}"
+        ) from error
+    if path.is_symlink():
+        raise _impl.RepresentativeWorldError(
+            f"selected region file must not be a symlink: {path}"
+        )
+    return relative.as_posix()
+
+
+def _pad_region_file_tail(world: Path, path: Path) -> dict[str, object]:
+    """Append only zero padding required to reproduce close-time full-sector finalization."""
+
+    relative = _region_relative_path(world, path)
+    if not path.is_file():
+        raise _impl.RepresentativeWorldError(
+            f"selected region path is not a regular file: {path}"
         )
 
-    def remove_command(self) -> str:
-        return (
-            f"execute in {self.dimension} run forceload remove "
-            f"{self.block_x} {self.block_z}"
+    original_size = path.stat().st_size
+    if original_size < REGION_HEADER_BYTES:
+        raise _impl.RepresentativeWorldError(
+            f"selected region file is smaller than the two-sector Anvil header: {path}"
         )
 
+    padding_bytes = (-original_size) % SECTOR_BYTES
+    if padding_bytes:
+        # Binary append mode is intentional: this phase must be physically incapable of rewriting
+        # an existing header, timestamp, location entry, compressed payload, or NBT byte.
+        with path.open("ab") as handle:
+            handle.write(b"\x00" * padding_bytes)
+            handle.flush()
+            os.fsync(handle.fileno())
 
-@dataclass(frozen=True, slots=True)
-class GenerationBatch:
-    """Bounded same-dimension generation unit."""
-
-    index: int
-    dimension: str
-    tickets: tuple[ChunkTicket, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class BatchTiming:
-    index: int
-    dimension: str
-    ticket_count: int
-    elapsed_ms: int
-
-
-class ServerConsole:
-    """Small line-oriented command/barrier adapter for the official server process."""
-
-    def __init__(
-        self,
-        process: subprocess.Popen[str],
-        lines: queue.Queue[str],
-    ) -> None:
-        self.process = process
-        self.lines = lines
-        self.tail: list[str] = []
-        assert process.stdin is not None
-        self.stdin = process.stdin
-
-    def _observe(self, line: str) -> None:
-        self.tail.append(line.rstrip())
-        self.tail = self.tail[-80:]
-
-    def send(self, commands: list[str] | tuple[str, ...]) -> None:
-        if not commands:
-            return
-        if self.process.poll() is not None:
-            raise RepresentativeWorldError(
-                f"official server exited before command dispatch: {self.process.returncode}"
-            )
-        self.stdin.write("\n".join(commands) + "\n")
-        self.stdin.flush()
-
-    def wait_for(self, marker: str, deadline: float, label: str) -> None:
-        while time.monotonic() < deadline:
-            if self.process.poll() is not None:
-                raise RepresentativeWorldError(
-                    f"official server exited while waiting for {label}: {self.process.returncode}"
-                    + ("\n" + "\n".join(self.tail) if self.tail else "")
-                )
-            try:
-                line = self.lines.get(timeout=0.25)
-            except queue.Empty:
-                continue
-            if not line:
-                continue
-            self._observe(line)
-            if marker in line:
-                return
-        raise RepresentativeWorldError(
-            f"timed out waiting for official server {label}: marker={marker}"
-            + ("\n" + "\n".join(self.tail) if self.tail else "")
+    final_size = path.stat().st_size
+    expected_size = original_size + padding_bytes
+    if final_size != expected_size or final_size % SECTOR_BYTES != 0:
+        raise _impl.RepresentativeWorldError(
+            "region physical finalization did not produce the exact expected sector-aligned size: "
+            f"{path}: before={original_size}, padding={padding_bytes}, after={final_size}"
         )
 
-    def wait_for_start(self, deadline: float) -> None:
-        while time.monotonic() < deadline:
-            if self.process.poll() is not None:
-                break
-            try:
-                line = self.lines.get(timeout=0.25)
-            except queue.Empty:
-                continue
-            if not line:
-                continue
-            self._observe(line)
-            if "Done (" in line and 'For help, type "help"' in line:
-                return
-        raise RepresentativeWorldError(
-            "official server did not reach completed startup"
-            + ("\n" + "\n".join(self.tail) if self.tail else "")
+    return {
+        "path": relative,
+        "original_size": original_size,
+        "padding_bytes": padding_bytes,
+        "final_size": final_size,
+    }
+
+
+def _finalize_selected_region_files(
+    world: Path, plan: dict[str, object]
+) -> list[dict[str, object]]:
+    """Reproduce only selected `RegionFile` close-time sector-tail padding."""
+
+    selected = sorted(
+        set(_impl.expected_region_paths(world, plan)),
+        key=lambda path: path.as_posix(),
+    )
+    if not selected:
+        raise _impl.RepresentativeWorldError(
+            "representative plan resolved to no selected region files"
         )
-
-    def settle(self, seconds: int, deadline: float) -> None:
-        settle_deadline = min(deadline, time.monotonic() + seconds)
-        while time.monotonic() < settle_deadline:
-            if self.process.poll() is not None:
-                raise RepresentativeWorldError(
-                    f"official server exited during representative chunk generation: {self.process.returncode}"
-                )
-            time.sleep(min(0.25, max(0.0, settle_deadline - time.monotonic())))
-        if time.monotonic() >= deadline:
-            raise RepresentativeWorldError("representative generation exhausted global timeout")
-
-    def barrier(self, marker: str, deadline: float) -> None:
-        # Commands execute serially on the server command path.  Seeing the marker means
-        # the preceding synchronous `save-all flush` command has returned.
-        self.send(["save-all flush", f"say {marker}"])
-        self.wait_for(marker, deadline, f"save barrier {marker}")
-
-
-def server_properties(seed: int) -> str:
-    return "\n".join(
-        [
-            "allow-nether=true",
-            "difficulty=peaceful",
-            "enable-command-block=false",
-            "enable-query=false",
-            "enable-rcon=false",
-            "gamemode=survival",
-            "generate-structures=true",
-            "level-name=world",
-            f"level-seed={seed}",
-            "max-players=1",
-            "max-tick-time=-1",
-            "motd=Crucible representative section corpus",
-            "online-mode=false",
-            "server-ip=127.0.0.1",
-            "server-port=25565",
-            "simulation-distance=2",
-            "spawn-protection=0",
-            "sync-chunk-writes=true",
-            "view-distance=2",
-            "white-list=true",
-        ]
-    ) + "\n"
-
-
-def tickets_for_plan(plan: dict[str, object]) -> list[ChunkTicket]:
-    dimensions = plan["dimensions"]
-    assert isinstance(dimensions, dict)
-    tickets: list[ChunkTicket] = []
-    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
-        entry = dimensions[descriptor.key]
-        assert isinstance(entry, dict)
-        chunks = entry["chunks"]
-        assert isinstance(chunks, list)
-        tickets.extend(
-            ChunkTicket(descriptor.key, int(chunk[0]), int(chunk[1]))
-            for chunk in chunks
-        )
-    return tickets
-
-
-def commands_for_plan(plan: dict[str, object]) -> list[str]:
-    """Stable selection-command identity retained across generator mechanisms."""
-
-    return [ticket.add_command() for ticket in tickets_for_plan(plan)]
-
-
-def generation_batches(
-    plan: dict[str, object],
-    batch_size: int,
-) -> list[GenerationBatch]:
-    if batch_size <= 0:
-        raise RepresentativeWorldError("generation batch size must be positive")
-    dimensions = plan["dimensions"]
-    assert isinstance(dimensions, dict)
-    batches: list[GenerationBatch] = []
-    batch_index = 0
-    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
-        entry = dimensions[descriptor.key]
-        assert isinstance(entry, dict)
-        chunks = entry["chunks"]
-        assert isinstance(chunks, list)
-        tickets = [
-            ChunkTicket(descriptor.key, int(chunk[0]), int(chunk[1]))
-            for chunk in chunks
-        ]
-        for start in range(0, len(tickets), batch_size):
-            batch_tickets = tuple(tickets[start : start + batch_size])
-            batches.append(GenerationBatch(batch_index, descriptor.key, batch_tickets))
-            batch_index += 1
-    return batches
-
-
-def command_digest(commands: list[str]) -> str:
-    return hashlib.sha256(("\n".join(commands) + "\n").encode("utf-8")).hexdigest()
-
-
-def expected_region_paths(world: Path, plan: dict[str, object]) -> list[Path]:
-    dimensions = plan["dimensions"]
-    assert isinstance(dimensions, dict)
-    paths: set[Path] = set()
-    for descriptor in section_representative_plan.REPRESENTATIVE_DIMENSIONS:
-        entry = dimensions[descriptor.key]
-        assert isinstance(entry, dict)
-        chunks = entry["chunks"]
-        assert isinstance(chunks, list)
-        directory = world / descriptor.vanilla.region_path
-        for chunk in chunks:
-            chunk_x = int(chunk[0])
-            chunk_z = int(chunk[1])
-            paths.add(directory / f"r.{chunk_x // 32}.{chunk_z // 32}.mca")
-    return sorted(paths)
-
-
-def _reader(stream, output: queue.Queue[str], log_path: Path) -> None:
-    with log_path.open("w", encoding="utf-8") as log:
-        for line in iter(stream.readline, ""):
-            log.write(line)
-            log.flush()
-            output.put(line)
-    output.put("")
-
-
-def _stop_process(process: subprocess.Popen[str]) -> None:
-    if process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=10)
-
-
-def _batch_marker(batch: GenerationBatch, phase: str) -> str:
-    safe_dimension = batch.dimension.replace(":", "_")
-    return f"CRUCIBLE_REP_{batch.index:03d}_{safe_dimension}_{phase}"
-
-
-def execute_batches(
-    console: ServerConsole,
-    plan: dict[str, object],
-    *,
-    batch_size: int,
-    batch_settle_seconds: int,
-    deadline: float,
-) -> list[BatchTiming]:
-    timings: list[BatchTiming] = []
-    for batch in generation_batches(plan, batch_size):
-        started = time.monotonic()
-        console.send([ticket.add_command() for ticket in batch.tickets])
-        added_marker = _batch_marker(batch, "ADDED")
-        console.send([f"say {added_marker}"])
-        console.wait_for(added_marker, deadline, f"batch {batch.index} ticket installation")
-
-        console.settle(batch_settle_seconds, deadline)
-
-        saved_marker = _batch_marker(batch, "SAVED")
-        console.barrier(saved_marker, deadline)
-
-        console.send([ticket.remove_command() for ticket in batch.tickets])
-        removed_marker = _batch_marker(batch, "REMOVED")
-        console.send([f"say {removed_marker}"])
-        console.wait_for(removed_marker, deadline, f"batch {batch.index} ticket removal")
-
-        timings.append(
-            BatchTiming(
-                index=batch.index,
-                dimension=batch.dimension,
-                ticket_count=len(batch.tickets),
-                elapsed_ms=round((time.monotonic() - started) * 1000),
-            )
-        )
-
-    final_marker = "CRUCIBLE_REPRESENTATIVE_FINAL_SAVE"
-    console.barrier(final_marker, deadline)
-    return timings
+    return [_pad_region_file_tail(world, path) for path in selected]
 
 
 def run_server(
@@ -328,14 +154,21 @@ def run_server(
     timeout_seconds: int,
     batch_size: int,
     batch_settle_seconds: int,
-) -> tuple[Path, list[BatchTiming]]:
+) -> tuple[Path, list[_impl.BatchTiming]]:
+    """Generate/persist one world, quiesce persistence, and finalize region containers."""
+
+    global _REGION_FINALIZATION_RECORDS
+    _REGION_FINALIZATION_RECORDS = []
+
     world = work_dir / "world"
     if world.exists():
-        raise RepresentativeWorldError(f"representative world already exists: {world}")
+        raise _impl.RepresentativeWorldError(
+            f"representative world already exists: {world}"
+        )
     work_dir.mkdir(parents=True, exist_ok=True)
     (work_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     (work_dir / "server.properties").write_text(
-        server_properties(seed), encoding="utf-8"
+        _impl.server_properties(seed), encoding="utf-8"
     )
 
     process = subprocess.Popen(
@@ -358,30 +191,24 @@ def run_server(
 
     lines: queue.Queue[str] = queue.Queue()
     threading.Thread(
-        target=_reader,
+        target=_impl._reader,
         args=(process.stdout, lines, work_dir / "server.log"),
         daemon=True,
     ).start()
-    console = ServerConsole(process, lines)
+    console = _impl.ServerConsole(process, lines)
 
     deadline = time.monotonic() + timeout_seconds
     try:
         console.wait_for_start(deadline)
-        timings = execute_batches(
+        timings = _impl.execute_batches(
             console,
             plan,
             batch_size=batch_size,
             batch_settle_seconds=batch_settle_seconds,
             deadline=deadline,
         )
-        console.send(["stop"])
-        try:
-            return_code = process.wait(timeout=max(1.0, deadline - time.monotonic()))
-        except subprocess.TimeoutExpired as error:
-            _stop_process(process)
-            raise RepresentativeWorldError("official server did not stop cleanly") from error
-        if return_code != 0:
-            raise RepresentativeWorldError(f"official server exited with code {return_code}")
+        _quiesce_persistence(console, deadline)
+        _terminate_after_final_flush(process)
     finally:
         if process.poll() is None:
             process.kill()
@@ -389,153 +216,51 @@ def run_server(
 
     level_dat = world / "level.dat"
     if not level_dat.is_file():
-        raise RepresentativeWorldError("official server produced no level.dat")
-    missing_regions = [path for path in expected_region_paths(world, plan) if not path.is_file()]
+        raise _impl.RepresentativeWorldError("official server produced no level.dat")
+    missing_regions = [
+        path for path in _impl.expected_region_paths(world, plan) if not path.is_file()
+    ]
     if missing_regions:
-        raise RepresentativeWorldError(
+        raise _impl.RepresentativeWorldError(
             "official server did not materialize all selected region files: "
             + ", ".join(str(path) for path in missing_regions[:12])
         )
+
+    _REGION_FINALIZATION_RECORDS = _finalize_selected_region_files(world, plan)
     return world, timings
 
 
-def generate(
-    *,
-    version: str,
-    work_dir: Path,
-    cache: Path,
-    plan_path: Path,
-    seed_index: int,
-    timeout_seconds: int,
-    batch_size: int,
-    batch_settle_seconds: int,
-    evidence_output: Path | None,
-) -> Path:
-    if work_dir.exists():
-        if any(work_dir.iterdir()):
-            raise RepresentativeWorldError(
-                f"work directory must be absent or empty: {work_dir}"
-            )
-        shutil.rmtree(work_dir)
-
-    plan = section_representative_plan.load_plan(plan_path)
-    target = plan["target"]
-    assert isinstance(target, dict)
-    if version != target["minecraft_version"]:
-        raise RepresentativeWorldError(
-            f"requested version {version} does not match plan target {target['minecraft_version']}"
-        )
-    seeds = plan["seeds"]
-    assert isinstance(seeds, list)
-    if seed_index < 0 or seed_index >= len(seeds):
-        raise RepresentativeWorldError(
-            f"seed-index must be in 0..{len(seeds) - 1}; got {seed_index}"
-        )
-    if batch_size <= 0:
-        raise RepresentativeWorldError("generation batch size must be positive")
-    if batch_settle_seconds < 0:
-        raise RepresentativeWorldError("batch settle seconds must be non-negative")
-    seed = int(seeds[seed_index])
-
-    resolved, _ = official_state_data.resolve(version, cache)
-    server, _ = resolved["server"]
-    server_sha256 = official_state_data.sha256_file(server)
-    world, timings = run_server(
-        server=server,
-        work_dir=work_dir,
-        seed=seed,
-        plan=plan,
-        timeout_seconds=timeout_seconds,
-        batch_size=batch_size,
-        batch_settle_seconds=batch_settle_seconds,
-    )
-
-    if evidence_output is not None:
-        commands = commands_for_plan(plan)
-        batches = generation_batches(plan, batch_size)
-        evidence_output.parent.mkdir(parents=True, exist_ok=True)
-        evidence_output.write_text(
-            json.dumps(
-                {
-                    "schema": 2,
-                    "generator": GENERATOR_ID,
-                    "minecraft_version": version,
-                    "server_sha256": server_sha256,
-                    "representative_policy": plan["policy"],
-                    "plan_sha256": plan["plan_sha256"],
-                    "seed_index": seed_index,
-                    "seed": seed,
-                    "selection_command_count": len(commands),
-                    "selection_command_sha256": command_digest(commands),
-                    "batch_size": batch_size,
-                    "batch_count": len(batches),
-                    "batch_settle_seconds": batch_settle_seconds,
-                    "batch_timings": [
-                        {
-                            "index": timing.index,
-                            "dimension": timing.dimension,
-                            "ticket_count": timing.ticket_count,
-                            "elapsed_ms": timing.elapsed_ms,
-                        }
-                        for timing in timings
-                    ],
-                    "server_properties": server_properties(seed).splitlines(),
-                },
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-    return world
+def _evidence_path(argv: list[str]) -> Path | None:
+    try:
+        index = argv.index("--evidence")
+    except ValueError:
+        return None
+    if index + 1 >= len(argv):
+        return None
+    return Path(argv[index + 1])
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--version", default="26.2")
-    parser.add_argument("--work-dir", type=Path, required=True)
-    parser.add_argument("--plan", type=Path, required=True)
-    parser.add_argument("--seed-index", type=int, required=True)
-    parser.add_argument(
-        "--cache", type=Path, default=Path(".crucible/vanilla/downloads")
-    )
-    parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
-    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
-    parser.add_argument(
-        "--batch-settle-seconds", type=int, default=DEFAULT_BATCH_SETTLE_SECONDS
-    )
-    parser.add_argument("--evidence", type=Path)
-    args = parser.parse_args()
-    if args.timeout_seconds <= 0:
-        parser.error("--timeout-seconds must be positive")
-    if args.batch_size <= 0:
-        parser.error("--batch-size must be positive")
-    if args.batch_settle_seconds < 0:
-        parser.error("--batch-settle-seconds must be non-negative")
+    # `generate` resolves `run_server` through the implementation module's globals, so replace only
+    # that boundary. All plan, batching, command, extraction and semantic evidence logic remains
+    # unchanged.
+    _impl.run_server = run_server
+    status = _impl.main()
+    if status != 0:
+        return status
 
-    try:
-        world = generate(
-            version=args.version,
-            work_dir=args.work_dir,
-            cache=args.cache,
-            plan_path=args.plan,
-            seed_index=args.seed_index,
-            timeout_seconds=args.timeout_seconds,
-            batch_size=args.batch_size,
-            batch_settle_seconds=args.batch_settle_seconds,
-            evidence_output=args.evidence,
+    evidence_path = _evidence_path(sys.argv[1:])
+    if evidence_path is not None and evidence_path.is_file():
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        if not isinstance(evidence, dict):
+            raise _impl.RepresentativeWorldError(
+                "representative world evidence must be a JSON object"
+            )
+        evidence["finalization_policy"] = FINALIZATION_POLICY
+        evidence["region_container_finalization"] = list(_REGION_FINALIZATION_RECORDS)
+        evidence_path.write_text(
+            json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
-    except (
-        RepresentativeWorldError,
-        section_representative_plan.PlanError,
-        ValueError,
-        OSError,
-        subprocess.SubprocessError,
-    ) as error:
-        print(f"official representative section world error: {error}", file=sys.stderr)
-        return 1
-
-    print(f"official representative section world: {world} PASS")
     return 0
 
 
