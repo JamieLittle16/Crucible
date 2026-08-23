@@ -4,7 +4,7 @@ use crucible_types::{BlockPos, ChunkGeneration, ChunkPos};
 use crucible_world_chunk::{
     ChunkCoreError, LiveChunkCore, ResolvedChunkWindow, ResolvedChunkWindowError,
 };
-use crucible_world_contract::{BlockSection, BlockStateFacts, SectionStateFacts};
+use crucible_world_contract::{BlockStateFacts, SectionStateFacts};
 use crucible_world_reference::DirectBlockSection;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
