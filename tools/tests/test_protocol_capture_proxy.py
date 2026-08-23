@@ -144,6 +144,16 @@ class ProtocolCaptureProxyTests(unittest.TestCase):
         self.assertEqual(len(first["capture_sha256"]), 64)
         self.assertEqual(first["target"]["protocol"], 42)
 
+    def test_artifact_rejects_directional_limit_disagreement(self) -> None:
+        client = FrameStreamCapture(max_frame_bytes=4_096, max_stream_bytes=65_536, max_frames=32)
+        server = FrameStreamCapture(max_frame_bytes=8_192, max_stream_bytes=65_536, max_frames=32)
+        with self.assertRaisesRegex(CaptureError, "identical evidence limits"):
+            build_artifact(
+                target=self.target,
+                client_to_server=client,
+                server_to_client=server,
+            )
+
     def test_socket_pump_is_byte_transparent(self) -> None:
         producer, source = socket.socketpair()
         destination, consumer = socket.socketpair()
@@ -187,6 +197,15 @@ class ProtocolCaptureProxyTests(unittest.TestCase):
         broken.write_text('minecraft = "x"\nprotocol = true\n', encoding="utf-8")
         with self.assertRaises(CaptureError):
             _read_target(broken)
+
+        for digest in ("A" * 64, "a" * 63, "g" * 64, ""):
+            with self.subTest(digest=digest):
+                malformed = self.root / "malformed.toml"
+                malformed.write_text(
+                    LOCK_TEXT.replace("a" * 64, digest), encoding="utf-8"
+                )
+                with self.assertRaisesRegex(CaptureError, "canonical lowercase hex"):
+                    _read_target(malformed)
 
 
 if __name__ == "__main__":
