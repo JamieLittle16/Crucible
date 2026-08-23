@@ -42,10 +42,15 @@ jobs:
       - name: Supply-chain and dependency policy
         run: python3 tools/ci_policy.py
 
-      # crucible-generated is byte-for-byte owned by tools/state_data.py and its
-      # exact output is checked by the state-data qualification pipeline. Keep it
-      # in the workspace for check/clippy/test/doc, but never let rustfmt become a
-      # second writer of generated artifacts.
+      - name: Composition lock and generated wiring
+        run: >-
+          python3 tools/composition_resolver.py check
+          --repo-root .
+          --profile profiles/reference.toml
+
+      # crucible-generated and crucible-composition are byte-for-byte owned by
+      # their generators. Keep them in the workspace for check/clippy/test/doc,
+      # but never let rustfmt become a second writer of generated artifacts.
       - name: Format handwritten Rust
         run: >-
           cargo fmt

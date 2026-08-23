@@ -1,0 +1,27 @@
+schema = 1
+
+[package]
+id = "crucible-section-reference"
+version = "0.0.0"
+kind = "engine-source"
+trust = "engine-native"
+fidelity = "strict"
+qualified = true
+crate = "crucible-world-reference"
+crate_path = "crates/world/crucible-world-reference"
+rust_crate = "crucible_world_reference"
+semantic_deviations = []
+qualification_records = [
+  "docs/qualification/SECTION_EQUIVALENCE_LAB.md",
+  "docs/qualification/SECTION_SEMANTIC_FIXTURES.md",
+]
+
+[compatibility]
+minecraft = ["26.2"]
+
+[[provides]]
+capability = "world.section-store/1"
+cardinality = "exactly-one"
+cost = "hot"
+rust_export = "SectionStore"
+rust_type = "crucible_world_reference::DirectBlockSection"
