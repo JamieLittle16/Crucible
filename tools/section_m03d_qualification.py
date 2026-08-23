@@ -178,6 +178,63 @@ def _correctness_paths(bundle_root: Path) -> list[Path]:
     return [bundle_root / candidate / "full.json" for candidate in correctness.CANDIDATES]
 
 
+def _revalidate_pack_manifest(
+    pack_root: Path,
+    *,
+    expected_manifest_sha: str,
+    expected_policy: str,
+    expected_population_sha: str,
+    expected_admission_sha: str,
+    expected_source_artifact_sha: str,
+) -> dict[str, Any]:
+    """Reopen the generated pack manifest and require its frozen identity to be unchanged."""
+    manifest_path = pack_root / "pack-manifest.json"
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise FinalQualificationError(
+            "benchmark pack manifest must remain a real non-symlink file"
+        )
+    try:
+        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise FinalQualificationError(
+            f"benchmark pack manifest cannot be reopened safely: {error}"
+        ) from error
+    if not isinstance(raw, dict):
+        raise FinalQualificationError("benchmark pack manifest must contain a JSON object")
+
+    _require_scope(raw, "benchmark pack manifest")
+    reopened_sha = _verify_digest_field(
+        raw, "manifest_sha256", "benchmark pack manifest"
+    )
+    if reopened_sha != expected_manifest_sha:
+        raise FinalQualificationError(
+            "benchmark pack manifest changed during qualification session"
+        )
+    if raw.get("policy") != expected_policy:
+        raise FinalQualificationError("benchmark pack representative policy changed")
+    if (
+        _sha256(raw.get("population_sha256"), "benchmark pack population digest")
+        != expected_population_sha
+    ):
+        raise FinalQualificationError("benchmark pack population identity changed")
+    if (
+        _sha256(raw.get("admission_sha256"), "benchmark pack admission digest")
+        != expected_admission_sha
+    ):
+        raise FinalQualificationError("benchmark pack admission identity changed")
+    if (
+        _sha256(
+            raw.get("source_artifact_manifest_sha256"),
+            "benchmark pack source artifact manifest digest",
+        )
+        != expected_source_artifact_sha
+    ):
+        raise FinalQualificationError(
+            "benchmark pack source artifact identity changed"
+        )
+    return raw
+
+
 def run_qualification(
     *,
     repo_root: Path,
@@ -249,6 +306,14 @@ def run_qualification(
     representative_policy = pack_record.get("policy")
     if not isinstance(representative_policy, str) or not representative_policy:
         raise FinalQualificationError("representative policy identity is malformed")
+    _revalidate_pack_manifest(
+        pack_root,
+        expected_manifest_sha=pack_manifest_sha,
+        expected_policy=representative_policy,
+        expected_population_sha=population_sha,
+        expected_admission_sha=admission_sha,
+        expected_source_artifact_sha=source_artifact_sha,
+    )
 
     combined_root = output_root / "combined"
     combined_record = combined.orchestrate(
@@ -324,6 +389,14 @@ def run_qualification(
         raise FinalQualificationError(
             "representative population artifact changed during qualification session"
         )
+    _revalidate_pack_manifest(
+        pack_root,
+        expected_manifest_sha=pack_manifest_sha,
+        expected_policy=representative_policy,
+        expected_population_sha=population_sha,
+        expected_admission_sha=admission_sha,
+        expected_source_artifact_sha=source_artifact_sha,
+    )
 
     combined_manifest = json.loads(
         (combined_root / "artifact-manifest.json").read_text(encoding="utf-8")
