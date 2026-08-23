@@ -1,0 +1,19 @@
+[package]
+name = "crucible-preplay-core"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+crucible-connection-core = { path = "../crucible-connection-core" }
+crucible-connection-driver = { path = "../crucible-connection-driver" }
+crucible-session-core = { path = "../crucible-session-core" }
+
+[dev-dependencies]
+crucible-packet-core = { path = "../crucible-packet-core" }
+
+[lints]
+workspace = true
