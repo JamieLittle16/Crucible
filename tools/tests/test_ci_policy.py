@@ -35,6 +35,70 @@ class CiPolicyTests(unittest.TestCase):
             self.assertTrue(any("full 40-hex commit SHA" in error for error in errors))
             self.assertTrue(any("action.yaml" in error for error in errors))
 
+    def test_public_pull_request_workflow_requires_read_only_safe_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workflows = Path(temporary)
+            (workflows / "safe.yml").write_text(
+                "name: Safe\n"
+                "on:\n"
+                "  pull_request:\n"
+                "permissions:\n"
+                "  contents: read\n"
+                "jobs:\n"
+                "  test:\n"
+                "    runs-on: ubuntu-latest\n"
+                "    steps:\n"
+                "      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803\n"
+                "        with:\n"
+                "          persist-credentials: false\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(ci_policy.workflow_public_pr_safety_errors(workflows), [])
+
+            (workflows / "dangerous.yml").write_text(
+                "name: Dangerous\n"
+                "on: [pull_request_target, pull_request]\n"
+                "permissions:\n"
+                "  contents: write\n"
+                "jobs:\n"
+                "  test:\n"
+                "    runs-on: ubuntu-latest\n"
+                "    env:\n"
+                "      TOKEN: ${{secrets.DANGEROUS_TOKEN}}\n"
+                "    steps:\n"
+                "      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803\n",
+                encoding="utf-8",
+            )
+            errors = ci_policy.workflow_public_pr_safety_errors(workflows)
+            self.assertTrue(any("pull_request_target is forbidden" in error for error in errors))
+            self.assertTrue(any("must not reference repository secrets" in error for error in errors))
+            self.assertTrue(any("write permission" in error for error in errors))
+            self.assertTrue(any("persist-credentials: false" in error for error in errors))
+
+    def test_scalar_pull_request_event_is_recognized(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workflows = Path(temporary)
+            (workflows / "scalar.yml").write_text(
+                "on: pull_request\n"
+                "permissions:\n"
+                "  contents: read\n"
+                "jobs:\n"
+                "  test:\n"
+                "    runs-on: ubuntu-latest\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(ci_policy.workflow_public_pr_safety_errors(workflows), [])
+
+    def test_pull_request_workflow_requires_explicit_permissions(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workflows = Path(temporary)
+            (workflows / "implicit.yml").write_text(
+                "on:\n  pull_request:\njobs:\n  test:\n    runs-on: ubuntu-latest\n",
+                encoding="utf-8",
+            )
+            errors = ci_policy.workflow_public_pr_safety_errors(workflows)
+            self.assertTrue(any("explicit top-level read-only permissions" in error for error in errors))
+
     def test_internal_only_lockfile_needs_no_allowlist(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 GITHUB_CONFIG = ROOT / ".github"
+WORKFLOWS = GITHUB_CONFIG / "workflows"
 LOCKFILE = ROOT / "Cargo.lock"
 ALLOWLIST = ROOT / "config" / "dependency-allowlist.txt"
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -24,12 +25,13 @@ def display_path(path: Path) -> str:
         return str(path)
 
 
+def yaml_files(root: Path) -> list[Path]:
+    return sorted({path for pattern in ("*.yml", "*.yaml") for path in root.rglob(pattern)})
+
+
 def workflow_action_errors(github_config: Path = GITHUB_CONFIG) -> list[str]:
     errors: list[str] = []
-    yaml_files = sorted(
-        {path for pattern in ("*.yml", "*.yaml") for path in github_config.rglob(pattern)}
-    )
-    for path in yaml_files:
+    for path in yaml_files(github_config):
         for line_number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             stripped = raw.strip()
             if stripped.startswith("- uses:"):
@@ -52,6 +54,100 @@ def workflow_action_errors(github_config: Path = GITHUB_CONFIG) -> list[str]:
                 errors.append(
                     f"{location}: external action must use a full 40-hex commit SHA: {value}"
                 )
+    return errors
+
+
+def top_level_permissions(lines: list[str]) -> tuple[bool, dict[str, str], str | None]:
+    for index, raw in enumerate(lines):
+        if raw.startswith((" ", "\t")) or not raw.startswith("permissions:"):
+            continue
+        suffix = raw[len("permissions:") :].split("#", 1)[0].strip()
+        if suffix:
+            return True, {}, suffix.strip("'\"")
+        permissions: dict[str, str] = {}
+        for child in lines[index + 1 :]:
+            if not child.strip() or child.lstrip().startswith("#"):
+                continue
+            if not child.startswith((" ", "\t")):
+                break
+            stripped = child.strip()
+            if ":" not in stripped:
+                continue
+            name, value = stripped.split(":", 1)
+            permissions[name.strip()] = value.split("#", 1)[0].strip().strip("'\"")
+        return True, permissions, None
+    return False, {}, None
+
+
+def workflow_has_event(lines: list[str], event: str) -> bool:
+    pattern = re.compile(
+        rf"(?:^|[\s\[,]){re.escape(event)}(?=\s*:|\s*,|\s*\]|\s*$)"
+    )
+    for raw in lines:
+        code = raw.split("#", 1)[0]
+        if pattern.search(code):
+            return True
+    return False
+
+
+def workflow_public_pr_safety_errors(workflows: Path = WORKFLOWS) -> list[str]:
+    """Enforce the minimum safe boundary for workflows receiving untrusted PRs."""
+
+    errors: list[str] = []
+    for path in yaml_files(workflows):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        text = "\n".join(lines)
+        location = display_path(path)
+
+        if workflow_has_event(lines, "pull_request_target"):
+            errors.append(
+                f"{location}: pull_request_target is forbidden; untrusted contributions use pull_request"
+            )
+
+        if not workflow_has_event(lines, "pull_request"):
+            continue
+
+        if re.search(r"\$\{\{\s*secrets\.", text):
+            errors.append(f"{location}: pull_request workflow must not reference repository secrets")
+
+        found_permissions, permissions, scalar_permissions = top_level_permissions(lines)
+        if not found_permissions:
+            errors.append(
+                f"{location}: pull_request workflow must declare explicit top-level read-only permissions"
+            )
+        elif scalar_permissions is not None:
+            if scalar_permissions != "read-all":
+                errors.append(
+                    f"{location}: pull_request workflow scalar permissions must be read-all, got {scalar_permissions!r}"
+                )
+        else:
+            for name, value in permissions.items():
+                if value == "write":
+                    errors.append(
+                        f"{location}: pull_request workflow requests write permission for {name}"
+                    )
+
+        if re.search(r"persist-credentials\s*:\s*['\"]?true['\"]?", text):
+            errors.append(f"{location}: pull_request checkout must not persist credentials")
+
+        checkout_count = sum(
+            1
+            for line in lines
+            if "uses: actions/checkout@" in line and not line.lstrip().startswith("#")
+        )
+        disabled_credential_count = sum(
+            1
+            for line in lines
+            if re.search(
+                r"^\s*persist-credentials\s*:\s*['\"]?false['\"]?\s*(?:#.*)?$",
+                line,
+            )
+        )
+        if disabled_credential_count < checkout_count:
+            errors.append(
+                f"{location}: every pull_request checkout must set persist-credentials: false"
+            )
+
     return errors
 
 
@@ -119,6 +215,7 @@ def dependency_errors(
 
 def check() -> list[str]:
     errors = workflow_action_errors()
+    errors.extend(workflow_public_pr_safety_errors())
     errors.extend(dependency_errors())
     return errors
 
@@ -129,7 +226,7 @@ def main() -> int:
         for error in errors:
             print(f"CI policy failure: {error}", file=sys.stderr)
         return 1
-    print("CI policy: immutable Actions and dependency allowlist checks passed")
+    print("CI policy: immutable Actions, public-PR safety and dependency allowlist checks passed")
     return 0
 
 
