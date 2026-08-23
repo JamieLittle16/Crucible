@@ -44,7 +44,7 @@ pub enum ConnectionBufferError {
         incoming: usize,
         maximum: usize,
     },
-    /// Queueing a complete encoded frame would exceed the egress bound.
+    /// Queueing one frame or one complete frame batch would exceed the egress bound.
     EgressLimitExceeded {
         queued: usize,
         frame_bytes: usize,
@@ -52,6 +52,8 @@ pub enum ConnectionBufferError {
     },
     /// The caller attempted to consume more active bytes than exist.
     InvalidConsume { requested: usize, available: usize },
+    /// A transaction attempted to roll egress back to more bytes than are currently queued.
+    InvalidEgressRollback { requested: usize, available: usize },
     /// The outer frame is complete but its packet-ID `VarInt` ends prematurely.
     TruncatedPacketId,
     /// Integer arithmetic required to preserve a resource bound overflowed `usize`.
@@ -389,6 +391,93 @@ impl EgressBuffer {
         Ok(())
     }
 
+    /// Atomically validates, admits, and queues a complete batch of frame bodies.
+    ///
+    /// The complete encoded byte cost is computed before any mutation. Capacity is checked for the
+    /// batch as a whole, consumed-prefix compaction occurs at most once, and an unexpected encoder
+    /// failure rolls the appended tail back to the exact pre-batch logical queue.
+    ///
+    /// This is a control-boundary primitive for semantic actions that require multiple outbound
+    /// packets. It introduces no secondary staging queue and does not change the single-frame HOT
+    /// path in [`Self::queue_frame`].
+    ///
+    /// # Errors
+    ///
+    /// Returns the first invalid frame-body/wire error, a length-overflow error, or one aggregate
+    /// egress-bound error. Every rejection leaves the logical queued bytes unchanged.
+    pub fn queue_batch<B>(&mut self, bodies: &[B]) -> Result<(), ConnectionBufferError>
+    where
+        B: AsRef<[u8]>,
+    {
+        let mut batch_bytes = 0usize;
+        for body in bodies {
+            let body = body.as_ref();
+            validate_frame_body(body, self.limits.frame_body_len)?;
+            batch_bytes = batch_bytes
+                .checked_add(encoded_frame_len(body.len())?)
+                .ok_or(ConnectionBufferError::LengthOverflow)?;
+        }
+        if batch_bytes == 0 {
+            return Ok(());
+        }
+
+        let queued = self.queued_len();
+        let required = queued
+            .checked_add(batch_bytes)
+            .ok_or(ConnectionBufferError::LengthOverflow)?;
+        if required > self.limits.egress_queued {
+            return Err(ConnectionBufferError::EgressLimitExceeded {
+                queued,
+                frame_bytes: batch_bytes,
+                maximum: self.limits.egress_queued,
+            });
+        }
+
+        self.compact_before_append(batch_bytes)?;
+        let append_start = self.bytes.len();
+        for body in bodies {
+            if let Err(error) =
+                encode_frame(body.as_ref(), self.limits.frame_body_len, &mut self.bytes)
+            {
+                self.bytes.truncate(append_start);
+                return Err(error.into());
+            }
+        }
+        Ok(())
+    }
+
+    /// Restores the logical egress queue to an earlier retained byte length by dropping only tail
+    /// bytes.
+    ///
+    /// This narrow primitive exists so a higher-level transaction coordinator can undo a newly
+    /// admitted outbound batch if a later invariant-preserving commit step unexpectedly fails. It
+    /// never reconstructs consumed socket bytes and cannot increase the logical queue.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `queued_len` exceeds the currently queued logical byte count or if index
+    /// arithmetic overflows. Rejection leaves the queue unchanged.
+    pub fn rollback_queued_to(&mut self, queued_len: usize) -> Result<(), ConnectionBufferError> {
+        let available = self.queued_len();
+        if queued_len > available {
+            return Err(ConnectionBufferError::InvalidEgressRollback {
+                requested: queued_len,
+                available,
+            });
+        }
+        if queued_len == 0 {
+            self.bytes.clear();
+            self.start = 0;
+            return Ok(());
+        }
+        let physical_len = self
+            .start
+            .checked_add(queued_len)
+            .ok_or(ConnectionBufferError::LengthOverflow)?;
+        self.bytes.truncate(physical_len);
+        Ok(())
+    }
+
     /// Consumes exactly the number of bytes reported written by the socket adapter.
     ///
     /// # Errors
@@ -581,6 +670,121 @@ mod tests {
             Err(ConnectionBufferError::EgressLimitExceeded { .. })
         ));
         assert_eq!(egress.pending(), queued_before);
+    }
+
+    #[test]
+    fn batch_queue_matches_sequential_encoding_exactly() {
+        let bodies = [
+            packet_body(1, b"alpha"),
+            packet_body(2, b"beta"),
+            packet_body(3, b"gamma"),
+        ];
+        let mut sequential = EgressBuffer::new(limits());
+        for body in &bodies {
+            sequential.queue_frame(body).expect("sequential frame");
+        }
+        let mut batch = EgressBuffer::new(limits());
+        batch.queue_batch(&bodies).expect("batch fits");
+        assert_eq!(batch.pending(), sequential.pending());
+    }
+
+    #[test]
+    fn batch_admission_is_exact_fit_and_one_byte_over_fail_closed() {
+        let tight = ConnectionLimits::new(8, 16, 9).expect("valid tight limits");
+        let existing = packet_body(1, b"a");
+        let batch_bodies = [packet_body(2, b"b"), packet_body(3, b"c")];
+        let mut egress = EgressBuffer::new(tight);
+        egress
+            .queue_frame(&existing)
+            .expect("three-byte existing frame");
+        egress
+            .queue_batch(&batch_bodies)
+            .expect("exact nine-byte fit");
+        assert_eq!(egress.queued_len(), 9);
+
+        let before = egress.pending().to_vec();
+        assert!(matches!(
+            egress.queue_batch(&[packet_body(4, b"d")]),
+            Err(ConnectionBufferError::EgressLimitExceeded { .. })
+        ));
+        assert_eq!(egress.pending(), before);
+    }
+
+    #[test]
+    fn malformed_later_batch_body_leaves_existing_egress_untouched() {
+        let mut egress = EgressBuffer::new(limits());
+        egress
+            .queue_frame(&packet_body(1, b"existing"))
+            .expect("existing frame");
+        let before = egress.pending().to_vec();
+        let bodies = [
+            packet_body(2, b"valid"),
+            Vec::new(),
+            packet_body(3, b"later"),
+        ];
+        assert_eq!(
+            egress.queue_batch(&bodies),
+            Err(ConnectionBufferError::Wire(WireError::ZeroLengthFrame))
+        );
+        assert_eq!(egress.pending(), before);
+    }
+
+    #[test]
+    fn batch_rejection_after_partial_write_preserves_active_prefix() {
+        let tight = ConnectionLimits::new(8, 16, 10).expect("valid tight limits");
+        let mut egress = EgressBuffer::new(tight);
+        egress
+            .queue_frame(&packet_body(1, b"abc"))
+            .expect("initial frame");
+        egress.consume_written(2).expect("partial write");
+        let before = egress.pending().to_vec();
+        let bodies = [packet_body(2, b"abcd"), packet_body(3, b"efgh")];
+        assert!(matches!(
+            egress.queue_batch(&bodies),
+            Err(ConnectionBufferError::EgressLimitExceeded { .. })
+        ));
+        assert_eq!(egress.pending(), before);
+    }
+
+    #[test]
+    fn explicit_egress_rollback_drops_only_new_tail_after_compaction() {
+        let mut egress = EgressBuffer::new(limits());
+        egress
+            .queue_frame(&packet_body(1, b"first"))
+            .expect("first");
+        let first_len = egress.queued_len();
+        egress
+            .queue_frame(&packet_body(2, b"second"))
+            .expect("second");
+        egress.consume_written(first_len).expect("consume first");
+        let retained = egress.pending().to_vec();
+        let queued_before = egress.queued_len();
+        egress
+            .queue_batch(&[packet_body(3, b"third"), packet_body(4, b"fourth")])
+            .expect("batch after consumed prefix");
+        egress
+            .rollback_queued_to(queued_before)
+            .expect("rollback new tail");
+        assert_eq!(egress.pending(), retained);
+        assert_eq!(
+            egress.rollback_queued_to(queued_before + 1),
+            Err(ConnectionBufferError::InvalidEgressRollback {
+                requested: queued_before + 1,
+                available: queued_before,
+            })
+        );
+    }
+
+    #[test]
+    fn empty_batch_is_a_noop() {
+        let mut egress = EgressBuffer::new(limits());
+        egress
+            .queue_frame(&packet_body(1, b"existing"))
+            .expect("existing");
+        let before = egress.pending().to_vec();
+        let empty: [Vec<u8>; 0] = [];
+        egress.queue_batch(&empty).expect("empty batch");
+        assert_eq!(egress.pending(), before);
     }
 
     #[test]
