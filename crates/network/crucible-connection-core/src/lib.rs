@@ -69,9 +69,9 @@ impl From<WireError> for ConnectionBufferError {
 /// Coherent byte limits for one connection.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ConnectionLimits {
-    max_frame_body_len: usize,
-    max_ingress_buffered: usize,
-    max_egress_queued: usize,
+    frame_body_len: usize,
+    ingress_buffered: usize,
+    egress_queued: usize,
 }
 
 impl ConnectionLimits {
@@ -127,28 +127,28 @@ impl ConnectionLimits {
             });
         }
         Ok(Self {
-            max_frame_body_len,
-            max_ingress_buffered,
-            max_egress_queued,
+            frame_body_len: max_frame_body_len,
+            ingress_buffered: max_ingress_buffered,
+            egress_queued: max_egress_queued,
         })
     }
 
     /// Maximum decoded frame-body bytes accepted from or emitted to this connection.
     #[must_use]
     pub const fn max_frame_body_len(self) -> usize {
-        self.max_frame_body_len
+        self.frame_body_len
     }
 
     /// Maximum unconsumed ingress bytes retained for this connection.
     #[must_use]
     pub const fn max_ingress_buffered(self) -> usize {
-        self.max_ingress_buffered
+        self.ingress_buffered
     }
 
     /// Maximum unwritten egress bytes retained for this connection.
     #[must_use]
     pub const fn max_egress_queued(self) -> usize {
-        self.max_egress_queued
+        self.egress_queued
     }
 }
 
@@ -237,11 +237,11 @@ impl IngressBuffer {
         let required = buffered
             .checked_add(incoming.len())
             .ok_or(ConnectionBufferError::LengthOverflow)?;
-        if required > self.limits.max_ingress_buffered {
+        if required > self.limits.ingress_buffered {
             return Err(ConnectionBufferError::IngressLimitExceeded {
                 buffered,
                 incoming: incoming.len(),
-                maximum: self.limits.max_ingress_buffered,
+                maximum: self.limits.ingress_buffered,
             });
         }
         self.compact_before_append(incoming.len())?;
@@ -263,7 +263,7 @@ impl IngressBuffer {
         let DecodeResult::Complete {
             value: body,
             consumed: stream_bytes,
-        } = decode_frame(active, self.limits.max_frame_body_len)?
+        } = decode_frame(active, self.limits.frame_body_len)?
         else {
             return Ok(None);
         };
@@ -317,7 +317,7 @@ impl IngressBuffer {
             .checked_add(incoming)
             .ok_or(ConnectionBufferError::LengthOverflow)?;
         let half_consumed = self.start >= self.bytes.len() / 2;
-        if physical_after > self.limits.max_ingress_buffered || half_consumed {
+        if physical_after > self.limits.ingress_buffered || half_consumed {
             let active = self.buffered_len();
             self.bytes.copy_within(self.start.., 0);
             self.bytes.truncate(active);
@@ -371,21 +371,21 @@ impl EgressBuffer {
     /// Returns a wire error for an invalid frame body, an egress-bound error when the encoded frame
     /// does not fit, or a length-overflow error. Rejection leaves the logical queued bytes unchanged.
     pub fn queue_frame(&mut self, body: &[u8]) -> Result<(), ConnectionBufferError> {
-        validate_frame_body(body, self.limits.max_frame_body_len)?;
+        validate_frame_body(body, self.limits.frame_body_len)?;
         let frame_bytes = encoded_frame_len(body.len())?;
         let queued = self.queued_len();
         let required = queued
             .checked_add(frame_bytes)
             .ok_or(ConnectionBufferError::LengthOverflow)?;
-        if required > self.limits.max_egress_queued {
+        if required > self.limits.egress_queued {
             return Err(ConnectionBufferError::EgressLimitExceeded {
                 queued,
                 frame_bytes,
-                maximum: self.limits.max_egress_queued,
+                maximum: self.limits.egress_queued,
             });
         }
         self.compact_before_append(frame_bytes)?;
-        encode_frame(body, self.limits.max_frame_body_len, &mut self.bytes)?;
+        encode_frame(body, self.limits.frame_body_len, &mut self.bytes)?;
         Ok(())
     }
 
@@ -420,7 +420,7 @@ impl EgressBuffer {
             .checked_add(frame_bytes)
             .ok_or(ConnectionBufferError::LengthOverflow)?;
         let half_consumed = self.start >= self.bytes.len() / 2;
-        if physical_after > self.limits.max_egress_queued || half_consumed {
+        if physical_after > self.limits.egress_queued || half_consumed {
             let active = self.queued_len();
             self.bytes.copy_within(self.start.., 0);
             self.bytes.truncate(active);
