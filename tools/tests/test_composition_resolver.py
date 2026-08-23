@@ -139,9 +139,14 @@ class CompositionResolverTests(unittest.TestCase):
             self.assertIn(
                 "pub use fixture_crate::SectionStore as SectionStore;", generated
             )
-            self.assertNotIn("dyn ", generated)
-            self.assertNotIn("HashMap", generated)
-            self.assertNotIn("service", generated.lower())
+            executable = "\n".join(
+                line
+                for line in generated.splitlines()
+                if not line.lstrip().startswith("//")
+            )
+            self.assertNotIn("dyn ", executable)
+            self.assertNotIn("HashMap", executable)
+            self.assertNotIn("service", executable.lower())
 
     def test_capability_requires_explicit_positive_version(self) -> None:
         for capability in ("world.section-store", "world.section-store/0", "bad//1"):
@@ -152,6 +157,17 @@ class CompositionResolverTests(unittest.TestCase):
                 )
                 with self.assertRaises(resolver.CompositionError):
                     fixture.resolution()
+
+    def test_unresolved_profile_is_intent_only_not_runnable(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = FixtureRepo(Path(raw))
+            fixture.add_component("section-reference")
+            unresolved = PROFILE.replace(
+                '[engine]\n"world.section-store" = "section-reference"\n\n', ""
+            )
+            fixture.profile.write_text(unresolved, encoding="utf-8")
+            with self.assertRaisesRegex(resolver.CompositionError, "no engine selections"):
+                fixture.resolution()
 
     def test_profile_unknown_field_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
