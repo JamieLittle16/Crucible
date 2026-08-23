@@ -29,6 +29,7 @@ pub enum WorldAccessError {
     InvalidStateIdentity,
     EmptyTrace,
     MissingReferenceChunk { position: ChunkPos },
+    SemanticMismatch { reference: u64, resolved: u64 },
     Chunk(ChunkCoreError),
     Window(ResolvedChunkWindowError),
 }
@@ -168,7 +169,8 @@ impl PreparedCase {
     ///
     /// # Errors
     ///
-    /// Returns any routing/access failure rather than normalizing it during a benchmark case.
+    /// Returns any routing/access failure or a checksum mismatch rather than normalizing an
+    /// evidence failure during a benchmark case.
     pub fn validate_equivalence(&self) -> Result<u64, WorldAccessError> {
         let reference = self.reference_router();
         let window = self.resolved_window()?;
@@ -177,10 +179,12 @@ impl PreparedCase {
         let resolved_checksum = checksum(self.trace.iter().copied(), |pos| {
             window.get_block(pos).map_err(WorldAccessError::from)
         })?;
-        assert_eq!(
-            reference_checksum, resolved_checksum,
-            "admitted benchmark candidates must perform identical semantic work"
-        );
+        if reference_checksum != resolved_checksum {
+            return Err(WorldAccessError::SemanticMismatch {
+                reference: reference_checksum,
+                resolved: resolved_checksum,
+            });
+        }
         Ok(reference_checksum)
     }
 }
@@ -405,12 +409,6 @@ fn pathfinding_trace(
     spec: CaseSpec,
     query_count: usize,
 ) -> Result<Vec<BlockPos>, WorldAccessError> {
-    let bounds = checked_block_bounds(spec)?;
-    let mut rng = Rng::new(case_seed(spec) ^ 0xA076_1D64_78BD_642F);
-    let mut x = bounds.min_x + (bounds.max_x_exclusive - bounds.min_x) / 2;
-    let mut z = bounds.min_z + (bounds.max_z_exclusive - bounds.min_z) / 2;
-    let mut y = 64_i32;
-    let mut trace = Vec::with_capacity(query_count);
     const NEIGHBORS: [(i32, i32, i32); 7] = [
         (0, 0, 0),
         (1, 0, 0),
@@ -420,6 +418,13 @@ fn pathfinding_trace(
         (0, 1, 0),
         (0, -1, 0),
     ];
+
+    let bounds = checked_block_bounds(spec)?;
+    let mut rng = Rng::new(case_seed(spec) ^ 0xA076_1D64_78BD_642F);
+    let mut x = bounds.min_x + (bounds.max_x_exclusive - bounds.min_x) / 2;
+    let mut z = bounds.min_z + (bounds.max_z_exclusive - bounds.min_z) / 2;
+    let mut y = 64_i32;
+    let mut trace = Vec::with_capacity(query_count);
 
     while trace.len() < query_count {
         for &(dx, dy, dz) in &NEIGHBORS {
@@ -510,13 +515,13 @@ fn checked_block_bounds(spec: CaseSpec) -> Result<BlockBounds, WorldAccessError>
         .z
         .checked_mul(BLOCKS_PER_CHUNK_AXIS)
         .ok_or(WorldAccessError::CoordinateOverflow)?;
-    let max_x_exclusive = spec
+    let x_end = spec
         .origin
         .x
         .checked_add(width)
         .and_then(|value| value.checked_mul(BLOCKS_PER_CHUNK_AXIS))
         .ok_or(WorldAccessError::CoordinateOverflow)?;
-    let max_z_exclusive = spec
+    let z_end = spec
         .origin
         .z
         .checked_add(depth)
@@ -524,9 +529,9 @@ fn checked_block_bounds(spec: CaseSpec) -> Result<BlockBounds, WorldAccessError>
         .ok_or(WorldAccessError::CoordinateOverflow)?;
     Ok(BlockBounds {
         min_x,
-        max_x_exclusive,
+        max_x_exclusive: x_end,
         min_z,
-        max_z_exclusive,
+        max_z_exclusive: z_end,
     })
 }
 
