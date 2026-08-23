@@ -99,6 +99,33 @@ jobs:
       - name: Client spine integration qualification
         run: cargo test --package crucible-client-spine-qualification --locked
 
+      # Hosted timing is diagnostic only. Production stays on the admitted two-stage
+      # PacketWriter -> EgressBuffer path until controlled target-hardware evidence
+      # demonstrates a material whole-cost win for the fused candidate.
+      - name: Fused outbound benchmark smoke
+        run: |
+          cargo run --release --locked \
+            --package crucible-client-spine-qualification \
+            --bin fused_outbound_bench -- \
+            --smoke \
+            --output target/fused-outbound-smoke.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(Path("target/fused-outbound-smoke.json").read_text())
+          assert artifact["schema"] == 1
+          assert artifact["benchmark"] == "fused-outbound-construction"
+          assert artifact["mode"] == "smoke"
+          assert artifact["hosted_ci_is_diagnostic_only"] is True
+          assert artifact["production_path_unchanged"] is True
+          assert len(artifact["cases"]) == 5
+          for case in artifact["cases"]:
+              assert case["byte_equivalent"] is True
+              assert case["paired_rounds"]
+              assert case["semantic_checksum"] != 0
+          PY
+
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
 
