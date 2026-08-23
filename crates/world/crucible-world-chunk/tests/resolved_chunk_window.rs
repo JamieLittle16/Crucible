@@ -68,9 +68,9 @@ fn window_read(
         Err(ResolvedChunkWindowError::PositionOutsideWindow { .. }) => {
             SemanticRead::MissingHorizontalCoverage
         }
-        Err(ResolvedChunkWindowError::Chunk(
-            ChunkCoreError::PositionOutsideVerticalLattice { .. },
-        )) => SemanticRead::OutsideVerticalLattice,
+        Err(ResolvedChunkWindowError::Chunk(ChunkCoreError::PositionOutsideVerticalLattice {
+            ..
+        })) => SemanticRead::OutsideVerticalLattice,
         Err(error) => panic!("resolved window produced unexpected read error: {error:?}"),
     }
 }
@@ -206,13 +206,7 @@ fn construction_rejects_empty_overflow_missing_duplicate_and_outside_sets() {
         origin,
         2,
         2,
-        [
-            &chunks[0],
-            &chunks[1],
-            &chunks[2],
-            &chunks[2],
-            &chunks[3],
-        ],
+        [&chunks[0], &chunks[1], &chunks[2], &chunks[2], &chunks[3]],
     );
     assert!(matches!(
         duplicate,
@@ -248,8 +242,8 @@ fn construction_rejects_empty_overflow_missing_duplicate_and_outside_sets() {
 fn read_errors_fail_closed_for_horizontal_and_vertical_misses() {
     let origin = ChunkPos { x: -1, z: -1 };
     let chunks = chunk_grid(origin, 2, 2, -1, 2);
-    let window = ResolvedChunkWindow::new(origin, 2, 2, chunks.iter())
-        .expect("complete resolved window");
+    let window =
+        ResolvedChunkWindow::new(origin, 2, 2, chunks.iter()).expect("complete resolved window");
 
     let horizontal = BlockPos { x: 16, y: 0, z: 0 };
     assert!(matches!(
@@ -262,7 +256,11 @@ fn read_errors_fail_closed_for_horizontal_and_vertical_misses() {
         }) if pos == horizontal && error_origin == origin
     ));
 
-    let vertical = BlockPos { x: -1, y: 16, z: -1 };
+    let vertical = BlockPos {
+        x: -1,
+        y: 16,
+        z: -1,
+    };
     assert!(matches!(
         window.get_block(vertical),
         Err(ResolvedChunkWindowError::Chunk(
@@ -309,27 +307,21 @@ fn hundred_thousand_queries_match_reference_router_exactly() {
         } else if mode == 1 {
             min_x + in_width
         } else {
-            min_x
-                + i32::try_from(rng % in_width_u64)
-                    .expect("bounded X offset fits i32")
+            min_x + i32::try_from(rng % in_width_u64).expect("bounded X offset fits i32")
         };
         let z = if mode == 2 {
             min_z - 1
         } else if mode == 3 {
             min_z + in_depth
         } else {
-            min_z
-                + i32::try_from((rng >> 11) % in_depth_u64)
-                    .expect("bounded Z offset fits i32")
+            min_z + i32::try_from((rng >> 11) % in_depth_u64).expect("bounded Z offset fits i32")
         };
         let y = if mode == 4 {
             min_y - 1
         } else if mode == 5 {
             min_y + in_height
         } else {
-            min_y
-                + i32::try_from((rng >> 23) % in_height_u64)
-                    .expect("bounded Y offset fits i32")
+            min_y + i32::try_from((rng >> 23) % in_height_u64).expect("bounded Y offset fits i32")
         };
         let pos = BlockPos { x, y, z };
 
