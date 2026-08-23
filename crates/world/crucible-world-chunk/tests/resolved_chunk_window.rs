@@ -59,7 +59,10 @@ impl<'a> ReferencePointLookup<'a> {
     }
 }
 
-fn window_read(window: &ResolvedChunkWindow<'_, State, DirectBlockSection<State>>, pos: BlockPos) -> SemanticRead {
+fn window_read(
+    window: &ResolvedChunkWindow<'_, State, DirectBlockSection<State>>,
+    pos: BlockPos,
+) -> SemanticRead {
     match window.get_block(pos) {
         Ok(state) => SemanticRead::State(state),
         Err(ResolvedChunkWindowError::PositionOutsideWindow { .. }) => {
@@ -79,11 +82,7 @@ fn state_for(position: ChunkPos, section_index: usize) -> State {
     State(u16::try_from(mixed + 1).expect("test state identity fits u16"))
 }
 
-fn synthetic_chunk(
-    position: ChunkPos,
-    min_section_y: i32,
-    section_count: usize,
-) -> Chunk {
+fn synthetic_chunk(position: ChunkPos, min_section_y: i32, section_count: usize) -> Chunk {
     let sections = (0..section_count)
         .map(|index| DirectBlockSection::filled(state_for(position, index), &Facts))
         .collect();
@@ -128,12 +127,31 @@ fn one_chunk_window_reads_exact_semantic_image() {
     assert_eq!(window.chunk_count(), 1);
 
     for pos in [
-        BlockPos { x: -16, y: -16, z: -16 },
-        BlockPos { x: -1, y: -1, z: -1 },
-        BlockPos { x: -16, y: 0, z: -1 },
-        BlockPos { x: -1, y: 15, z: -16 },
+        BlockPos {
+            x: -16,
+            y: -16,
+            z: -16,
+        },
+        BlockPos {
+            x: -1,
+            y: -1,
+            z: -1,
+        },
+        BlockPos {
+            x: -16,
+            y: 0,
+            z: -1,
+        },
+        BlockPos {
+            x: -1,
+            y: 15,
+            z: -16,
+        },
     ] {
-        assert_eq!(window_read(&window, pos), SemanticRead::State(chunks[0].get_block(pos).unwrap()));
+        let expected = chunks[0]
+            .get_block(pos)
+            .expect("test point lies in the one-chunk lattice");
+        assert_eq!(window_read(&window, pos), SemanticRead::State(expected));
     }
 }
 
@@ -152,7 +170,11 @@ fn multi_chunk_window_accepts_arbitrary_input_order_and_crosses_signed_boundarie
         for z in zs {
             for y in ys {
                 let pos = BlockPos { x, y, z };
-                assert_eq!(window_read(&window, pos), reference.get_block(pos), "{pos:?}");
+                assert_eq!(
+                    window_read(&window, pos),
+                    reference.get_block(pos),
+                    "{pos:?}"
+                );
             }
         }
     }
@@ -163,22 +185,22 @@ fn construction_rejects_empty_overflow_missing_duplicate_and_outside_sets() {
     let origin = ChunkPos { x: -1, z: 2 };
     let chunks = chunk_grid(origin, 2, 2, -1, 2);
 
-    assert_eq!(
+    assert!(matches!(
         ResolvedChunkWindow::new(origin, 0, 2, chunks.iter()),
         Err(ResolvedChunkWindowError::EmptyExtent)
-    );
-    assert_eq!(
+    ));
+    assert!(matches!(
         ResolvedChunkWindow::new(origin, usize::MAX, 2, chunks.iter()),
         Err(ResolvedChunkWindowError::ExtentOverflow)
-    );
+    ));
 
     let missing = ResolvedChunkWindow::new(origin, 2, 2, chunks.iter().take(3));
-    assert_eq!(
+    assert!(matches!(
         missing,
         Err(ResolvedChunkWindowError::MissingChunk {
             position: ChunkPos { x: 0, z: 3 },
         })
-    );
+    ));
 
     let duplicate = ResolvedChunkWindow::new(
         origin,
@@ -192,29 +214,34 @@ fn construction_rejects_empty_overflow_missing_duplicate_and_outside_sets() {
             &chunks[3],
         ],
     );
-    assert_eq!(
+    assert!(matches!(
         duplicate,
-        Err(ResolvedChunkWindowError::DuplicateChunk {
-            position: chunks[2].position(),
-        })
-    );
+        Err(ResolvedChunkWindowError::DuplicateChunk { position })
+            if position == chunks[2].position()
+    ));
 
     let outside_chunk = synthetic_chunk(ChunkPos { x: 7, z: 7 }, -1, 2);
     let outside = ResolvedChunkWindow::new(
         origin,
         2,
         2,
-        [&chunks[0], &chunks[1], &chunks[2], &chunks[3], &outside_chunk],
+        [
+            &chunks[0],
+            &chunks[1],
+            &chunks[2],
+            &chunks[3],
+            &outside_chunk,
+        ],
     );
-    assert_eq!(
+    assert!(matches!(
         outside,
         Err(ResolvedChunkWindowError::ChunkOutsideWindow {
             position: ChunkPos { x: 7, z: 7 },
-            origin,
+            origin: error_origin,
             width: 2,
             depth: 2,
-        })
-    );
+        }) if error_origin == origin
+    ));
 }
 
 #[test]
@@ -225,27 +252,27 @@ fn read_errors_fail_closed_for_horizontal_and_vertical_misses() {
         .expect("complete resolved window");
 
     let horizontal = BlockPos { x: 16, y: 0, z: 0 };
-    assert_eq!(
+    assert!(matches!(
         window.get_block(horizontal),
         Err(ResolvedChunkWindowError::PositionOutsideWindow {
-            pos: horizontal,
-            origin,
+            pos,
+            origin: error_origin,
             width: 2,
             depth: 2,
-        })
-    );
+        }) if pos == horizontal && error_origin == origin
+    ));
 
     let vertical = BlockPos { x: -1, y: 16, z: -1 };
-    assert_eq!(
+    assert!(matches!(
         window.get_block(vertical),
         Err(ResolvedChunkWindowError::Chunk(
             ChunkCoreError::PositionOutsideVerticalLattice {
-                pos: vertical,
+                pos,
                 min_section_y: -1,
                 section_count: 2,
             }
-        ))
-    );
+        )) if pos == vertical
+    ));
 }
 
 #[test]
@@ -266,6 +293,9 @@ fn hundred_thousand_queries_match_reference_router_exactly() {
     let in_depth = i32::try_from(depth * 16).expect("test depth fits i32");
     let min_y = min_section_y * 16;
     let in_height = i32::try_from(section_count * 16).expect("test height fits i32");
+    let in_width_u64 = u64::try_from(in_width).expect("positive test width fits u64");
+    let in_depth_u64 = u64::try_from(in_depth).expect("positive test depth fits u64");
+    let in_height_u64 = u64::try_from(in_height).expect("positive test height fits u64");
 
     let mut rng = 0xD1B5_4A32_D192_ED03_u64;
     for query_index in 0..100_000_u32 {
@@ -279,21 +309,27 @@ fn hundred_thousand_queries_match_reference_router_exactly() {
         } else if mode == 1 {
             min_x + in_width
         } else {
-            min_x + i32::try_from(rng % u64::try_from(in_width).unwrap()).unwrap()
+            min_x
+                + i32::try_from(rng % in_width_u64)
+                    .expect("bounded X offset fits i32")
         };
         let z = if mode == 2 {
             min_z - 1
         } else if mode == 3 {
             min_z + in_depth
         } else {
-            min_z + i32::try_from((rng >> 11) % u64::try_from(in_depth).unwrap()).unwrap()
+            min_z
+                + i32::try_from((rng >> 11) % in_depth_u64)
+                    .expect("bounded Z offset fits i32")
         };
         let y = if mode == 4 {
             min_y - 1
         } else if mode == 5 {
             min_y + in_height
         } else {
-            min_y + i32::try_from((rng >> 23) % u64::try_from(in_height).unwrap()).unwrap()
+            min_y
+                + i32::try_from((rng >> 23) % in_height_u64)
+                    .expect("bounded Y offset fits i32")
         };
         let pos = BlockPos { x, y, z };
 
