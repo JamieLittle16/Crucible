@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+mod publication;
 mod window;
 
 use core::marker::PhantomData;
@@ -13,6 +14,7 @@ use core::marker::PhantomData;
 use crucible_types::{BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp};
 use crucible_world_contract::{BlockSection, BlockStateFacts, SectionBlockPos, SectionSummary};
 
+pub use publication::PublishedChunk;
 pub use window::{ResolvedChunkWindow, ResolvedChunkWindowError};
 
 const BLOCKS_PER_CHUNK_AXIS: i32 = 16;
@@ -106,8 +108,8 @@ pub enum ChunkCoreError {
 /// Smallest live chunk state admitted by M0.4A.
 ///
 /// `Section` is statically dispatched. The core intentionally has no `Clone` implementation: live
-/// mutable world state must not acquire accidental copy semantics before an explicit
-/// snapshot/publication contract exists.
+/// mutable world state must not acquire accidental copy semantics. Read-only consumers instead use
+/// the explicit immutable [`PublishedChunk`] semantic projection.
 #[derive(Debug)]
 pub struct LiveChunkCore<S, Section>
 where
