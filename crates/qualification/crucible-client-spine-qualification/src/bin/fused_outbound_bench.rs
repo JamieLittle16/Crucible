@@ -504,7 +504,13 @@ fn require_byte_equivalence(case: &TraceCase, operations: usize) -> Result<Trace
         emitted_body_bytes = add_body_bytes(emitted_body_bytes, shape)?;
         queue_reference(&mut reference, shape)?;
         fused.queue_shape(shape)?;
-        require_same_pending(case.name, operation, "queue", reference.pending(), fused.pending())?;
+        require_same_pending(
+            case.name,
+            operation,
+            "queue",
+            reference.pending(),
+            fused.pending(),
+        )?;
 
         let drain = drain_amount(reference.pending().len(), operation);
         if drain != 0 {
@@ -597,8 +603,8 @@ fn measure_fused(case: &TraceCase, operations: usize) -> Result<(u128, TraceResu
 }
 
 fn add_body_bytes(current: u64, shape: &PacketShape) -> Result<u64, String> {
-    let body_len = u64::try_from(shape.body_len()?)
-        .map_err(|_| "body length does not fit u64".to_owned())?;
+    let body_len =
+        u64::try_from(shape.body_len()?).map_err(|_| "body length does not fit u64".to_owned())?;
     current
         .checked_add(body_len)
         .ok_or_else(|| "emitted body byte count overflow".to_owned())
