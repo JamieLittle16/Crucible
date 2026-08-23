@@ -10,6 +10,7 @@ on:
       - crates/world/crucible-world-section/**
       - crates/data/crucible-generated/**
       - tools/xtask/**
+      - tools/section_correctness_bundle.py
       - vanilla/state-data/**
       - vanilla/fixtures/section/**
       - .github/workflows/section-full-qualification.yml
@@ -21,6 +22,7 @@ on:
       - crates/world/crucible-world-section/**
       - crates/data/crucible-generated/**
       - tools/xtask/**
+      - tools/section_correctness_bundle.py
       - vanilla/state-data/**
       - vanilla/fixtures/section/**
       - .github/workflows/section-full-qualification.yml
@@ -63,5 +65,51 @@ jobs:
         with:
           name: crucible-section-full-${{ matrix.candidate }}
           path: target/crucible-qualification/section/full.json
+          if-no-files-found: error
+          retention-days: 30
+
+  bundle:
+    name: Validated full correctness bundle
+    needs: qualify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      # Re-run the four already-green matrix candidates in one checkout so the final handoff is
+      # provably same-commit and does not depend on cross-job artifact association.
+      - name: Regenerate same-checkout full evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=target/crucible-qualification/section/full-bundle
+          for candidate in direct adaptive fast-local packed-local; do
+            cargo run --release --locked -p xtask -- \
+              qualify section --full --candidate "$candidate"
+            mkdir -p "$root/$candidate"
+            cp target/crucible-qualification/section/full.json "$root/$candidate/full.json"
+          done
+
+      - name: Validate and seal correctness bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/section_correctness_bundle.py \
+            --repo-root . \
+            --input-root target/crucible-qualification/section/full-bundle \
+            --expected-commit "$(git rev-parse HEAD)" \
+            --output target/crucible-qualification/section/full-bundle/bundle-manifest.json
+
+      - name: Upload validated correctness bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: crucible-section-full-bundle
+          path: target/crucible-qualification/section/full-bundle
           if-no-files-found: error
           retention-days: 30
