@@ -5,6 +5,9 @@ name = "reference"
 fidelity = "strict"
 optimize = "debuggability"
 
+[engine]
+"world.section-store" = "crucible-section-reference"
+
 [security]
 allow_unqualified = false
 allow_third_party_native = false
