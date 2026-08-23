@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/crucible-types",
     "crates/crucible-component",
+    "crates/crucible-composition",
     "crates/data/crucible-generated",
     "crates/qualification/crucible-section-qualification",
     "crates/world/crucible-world-contract",
@@ -13,6 +14,7 @@ members = [
 default-members = [
     "crates/crucible-types",
     "crates/crucible-component",
+    "crates/crucible-composition",
     "crates/data/crucible-generated",
     "crates/qualification/crucible-section-qualification",
     "crates/world/crucible-world-contract",
