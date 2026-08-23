@@ -68,7 +68,7 @@ fn flush_in_three_byte_chunks(stream: &mut TcpStream, driver: &mut ConnectionDri
     }
 }
 
-fn run_server(listener: TcpListener, expected_frames: usize) {
+fn run_server(listener: &TcpListener, expected_frames: usize) {
     let (mut stream, _) = listener.accept().expect("accept loopback client");
     configure_socket(&stream);
     let mut driver = ConnectionDriver::new(limits());
@@ -141,7 +141,7 @@ fn real_tcp_fragmentation_roundtrips_exact_borrowed_frames() {
     let encoded = encode_stream(&requests);
     let expected_count = requests.len();
 
-    let server = thread::spawn(move || run_server(listener, expected_count));
+    let server = thread::spawn(move || run_server(&listener, expected_count));
 
     let mut client = TcpStream::connect(address).expect("connect loopback client");
     configure_socket(&client);
