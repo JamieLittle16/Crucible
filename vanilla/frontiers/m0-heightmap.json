@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "description": "Dedicated official-source dependency frontier for M0.4B Heightmap semantic excavation. Roots are intentionally narrow: the Heightmap type itself plus live chunk surfaces that create, access, prime, update, serialize, or expose heightmap state. This frontier exists to freeze SEM before any incremental Crucible mechanism is admitted.",
+  "max_depth": 6,
+  "include_package_prefixes": ["net.minecraft"],
+  "exclude_package_prefixes": ["net.minecraft.data", "net.minecraft.gametest"],
+  "root_queries": [
+    "net.minecraft.world.level.levelgen.Heightmap",
+    "net.minecraft.world.level.chunk.ChunkAccess",
+    "net.minecraft.world.level.chunk.LevelChunk",
+    "net.minecraft.world.level.chunk.storage.SerializableChunkData"
+  ]
+}
