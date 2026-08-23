@@ -70,6 +70,28 @@ pub struct ProcessReport {
     pub stop: StopReason,
 }
 
+/// A candidate semantic action exposes its complete required outbound frame bodies before commit.
+///
+/// This trait is statically dispatched and target-neutral. Implementations may use a fixed array,
+/// `Vec`, small domain-specific container, or any other owned representation whose elements borrow
+/// as frame-body byte slices. The driver never stores the batch beyond the transaction call.
+pub trait OutboundBatch {
+    /// One already-formed packet body, including packet-ID `VarInt` and payload.
+    type Body: AsRef<[u8]>;
+
+    /// Complete outbound frame-body batch required by this candidate action.
+    fn outbound_frames(&self) -> &[Self::Body];
+}
+
+/// Result of attempting one atomic inbound-action/outbound-admission transaction.
+#[derive(Debug, Eq, PartialEq)]
+pub enum TransactionResult<A> {
+    /// No complete inbound frame is currently available.
+    Incomplete,
+    /// The inbound frame was consumed and the complete outbound batch was admitted atomically.
+    Committed(A),
+}
+
 /// Fail-closed connection-driver errors.
 #[derive(Debug, Eq, PartialEq)]
 pub enum DriverError<E> {
@@ -80,6 +102,12 @@ pub enum DriverError<E> {
     /// The current frame remains logically unconsumed. The handler owns rollback of any external
     /// state it mutates before returning this error; the driver guarantees only stream progression.
     Handler(E),
+    /// An unexpected inbound-commit failure was followed by an unexpected failure to remove the
+    /// just-admitted outbound tail. This indicates an internal transaction invariant breach.
+    RollbackFailed {
+        operation: ConnectionBufferError,
+        rollback: ConnectionBufferError,
+    },
     /// Internal accounting overflowed while accumulating a processing report.
     AccountingOverflow,
 }
@@ -125,7 +153,8 @@ impl ConnectionDriver {
     ///
     /// This method does not expose egress to the handler. Target-specific code can accumulate its
     /// response decision in caller-owned state and queue encoded frame bodies separately, keeping
-    /// stream-consumption semantics independent from response policy.
+    /// stream-consumption semantics independent from response policy. Semantic actions whose commit
+    /// requires outbound capacity should instead use [`Self::process_one_transactional`].
     ///
     /// # Errors
     ///
@@ -181,6 +210,56 @@ impl ConnectionDriver {
         }
     }
 
+    /// Processes at most one complete inbound frame as an atomic semantic/outbound transaction.
+    ///
+    /// The handler receives a borrowed frame and must return an owned candidate action. No external
+    /// semantic state should be adopted by the caller until this method returns
+    /// [`TransactionResult::Committed`]. The action exposes its entire required outbound batch via
+    /// [`OutboundBatch`]. The driver then:
+    ///
+    /// 1. validates and admits the complete outbound batch against the exact bounded egress queue;
+    /// 2. consumes the corresponding inbound stream bytes only after admission succeeds;
+    /// 3. returns the candidate action for caller-side semantic adoption.
+    ///
+    /// A handler failure or outbound-capacity failure leaves the current inbound frame unconsumed.
+    /// An impossible failure while consuming the already-peeked frame triggers exact egress-tail
+    /// rollback before the error is returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns a wire/buffer error without committing ingress, the handler's error without changing
+    /// connection buffers, or [`DriverError::RollbackFailed`] if two internal invariants fail while
+    /// trying to restore atomicity.
+    pub fn process_one_transactional<E, A, F>(
+        &mut self,
+        handler: F,
+    ) -> Result<TransactionResult<A>, DriverError<E>>
+    where
+        A: OutboundBatch,
+        F: FnOnce(FrameView<'_>) -> Result<A, E>,
+    {
+        let Some(frame) = self.ingress.peek_frame().map_err(DriverError::Buffer)? else {
+            return Ok(TransactionResult::Incomplete);
+        };
+        let consumed = frame.stream_bytes();
+        let action = handler(frame).map_err(DriverError::Handler)?;
+        let queued_before = self.egress.queued_len();
+        self.egress
+            .queue_batch(action.outbound_frames())
+            .map_err(DriverError::Buffer)?;
+
+        if let Err(operation) = self.ingress.consume(consumed) {
+            if let Err(rollback) = self.egress.rollback_queued_to(queued_before) {
+                return Err(DriverError::RollbackFailed {
+                    operation,
+                    rollback,
+                });
+            }
+            return Err(DriverError::Buffer(operation));
+        }
+        Ok(TransactionResult::Committed(action))
+    }
+
     /// Queues one already-formed packet body into bounded egress framing.
     ///
     /// The body must contain the packet-ID `VarInt` followed by the target packet payload. Target
@@ -191,6 +270,19 @@ impl ConnectionDriver {
     /// Returns the underlying transactional egress/wire error.
     pub fn queue_frame<E>(&mut self, body: &[u8]) -> Result<(), DriverError<E>> {
         self.egress.queue_frame(body).map_err(DriverError::Buffer)
+    }
+
+    /// Atomically queues a complete batch of already-formed packet bodies.
+    ///
+    /// # Errors
+    ///
+    /// Returns the underlying batch validation/capacity error. Rejection leaves logical egress
+    /// unchanged.
+    pub fn queue_batch<E, B>(&mut self, bodies: &[B]) -> Result<(), DriverError<E>>
+    where
+        B: AsRef<[u8]>,
+    {
+        self.egress.queue_batch(bodies).map_err(DriverError::Buffer)
     }
 
     /// Contiguous encoded bytes currently ready for a socket write.
@@ -225,11 +317,32 @@ impl ConnectionDriver {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConnectionDriver, DriverError, FrameBudget, FrameFlow, StopReason};
+    use super::{
+        ConnectionDriver, DriverError, FrameBudget, FrameFlow, OutboundBatch, StopReason,
+        TransactionResult,
+    };
     use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
+
+    #[derive(Debug, Eq, PartialEq)]
+    struct PreparedAction {
+        marker: u8,
+        frames: Vec<Vec<u8>>,
+    }
+
+    impl OutboundBatch for PreparedAction {
+        type Body = Vec<u8>;
+
+        fn outbound_frames(&self) -> &[Self::Body] {
+            &self.frames
+        }
+    }
 
     fn limits(max_buffer: usize) -> ConnectionLimits {
         ConnectionLimits::new(1_024, max_buffer, max_buffer).expect("valid test limits")
+    }
+
+    fn small_frame_limits(max_buffer: usize) -> ConnectionLimits {
+        ConnectionLimits::new(16, max_buffer, max_buffer).expect("valid small-frame limits")
     }
 
     fn budget(frames: usize) -> FrameBudget {
@@ -419,6 +532,124 @@ mod tests {
         assert_eq!(report.frames, 1);
         assert_eq!(report.stop, StopReason::HandlerYield);
         assert!(driver.buffered_ingress() > 0);
+    }
+
+    #[test]
+    fn transactional_action_admits_complete_batch_before_consuming_ingress() {
+        let encoded = encoded_stream(&[(9, b"request")]);
+        let mut driver = ConnectionDriver::new(limits(4_096));
+        driver.ingest::<()>(&encoded).expect("request ingress");
+
+        let result = driver
+            .process_one_transactional(|frame| {
+                assert_eq!(frame.packet_id(), 9);
+                assert_eq!(frame.payload(), b"request");
+                Ok::<_, ()>(PreparedAction {
+                    marker: 42,
+                    frames: vec![body(10, b"first"), body(11, b"second")],
+                })
+            })
+            .expect("transaction commits");
+        let TransactionResult::Committed(action) = result else {
+            panic!("complete frame must commit");
+        };
+        assert_eq!(action.marker, 42);
+        assert_eq!(driver.buffered_ingress(), 0);
+        assert!(driver.queued_egress() > 0);
+
+        let outbound = driver.pending_egress().to_vec();
+        let mut decoder = ConnectionDriver::new(limits(4_096));
+        decoder.ingest::<()>(&outbound).expect("outbound loopback");
+        let mut ids = Vec::new();
+        let report = decoder
+            .process_available(budget(8), |frame| {
+                ids.push(frame.packet_id());
+                Ok::<_, ()>(FrameFlow::Continue)
+            })
+            .expect("decode committed batch");
+        assert_eq!(ids, vec![10, 11]);
+        assert_eq!(report.frames, 2);
+        assert_eq!(decoder.buffered_ingress(), 0);
+    }
+
+    #[test]
+    fn transactional_capacity_rejection_preserves_ingress_and_existing_egress() {
+        let limits = small_frame_limits(17);
+        let request = {
+            let mut encoder = ConnectionDriver::new(limits);
+            encoder
+                .queue_frame::<()>(&body(9, b"request"))
+                .expect("request frame fits");
+            encoder.pending_egress().to_vec()
+        };
+        let mut driver = ConnectionDriver::new(limits);
+        driver
+            .queue_frame::<()>(&body(1, b"old"))
+            .expect("existing egress");
+        let egress_before = driver.pending_egress().to_vec();
+        driver.ingest::<()>(&request).expect("request ingress");
+        let ingress_before = driver.buffered_ingress();
+
+        let error = driver
+            .process_one_transactional(|_| {
+                Ok::<_, ()>(PreparedAction {
+                    marker: 7,
+                    frames: vec![body(10, b"1234567890"), body(11, b"abcdefghij")],
+                })
+            })
+            .expect_err("aggregate egress capacity must reject action");
+        assert!(matches!(
+            error,
+            DriverError::Buffer(ConnectionBufferError::EgressLimitExceeded { .. })
+        ));
+        assert_eq!(driver.buffered_ingress(), ingress_before);
+        assert_eq!(driver.pending_egress(), egress_before);
+    }
+
+    #[test]
+    fn transactional_handler_error_changes_neither_ingress_nor_egress() {
+        let encoded = encoded_stream(&[(9, b"request")]);
+        let mut driver = ConnectionDriver::new(limits(4_096));
+        driver.ingest::<()>(&encoded).expect("request ingress");
+        driver
+            .queue_frame::<()>(&body(1, b"existing"))
+            .expect("existing egress");
+        let ingress_before = driver.buffered_ingress();
+        let egress_before = driver.pending_egress().to_vec();
+
+        let error = driver
+            .process_one_transactional::<_, PreparedAction, _>(|_| Err("semantic rejection"))
+            .expect_err("handler rejects");
+        assert_eq!(error, DriverError::Handler("semantic rejection"));
+        assert_eq!(driver.buffered_ingress(), ingress_before);
+        assert_eq!(driver.pending_egress(), egress_before);
+    }
+
+    #[test]
+    fn transactional_incomplete_input_is_a_noop() {
+        let mut driver = ConnectionDriver::new(limits(4_096));
+        let result = driver
+            .process_one_transactional::<(), PreparedAction, _>(|_| {
+                panic!("handler must not run without a complete frame")
+            })
+            .expect("incomplete is not an error");
+        assert_eq!(result, TransactionResult::Incomplete);
+        assert_eq!(driver.buffered_ingress(), 0);
+        assert_eq!(driver.queued_egress(), 0);
+    }
+
+    #[test]
+    fn direct_batch_queue_matches_individual_frame_queue() {
+        let frames = [body(1, b"a"), body(2, b"bc"), body(3, b"def")];
+        let mut individual = ConnectionDriver::new(limits(4_096));
+        for frame in &frames {
+            individual
+                .queue_frame::<()>(frame)
+                .expect("individual frame");
+        }
+        let mut batch = ConnectionDriver::new(limits(4_096));
+        batch.queue_batch::<(), _>(&frames).expect("batch frames");
+        assert_eq!(batch.pending_egress(), individual.pending_egress());
     }
 
     #[test]
