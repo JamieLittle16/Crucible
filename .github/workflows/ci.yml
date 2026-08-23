@@ -58,6 +58,7 @@ jobs:
           --package crucible-component
           --package crucible-protocol-core
           --package crucible-benchmark-support
+          --package crucible-composition-qualification
           --package crucible-ownership-qualification
           --package crucible-section-qualification
           --package crucible-world-access-qualification
@@ -79,6 +80,29 @@ jobs:
 
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
+
+      # Hosted timing is diagnostic only. Structural concrete-type identity is the
+      # primary composition zero-cost proof; this protects the HOT loop against drift.
+      - name: Composition HOT benchmark smoke
+        run: |
+          cargo run --release --locked \
+            --package crucible-composition-qualification \
+            --bin composition_hot_bench -- \
+            --smoke \
+            --output target/composition-hot-smoke.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(Path("target/composition-hot-smoke.json").read_text())
+          assert artifact["schema"] == 1
+          assert artifact["benchmark"] == "composition-hot-tax"
+          assert artifact["mode"] == "smoke"
+          assert artifact["hosted_ci_is_diagnostic_only"] is True
+          assert artifact["structural"]["exact_type_identity"] is True
+          assert artifact["paired_rounds"]
+          assert artifact["semantic_checksum"] != 0
+          PY
 
       # Hosted timing is diagnostic only. This step proves the release harness runs,
       # preserves semantic work, and emits parseable evidence; it cannot select a winner.
