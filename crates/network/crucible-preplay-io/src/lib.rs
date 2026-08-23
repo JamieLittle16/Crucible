@@ -408,7 +408,9 @@ where
                         outbound_frames = add(outbound_frames, second.outbound_frames)?;
                         match second.stop {
                             ProcessStop::Incomplete => ServiceStop::InputPending,
-                            ProcessStop::ActionBudgetExhausted => ServiceStop::ActionBudgetExhausted,
+                            ProcessStop::ActionBudgetExhausted => {
+                                ServiceStop::ActionBudgetExhausted
+                            }
                             ProcessStop::SessionClosed => ServiceStop::SessionClosed,
                         }
                     }
