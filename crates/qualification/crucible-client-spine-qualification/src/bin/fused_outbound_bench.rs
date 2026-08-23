@@ -97,7 +97,7 @@ impl PacketShape {
     }
 
     fn body_len(&self) -> Result<usize, String> {
-        let payload = match self {
+        let payload_len = match self {
             Self::Ping { .. } => 8,
             Self::Status {
                 text,
@@ -110,16 +110,16 @@ impl PacketShape {
                 max_name_utf16_units,
                 ..
             } => {
-                let string_len = string_wire_len(name, *max_name_utf16_units)?;
+                let name_len = string_wire_len(name, *max_name_utf16_units)?;
                 var_int_len(*sequence)
                     .checked_add(3)
-                    .and_then(|value| value.checked_add(string_len))
+                    .and_then(|value| value.checked_add(name_len))
                     .ok_or_else(|| "metadata body length overflow".to_owned())?
             }
             Self::Blob { bytes, .. } => bytes.len(),
         };
         var_int_len(self.packet_id())
-            .checked_add(payload)
+            .checked_add(payload_len)
             .ok_or_else(|| "packet body length overflow".to_owned())
     }
 
@@ -225,11 +225,11 @@ struct PairSample {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Summary {
-    p50_ns: u128,
-    p95_ns: u128,
-    p99_ns: u128,
-    max_ns: u128,
+struct NanosecondSummary {
+    p50: u128,
+    p95: u128,
+    p99: u128,
+    max: u128,
 }
 
 #[derive(Debug)]
@@ -237,8 +237,8 @@ struct CaseEvidence {
     name: &'static str,
     operations: usize,
     semantic: TraceResult,
-    reference: Summary,
-    fused: Summary,
+    reference: NanosecondSummary,
+    fused: NanosecondSummary,
     samples: Vec<PairSample>,
 }
 
@@ -359,7 +359,7 @@ fn main() {
 fn run() -> Result<(), String> {
     let config = parse_args(env::args().skip(1))?;
     let hardware = collect_hardware_metadata()?;
-    let cases = trace_cases();
+    let cases = trace_cases()?;
     let mut evidence = Vec::with_capacity(cases.len());
 
     for case in &cases {
@@ -412,14 +412,10 @@ fn run() -> Result<(), String> {
     Ok(())
 }
 
-fn trace_cases() -> Vec<TraceCase> {
-    let large = (0..32_768)
-        .map(|index| u8::try_from(index % 251).unwrap_or_default())
-        .collect::<Vec<_>>();
-    let medium = (0..4_096)
-        .map(|index| u8::try_from(index % 239).unwrap_or_default())
-        .collect::<Vec<_>>();
-    vec![
+fn trace_cases() -> Result<Vec<TraceCase>, String> {
+    let large = pattern_bytes(32_768, 251)?;
+    let medium = pattern_bytes(4_096, 239)?;
+    Ok(vec![
         TraceCase {
             name: "tiny_ping",
             shapes: vec![PacketShape::Ping {
@@ -484,7 +480,17 @@ fn trace_cases() -> Vec<TraceCase> {
             ],
             operation_divisor: 2,
         },
-    ]
+    ])
+}
+
+fn pattern_bytes(len: usize, modulus: usize) -> Result<Vec<u8>, String> {
+    let mut bytes = Vec::with_capacity(len);
+    for index in 0..len {
+        let value = u8::try_from(index % modulus)
+            .map_err(|_| "qualification pattern value does not fit u8".to_owned())?;
+        bytes.push(value);
+    }
+    Ok(bytes)
 }
 
 fn require_byte_equivalence(case: &TraceCase, operations: usize) -> Result<TraceResult, String> {
@@ -495,39 +501,42 @@ fn require_byte_equivalence(case: &TraceCase, operations: usize) -> Result<Trace
 
     for operation in 0..operations {
         let shape = &case.shapes[operation % case.shapes.len()];
-        emitted_body_bytes = emitted_body_bytes
-            .checked_add(
-                u64::try_from(shape.body_len()?)
-                    .map_err(|_| "body length does not fit u64".to_owned())?,
-            )
-            .ok_or_else(|| "emitted body byte count overflow".to_owned())?;
+        emitted_body_bytes = add_body_bytes(emitted_body_bytes, shape)?;
         queue_reference(&mut reference, shape)?;
         fused.queue_shape(shape)?;
-        if reference.pending() != fused.pending() {
-            return Err(format!(
-                "byte divergence in {} after operation {operation}",
-                case.name
-            ));
-        }
+        require_same_pending(case.name, operation, "queue", reference.pending(), fused.pending())?;
+
         let drain = drain_amount(reference.pending().len(), operation);
         if drain != 0 {
             reference
                 .consume_written(drain)
                 .map_err(|error| format!("reference drain failed: {error:?}"))?;
             fused.consume_written(drain)?;
-            if reference.pending() != fused.pending() {
-                return Err(format!(
-                    "byte divergence in {} after drain at operation {operation}",
-                    case.name
-                ));
-            }
+            require_same_pending(
+                case.name,
+                operation,
+                "drain",
+                reference.pending(),
+                fused.pending(),
+            )?;
         }
     }
-    Ok(TraceResult {
-        checksum: checksum_bytes(reference.pending()) ^ emitted_body_bytes,
-        emitted_body_bytes,
-        final_queued_bytes: reference.pending().len(),
-    })
+    Ok(trace_result(reference.pending(), emitted_body_bytes))
+}
+
+fn require_same_pending(
+    case: &str,
+    operation: usize,
+    phase: &str,
+    reference: &[u8],
+    fused: &[u8],
+) -> Result<(), String> {
+    if reference == fused {
+        return Ok(());
+    }
+    Err(format!(
+        "byte divergence in {case} after {phase} at operation {operation}"
+    ))
 }
 
 fn measure_pair(
@@ -535,21 +544,19 @@ fn measure_pair(
     operations: usize,
     fused_first: bool,
 ) -> Result<(u128, u128), String> {
-    if fused_first {
-        let (fused_ns, fused_result) = measure_fused(case, operations)?;
-        let (reference_ns, reference_result) = measure_reference(case, operations)?;
-        if fused_result != reference_result {
-            return Err(format!("timed semantic divergence in {}", case.name));
-        }
-        Ok((reference_ns, fused_ns))
+    let (reference, fused) = if fused_first {
+        let fused = measure_fused(case, operations)?;
+        let reference = measure_reference(case, operations)?;
+        (reference, fused)
     } else {
-        let (reference_ns, reference_result) = measure_reference(case, operations)?;
-        let (fused_ns, fused_result) = measure_fused(case, operations)?;
-        if fused_result != reference_result {
-            return Err(format!("timed semantic divergence in {}", case.name));
-        }
-        Ok((reference_ns, fused_ns))
+        let reference = measure_reference(case, operations)?;
+        let fused = measure_fused(case, operations)?;
+        (reference, fused)
+    };
+    if reference.1 != fused.1 {
+        return Err(format!("timed semantic divergence in {}", case.name));
     }
+    Ok((reference.0, fused.0))
 }
 
 fn measure_reference(case: &TraceCase, operations: usize) -> Result<(u128, TraceResult), String> {
@@ -559,12 +566,7 @@ fn measure_reference(case: &TraceCase, operations: usize) -> Result<(u128, Trace
     let mut emitted_body_bytes = 0_u64;
     for operation in 0..operations {
         let shape = black_box(&case.shapes[operation % case.shapes.len()]);
-        emitted_body_bytes = emitted_body_bytes
-            .checked_add(
-                u64::try_from(shape.body_len()?)
-                    .map_err(|_| "body length does not fit u64".to_owned())?,
-            )
-            .ok_or_else(|| "emitted body byte count overflow".to_owned())?;
+        emitted_body_bytes = add_body_bytes(emitted_body_bytes, shape)?;
         queue_reference(&mut queue, shape)?;
         let drain = drain_amount(queue.pending().len(), operation);
         if drain != 0 {
@@ -573,11 +575,7 @@ fn measure_reference(case: &TraceCase, operations: usize) -> Result<(u128, Trace
                 .map_err(|error| format!("reference drain failed: {error:?}"))?;
         }
     }
-    let result = TraceResult {
-        checksum: checksum_bytes(black_box(queue.pending())) ^ emitted_body_bytes,
-        emitted_body_bytes,
-        final_queued_bytes: queue.pending().len(),
-    };
+    let result = trace_result(black_box(queue.pending()), emitted_body_bytes);
     Ok((start.elapsed().as_nanos(), black_box(result)))
 }
 
@@ -587,24 +585,31 @@ fn measure_fused(case: &TraceCase, operations: usize) -> Result<(u128, TraceResu
     let mut emitted_body_bytes = 0_u64;
     for operation in 0..operations {
         let shape = black_box(&case.shapes[operation % case.shapes.len()]);
-        emitted_body_bytes = emitted_body_bytes
-            .checked_add(
-                u64::try_from(shape.body_len()?)
-                    .map_err(|_| "body length does not fit u64".to_owned())?,
-            )
-            .ok_or_else(|| "emitted body byte count overflow".to_owned())?;
+        emitted_body_bytes = add_body_bytes(emitted_body_bytes, shape)?;
         queue.queue_shape(shape)?;
         let drain = drain_amount(queue.pending().len(), operation);
         if drain != 0 {
             queue.consume_written(drain)?;
         }
     }
-    let result = TraceResult {
-        checksum: checksum_bytes(black_box(queue.pending())) ^ emitted_body_bytes,
-        emitted_body_bytes,
-        final_queued_bytes: queue.pending().len(),
-    };
+    let result = trace_result(black_box(queue.pending()), emitted_body_bytes);
     Ok((start.elapsed().as_nanos(), black_box(result)))
+}
+
+fn add_body_bytes(current: u64, shape: &PacketShape) -> Result<u64, String> {
+    let body_len = u64::try_from(shape.body_len()?)
+        .map_err(|_| "body length does not fit u64".to_owned())?;
+    current
+        .checked_add(body_len)
+        .ok_or_else(|| "emitted body byte count overflow".to_owned())
+}
+
+fn trace_result(pending: &[u8], emitted_body_bytes: u64) -> TraceResult {
+    TraceResult {
+        checksum: checksum_bytes(pending) ^ emitted_body_bytes,
+        emitted_body_bytes,
+        final_queued_bytes: pending.len(),
+    }
 }
 
 fn queue_reference(queue: &mut EgressBuffer, shape: &PacketShape) -> Result<(), String> {
@@ -664,13 +669,13 @@ fn checksum_bytes(bytes: &[u8]) -> u64 {
     checksum
 }
 
-fn summarize(mut values: Vec<u128>) -> Summary {
+fn summarize(mut values: Vec<u128>) -> NanosecondSummary {
     values.sort_unstable();
-    Summary {
-        p50_ns: percentile(&values, 50),
-        p95_ns: percentile(&values, 95),
-        p99_ns: percentile(&values, 99),
-        max_ns: values.last().copied().unwrap_or(0),
+    NanosecondSummary {
+        p50: percentile(&values, 50),
+        p95: percentile(&values, 95),
+        p99: percentile(&values, 99),
+        max: values.last().copied().unwrap_or(0),
     }
 }
 
@@ -705,11 +710,12 @@ fn render_report(config: &Config, hardware_json: &str, cases: &[CaseEvidence]) -
     output.push_str(",\n  \"hardware\":");
     output.push_str(hardware_json);
     output.push_str(",\n  \"cases\":[");
+
     for (case_index, case) in cases.iter().enumerate() {
         if case_index != 0 {
             output.push(',');
         }
-        let fused_over_reference = ratio_millionths(case.fused.p50_ns, case.reference.p50_ns);
+        let fused_over_reference = ratio_millionths(case.fused.p50, case.reference.p50);
         write!(output, "{{\"name\":").expect("writing to String cannot fail");
         push_json_string(&mut output, case.name);
         write!(
@@ -719,14 +725,14 @@ fn render_report(config: &Config, hardware_json: &str, cases: &[CaseEvidence]) -
             case.semantic.emitted_body_bytes,
             case.semantic.final_queued_bytes,
             case.semantic.checksum,
-            case.reference.p50_ns,
-            case.reference.p95_ns,
-            case.reference.p99_ns,
-            case.reference.max_ns,
-            case.fused.p50_ns,
-            case.fused.p95_ns,
-            case.fused.p99_ns,
-            case.fused.max_ns,
+            case.reference.p50,
+            case.reference.p95,
+            case.reference.p99,
+            case.reference.max,
+            case.fused.p50,
+            case.fused.p95,
+            case.fused.p99,
+            case.fused.max,
             fused_over_reference
         )
         .expect("writing to String cannot fail");
