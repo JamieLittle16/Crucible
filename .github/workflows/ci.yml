@@ -59,6 +59,7 @@ jobs:
           --package crucible-connection-core
           --package crucible-packet-core
           --package crucible-protocol-core
+          --package crucible-session-core
           --package crucible-benchmark-support
           --package crucible-composition-qualification
           --package crucible-ownership-qualification
@@ -82,6 +83,9 @@ jobs:
 
       - name: Packet body qualification
         run: cargo test --package crucible-packet-core --locked
+
+      - name: Session state qualification
+        run: cargo test --package crucible-session-core --locked
 
       - name: Connection buffer qualification
         run: cargo test --package crucible-connection-core --locked
