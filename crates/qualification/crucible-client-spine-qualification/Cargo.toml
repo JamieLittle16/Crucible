@@ -8,9 +8,11 @@ license.workspace = true
 publish = false
 
 [dependencies]
+crucible-benchmark-support = { path = "../crucible-benchmark-support" }
 crucible-connection-core = { path = "../../network/crucible-connection-core" }
 crucible-connection-driver = { path = "../../network/crucible-connection-driver" }
 crucible-packet-core = { path = "../../network/crucible-packet-core" }
+crucible-protocol-core = { path = "../../network/crucible-protocol-core" }
 crucible-session-core = { path = "../../network/crucible-session-core" }
 
 [lints]
