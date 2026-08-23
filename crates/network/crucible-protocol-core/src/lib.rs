@@ -110,10 +110,7 @@ pub fn decode_var_int(input: &[u8]) -> Result<DecodeResult<i32>, WireError> {
 /// vanilla `VarInt21` ceiling or `max_body_len`, or arithmetic overflow. A valid fragmented frame
 /// returns [`DecodeResult::Incomplete`].
 #[must_use]
-pub fn decode_frame(
-    input: &[u8],
-    max_body_len: usize,
-) -> Result<DecodeResult<&[u8]>, WireError> {
+pub fn decode_frame(input: &[u8], max_body_len: usize) -> Result<DecodeResult<&[u8]>, WireError> {
     let mut body_len = 0_usize;
     for index in 0..MAX_FRAME_LENGTH_BYTES {
         let Some(&byte) = input.get(index) else {
@@ -170,9 +167,8 @@ pub fn encode_frame(
             max,
         });
     }
-    let signed_len = i32::try_from(body.len()).map_err(|_| WireError::LengthDoesNotFitVarInt {
-        length: body.len(),
-    })?;
+    let signed_len = i32::try_from(body.len())
+        .map_err(|_| WireError::LengthDoesNotFitVarInt { length: body.len() })?;
     output.reserve(var_int_len(signed_len) + body.len());
     encode_var_int(signed_len, output);
     output.extend_from_slice(body);
