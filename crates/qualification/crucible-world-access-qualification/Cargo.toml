@@ -1,5 +1,5 @@
 [package]
-name = "crucible-section-qualification"
+name = "crucible-world-access-qualification"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -10,9 +10,9 @@ publish = false
 [dependencies]
 crucible-benchmark-support = { path = "../crucible-benchmark-support" }
 crucible-generated = { path = "../../data/crucible-generated" }
-crucible-world-contract = { path = "../../world/crucible-world-contract" }
+crucible-types = { path = "../../crucible-types" }
+crucible-world-chunk = { path = "../../world/crucible-world-chunk" }
 crucible-world-reference = { path = "../../world/crucible-world-reference" }
-crucible-world-section = { path = "../../world/crucible-world-section" }
 
 [lints]
 workspace = true
