@@ -8,7 +8,9 @@ use std::time::Instant;
 use crucible_benchmark_support::{collect_hardware_metadata, push_json_string};
 use crucible_connection_core::{ConnectionLimits, EgressBuffer};
 use crucible_packet_core::{PacketCodecError, PacketWriter};
-use crucible_protocol_core::{WireError, encode_string, encode_var_int, var_int_len};
+use crucible_protocol_core::{
+    DecodeResult, WireError, decode_frame, encode_string, encode_var_int, var_int_len,
+};
 
 const SCHEMA: u32 = 1;
 const MAX_UTF16_UNITS: usize = 32_768;
@@ -219,20 +221,25 @@ impl FusedEgress {
         }
 
         let body_len = self.bytes.len() - body_start;
-        let signed_len = i32::try_from(body_len).map_err(|_| {
-            self.bytes.truncate(physical_before);
-            FusedError::Packet(PacketCodecError::Wire(
-                WireError::LengthDoesNotFitVarInt { length: body_len },
-            ))
-        })?;
+        let signed_len = match i32::try_from(body_len) {
+            Ok(value) => value,
+            Err(_) => {
+                self.bytes.truncate(physical_before);
+                return Err(FusedError::Packet(PacketCodecError::Wire(
+                    WireError::LengthDoesNotFitVarInt { length: body_len },
+                )));
+            }
+        };
         let prefix_len = var_int_len(signed_len);
         debug_assert!((1..=3).contains(&prefix_len));
-        let frame_bytes = prefix_len
-            .checked_add(body_len)
-            .ok_or(FusedError::LengthOverflow)?;
-        let required = queued_before
-            .checked_add(frame_bytes)
-            .ok_or(FusedError::LengthOverflow)?;
+        let Some(frame_bytes) = prefix_len.checked_add(body_len) else {
+            self.bytes.truncate(physical_before);
+            return Err(FusedError::LengthOverflow);
+        };
+        let Some(required) = queued_before.checked_add(frame_bytes) else {
+            self.bytes.truncate(physical_before);
+            return Err(FusedError::LengthOverflow);
+        };
         if required > self.limits.max_egress_queued() {
             self.bytes.truncate(physical_before);
             return Err(FusedError::EgressLimitExceeded {
@@ -245,18 +252,12 @@ impl FusedEgress {
         let extra_prefix = prefix_len - 1;
         if extra_prefix != 0 {
             let body_end = self.bytes.len();
-            self.bytes.resize(
-                body_end
-                    .checked_add(extra_prefix)
-                    .ok_or(FusedError::LengthOverflow)?,
-                0,
-            );
+            self.bytes.resize(body_end + extra_prefix, 0);
             self.bytes
                 .copy_within(body_start..body_end, body_start + extra_prefix);
             self.finalize_moved_bytes = self
                 .finalize_moved_bytes
-                .checked_add(u64::try_from(body_len).map_err(|_| FusedError::LengthOverflow)?)
-                .ok_or(FusedError::LengthOverflow)?;
+                .saturating_add(u64::try_from(body_len).unwrap_or(u64::MAX));
         }
 
         write_frame_prefix(signed_len, &mut self.bytes[frame_start..frame_start + prefix_len]);
@@ -283,10 +284,6 @@ struct DirectPacketWriter<'a> {
 impl DirectPacketWriter<'_> {
     fn len(&self) -> usize {
         self.bytes.len() - self.body_start
-    }
-
-    fn remaining_capacity(&self) -> usize {
-        self.maximum - self.len()
     }
 
     fn write_var_int(&mut self, value: i32) -> Result<(), PacketCodecError> {
@@ -363,8 +360,11 @@ trait CaseWriter {
     fn write_i64(&mut self, value: i64) -> Result<(), PacketCodecError>;
     fn write_u64(&mut self, value: u64) -> Result<(), PacketCodecError>;
     fn write_bool(&mut self, value: bool) -> Result<(), PacketCodecError>;
-    fn write_string(&mut self, value: &str, max_utf16_units: usize)
-    -> Result<(), PacketCodecError>;
+    fn write_string(
+        &mut self,
+        value: &str,
+        max_utf16_units: usize,
+    ) -> Result<(), PacketCodecError>;
     fn write_bytes(&mut self, value: &[u8]) -> Result<(), PacketCodecError>;
 }
 
@@ -479,9 +479,6 @@ fn build_fused(case: &BenchCase) -> Result<(Vec<u8>, u64), String> {
 }
 
 fn benchmark_cases() -> Vec<BenchCase> {
-    let medium = deterministic_bytes(1_024, 0x51a7_23c9);
-    let large = deterministic_bytes(64 * 1_024, 0x93d2_1ea5);
-    let prefix_128 = deterministic_bytes(126, 0x7731_aa19);
     vec![
         BenchCase {
             name: "ping-i64",
@@ -501,7 +498,7 @@ fn benchmark_cases() -> Vec<BenchCase> {
         BenchCase {
             name: "prefix-transition-128",
             packet_id: 0,
-            payload: Payload::Raw(prefix_128),
+            payload: Payload::Raw(deterministic_bytes(127, 0x7731_aa19)),
             base_iterations: 10_000,
         },
         BenchCase {
@@ -512,14 +509,14 @@ fn benchmark_cases() -> Vec<BenchCase> {
                 epoch: 0x0123_4567_89ab_cdef,
                 enabled: true,
                 label: "crucible-metadata".to_owned(),
-                bytes: medium,
+                bytes: deterministic_bytes(1_024, 0x51a7_23c9),
             },
             base_iterations: 2_000,
         },
         BenchCase {
             name: "stream-64k",
             packet_id: 0x21,
-            payload: Payload::Raw(large),
+            payload: Payload::Raw(deterministic_bytes(64 * 1_024, 0x93d2_1ea5)),
             base_iterations: 100,
         },
     ]
@@ -539,18 +536,28 @@ fn deterministic_bytes(len: usize, seed: u32) -> Vec<u8> {
 
 fn write_frame_prefix(value: i32, output: &mut [u8]) {
     debug_assert!(value >= 0);
-    debug_assert_eq!(output.len(), var_int_len(value));
+    let width = output.len();
+    debug_assert_eq!(width, var_int_len(value));
     let mut remaining = value.cast_unsigned();
     for (index, byte) in output.iter_mut().enumerate() {
         let low = (remaining & 0x7f).to_le_bytes()[0];
         remaining >>= 7;
-        *byte = if index + 1 == output.len() {
-            low
-        } else {
-            low | 0x80
-        };
+        *byte = if index + 1 == width { low } else { low | 0x80 };
     }
     debug_assert_eq!(remaining, 0);
+}
+
+fn decoded_body_len(frame: &[u8]) -> Result<usize, String> {
+    match decode_frame(frame, MAX_BODY_BYTES)
+        .map_err(|error| format!("reference frame decode failed: {error:?}"))?
+    {
+        DecodeResult::Complete { value, consumed } if consumed == frame.len() => Ok(value.len()),
+        DecodeResult::Complete { consumed, .. } => Err(format!(
+            "reference frame left trailing stream bytes: consumed={consumed} total={}",
+            frame.len()
+        )),
+        DecodeResult::Incomplete => Err("reference frame unexpectedly incomplete".to_owned()),
+    }
 }
 
 fn benchmark_reference(case: &BenchCase, iterations: usize) -> Result<(u128, u64), String> {
@@ -578,9 +585,8 @@ fn benchmark_reference(case: &BenchCase, iterations: usize) -> Result<(u128, u64
     Ok((start.elapsed().as_nanos(), checksum))
 }
 
-fn benchmark_fused(case: &BenchCase, iterations: usize) -> Result<(u128, u64, u64), String> {
+fn benchmark_fused(case: &BenchCase, iterations: usize) -> Result<(u128, u64), String> {
     let mut egress = FusedEgress::new(limits());
-    let moved_before = egress.finalize_moved_bytes();
     let mut checksum = CHECKSUM_SEED;
     let start = Instant::now();
     for _ in 0..iterations {
@@ -593,12 +599,7 @@ fn benchmark_fused(case: &BenchCase, iterations: usize) -> Result<(u128, u64, u6
             .consume_written(queued)
             .map_err(|error| format!("fused drain failed: {error:?}"))?;
     }
-    let elapsed = start.elapsed().as_nanos();
-    let moved = egress
-        .finalize_moved_bytes()
-        .checked_sub(moved_before)
-        .ok_or_else(|| "fused move counter regressed".to_owned())?;
-    Ok((elapsed, checksum, moved))
+    Ok((start.elapsed().as_nanos(), checksum))
 }
 
 fn observe_pending(mut checksum: u64, pending: &[u8]) -> u64 {
@@ -612,19 +613,16 @@ fn mix(current: u64, value: u64) -> u64 {
     current.rotate_left(9) ^ value.wrapping_mul(CHECKSUM_MUL)
 }
 
-fn run_case(case: &BenchCase, config: &Config) -> Result<(usize, usize, u64, Vec<RoundSample>), String> {
+fn run_case(
+    case: &BenchCase,
+    config: &Config,
+) -> Result<(usize, usize, u64, Vec<RoundSample>), String> {
     let reference = build_reference(case)?;
     let (fused, moved_once) = build_fused(case)?;
     if reference != fused {
         return Err(format!("byte-equivalence failed for {}", case.name));
     }
-    if reference.is_empty() {
-        return Err(format!("{} produced an empty framed packet", case.name));
-    }
-    let body_len = reference
-        .len()
-        .checked_sub(var_int_len(i32::try_from(reference.len() - 1).unwrap_or(i32::MAX)))
-        .unwrap_or(reference.len());
+    let body_len = decoded_body_len(&reference)?;
     let iterations = case
         .base_iterations
         .checked_mul(config.iteration_scale)
@@ -645,10 +643,10 @@ fn run_case(case: &BenchCase, config: &Config) -> Result<(usize, usize, u64, Vec
         let reference_first = round.is_multiple_of(2);
         let (reference_ns, reference_checksum, fused_ns, fused_checksum) = if reference_first {
             let (reference_ns, reference_checksum) = benchmark_reference(case, iterations)?;
-            let (fused_ns, fused_checksum, _) = benchmark_fused(case, iterations)?;
+            let (fused_ns, fused_checksum) = benchmark_fused(case, iterations)?;
             (reference_ns, reference_checksum, fused_ns, fused_checksum)
         } else {
-            let (fused_ns, fused_checksum, _) = benchmark_fused(case, iterations)?;
+            let (fused_ns, fused_checksum) = benchmark_fused(case, iterations)?;
             let (reference_ns, reference_checksum) = benchmark_reference(case, iterations)?;
             (reference_ns, reference_checksum, fused_ns, fused_checksum)
         };
@@ -746,7 +744,7 @@ fn render_report(
         }
         let reference_summary = summarize(samples.iter().map(|sample| sample.reference_ns))?;
         let fused_summary = summarize(samples.iter().map(|sample| sample.fused_ns))?;
-        write!(output, "{{\"name\":").expect("writing to String cannot fail");
+        output.push_str("{\"name\":");
         push_json_string(&mut output, case.name);
         write!(
             output,
