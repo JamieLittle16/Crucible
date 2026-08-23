@@ -58,6 +58,13 @@ name = "crucible-ownership-qualification"
 version = "0.0.0"
 
 [[package]]
+name = "crucible-packet-core"
+version = "0.0.0"
+dependencies = [
+ "crucible-protocol-core",
+]
+
+[[package]]
 name = "crucible-protocol-core"
 version = "0.0.0"
 
