@@ -8,7 +8,7 @@ use std::time::Instant;
 use crucible_benchmark_support::{collect_hardware_metadata, push_json_string};
 use crucible_connection_core::{ConnectionLimits, EgressBuffer};
 use crucible_packet_core::PacketWriter;
-use crucible_protocol_core::{WireError, encode_string, encode_var_int, var_int_len};
+use crucible_protocol_core::{encode_string, encode_var_int, var_int_len};
 
 const SCHEMA: u32 = 1;
 const MAX_BODY: usize = 65_536;
@@ -109,14 +109,13 @@ impl PacketShape {
                 name,
                 max_name_utf16_units,
                 ..
-            } => var_int_len(*sequence)
-                .checked_add(3)
-                .and_then(|value| {
-                    string_wire_len(name, *max_name_utf16_units)
-                        .ok()
-                        .and_then(|string_len| value.checked_add(string_len))
-                })
-                .ok_or_else(|| "metadata body length overflow".to_owned())?,
+            } => {
+                let string_len = string_wire_len(name, *max_name_utf16_units)?;
+                var_int_len(*sequence)
+                    .checked_add(3)
+                    .and_then(|value| value.checked_add(string_len))
+                    .ok_or_else(|| "metadata body length overflow".to_owned())?
+            }
             Self::Blob { bytes, .. } => bytes.len(),
         };
         var_int_len(self.packet_id())
@@ -711,11 +710,7 @@ fn render_report(config: &Config, hardware_json: &str, cases: &[CaseEvidence]) -
             output.push(',');
         }
         let fused_over_reference = ratio_millionths(case.fused.p50_ns, case.reference.p50_ns);
-        write!(
-            output,
-            "{{\"name\":"
-        )
-        .expect("writing to String cannot fail");
+        write!(output, "{{\"name\":").expect("writing to String cannot fail");
         push_json_string(&mut output, case.name);
         write!(
             output,
