@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "description": "Discovery-only official-source frontier for the P0 Configuration slice and its handoff into Play. Roots are a strict subset of the broader P0 pre-play frontier. They are review anchors only, not packet IDs, registry payloads, semantic assertions or an admission gate.",
+  "max_depth": 8,
+  "include_package_prefixes": [
+    "net.minecraft.network",
+    "net.minecraft.server.network"
+  ],
+  "exclude_package_prefixes": [
+    "net.minecraft.data",
+    "net.minecraft.gametest",
+    "net.minecraft.network.protocol.game"
+  ],
+  "root_queries": [
+    "net.minecraft.network.Connection",
+    "net.minecraft.network.ProtocolInfo",
+    "net.minecraft.network.protocol.Packet",
+    "net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket",
+    "net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket",
+    "net.minecraft.network.protocol.configuration.ClientboundFinishConfigurationPacket",
+    "net.minecraft.server.network.ServerConfigurationPacketListenerImpl"
+  ]
+}
