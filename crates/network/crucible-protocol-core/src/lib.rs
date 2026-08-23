@@ -8,13 +8,13 @@
 
 use core::str;
 
-/// Maximum encoded width of a Minecraft-style signed 32-bit VarInt.
+/// Maximum encoded width of a Minecraft-style signed 32-bit `VarInt`.
 pub const MAX_VAR_INT_BYTES: usize = 5;
 
 /// Fail-closed wire errors. Incomplete input is represented separately by [`DecodeResult`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WireError {
-    /// A VarInt still carried its continuation bit after five bytes.
+    /// A `VarInt` still carried its continuation bit after five bytes.
     VarIntTooLong,
     /// A length prefix decoded to a negative signed value.
     NegativeLength(i32),
@@ -22,7 +22,7 @@ pub enum WireError {
     ByteLengthLimitExceeded { length: usize, max: usize },
     /// A decoded or encoded string exceeded the caller's explicit character limit.
     CharacterLimitExceeded { characters: usize, max: usize },
-    /// A byte length cannot be represented by the signed 32-bit VarInt wire format.
+    /// A byte length cannot be represented by the signed 32-bit `VarInt` wire format.
     LengthDoesNotFitVarInt { length: usize },
     /// A complete length-prefixed string contained invalid UTF-8.
     InvalidUtf8,
@@ -39,25 +39,27 @@ pub enum DecodeResult<T> {
     Complete { value: T, consumed: usize },
 }
 
-/// Encodes one signed 32-bit value using Minecraft's VarInt representation.
+/// Encodes one signed 32-bit value using Minecraft's `VarInt` representation.
 ///
 /// The output vector is appended to; existing bytes are preserved.
 pub fn encode_var_int(value: i32, output: &mut Vec<u8>) {
-    let mut remaining = value as u32;
+    let mut remaining = value.cast_unsigned();
     loop {
         if remaining & !0x7f == 0 {
-            output.push(remaining as u8);
+            output.push(u8::try_from(remaining).expect("terminal VarInt byte fits u8"));
             return;
         }
-        output.push(((remaining & 0x7f) | 0x80) as u8);
+        output.push(
+            u8::try_from((remaining & 0x7f) | 0x80).expect("masked VarInt byte fits u8"),
+        );
         remaining >>= 7;
     }
 }
 
-/// Returns the encoded width of a signed 32-bit Minecraft VarInt.
+/// Returns the encoded width of a signed 32-bit Minecraft `VarInt`.
 #[must_use]
 pub const fn var_int_len(value: i32) -> usize {
-    let mut remaining = value as u32;
+    let mut remaining = value.cast_unsigned();
     let mut bytes = 1;
     while remaining & !0x7f != 0 {
         bytes += 1;
@@ -66,7 +68,7 @@ pub const fn var_int_len(value: i32) -> usize {
     bytes
 }
 
-/// Decodes one signed 32-bit Minecraft VarInt from the beginning of `input`.
+/// Decodes one signed 32-bit Minecraft `VarInt` from the beginning of `input`.
 ///
 /// # Errors
 ///
@@ -82,7 +84,7 @@ pub fn decode_var_int(input: &[u8]) -> Result<DecodeResult<i32>, WireError> {
         value |= u32::from(byte & 0x7f) << (index * 7);
         if byte & 0x80 == 0 {
             return Ok(DecodeResult::Complete {
-                value: value as i32,
+                value: value.cast_signed(),
                 consumed: index + 1,
             });
         }
@@ -98,8 +100,9 @@ pub fn decode_var_int(input: &[u8]) -> Result<DecodeResult<i32>, WireError> {
 ///
 /// # Errors
 ///
-/// Returns an error for overlong VarInts, negative lengths, lengths above `max_payload_len`, or
-/// arithmetic overflow. A valid but fragmented frame returns [`DecodeResult::Incomplete`].
+/// Returns an error for overlong `VarInt` values, negative lengths, lengths above
+/// `max_payload_len`, or arithmetic overflow. A valid but fragmented frame returns
+/// [`DecodeResult::Incomplete`].
 pub fn decode_frame(
     input: &[u8],
     max_payload_len: usize,
@@ -141,7 +144,7 @@ pub fn decode_frame(
 /// # Errors
 ///
 /// Returns an error when the payload exceeds `max_payload_len` or cannot be represented by the
-/// signed 32-bit VarInt length field.
+/// signed 32-bit `VarInt` length field.
 pub fn encode_frame(
     payload: &[u8],
     max_payload_len: usize,
@@ -158,7 +161,8 @@ pub fn encode_frame(
     Ok(())
 }
 
-/// Decodes one VarInt-length-prefixed UTF-8 string using caller-supplied byte and character limits.
+/// Decodes one `VarInt`-length-prefixed UTF-8 string using caller-supplied byte and character
+/// limits.
 ///
 /// The returned string borrows directly from `input` and therefore performs no payload allocation.
 ///
@@ -209,14 +213,14 @@ pub fn decode_string(
     })
 }
 
-/// Appends one VarInt-length-prefixed UTF-8 string to `output`.
+/// Appends one `VarInt`-length-prefixed UTF-8 string to `output`.
 ///
 /// Validation happens before the output vector is modified.
 ///
 /// # Errors
 ///
 /// Returns an error when the string exceeds either caller-supplied bound or when its byte length
-/// cannot be represented by the signed 32-bit VarInt length field.
+/// cannot be represented by the signed 32-bit `VarInt` length field.
 pub fn encode_string(
     value: &str,
     max_bytes: usize,
@@ -294,7 +298,9 @@ mod tests {
             state ^= state << 13;
             state ^= state >> 7;
             state ^= state << 17;
-            let value = state as u32 as i32;
+            let lower = u32::try_from(state & u64::from(u32::MAX))
+                .expect("masked deterministic state fits u32");
+            let value = lower.cast_signed();
             let mut encoded = Vec::with_capacity(5);
             encode_var_int(value, &mut encoded);
             assert_eq!(encoded.len(), var_int_len(value));
@@ -331,7 +337,9 @@ mod tests {
 
     #[test]
     fn frame_fragmentation_is_incomplete_at_every_boundary() {
-        let payload: Vec<u8> = (0_u16..300).map(|value| value as u8).collect();
+        let payload: Vec<u8> = (0_u16..300)
+            .map(|value| u8::try_from(value % 256).expect("modulo 256 fits u8"))
+            .collect();
         let mut encoded = Vec::new();
         encode_frame(&payload, 1_024, &mut encoded).expect("valid frame");
 
