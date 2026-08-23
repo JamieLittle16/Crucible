@@ -259,6 +259,51 @@ mod tests {
         encoder.pending_egress().to_vec()
     }
 
+    fn run_mixed_stream(encoded: &[u8], fragment: usize, frame_budget: usize) -> (u64, usize) {
+        let mut driver = ConnectionDriver::new(limits(encoded.len().max(4_096)));
+        let mut checksum = 0xCBF2_9CE4_8422_2325u64;
+        let mut frames = 0usize;
+        for chunk in encoded.chunks(fragment) {
+            driver.ingest::<()>(chunk).expect("fragment fits");
+            loop {
+                let report = driver
+                    .process_available(budget(frame_budget), |frame| {
+                        checksum ^= u64::from(frame.packet_id().cast_unsigned());
+                        checksum = checksum.wrapping_mul(0x100_0000_01B3);
+                        for &byte in frame.payload() {
+                            checksum ^= u64::from(byte);
+                            checksum = checksum.wrapping_mul(0x100_0000_01B3);
+                        }
+                        frames += 1;
+                        Ok::<_, ()>(FrameFlow::Continue)
+                    })
+                    .expect("valid stream");
+                if report.stop != StopReason::BudgetExhausted {
+                    break;
+                }
+            }
+        }
+        loop {
+            let report = driver
+                .process_available(budget(frame_budget), |frame| {
+                    checksum ^= u64::from(frame.packet_id().cast_unsigned());
+                    checksum = checksum.wrapping_mul(0x100_0000_01B3);
+                    for &byte in frame.payload() {
+                        checksum ^= u64::from(byte);
+                        checksum = checksum.wrapping_mul(0x100_0000_01B3);
+                    }
+                    frames += 1;
+                    Ok::<_, ()>(FrameFlow::Continue)
+                })
+                .expect("drain stream");
+            if report.stop != StopReason::BudgetExhausted {
+                break;
+            }
+        }
+        assert_eq!(driver.buffered_ingress(), 0);
+        (checksum, frames)
+    }
+
     #[test]
     fn zero_frame_budget_is_unrepresentable() {
         assert_eq!(FrameBudget::new(0), None);
@@ -411,68 +456,26 @@ mod tests {
     #[test]
     fn long_mixed_stream_is_deterministic_across_fragmentation_and_budgets() {
         const FRAME_COUNT: usize = 20_000;
-        let mut descriptions = Vec::with_capacity(FRAME_COUNT);
         let payloads = (0..FRAME_COUNT)
             .map(|index| {
                 let width = index % 31;
                 (0..width)
-                    .map(|offset| ((index * 17 + offset * 29) & 0xFF) as u8)
+                    .map(|offset| {
+                        u8::try_from((index * 17 + offset * 29) & 0xFF).expect("masked byte")
+                    })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
+        let mut descriptions = Vec::with_capacity(FRAME_COUNT);
         for (index, payload) in payloads.iter().enumerate() {
-            descriptions.push(((index % 97) as u8, payload.as_slice()));
+            let packet_id = u8::try_from(index % 97).expect("bounded packet id");
+            descriptions.push((packet_id, payload.as_slice()));
         }
         let encoded = encoded_stream(&descriptions);
 
-        fn run(encoded: &[u8], fragment: usize, frame_budget: usize) -> (u64, usize) {
-            let mut driver = ConnectionDriver::new(limits(encoded.len().max(4_096)));
-            let mut checksum = 0xCBF2_9CE4_8422_2325u64;
-            let mut frames = 0usize;
-            for chunk in encoded.chunks(fragment) {
-                driver.ingest::<()>(chunk).expect("fragment fits");
-                loop {
-                    let report = driver
-                        .process_available(budget(frame_budget), |frame| {
-                            checksum ^= frame.packet_id() as u64;
-                            checksum = checksum.wrapping_mul(0x100_0000_01B3);
-                            for &byte in frame.payload() {
-                                checksum ^= u64::from(byte);
-                                checksum = checksum.wrapping_mul(0x100_0000_01B3);
-                            }
-                            frames += 1;
-                            Ok::<_, ()>(FrameFlow::Continue)
-                        })
-                        .expect("valid stream");
-                    if report.stop != StopReason::BudgetExhausted {
-                        break;
-                    }
-                }
-            }
-            loop {
-                let report = driver
-                    .process_available(budget(frame_budget), |frame| {
-                        checksum ^= frame.packet_id() as u64;
-                        checksum = checksum.wrapping_mul(0x100_0000_01B3);
-                        for &byte in frame.payload() {
-                            checksum ^= u64::from(byte);
-                            checksum = checksum.wrapping_mul(0x100_0000_01B3);
-                        }
-                        frames += 1;
-                        Ok::<_, ()>(FrameFlow::Continue)
-                    })
-                    .expect("drain stream");
-                if report.stop != StopReason::BudgetExhausted {
-                    break;
-                }
-            }
-            assert_eq!(driver.buffered_ingress(), 0);
-            (checksum, frames)
-        }
-
-        let bytewise = run(&encoded, 1, 1);
-        let medium = run(&encoded, 37, 7);
-        let coalesced = run(&encoded, encoded.len(), 257);
+        let bytewise = run_mixed_stream(&encoded, 1, 1);
+        let medium = run_mixed_stream(&encoded, 37, 7);
+        let coalesced = run_mixed_stream(&encoded, encoded.len(), 257);
         assert_eq!(bytewise, medium);
         assert_eq!(medium, coalesced);
         assert_eq!(coalesced.1, FRAME_COUNT);
