@@ -187,7 +187,13 @@ where
         };
         let index = z * self.width + x;
         let chunk = self.chunks[index];
-        debug_assert_eq!(chunk.position(), ChunkPos { x: chunk_x, z: chunk_z });
+        debug_assert_eq!(
+            chunk.position(),
+            ChunkPos {
+                x: chunk_x,
+                z: chunk_z
+            }
+        );
 
         let local_x = u8::try_from(pos.x.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
             .expect("Euclidean chunk-local x is in 0..16");
@@ -212,8 +218,8 @@ fn validate_extent_axis(origin: i32, extent: usize) -> Result<(), ResolvedChunkW
     let last_offset = extent
         .checked_sub(1)
         .ok_or(ResolvedChunkWindowError::EmptyExtent)?;
-    let last_offset = i64::try_from(last_offset)
-        .map_err(|_| ResolvedChunkWindowError::ExtentOverflow)?;
+    let last_offset =
+        i64::try_from(last_offset).map_err(|_| ResolvedChunkWindowError::ExtentOverflow)?;
     let last = i64::from(origin)
         .checked_add(last_offset)
         .ok_or(ResolvedChunkWindowError::ExtentOverflow)?;
