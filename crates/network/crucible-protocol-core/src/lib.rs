@@ -1,32 +1,39 @@
 //! Allocation-conscious wire primitives for Crucible's Minecraft protocol spine.
 //!
-//! This crate deliberately contains no packet IDs or target-version state transitions. It owns
-//! only reusable byte-level laws that can be exhaustively qualified before versioned packet
-//! semantics are introduced.
+//! This crate contains no target-version packet IDs or connection-state transitions. It owns the
+//! reusable byte-level laws that sit below versioned packet semantics.
 
 #![forbid(unsafe_code)]
 
 use core::str;
 
-/// Maximum encoded width of a Minecraft-style signed 32-bit `VarInt`.
+/// Maximum encoded width of a Minecraft signed 32-bit `VarInt`.
 pub const MAX_VAR_INT_BYTES: usize = 5;
+/// Maximum encoded width of Minecraft's outer packet-length `VarInt21`.
+pub const MAX_FRAME_LENGTH_BYTES: usize = 3;
+/// Largest packet body accepted by the vanilla `VarInt21` framing layer.
+pub const MAX_FRAME_BODY_LEN: usize = (1_usize << 21) - 1;
 
 /// Fail-closed wire errors. Incomplete input is represented separately by [`DecodeResult`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WireError {
     /// A `VarInt` still carried its continuation bit after five bytes.
     VarIntTooLong,
+    /// A frame length still carried its continuation bit after three bytes.
+    FrameLengthTooWide,
+    /// Vanilla's remote framing layer rejects a zero-byte packet body.
+    ZeroLengthFrame,
     /// A length prefix decoded to a negative signed value.
     NegativeLength(i32),
-    /// A decoded or encoded byte length exceeded the caller's explicit limit.
+    /// A decoded or encoded byte length exceeded the applicable explicit limit.
     ByteLengthLimitExceeded { length: usize, max: usize },
-    /// A decoded or encoded string exceeded the caller's explicit character limit.
-    CharacterLimitExceeded { characters: usize, max: usize },
+    /// A decoded or encoded UTF-8 string exceeded its UTF-16 code-unit limit.
+    StringLengthLimitExceeded { utf16_units: usize, max: usize },
     /// A byte length cannot be represented by the signed 32-bit `VarInt` wire format.
     LengthDoesNotFitVarInt { length: usize },
     /// A complete length-prefixed string contained invalid UTF-8.
     InvalidUtf8,
-    /// Integer arithmetic required to identify a complete frame overflowed `usize`.
+    /// Integer arithmetic required to identify a complete value overflowed `usize`.
     LengthOverflow,
 }
 
@@ -46,12 +53,10 @@ pub fn encode_var_int(value: i32, output: &mut Vec<u8>) {
     let mut remaining = value.cast_unsigned();
     loop {
         if remaining & !0x7f == 0 {
-            output.push(u8::try_from(remaining).expect("terminal VarInt byte fits u8"));
+            output.push(remaining.to_le_bytes()[0]);
             return;
         }
-        output.push(
-            u8::try_from((remaining & 0x7f) | 0x80).expect("masked VarInt byte fits u8"),
-        );
+        output.push(((remaining & 0x7f) | 0x80).to_le_bytes()[0]);
         remaining >>= 7;
     }
 }
@@ -74,6 +79,7 @@ pub const fn var_int_len(value: i32) -> usize {
 ///
 /// Returns [`WireError::VarIntTooLong`] once five continuation bytes have been observed. A short
 /// prefix that could still become valid returns [`DecodeResult::Incomplete`] instead.
+#[must_use]
 pub fn decode_var_int(input: &[u8]) -> Result<DecodeResult<i32>, WireError> {
     let mut value = 0_u32;
     let mut index = 0_usize;
@@ -93,88 +99,105 @@ pub fn decode_var_int(input: &[u8]) -> Result<DecodeResult<i32>, WireError> {
     Err(WireError::VarIntTooLong)
 }
 
-/// Decodes one length-delimited frame without allocating or copying its payload.
+/// Decodes Minecraft's outer `VarInt21` packet frame without allocating or copying its body.
 ///
-/// The returned slice borrows directly from `input`. The caller supplies the maximum accepted
-/// payload length, allowing the networking layer to reject oversized frames before payload access.
+/// The frame body includes the packet ID and packet payload. Vanilla accepts at most three bytes
+/// for this length prefix and rejects a zero-length body before packet decoding.
 ///
 /// # Errors
 ///
-/// Returns an error for overlong `VarInt` values, negative lengths, lengths above
-/// `max_payload_len`, or arithmetic overflow. A valid but fragmented frame returns
-/// [`DecodeResult::Incomplete`].
+/// Returns an error for a three-byte continuation prefix, a zero frame, a length above either the
+/// vanilla `VarInt21` ceiling or `max_body_len`, or arithmetic overflow. A valid fragmented frame
+/// returns [`DecodeResult::Incomplete`].
+#[must_use]
 pub fn decode_frame(
     input: &[u8],
-    max_payload_len: usize,
+    max_body_len: usize,
 ) -> Result<DecodeResult<&[u8]>, WireError> {
-    let DecodeResult::Complete {
-        value: signed_len,
-        consumed: header_len,
-    } = decode_var_int(input)?
-    else {
-        return Ok(DecodeResult::Incomplete);
-    };
-
-    if signed_len < 0 {
-        return Err(WireError::NegativeLength(signed_len));
+    let mut body_len = 0_usize;
+    for index in 0..MAX_FRAME_LENGTH_BYTES {
+        let Some(&byte) = input.get(index) else {
+            return Ok(DecodeResult::Incomplete);
+        };
+        body_len |= usize::from(byte & 0x7f) << (index * 7);
+        if byte & 0x80 == 0 {
+            if body_len == 0 {
+                return Err(WireError::ZeroLengthFrame);
+            }
+            let max = max_body_len.min(MAX_FRAME_BODY_LEN);
+            if body_len > max {
+                return Err(WireError::ByteLengthLimitExceeded {
+                    length: body_len,
+                    max,
+                });
+            }
+            let header_len = index + 1;
+            let frame_end = header_len
+                .checked_add(body_len)
+                .ok_or(WireError::LengthOverflow)?;
+            let Some(body) = input.get(header_len..frame_end) else {
+                return Ok(DecodeResult::Incomplete);
+            };
+            return Ok(DecodeResult::Complete {
+                value: body,
+                consumed: frame_end,
+            });
+        }
     }
-    let payload_len = usize::try_from(signed_len).map_err(|_| WireError::LengthOverflow)?;
-    if payload_len > max_payload_len {
-        return Err(WireError::ByteLengthLimitExceeded {
-            length: payload_len,
-            max: max_payload_len,
-        });
-    }
-    let frame_end = header_len
-        .checked_add(payload_len)
-        .ok_or(WireError::LengthOverflow)?;
-    let Some(payload) = input.get(header_len..frame_end) else {
-        return Ok(DecodeResult::Incomplete);
-    };
-    Ok(DecodeResult::Complete {
-        value: payload,
-        consumed: frame_end,
-    })
+    Err(WireError::FrameLengthTooWide)
 }
 
-/// Appends one length-delimited frame to `output`.
+/// Appends one Minecraft `VarInt21` packet frame to `output`.
 ///
 /// Validation happens before the output vector is modified, so rejected frames leave it unchanged.
 ///
 /// # Errors
 ///
-/// Returns an error when the payload exceeds `max_payload_len` or cannot be represented by the
-/// signed 32-bit `VarInt` length field.
+/// Returns an error for a zero-length body or when the body exceeds either the vanilla framing
+/// ceiling or `max_body_len`.
 pub fn encode_frame(
-    payload: &[u8],
-    max_payload_len: usize,
+    body: &[u8],
+    max_body_len: usize,
     output: &mut Vec<u8>,
 ) -> Result<(), WireError> {
-    validate_encoded_len(payload.len(), max_payload_len)?;
-    let signed_len =
-        i32::try_from(payload.len()).map_err(|_| WireError::LengthDoesNotFitVarInt {
-            length: payload.len(),
-        })?;
-    output.reserve(var_int_len(signed_len) + payload.len());
+    if body.is_empty() {
+        return Err(WireError::ZeroLengthFrame);
+    }
+    let max = max_body_len.min(MAX_FRAME_BODY_LEN);
+    if body.len() > max {
+        return Err(WireError::ByteLengthLimitExceeded {
+            length: body.len(),
+            max,
+        });
+    }
+    let signed_len = i32::try_from(body.len()).map_err(|_| WireError::LengthDoesNotFitVarInt {
+        length: body.len(),
+    })?;
+    output.reserve(var_int_len(signed_len) + body.len());
     encode_var_int(signed_len, output);
-    output.extend_from_slice(payload);
+    output.extend_from_slice(body);
     Ok(())
 }
 
-/// Decodes one `VarInt`-length-prefixed UTF-8 string using caller-supplied byte and character
-/// limits.
+/// Decodes a Minecraft `Utf8String` value using the vanilla UTF-16 code-unit bound.
 ///
-/// The returned string borrows directly from `input` and therefore performs no payload allocation.
+/// Mojang's `Utf8String` prefixes the encoded byte count with a signed `VarInt`, rejects negative
+/// lengths, caps the byte count at three bytes per allowed UTF-16 code unit, then checks the decoded
+/// Java-string length. Rust therefore measures the semantic limit with `encode_utf16().count()`.
+/// The returned string borrows directly from `input`.
+///
+/// Crucible deliberately rejects malformed UTF-8 rather than accepting replacement decoding. This
+/// is a fail-closed input policy and does not affect valid vanilla-client byte streams.
 ///
 /// # Errors
 ///
-/// Returns an error for invalid length prefixes, byte/character limit violations, arithmetic
-/// overflow, or invalid UTF-8. Fragmented but otherwise potentially valid input returns
+/// Returns an error for invalid length prefixes, byte/UTF-16 limits, arithmetic overflow, or
+/// invalid UTF-8. Fragmented but otherwise potentially valid input returns
 /// [`DecodeResult::Incomplete`].
+#[must_use]
 pub fn decode_string(
     input: &[u8],
-    max_bytes: usize,
-    max_characters: usize,
+    max_utf16_units: usize,
 ) -> Result<DecodeResult<&str>, WireError> {
     let DecodeResult::Complete {
         value: signed_len,
@@ -187,6 +210,9 @@ pub fn decode_string(
         return Err(WireError::NegativeLength(signed_len));
     }
     let byte_len = usize::try_from(signed_len).map_err(|_| WireError::LengthOverflow)?;
+    let max_bytes = max_utf16_units
+        .checked_mul(3)
+        .ok_or(WireError::LengthOverflow)?;
     if byte_len > max_bytes {
         return Err(WireError::ByteLengthLimitExceeded {
             length: byte_len,
@@ -200,11 +226,11 @@ pub fn decode_string(
         return Ok(DecodeResult::Incomplete);
     };
     let value = str::from_utf8(bytes).map_err(|_| WireError::InvalidUtf8)?;
-    let characters = value.chars().count();
-    if characters > max_characters {
-        return Err(WireError::CharacterLimitExceeded {
-            characters,
-            max: max_characters,
+    let utf16_units = value.encode_utf16().count();
+    if utf16_units > max_utf16_units {
+        return Err(WireError::StringLengthLimitExceeded {
+            utf16_units,
+            max: max_utf16_units,
         });
     }
     Ok(DecodeResult::Complete {
@@ -213,26 +239,33 @@ pub fn decode_string(
     })
 }
 
-/// Appends one `VarInt`-length-prefixed UTF-8 string to `output`.
+/// Appends one Minecraft `Utf8String` value to `output`.
 ///
 /// Validation happens before the output vector is modified.
 ///
 /// # Errors
 ///
-/// Returns an error when the string exceeds either caller-supplied bound or when its byte length
-/// cannot be represented by the signed 32-bit `VarInt` length field.
+/// Returns an error when the string exceeds the caller's UTF-16 code-unit bound, exceeds the
+/// corresponding three-bytes-per-unit encoded ceiling, or its byte count cannot fit an `i32`.
 pub fn encode_string(
     value: &str,
-    max_bytes: usize,
-    max_characters: usize,
+    max_utf16_units: usize,
     output: &mut Vec<u8>,
 ) -> Result<(), WireError> {
-    validate_encoded_len(value.len(), max_bytes)?;
-    let characters = value.chars().count();
-    if characters > max_characters {
-        return Err(WireError::CharacterLimitExceeded {
-            characters,
-            max: max_characters,
+    let utf16_units = value.encode_utf16().count();
+    if utf16_units > max_utf16_units {
+        return Err(WireError::StringLengthLimitExceeded {
+            utf16_units,
+            max: max_utf16_units,
+        });
+    }
+    let max_bytes = max_utf16_units
+        .checked_mul(3)
+        .ok_or(WireError::LengthOverflow)?;
+    if value.len() > max_bytes {
+        return Err(WireError::ByteLengthLimitExceeded {
+            length: value.len(),
+            max: max_bytes,
         });
     }
     let signed_len = i32::try_from(value.len()).map_err(|_| WireError::LengthDoesNotFitVarInt {
@@ -244,21 +277,11 @@ pub fn encode_string(
     Ok(())
 }
 
-fn validate_encoded_len(length: usize, max: usize) -> Result<(), WireError> {
-    if length > max {
-        return Err(WireError::ByteLengthLimitExceeded { length, max });
-    }
-    if length > i32::MAX as usize {
-        return Err(WireError::LengthDoesNotFitVarInt { length });
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        DecodeResult, WireError, decode_frame, decode_string, decode_var_int, encode_frame,
-        encode_string, encode_var_int, var_int_len,
+        DecodeResult, MAX_FRAME_BODY_LEN, WireError, decode_frame, decode_string, decode_var_int,
+        encode_frame, encode_string, encode_var_int, var_int_len,
     };
 
     const VAR_INT_VECTORS: &[(i32, &[u8])] = &[
@@ -293,14 +316,12 @@ mod tests {
 
     #[test]
     fn var_int_roundtrip_large_deterministic_corpus() {
-        let mut state = 0xD1B5_4A32_D192_ED03_u64;
+        let mut state = 0xA5A5_1F3D_u32;
         for _ in 0..200_000 {
             state ^= state << 13;
-            state ^= state >> 7;
-            state ^= state << 17;
-            let lower = u32::try_from(state & u64::from(u32::MAX))
-                .expect("masked deterministic state fits u32");
-            let value = lower.cast_signed();
+            state ^= state >> 17;
+            state ^= state << 5;
+            let value = state.cast_signed();
             let mut encoded = Vec::with_capacity(5);
             encode_var_int(value, &mut encoded);
             assert_eq!(encoded.len(), var_int_len(value));
@@ -338,7 +359,7 @@ mod tests {
     #[test]
     fn frame_fragmentation_is_incomplete_at_every_boundary() {
         let payload: Vec<u8> = (0_u16..300)
-            .map(|value| u8::try_from(value % 256).expect("modulo 256 fits u8"))
+            .map(|value| (value % 256).to_le_bytes()[0])
             .collect();
         let mut encoded = Vec::new();
         encode_frame(&payload, 1_024, &mut encoded).expect("valid frame");
@@ -360,11 +381,16 @@ mod tests {
     }
 
     #[test]
-    fn frame_rejects_negative_and_oversized_lengths_before_payload() {
+    fn frame_rejects_zero_and_wider_than_varint21() {
+        assert_eq!(decode_frame(&[0x00], 32), Err(WireError::ZeroLengthFrame));
         assert_eq!(
-            decode_frame(&[0xff, 0xff, 0xff, 0xff, 0x0f], 1_024),
-            Err(WireError::NegativeLength(-1))
+            decode_frame(&[0x80, 0x80, 0x80], MAX_FRAME_BODY_LEN),
+            Err(WireError::FrameLengthTooWide)
         );
+    }
+
+    #[test]
+    fn frame_rejects_limit_before_payload_access() {
         assert_eq!(
             decode_frame(&[0x0a], 9),
             Err(WireError::ByteLengthLimitExceeded { length: 10, max: 9 })
@@ -372,11 +398,11 @@ mod tests {
     }
 
     #[test]
-    fn frame_consumption_supports_coalesced_streams_and_zero_length() {
+    fn frame_consumption_supports_coalesced_streams() {
         let mut encoded = Vec::new();
         encode_frame(b"abc", 32, &mut encoded).expect("first frame");
         let second_offset = encoded.len();
-        encode_frame(b"", 32, &mut encoded).expect("second frame");
+        encode_frame(b"d", 32, &mut encoded).expect("second frame");
 
         let first = decode_frame(&encoded, 32).expect("valid first frame");
         assert_eq!(
@@ -392,8 +418,8 @@ mod tests {
         assert_eq!(
             decode_frame(&encoded[consumed..], 32),
             Ok(DecodeResult::Complete {
-                value: b"".as_slice(),
-                consumed: 1
+                value: b"d".as_slice(),
+                consumed: 2
             })
         );
     }
@@ -401,6 +427,11 @@ mod tests {
     #[test]
     fn rejected_frame_encode_is_transactional() {
         let mut output = vec![7, 8, 9];
+        assert_eq!(
+            encode_frame(b"", 3, &mut output),
+            Err(WireError::ZeroLengthFrame)
+        );
+        assert_eq!(output, [7, 8, 9]);
         assert_eq!(
             encode_frame(b"abcd", 3, &mut output),
             Err(WireError::ByteLengthLimitExceeded { length: 4, max: 3 })
@@ -412,9 +443,9 @@ mod tests {
     fn string_roundtrip_preserves_utf8_and_exact_consumption() {
         let value = "Crucible 🔥 世界";
         let mut encoded = Vec::new();
-        encode_string(value, 128, 32, &mut encoded).expect("valid string");
+        encode_string(value, 32, &mut encoded).expect("valid string");
         assert_eq!(
-            decode_string(&encoded, 128, 32),
+            decode_string(&encoded, 32),
             Ok(DecodeResult::Complete {
                 value,
                 consumed: encoded.len()
@@ -422,7 +453,7 @@ mod tests {
         );
         for split in 0..encoded.len() {
             assert_eq!(
-                decode_string(&encoded[..split], 128, 32),
+                decode_string(&encoded[..split], 32),
                 Ok(DecodeResult::Incomplete),
                 "split={split}"
             );
@@ -430,24 +461,36 @@ mod tests {
     }
 
     #[test]
-    fn string_rejects_invalid_utf8_and_explicit_limits() {
+    fn string_uses_java_utf16_length_semantics() {
+        let mut encoded = Vec::new();
         assert_eq!(
-            decode_string(&[0x02, 0xff, 0xff], 8, 8),
+            encode_string("🔥", 1, &mut encoded),
+            Err(WireError::StringLengthLimitExceeded {
+                utf16_units: 2,
+                max: 1
+            })
+        );
+        assert!(encoded.is_empty());
+
+        encode_string("🔥a", 3, &mut encoded).expect("three Java UTF-16 units");
+        assert_eq!(
+            decode_string(&encoded, 2),
+            Err(WireError::StringLengthLimitExceeded {
+                utf16_units: 3,
+                max: 2
+            })
+        );
+    }
+
+    #[test]
+    fn string_rejects_invalid_utf8_and_encoded_byte_limit() {
+        assert_eq!(
+            decode_string(&[0x02, 0xff, 0xff], 8),
             Err(WireError::InvalidUtf8)
         );
         assert_eq!(
-            decode_string(&[0x04], 3, 8),
+            decode_string(&[0x04], 1),
             Err(WireError::ByteLengthLimitExceeded { length: 4, max: 3 })
-        );
-
-        let mut encoded = Vec::new();
-        encode_string("é", 2, 1, &mut encoded).expect("one Unicode scalar");
-        assert_eq!(
-            decode_string(&encoded, 2, 0),
-            Err(WireError::CharacterLimitExceeded {
-                characters: 1,
-                max: 0
-            })
         );
     }
 
@@ -455,16 +498,10 @@ mod tests {
     fn rejected_string_encode_is_transactional() {
         let mut output = vec![1, 2, 3];
         assert_eq!(
-            encode_string("abcd", 3, 8, &mut output),
-            Err(WireError::ByteLengthLimitExceeded { length: 4, max: 3 })
-        );
-        assert_eq!(output, [1, 2, 3]);
-
-        assert_eq!(
-            encode_string("é", 8, 0, &mut output),
-            Err(WireError::CharacterLimitExceeded {
-                characters: 1,
-                max: 0
+            encode_string("abcd", 3, &mut output),
+            Err(WireError::StringLengthLimitExceeded {
+                utf16_units: 4,
+                max: 3
             })
         );
         assert_eq!(output, [1, 2, 3]);
@@ -473,10 +510,10 @@ mod tests {
     #[test]
     fn zero_length_string_is_valid() {
         let mut encoded = Vec::new();
-        encode_string("", 0, 0, &mut encoded).expect("empty string");
+        encode_string("", 0, &mut encoded).expect("empty string");
         assert_eq!(encoded, [0]);
         assert_eq!(
-            decode_string(&encoded, 0, 0),
+            decode_string(&encoded, 0),
             Ok(DecodeResult::Complete {
                 value: "",
                 consumed: 1
