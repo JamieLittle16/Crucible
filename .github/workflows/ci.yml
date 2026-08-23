@@ -62,6 +62,7 @@ jobs:
           --package crucible-protocol-core
           --package crucible-session-core
           --package crucible-benchmark-support
+          --package crucible-client-spine-qualification
           --package crucible-composition-qualification
           --package crucible-executor-baseline
           --package crucible-ownership-qualification
@@ -94,6 +95,9 @@ jobs:
 
       - name: Session state qualification
         run: cargo test --package crucible-session-core --locked
+
+      - name: Client spine integration qualification
+        run: cargo test --package crucible-client-spine-qualification --locked
 
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
