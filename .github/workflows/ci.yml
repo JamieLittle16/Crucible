@@ -56,8 +56,10 @@ jobs:
           cargo fmt
           --package crucible-types
           --package crucible-component
+          --package crucible-benchmark-support
           --package crucible-ownership-qualification
           --package crucible-section-qualification
+          --package crucible-world-access-qualification
           --package crucible-world-chunk
           --package crucible-world-contract
           --package crucible-world-reference
@@ -73,6 +75,31 @@ jobs:
 
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
+
+      # Hosted timing is diagnostic only. This step proves the release harness runs,
+      # preserves semantic work, and emits parseable evidence; it cannot select a winner.
+      - name: World-access benchmark smoke
+        run: |
+          cargo run --release --locked \
+            --package crucible-world-access-qualification \
+            --bin world_access_bench -- \
+            --smoke \
+            --output target/world-access-smoke.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(Path("target/world-access-smoke.json").read_text())
+          assert artifact["schema"] == 1
+          assert artifact["benchmark"] == "resolved-chunk-window"
+          assert artifact["mode"] == "smoke"
+          assert artifact["hosted_ci_is_diagnostic_only"] is True
+          assert len(artifact["cases"]) == 3
+          for case in artifact["cases"]:
+              assert case["paired_rounds"]
+              assert case["setup_samples_ns"]
+              assert case["whole_cost_samples"]
+          PY
 
       - name: Section semantic qualification
         run: cargo xtask qualify section --quick
