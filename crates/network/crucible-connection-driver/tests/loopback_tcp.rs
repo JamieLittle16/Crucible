@@ -22,7 +22,10 @@ fn many_frames() -> FrameBudget {
 }
 
 fn body(packet_id: u8, payload: &[u8]) -> Vec<u8> {
-    assert!(packet_id < 0x80, "loopback fixture uses one-byte packet IDs");
+    assert!(
+        packet_id < 0x80,
+        "loopback fixture uses one-byte packet IDs"
+    );
     let mut body = Vec::with_capacity(payload.len() + 1);
     body.push(packet_id);
     body.extend_from_slice(payload);
