@@ -29,6 +29,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "crucible-connection-core"
+version = "0.0.0"
+dependencies = [
+ "crucible-protocol-core",
+]
+
+[[package]]
 name = "crucible-generated"
 version = "0.0.0"
 dependencies = [
