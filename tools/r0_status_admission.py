@@ -125,11 +125,13 @@ def _required_methods(source_report: dict[str, Any]) -> tuple[dict[str, object],
             raise R0AdmissionError(f"source admission report duplicates VAR id {var_id}")
         seen.add(var_id)
         semantic_rules = method.get("semantic_rules")
-        if not isinstance(semantic_rules, list) or any(
-            not isinstance(rule, str) or not rule for rule in semantic_rules
+        if (
+            not isinstance(semantic_rules, list)
+            or not semantic_rules
+            or any(not isinstance(rule, str) or not rule for rule in semantic_rules)
         ):
             raise R0AdmissionError(
-                f"required_methods[{index}].semantic_rules must be an array of non-empty strings"
+                f"required_methods[{index}].semantic_rules must be a non-empty array of non-empty strings"
             )
         admitted.append(
             {
@@ -208,7 +210,11 @@ def admit_r0_session(
     )
     if source_report.get("admitted") is not True:
         failures = source_report.get("failures")
-        detail = "; ".join(str(item) for item in failures) if isinstance(failures, list) else "unknown failure"
+        detail = (
+            "; ".join(str(item) for item in failures)
+            if isinstance(failures, list)
+            else "unknown failure"
+        )
         raise R0AdmissionError(f"source admission gate rejected R0 evidence: {detail}")
 
     gate_id = _string(source_report.get("gate_id"), "source admission gate_id")
@@ -283,10 +289,7 @@ def admit_r0_session(
                 convergence.get("frames_matched"), "convergence frames_matched"
             ),
         },
-        "generated_rust": {
-            "path": str(generated_rust_path),
-            "sha256": generated_sha256,
-        },
+        "generated_rust": {"sha256": generated_sha256},
     }
     report["session_sha256"] = _session_digest(report)
     return report
@@ -335,7 +338,10 @@ def main() -> int:
         print(encoded, end="")
     else:
         if args.output.exists() and args.output.is_symlink():
-            print(f"R0 admission error: refusing to replace symlink output: {args.output}", file=sys.stderr)
+            print(
+                f"R0 admission error: refusing to replace symlink output: {args.output}",
+                file=sys.stderr,
+            )
             return 1
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(encoded, encoding="utf-8")
