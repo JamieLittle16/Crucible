@@ -520,6 +520,10 @@ def _admit_component(component: Component, profile: Profile) -> None:
 def resolve(profile: Profile, components: tuple[Component, ...]) -> tuple[Component, ...]:
     by_id = {component.package_id: component for component in components}
     selections = profile.selections
+    if not selections:
+        raise CompositionError(
+            f"profile {profile.name!r} has no engine selections and is not a runnable composition"
+        )
     selected: dict[str, Component] = {}
 
     for capability_name, package_id in selections.items():
