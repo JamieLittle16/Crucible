@@ -34,7 +34,7 @@ const ACTIONS_PER_SERVICE: usize = 1;
 /// The value is an RFC-4122 variant, version-4 UUID and is intended to be created once per listener
 /// lifetime, then reused for every accepted Login connection attached to that listener.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct ServerSessionEpoch([u8; 16]);
+pub struct ServerSessionEpoch([u8; 16]);
 
 impl ServerSessionEpoch {
     /// Validates one raw UUID value as RFC-4122 variant/version 4.
@@ -43,7 +43,7 @@ impl ServerSessionEpoch {
     ///
     /// Returns a structural UUID error when the version or variant bits do not match the
     /// source-observed `UUID.randomUUID()` shape.
-    const fn from_bytes(bytes: [u8; 16]) -> Result<Self, ServerSessionEpochParseError> {
+    pub const fn from_bytes(bytes: [u8; 16]) -> Result<Self, ServerSessionEpochParseError> {
         if bytes[6] >> 4 != 4 {
             return Err(ServerSessionEpochParseError::NotVersion4);
         }
@@ -60,7 +60,7 @@ impl ServerSessionEpoch {
     /// # Errors
     ///
     /// Returns a precise parse/UUID-shape error for malformed input.
-    pub(crate) fn parse_hex(input: &str) -> Result<Self, ServerSessionEpochParseError> {
+    pub fn parse_hex(input: &str) -> Result<Self, ServerSessionEpochParseError> {
         let source = input.as_bytes();
         if source.len() != 32 {
             return Err(ServerSessionEpochParseError::Length {
@@ -91,14 +91,14 @@ impl ServerSessionEpoch {
 
     /// Returns the exact 16 wire bytes copied into each R1A target state.
     #[must_use]
-    const fn into_bytes(self) -> [u8; 16] {
+    pub const fn into_bytes(self) -> [u8; 16] {
         self.0
     }
 }
 
 /// Fail-closed development-epoch parser error.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum ServerSessionEpochParseError {
+pub enum ServerSessionEpochParseError {
     /// The canonical development spelling must contain exactly 32 hexadecimal digits.
     Length {
         /// Actual byte length supplied by the caller.
@@ -138,7 +138,7 @@ impl fmt::Display for ServerSessionEpochParseError {
 
 /// Why one R1A development connection stopped successfully.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum R1AConnectionExit {
+pub enum R1AConnectionExit {
     /// Login acknowledgement committed and the same connection reached Configuration.
     ConfigurationReady {
         /// Already-read bytes intentionally left untouched for the future Configuration target.
@@ -160,7 +160,7 @@ pub(crate) enum R1AConnectionExit {
 /// # Errors
 ///
 /// Returns the fail-closed bounded I/O/target error from the existing pre-play stack.
-pub(crate) fn serve_r1a_blocking_transport<RW>(
+pub fn serve_r1a_blocking_transport<RW>(
     transport: &mut RW,
     session_epoch: ServerSessionEpoch,
 ) -> Result<R1AConnectionExit, PrePlayIoError<Target26_2Error>>
@@ -173,7 +173,7 @@ where
     let budget = action_budget();
 
     loop {
-        let report = io.service_once(transport, crucible_server::R0_ORACLE_STATUS_JSON, budget)?;
+        let report = io.service_once(transport, crate::R0_ORACLE_STATUS_JSON, budget)?;
 
         if io.connection().phase() == SessionPhase::Configuration {
             debug_assert_eq!(io.connection().queued_egress(), 0);
