@@ -338,8 +338,7 @@ fn empty_player_name_matches_vanilla_predicate() {
 
 #[test]
 fn login_packet_order_is_fail_closed() {
-    let mut early_ack =
-        PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
+    let mut early_ack = PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
     enter_login(&mut early_ack);
     early_ack
         .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_ACKNOWLEDGED_FRAME)
@@ -351,8 +350,7 @@ fn login_packet_order_is_fail_closed() {
     );
     assert_eq!(early_ack.buffered_ingress(), buffered);
 
-    let mut duplicate =
-        PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
+    let mut duplicate = PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
     enter_login(&mut duplicate);
     commit_real_hello(&mut duplicate);
     drain(&mut duplicate);
@@ -413,8 +411,7 @@ fn nonempty_unit_packets_are_rejected_transactionally() {
     );
     assert_eq!(status.buffered_ingress(), buffered);
 
-    let mut login =
-        PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
+    let mut login = PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
     enter_login(&mut login);
     commit_real_hello(&mut login);
     drain(&mut login);
@@ -438,8 +435,7 @@ fn nonempty_unit_packets_are_rejected_transactionally() {
 
 #[test]
 fn truncated_fixed_width_fields_are_rejected_transactionally() {
-    let mut login =
-        PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
+    let mut login = PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
     enter_login(&mut login);
     let truncated_hello = body(
         generated::login_26_2::login::serverbound::LOGIN_HELLO,
