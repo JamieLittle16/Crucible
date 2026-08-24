@@ -91,7 +91,7 @@ impl PublicationCursor {
 
     /// Whether every body has already been admitted to bounded egress.
     #[must_use]
-    pub(crate) const fn is_complete(self, image: &PublicationImage) -> bool {
+    pub(crate) fn is_complete(self, image: &PublicationImage) -> bool {
         self.0.is_complete(image.bodies.as_ref())
     }
 }
