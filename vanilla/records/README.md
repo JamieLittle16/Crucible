@@ -2,7 +2,7 @@
 
 This directory contains machine-readable source-review sidecars. They are the persistent tracking layer projected into the disposable SQLite Atlas by `cargo xtask vanilla sync-records`.
 
-Records must be created from a built Atlas with `record-template` so they carry the exact normalized fingerprint for the pinned Minecraft source version. Ordinary records bind a source method. When source semantics live in static field initializers or static initializer blocks, first run `tools/vanilla_declaration_index.py`; Atlas then exposes the type's ordered static initialization as the reserved synthetic evidence node `<clinit>()`, which can be reviewed and fingerprint-pinned through the same record flow.
+Records must be created from a built Atlas with `record-template` so they carry the exact normalized fingerprint for the pinned Minecraft source version. Ordinary records bind a source method. When source semantics live in enum constants, static field initializers or static initializer blocks, first run `tools/vanilla_declaration_index.py`; Atlas then exposes the type's ordered class initialization as the reserved synthetic evidence node `<clinit>()`, which can be reviewed and fingerprint-pinned through the same record flow.
 
 `<clinit>()` is an evidence projection, not a Mojang-authored source method. It exists so declaration-backed protocol facts are not attributed to unrelated methods or inferred from memory.
 
