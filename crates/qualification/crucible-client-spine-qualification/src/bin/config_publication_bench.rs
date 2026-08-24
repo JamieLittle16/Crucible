@@ -153,23 +153,19 @@ fn run() -> Result<(), String> {
 
         for round in 0..config.measured_rounds {
             if round % 2 == 0 {
-                let (reference_time, reference_stats) = timed(|| {
-                    run_reference(&workload, workload.fanout)
-                })?;
-                let (shared_time, shared_stats) = timed(|| {
-                    run_shared(&workload, &shared_image, workload.fanout)
-                })?;
+                let (reference_time, reference_stats) =
+                    timed(|| run_reference(&workload, workload.fanout))?;
+                let (shared_time, shared_stats) =
+                    timed(|| run_shared(&workload, &shared_image, workload.fanout))?;
                 require_same_stats(workload.name, reference_stats, shared_stats)?;
                 semantic = Some(reference_stats);
                 reference_ns.push(reference_time);
                 shared_ns.push(shared_time);
             } else {
-                let (shared_time, shared_stats) = timed(|| {
-                    run_shared(&workload, &shared_image, workload.fanout)
-                })?;
-                let (reference_time, reference_stats) = timed(|| {
-                    run_reference(&workload, workload.fanout)
-                })?;
+                let (shared_time, shared_stats) =
+                    timed(|| run_shared(&workload, &shared_image, workload.fanout))?;
+                let (reference_time, reference_stats) =
+                    timed(|| run_reference(&workload, workload.fanout))?;
                 require_same_stats(workload.name, reference_stats, shared_stats)?;
                 semantic = Some(reference_stats);
                 reference_ns.push(reference_time);
@@ -274,7 +270,9 @@ fn registry_lengths(count: usize, minimum: usize, maximum: usize) -> Vec<usize> 
     let span = maximum - minimum + 1;
     (0..count)
         .map(|index| {
-            let mixed = index.wrapping_mul(1_103).wrapping_add(index.wrapping_mul(index) * 17);
+            let mixed = index
+                .wrapping_mul(1_103)
+                .wrapping_add(index.wrapping_mul(index) * 17);
             minimum + (mixed % span)
         })
         .collect()
@@ -325,7 +323,10 @@ fn run_shared(
     Ok(aggregate)
 }
 
-fn publish_connection(workload: &Workload, image: &PublicationImage) -> Result<PublishStats, String> {
+fn publish_connection(
+    workload: &Workload,
+    image: &PublicationImage,
+) -> Result<PublishStats, String> {
     let limits = ConnectionLimits::new(workload.max_body, workload.max_body + 5, workload.egress)
         .map_err(|error| format!("invalid workload limits: {error:?}"))?;
     let mut driver = ConnectionDriver::new(limits);
@@ -379,7 +380,11 @@ fn timed<T>(operation: impl FnOnce() -> Result<T, String>) -> Result<(u128, T), 
     Ok((start.elapsed().as_nanos(), result))
 }
 
-fn require_same_stats(name: &str, reference: PublishStats, shared: PublishStats) -> Result<(), String> {
+fn require_same_stats(
+    name: &str,
+    reference: PublishStats,
+    shared: PublishStats,
+) -> Result<(), String> {
     if reference == shared {
         Ok(())
     } else {
@@ -421,9 +426,7 @@ fn parse_args() -> Result<Config, String> {
                 output = Some(PathBuf::from(value));
             }
             "--help" | "-h" => {
-                println!(
-                    "usage: config_publication_bench [--smoke|--full] [--output PATH]"
-                );
+                println!("usage: config_publication_bench [--smoke|--full] [--output PATH]");
                 std::process::exit(0);
             }
             unknown => return Err(format!("unknown argument: {unknown}")),
