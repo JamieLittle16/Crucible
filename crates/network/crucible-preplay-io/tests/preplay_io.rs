@@ -297,7 +297,7 @@ fn coalesced_actions_respect_explicit_action_budget() {
 
 #[test]
 fn one_byte_partial_writes_are_acknowledged_exactly() {
-    let nonce = -0x1020_3040_5060_708_i64;
+    let nonce = -0x0102_0304_0506_0708_i64;
     let mut input = select_status();
     input.extend_from_slice(&status_query(nonce));
     input.extend_from_slice(&close());
@@ -323,9 +323,8 @@ fn zero_write_fails_instead_of_spinning() {
     let mut io = PrePlayIo::<SyntheticTarget>::new(limits(), scratch());
 
     let error = loop {
-        match io.service_once(&mut transport, STATUS_LABEL, budget(4)) {
-            Err(error) => break error,
-            Ok(_) => {}
+        if let Err(error) = io.service_once(&mut transport, STATUS_LABEL, budget(4)) {
+            break error;
         }
     };
     assert!(matches!(error, PrePlayIoError::ZeroWrite { pending } if pending > 0));
@@ -362,9 +361,8 @@ fn target_error_preserves_current_frame_and_session() {
     let mut io = PrePlayIo::<SyntheticTarget>::new(limits(), scratch());
 
     let error = loop {
-        match io.service_once(&mut transport, STATUS_LABEL, budget(4)) {
-            Err(error) => break error,
-            Ok(_) => {}
+        if let Err(error) = io.service_once(&mut transport, STATUS_LABEL, budget(4)) {
+            break error;
         }
     };
     assert_eq!(
