@@ -1,15 +1,15 @@
 # R1A Login Semantic Contract — Minecraft Java 26.2
 
-Status: **Login policy/state and delegated payload primitives source-reviewed; final fingerprint/generic-composite admission pending**  
+Status: **finite Login source law complete; final source-gate rerun and independent capture pending**  
 Target: Minecraft **26.2**, protocol **776**, data version **4903**  
 Source archive SHA-256: `1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750`  
 Fingerprint algorithm: `java-token-v2-literal-sensitive`
 
-This contract freezes the selected R1A Login route and the byte-level primitive laws now established
-from the pinned 26.2 source. It still refuses to call the finite Login wire contract admitted until
-all newly reviewed methods/declarations have fingerprint-pinned VAR records and the generic
-`StreamCodec.composite` ordering law is either reused from existing admitted evidence or reviewed
-from the same pinned source.
+This contract freezes the selected R1A Login route and its byte-level source law for the pinned
+26.2 server. The remaining qualification boundary is no longer protocol discovery: the complete
+source law must pass the version-controlled source gate against the real pinned Atlas database, then
+an independent unmodified-client capture must converge with the finite contract before production
+Login is admitted.
 
 ## Exact obligations
 
@@ -77,14 +77,17 @@ from the same pinned source.
   UTF-16 code units. `GAME_PROFILE_PROPERTIES` carries a VarInt count with maximum 16; each property
   then carries a Minecraft UTF-8 name bounded to 64, a value bounded to 32767, and a nullable
   signature. Nullability is one boolean; when present the signature follows as Minecraft UTF-8
-  bounded to 1024. Encoding rejects property counts above 16 and uses the same field order and
-  bounds. The generic `StreamCodec.composite` source law remains the final evidence dependency for
-  elevating the declared component order to a sealed finite-contract claim.
-- **SEM-NET-R1A-012 — LoginFinished session identity.** `ClientboundLoginFinishedPacket` declares
-  the `GameProfile` component first and the server connection session UUID second. The session UUID
-  uses the same `UUIDUtil.STREAM_CODEC` as **SEM-NET-R1A-009**. The session UUID is runtime session
-  state, not a version-pinned constant; black-box capture/materialization must therefore parse or
-  bind the observed value rather than hardcode one golden UUID across server sessions.
+  bounded to 1024. Encoding rejects property counts above 16. The fingerprint-pinned three-component
+  `StreamCodec.composite` overload decodes codec1, codec2, codec3 in that order and passes the values
+  to the constructor in the same order; encoding invokes codec1, codec2, codec3 in that order.
+- **SEM-NET-R1A-012 — LoginFinished session identity and component order.**
+  `ClientboundLoginFinishedPacket` declares the `GameProfile` component first and the server
+  connection session UUID second. The fingerprint-pinned two-component `StreamCodec.composite`
+  overload decodes codec1 before codec2 and encodes codec1 before codec2, so the packet byte order is
+  exactly GameProfile then session UUID. The session UUID uses the same `UUIDUtil.STREAM_CODEC` as
+  **SEM-NET-R1A-009**. It is runtime session state, not a version-pinned constant; capture
+  materialization must parse or bind the observed value rather than hardcode one UUID across server
+  sessions.
 
 ## Existing evidence reused
 
@@ -92,19 +95,19 @@ R1A reuses the R0-reviewed general packet-ID construction law (`SEM-NET-R0-014` 
 `SEM-NET-R0-015`) and the already-source-reviewed client-intent value `LOGIN = 2`
 (`SEM-NET-R0-002`). R1A does not duplicate or mutate the sealed R0 VAR records.
 
-## Remaining admission work before the finite Login contract
+## Remaining qualification before production Login
 
-The source questions about the selected payload primitives are closed. Remaining work is evidence
-mechanics rather than protocol guessing:
+The Minecraft-source questions for the selected offline/uncompressed Login path are closed. The
+remaining work is qualification rather than source interpretation:
 
-1. regenerate the local declaration index with declaration-index 0.1.2 so implicit interface fields
-   in `ByteBufCodecs` receive a source-backed synthetic `<clinit>()` fingerprint;
-2. create/review VAR records for the UUID/profile helper methods and declarations above;
-3. review or reuse a fingerprint-pinned source law for the relevant `StreamCodec.composite`
-   component-order behavior;
-4. run the final R1A source gate;
-5. acquire an independent unmodified-client Login capture under the selected offline/uncompressed
-   policy and require source-contract/capture convergence before production Login is admitted.
+1. run `GATE-NET-LOGIN-WIRE-26_2-001` against the real pinned Atlas database with all required VARs,
+   including the two- and three-component `StreamCodec.composite` overloads;
+2. independently qualify Crucible's implementation of Java 25 `UUID.nameUUIDFromBytes` for the exact
+   `OfflinePlayer:` UTF-8 input law;
+3. materialize a finite Login protocol contract from the admitted source law;
+4. acquire an independent unmodified-client Login capture under authentication-disabled,
+   compression-disabled policy and require source-contract/capture convergence;
+5. only then admit the production `Target26_2` Login codec/state machine.
 
 No production `Target26_2` Login codec may bypass those gates.
 
