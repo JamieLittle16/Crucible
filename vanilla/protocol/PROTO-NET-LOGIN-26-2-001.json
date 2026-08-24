@@ -1,0 +1,152 @@
+{
+  "id": "PROTO-NET-LOGIN-26-2-001",
+  "packets": [
+    {
+      "direction": "serverbound",
+      "golden": {
+        "body_hex": "008806096c6f63616c686f737463de02",
+        "frame_hex": "10008806096c6f63616c686f737463de02"
+      },
+      "id": 0,
+      "name": "client-intention-login",
+      "phase": "handshake",
+      "semantic_rules": [
+        "SEM-NET-R0-001",
+        "SEM-NET-R0-002",
+        "SEM-NET-R0-004",
+        "SEM-NET-R0-014",
+        "SEM-NET-R0-015",
+        "SEM-NET-R1A-001"
+      ],
+      "source_records": [
+        "VAR-NET-R0-CLIENT-INTENT-DECL-001",
+        "VAR-NET-R0-CLIENT-INTENT-BY-ID-001",
+        "VAR-NET-R0-CLIENT-INTENTION-CODEC-001",
+        "VAR-NET-R0-HANDSHAKE-DECODE-001",
+        "VAR-NET-R0-HANDSHAKE-REGISTRATION-001",
+        "VAR-NET-R1A-BEGIN-LOGIN-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    },
+    {
+      "direction": "serverbound",
+      "golden": {
+        "body_hex": "0007537461746f31362d9dce97d5554aefbd7d8ba8124eb36c",
+        "frame_hex": "190007537461746f31362d9dce97d5554aefbd7d8ba8124eb36c"
+      },
+      "id": 0,
+      "name": "login-hello",
+      "phase": "login",
+      "semantic_rules": [
+        "SEM-NET-R1A-002",
+        "SEM-NET-R1A-003",
+        "SEM-NET-R1A-008",
+        "SEM-NET-R1A-009",
+        "SEM-NET-R1A-010"
+      ],
+      "source_records": [
+        "VAR-NET-R1A-LOGIN-REGISTRATION-001",
+        "VAR-NET-R1A-SERVERBOUND-HELLO-CODEC-001",
+        "VAR-NET-R1A-SERVERBOUND-HELLO-DECODE-001",
+        "VAR-NET-R1A-LOGIN-HELLO-HANDLER-001",
+        "VAR-NET-R1A-UUID-STREAM-DECL-001",
+        "VAR-NET-R1A-UUID-READ-001",
+        "VAR-NET-R1A-OFFLINE-UUID-001",
+        "VAR-NET-R1A-OFFLINE-PROFILE-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    },
+    {
+      "direction": "clientbound",
+      "golden": {
+        "body_hex": "02682014fead633699aada79aa08d95b4507537461746f3136004d7f604f196a43b08987f0b2a27c2663",
+        "frame_hex": "2a02682014fead633699aada79aa08d95b4507537461746f3136004d7f604f196a43b08987f0b2a27c2663"
+      },
+      "id": 2,
+      "name": "login-finished",
+      "phase": "login",
+      "semantic_rules": [
+        "SEM-NET-R1A-002",
+        "SEM-NET-R1A-006",
+        "SEM-NET-R1A-008",
+        "SEM-NET-R1A-009",
+        "SEM-NET-R1A-011",
+        "SEM-NET-R1A-012"
+      ],
+      "source_records": [
+        "VAR-NET-R1A-LOGIN-REGISTRATION-001",
+        "VAR-NET-R1A-LOGIN-FINISHED-CODEC-001",
+        "VAR-NET-R1A-LOGIN-FINISHED-HANDLER-001",
+        "VAR-NET-R1A-LOGIN-VERIFY-FINISH-001",
+        "VAR-NET-R1A-UUID-STREAM-DECL-001",
+        "VAR-NET-R1A-UUID-WRITE-001",
+        "VAR-NET-R1A-GAME-PROFILE-DECL-001",
+        "VAR-NET-R1A-STRING-UTF8-FACTORY-001",
+        "VAR-NET-R1A-PROPERTY-COUNT-WRITE-001",
+        "VAR-NET-R1A-NULLABLE-WRITE-001",
+        "VAR-NET-R1A-COMPOSITE-2-001",
+        "VAR-NET-R1A-COMPOSITE-3-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    },
+    {
+      "direction": "serverbound",
+      "golden": {
+        "body_hex": "03",
+        "frame_hex": "0103"
+      },
+      "id": 3,
+      "name": "login-acknowledged",
+      "phase": "login",
+      "semantic_rules": [
+        "SEM-NET-R1A-002",
+        "SEM-NET-R1A-007"
+      ],
+      "source_records": [
+        "VAR-NET-R1A-LOGIN-REGISTRATION-001",
+        "VAR-NET-R1A-LOGIN-ACK-CODEC-001",
+        "VAR-NET-R1A-LOGIN-ACK-HANDLER-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    }
+  ],
+  "schema": 1,
+  "target": {
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "minecraft": "26.2",
+    "protocol": 776,
+    "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750"
+  }
+}
