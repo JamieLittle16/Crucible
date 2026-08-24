@@ -15,6 +15,7 @@ dependencies = [
  "crucible-connection-driver",
  "crucible-packet-core",
  "crucible-protocol-core",
+ "crucible-publication-core",
  "crucible-session-core",
 ]
 
@@ -107,6 +108,14 @@ dependencies = [
 [[package]]
 name = "crucible-protocol-core"
 version = "0.0.0"
+
+[[package]]
+name = "crucible-publication-core"
+version = "0.0.0"
+dependencies = [
+ "crucible-connection-core",
+ "crucible-connection-driver",
+]
 
 [[package]]
 name = "crucible-server"
