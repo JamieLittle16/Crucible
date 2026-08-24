@@ -52,7 +52,7 @@ def _safe_archive_path(value: object) -> str:
 
 def extract_indexed_source_span(archive: zipfile.ZipFile, row: Mapping[str, object]) -> str:
     """Extract the exact source lines bound to one Atlas method row."""
-    path = _safe_archive_path(row.get("path"))
+    path = _safe_archive_path(row["path"])
     names = archive.namelist()
     if path not in names:
         raise DossierError(f"Atlas source member missing from pinned archive: {path}")
@@ -60,8 +60,8 @@ def extract_indexed_source_span(archive: zipfile.ZipFile, row: Mapping[str, obje
         source = archive.read(path).decode("utf-8", errors="strict")
     except UnicodeDecodeError as error:
         raise DossierError(f"Atlas source member is not strict UTF-8: {path}: {error}") from error
-    start = row.get("start_line")
-    end = row.get("end_line")
+    start = row["start_line"]
+    end = row["end_line"]
     if type(start) is not int or type(end) is not int or start < 1 or end < start:
         raise DossierError(f"invalid Atlas source line span for {path}: {start!r}-{end!r}")
     lines = source.splitlines(keepends=True)
