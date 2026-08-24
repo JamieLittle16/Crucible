@@ -1,0 +1,178 @@
+{
+  "id": "PROTO-NET-STATUS-26-2-001",
+  "packets": [
+    {
+      "direction": "serverbound",
+      "golden": {
+        "body_hex": "008806093132372e302e302e3163de01",
+        "frame_hex": "10008806093132372e302e302e3163de01"
+      },
+      "id": 0,
+      "name": "client-intention",
+      "phase": "handshake",
+      "semantic_rules": [
+        "SEM-NET-R0-001",
+        "SEM-NET-R0-002",
+        "SEM-NET-R0-003",
+        "SEM-NET-R0-004",
+        "SEM-NET-R0-014",
+        "SEM-NET-R0-015"
+      ],
+      "source_records": [
+        "VAR-NET-R0-CLIENT-INTENT-DECL-001",
+        "VAR-NET-R0-CLIENT-INTENT-BY-ID-001",
+        "VAR-NET-R0-CLIENT-INTENTION-CODEC-001",
+        "VAR-NET-R0-HANDSHAKE-DECODE-001",
+        "VAR-NET-R0-HANDSHAKE-REGISTRATION-001",
+        "VAR-NET-R0-HANDSHAKE-STATUS-TRANSITION-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    },
+    {
+      "direction": "serverbound",
+      "golden": {
+        "body_hex": "00",
+        "frame_hex": "0100"
+      },
+      "id": 0,
+      "name": "status-request",
+      "phase": "status",
+      "semantic_rules": [
+        "SEM-NET-R0-005",
+        "SEM-NET-R0-006",
+        "SEM-NET-R0-010",
+        "SEM-NET-R0-014",
+        "SEM-NET-R0-015"
+      ],
+      "source_records": [
+        "VAR-NET-R0-STATUS-REGISTRATION-001",
+        "VAR-NET-R0-STATUS-REQUEST-CODEC-001",
+        "VAR-NET-R0-STATUS-REQUEST-HANDLER-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    },
+    {
+      "direction": "serverbound",
+      "golden": {
+        "body_hex": "010000000000001b88",
+        "frame_hex": "09010000000000001b88"
+      },
+      "id": 1,
+      "name": "ping-request",
+      "phase": "status",
+      "semantic_rules": [
+        "SEM-NET-R0-005",
+        "SEM-NET-R0-011",
+        "SEM-NET-R0-013",
+        "SEM-NET-R0-014",
+        "SEM-NET-R0-015"
+      ],
+      "source_records": [
+        "VAR-NET-R0-STATUS-REGISTRATION-001",
+        "VAR-NET-R0-PING-REQUEST-CODEC-001",
+        "VAR-NET-R0-PING-DECODE-001",
+        "VAR-NET-R0-PING-HANDLER-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    },
+    {
+      "direction": "clientbound",
+      "golden": {
+        "body_hex": "0087017b226465736372697074696f6e223a224372756369626c65205230204f7261636c65222c22706c6179657273223a7b226d6178223a32302c226f6e6c696e65223a307d2c2276657273696f6e223a7b226e616d65223a2232362e32222c2270726f746f636f6c223a3737367d2c22656e666f7263657353656375726543686174223a747275657d",
+        "frame_hex": "8a010087017b226465736372697074696f6e223a224372756369626c65205230204f7261636c65222c22706c6179657273223a7b226d6178223a32302c226f6e6c696e65223a307d2c2276657273696f6e223a7b226e616d65223a2232362e32222c2270726f746f636f6c223a3737367d2c22656e666f7263657353656375726543686174223a747275657d"
+      },
+      "id": 0,
+      "name": "status-response",
+      "phase": "status",
+      "semantic_rules": [
+        "SEM-NET-R0-005",
+        "SEM-NET-R0-007",
+        "SEM-NET-R0-008",
+        "SEM-NET-R0-009",
+        "SEM-NET-R0-010",
+        "SEM-NET-R0-014",
+        "SEM-NET-R0-015"
+      ],
+      "source_records": [
+        "VAR-NET-R0-STATUS-REGISTRATION-001",
+        "VAR-NET-R0-STATUS-RESPONSE-CODEC-001",
+        "VAR-NET-R0-SERVER-STATUS-CODEC-001",
+        "VAR-NET-R0-SERVER-STATUS-PLAYERS-CODEC-001",
+        "VAR-NET-R0-SERVER-STATUS-VERSION-CODEC-001",
+        "VAR-NET-R0-STATUS-REQUEST-HANDLER-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    },
+    {
+      "direction": "clientbound",
+      "golden": {
+        "body_hex": "010000000000001b88",
+        "frame_hex": "09010000000000001b88"
+      },
+      "id": 1,
+      "name": "pong-response",
+      "phase": "status",
+      "semantic_rules": [
+        "SEM-NET-R0-005",
+        "SEM-NET-R0-012",
+        "SEM-NET-R0-013",
+        "SEM-NET-R0-014",
+        "SEM-NET-R0-015"
+      ],
+      "source_records": [
+        "VAR-NET-R0-STATUS-REGISTRATION-001",
+        "VAR-NET-R0-PONG-RESPONSE-CODEC-001",
+        "VAR-NET-R0-PONG-ENCODE-001",
+        "VAR-NET-R0-PING-HANDLER-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001",
+        "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-ADD-001",
+        "VAR-NET-R0-PROTOCOL-CODEC-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001",
+        "VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001",
+        "VAR-NET-R0-ID-DISPATCH-DECODE-001",
+        "VAR-NET-R0-ID-DISPATCH-ENCODE-001"
+      ]
+    }
+  ],
+  "schema": 1,
+  "target": {
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "minecraft": "26.2",
+    "protocol": 776,
+    "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750"
+  }
+}
