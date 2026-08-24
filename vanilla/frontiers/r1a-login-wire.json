@@ -20,6 +20,8 @@
     "net.minecraft.network.protocol.login.ServerboundLoginAcknowledgedPacket",
     "net.minecraft.network.FriendlyByteBuf#readUUID(final ByteBuf input)",
     "net.minecraft.network.FriendlyByteBuf#writeUUID(final ByteBuf output , final UUID uuid)",
+    "net.minecraft.network.FriendlyByteBuf#readNullable",
+    "net.minecraft.network.FriendlyByteBuf#writeNullable",
     "net.minecraft.core.UUIDUtil#<clinit>()",
     "net.minecraft.core.UUIDUtil#createOfflinePlayerUUID(final String playerName)",
     "net.minecraft.core.UUIDUtil#createOfflineProfile(final String playerName)",
