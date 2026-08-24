@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "kind": "external-runtime-equivalence-v1",
+  "runtime_law": "java.util.UUID.nameUUIDFromBytes",
+  "reference": {
+    "implementation": "OpenJDK",
+    "repository": "openjdk/jdk",
+    "ref": "jdk-25+36",
+    "path": "src/java.base/share/classes/java/util/UUID.java",
+    "algorithm": "MD5(input); set UUID version=3 and IETF variant bits"
+  },
+  "witness_runtime": {
+    "implementation": "OpenJDK",
+    "version": "26.0.2"
+  },
+  "input_prefix_utf8": "OfflinePlayer:",
+  "vectors": [
+    {"name":"CrucibleR1","uuid":"18030a72-9cb6-38f0-a5ba-e1c75f1314e9"},
+    {"name":"Player","uuid":"a01e3843-e521-3998-958a-f459800e4d11"},
+    {"name":"A_B9","uuid":"3ed12607-2255-3097-a2e0-8df867708688"},
+    {"name":"aaaaaaaaaaaaaaaa","uuid":"7259babb-8b73-37de-88fc-86fa22252071"},
+    {"name":"Z9_0","uuid":"d5cb2d97-1164-3e9a-b4f7-0d3cb3067807"}
+  ],
+  "notes": [
+    "The algorithm is bound to exact OpenJDK 25 source; the execution vectors were independently produced by OpenJDK 26.0.2 and are not mislabeled as Java-25 runtime output.",
+    "Minecraft 26.2 source supplies UTF-8 bytes of exactly OfflinePlayer:<name> to this JDK function."
+  ]
+}

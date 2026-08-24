@@ -1,0 +1,15 @@
+{
+  "capture_sha256": "11ead8de74df70b40d7fb045ff9561f06f6e24238765d4141a1d090cab546b57",
+  "client_hello_uuid": "2d9dce97-d555-4aef-bd7d-8ba8124eb36c",
+  "contract_id": "PROTO-NET-LOGIN-26-2-001",
+  "kind": "r1-login-witness-v1",
+  "offline_profile_uuid": "682014fe-ad63-3699-aada-79aa08d95b45",
+  "player_name": "Stato16",
+  "profile_property_count": 0,
+  "schema": 1,
+  "session_uuid": "4d7f604f-196a-43b0-8987-f0b2a27c2663",
+  "uninterpreted_post_login_frames": {
+    "client_to_server_after_login": 64,
+    "server_to_client_after_login_finished": 2365
+  }
+}
