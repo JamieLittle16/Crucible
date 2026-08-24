@@ -160,6 +160,7 @@ def _source_excerpt(archive: zipfile.ZipFile, row: Any) -> str:
 def prepare(output_dir: Path, db: Path, source: Path, lock: Path) -> dict[str, object]:
     output = _external_fresh_dir(output_dir)
     output.mkdir(parents=True)
+    conn = None
     try:
         conn = vanilla_atlas.connect_db(db)
         source_sha = source_probe.require_pinned_source(conn, source, lock)
@@ -209,7 +210,7 @@ def prepare(output_dir: Path, db: Path, source: Path, lock: Path) -> dict[str, o
                 record.pop("atlas_observed_hazards", None)
                 records.append(record)
                 methods.append({"query": identity, "var_id": candidate.var_id})
-        conn.close()
+
         dossier = {
             "schema": SCHEMA,
             "kind": PREPARED_KIND,
@@ -261,28 +262,40 @@ def prepare(output_dir: Path, db: Path, source: Path, lock: Path) -> dict[str, o
     except Exception:
         shutil.rmtree(output, ignore_errors=True)
         raise
+    finally:
+        if conn is not None:
+            conn.close()
 
 
-def finalize(review_dir: Path, output_dir: Path) -> None:
-    if output_dir.exists() or output_dir.is_symlink():
-        raise ClosureError(f"finalized output must not already exist: {output_dir}")
+def _indexed_records(review_dir: Path) -> dict[str, dict[str, object]]:
+    indexed: dict[str, dict[str, object]] = {}
+    for path in sorted((review_dir / "records").glob("*.json")):
+        record = json.loads(path.read_text(encoding="utf-8"))
+        var_id = str(record.get("id", ""))
+        if not var_id or var_id in indexed:
+            raise ClosureError(f"duplicate or missing INDEXED record id: {var_id!r}")
+        indexed[var_id] = record
+    expected = {candidate.var_id for candidate in CANDIDATES}
+    if set(indexed) != expected:
+        raise ClosureError("INDEXED record set does not exactly match closure plan")
+    return indexed
+
+
+def _reviewed_records(review_dir: Path) -> list[dict[str, object]]:
     worksheet = json.loads((review_dir / "review-worksheet.json").read_text(encoding="utf-8"))
-    if worksheet.get("kind") != WORKSHEET_KIND or worksheet.get("candidate_count") != len(
-        CANDIDATES
+    if (
+        worksheet.get("kind") != WORKSHEET_KIND
+        or worksheet.get("contains_official_source_text") is not False
+        or worksheet.get("candidate_count") != len(CANDIDATES)
     ):
         raise ClosureError("worksheet identity/cardinality mismatch")
     entries = worksheet.get("candidates")
     if not isinstance(entries, list) or len(entries) != len(CANDIDATES):
         raise ClosureError("worksheet candidates mismatch")
-    indexed: dict[str, dict[str, object]] = {}
-    for path in (review_dir / "records").glob("*.json"):
-        record = json.loads(path.read_text(encoding="utf-8"))
-        indexed[str(record["id"])] = record
-    output_dir.mkdir(parents=True)
-    (output_dir / "records").mkdir()
-    (output_dir / "gate").mkdir()
+    indexed = _indexed_records(review_dir)
+    reviewed_records: list[dict[str, object]] = []
     for candidate, entry in zip(CANDIDATES, entries):
-        if entry.get("var_id") != candidate.var_id:
+        if not isinstance(entry, dict) or entry.get("var_id") != candidate.var_id:
             raise ClosureError(f"worksheet order/id mismatch at {candidate.var_id}")
         decision = entry.get("decision")
         if not isinstance(decision, dict):
@@ -297,13 +310,17 @@ def finalize(review_dir: Path, output_dir: Path) -> None:
             or not note.strip()
         ):
             raise ClosureError(f"{candidate.var_id}: reviewer and note are required")
-        observed = set(entry.get("atlas_observed_hazards", []))
+        observed_raw = entry.get("atlas_observed_hazards")
         reviewed = decision.get("hazards_reviewed")
+        if not isinstance(observed_raw, list) or any(
+            not isinstance(item, str) or not item for item in observed_raw
+        ):
+            raise ClosureError(f"{candidate.var_id}: observed hazards must be a string array")
         if not isinstance(reviewed, list) or any(
             not isinstance(item, str) or not item for item in reviewed
         ):
             raise ClosureError(f"{candidate.var_id}: hazards_reviewed must be a string array")
-        missing = observed - set(reviewed)
+        missing = set(observed_raw) - set(reviewed)
         if missing:
             raise ClosureError(f"{candidate.var_id}: undispositioned hazards: {sorted(missing)}")
         semantic_rules = decision.get("semantic_rules")
@@ -311,27 +328,58 @@ def finalize(review_dir: Path, output_dir: Path) -> None:
         if (
             not isinstance(semantic_rules, list)
             or not semantic_rules
-            or any(rule not in allowed for rule in semantic_rules)
+            or any(not isinstance(rule, str) or rule not in allowed for rule in semantic_rules)
         ):
             raise ClosureError(
                 f"{candidate.var_id}: semantic_rules must be a non-empty subset of "
                 f"{sorted(allowed)}"
             )
-        record = indexed.get(candidate.var_id)
-        if record is None:
-            raise ClosureError(f"{candidate.var_id}: INDEXED record missing")
+        record = indexed[candidate.var_id]
+        if record.get("status") != "INDEXED":
+            raise ClosureError(f"{candidate.var_id}: bound source record must remain INDEXED")
         if entry.get("source") != record.get("source"):
             raise ClosureError(f"{candidate.var_id}: worksheet/record source identity drift")
-        record["status"] = "VAR_REVIEWED"
-        record["hazards_reviewed"] = sorted(set(reviewed))
-        record["semantic_rules"] = sorted(set(semantic_rules))
-        record["evidence"] = ["R1B supplemental source-closure review"]
-        record["notes"] = [f"Reviewer: {reviewer.strip()}", note.strip()]
-        (output_dir / "records" / f"{candidate.var_id}.json").write_bytes(pretty_bytes(record))
-    shutil.copyfile(
-        review_dir / "gate" / f"{GATE_ID}.json",
-        output_dir / "gate" / f"{GATE_ID}.json",
-    )
+        reviewed_record = dict(record)
+        reviewed_record["status"] = "VAR_REVIEWED"
+        reviewed_record["hazards_reviewed"] = sorted(set(reviewed))
+        reviewed_record["semantic_rules"] = sorted(set(semantic_rules))
+        reviewed_record["evidence"] = ["R1B supplemental source-closure review"]
+        reviewed_record["notes"] = [f"Reviewer: {reviewer.strip()}", note.strip()]
+        reviewed_records.append(reviewed_record)
+    return reviewed_records
+
+
+def finalize(review_dir: Path, output_dir: Path) -> None:
+    if output_dir.exists() or output_dir.is_symlink():
+        raise ClosureError(f"finalized output must not already exist: {output_dir}")
+
+    # Validate the entire review before creating any final output. A rejected worksheet must
+    # leave no partial reviewed record set that could be mistaken for a successful finalization.
+    reviewed_records = _reviewed_records(review_dir)
+    gate_source = review_dir / "gate" / f"{GATE_ID}.json"
+    gate = json.loads(gate_source.read_text(encoding="utf-8"))
+    if (
+        gate.get("id") != GATE_ID
+        or gate.get("minimum_status") != "VAR_REVIEWED"
+        or gate.get("require_semantic_rules") is not True
+        or gate.get("require_hazards_reviewed") is not True
+    ):
+        raise ClosureError("closure gate no longer enforces the review boundary")
+
+    staging = output_dir.with_name(f".{output_dir.name}.staging")
+    if staging.exists() or staging.is_symlink():
+        raise ClosureError(f"staging output already exists: {staging}")
+    staging.mkdir(parents=True)
+    try:
+        (staging / "records").mkdir()
+        (staging / "gate").mkdir()
+        for record in reviewed_records:
+            (staging / "records" / f"{record['id']}.json").write_bytes(pretty_bytes(record))
+        shutil.copyfile(gate_source, staging / "gate" / f"{GATE_ID}.json")
+        staging.replace(output_dir)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
 
 
 def _shell_command(parts: Sequence[object]) -> str:
