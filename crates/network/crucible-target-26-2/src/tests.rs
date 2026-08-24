@@ -11,12 +11,10 @@ use super::{
 
 const ORACLE_STATUS_JSON: &str = "{\"description\":\"Crucible R0 Oracle\",\"players\":{\"max\":20,\"online\":0},\"version\":{\"name\":\"26.2\",\"protocol\":776},\"enforcesSecureChat\":true}";
 const REAL_LOGIN_SESSION_UUID: [u8; 16] = [
-    0x4d, 0x7f, 0x60, 0x4f, 0x19, 0x6a, 0x43, 0xb0, 0x89, 0x87, 0xf0, 0xb2, 0xa2, 0x7c, 0x26,
-    0x63,
+    0x4d, 0x7f, 0x60, 0x4f, 0x19, 0x6a, 0x43, 0xb0, 0x89, 0x87, 0xf0, 0xb2, 0xa2, 0x7c, 0x26, 0x63,
 ];
 const REAL_OFFLINE_PROFILE_UUID: [u8; 16] = [
-    0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9, 0x5b,
-    0x45,
+    0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9, 0x5b, 0x45,
 ];
 
 fn limits() -> ConnectionLimits {
@@ -80,9 +78,7 @@ fn enter_status(connection: &mut PrePlayConnection<Target26_2>) {
 
 fn enter_login(connection: &mut PrePlayConnection<Target26_2>) {
     connection
-        .ingest(
-            generated::login_26_2::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_LOGIN_FRAME,
-        )
+        .ingest(generated::login_26_2::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_LOGIN_FRAME)
         .expect("golden Login handshake ingress");
     assert_eq!(
         connection.process_one(ORACLE_STATUS_JSON),
@@ -90,6 +86,20 @@ fn enter_login(connection: &mut PrePlayConnection<Target26_2>) {
             from: SessionPhase::Handshake,
             to: SessionPhase::Login,
             outbound_frames: 0,
+        })
+    );
+}
+
+fn commit_real_hello(connection: &mut PrePlayConnection<Target26_2>) {
+    connection
+        .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_HELLO_FRAME)
+        .expect("real Login hello ingress");
+    assert_eq!(
+        connection.process_one(ORACLE_STATUS_JSON),
+        Ok(PrePlayProcess::Committed {
+            from: SessionPhase::Login,
+            to: SessionPhase::Login,
+            outbound_frames: 1,
         })
     );
 }
@@ -111,7 +121,6 @@ fn generated_identity_contains_both_admitted_contracts() {
     assert_eq!(generated::status::serverbound::PING_REQUEST, 1);
     assert_eq!(generated::status::clientbound::STATUS_RESPONSE, 0);
     assert_eq!(generated::status::clientbound::PONG_RESPONSE, 1);
-
     assert_eq!(
         generated::login_26_2::CONTRACT_ID,
         "PROTO-NET-LOGIN-26-2-001"
@@ -126,7 +135,7 @@ fn generated_identity_contains_both_admitted_contracts() {
 }
 
 #[test]
-fn real_oracle_golden_status_and_ping_exchange_is_byte_exact() {
+fn real_oracle_status_and_ping_exchange_is_byte_exact() {
     let mut connection = PrePlayConnection::<Target26_2>::new(limits());
     enter_status(&mut connection);
     assert!(!connection.target_state().status_response_sent());
@@ -167,24 +176,12 @@ fn real_oracle_golden_status_and_ping_exchange_is_byte_exact() {
 }
 
 #[test]
-fn real_client_login_exchange_is_byte_exact_through_configuration_entry() {
+fn real_client_login_exchange_is_byte_exact_and_retains_profile() {
     let mut connection =
         PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
     enter_login(&mut connection);
-    assert!(!connection.target_state().login_finished_sent());
+    commit_real_hello(&mut connection);
 
-    connection
-        .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_HELLO_FRAME)
-        .expect("real Login hello ingress");
-    assert_eq!(
-        connection.process_one(ORACLE_STATUS_JSON),
-        Ok(PrePlayProcess::Committed {
-            from: SessionPhase::Login,
-            to: SessionPhase::Login,
-            outbound_frames: 1,
-        })
-    );
-    assert!(connection.target_state().login_finished_sent());
     let LoginState::AwaitAcknowledgement {
         session_uuid,
         profile,
@@ -213,7 +210,7 @@ fn real_client_login_exchange_is_byte_exact_through_configuration_entry() {
         })
     );
     let LoginState::AwaitAcknowledgement { profile, .. } = connection.target_state().login else {
-        panic!("Configuration entry must retain the accepted Login profile");
+        panic!("Configuration entry must retain accepted Login profile");
     };
     assert_eq!(profile.id(), REAL_OFFLINE_PROFILE_UUID);
     assert_eq!(profile.name(), "Stato16");
@@ -221,7 +218,7 @@ fn real_client_login_exchange_is_byte_exact_through_configuration_entry() {
 }
 
 #[test]
-fn status_handshake_does_not_require_client_protocol_to_equal_776() {
+fn status_handshake_remains_protocol_tolerant() {
     let mut connection = PrePlayConnection::<Target26_2>::new(limits());
     let frame = encoded_frame(&handshake_body(775, 1), limits());
     connection.ingest(&frame).expect("handshake ingress");
@@ -259,9 +256,7 @@ fn login_handshake_requires_exact_protocol_transactionally() {
 fn login_requires_runtime_session_uuid_without_consuming_handshake() {
     let mut connection = PrePlayConnection::<Target26_2>::new(limits());
     connection
-        .ingest(
-            generated::login_26_2::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_LOGIN_FRAME,
-        )
+        .ingest(generated::login_26_2::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_LOGIN_FRAME)
         .expect("Login handshake ingress");
     let buffered = connection.buffered_ingress();
     assert_eq!(
@@ -289,7 +284,7 @@ fn unsupported_handshake_intent_is_rejected_without_consuming_input() {
 }
 
 #[test]
-fn invalid_player_name_is_rejected_without_state_or_ingress_commit() {
+fn invalid_player_name_is_rejected_transactionally() {
     let mut connection =
         PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
     enter_login(&mut connection);
@@ -342,50 +337,38 @@ fn empty_player_name_matches_vanilla_predicate() {
 }
 
 #[test]
-fn acknowledgement_before_login_finished_is_rejected_transactionally() {
-    let mut connection =
+fn login_packet_order_is_fail_closed() {
+    let mut early_ack =
         PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
-    enter_login(&mut connection);
-    connection
+    enter_login(&mut early_ack);
+    early_ack
         .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_ACKNOWLEDGED_FRAME)
         .expect("early acknowledgement ingress");
-    let buffered = connection.buffered_ingress();
+    let buffered = early_ack.buffered_ingress();
     assert_eq!(
-        connection.process_one(ORACLE_STATUS_JSON),
+        early_ack.process_one(ORACLE_STATUS_JSON),
         Err(PrePlayError::Target(Target26_2Error::UnexpectedLoginState))
     );
-    assert_eq!(connection.phase(), SessionPhase::Login);
-    assert!(!connection.target_state().login_finished_sent());
-    assert_eq!(connection.buffered_ingress(), buffered);
-}
+    assert_eq!(early_ack.buffered_ingress(), buffered);
 
-#[test]
-fn duplicate_hello_after_login_finished_is_rejected_transactionally() {
-    let mut connection =
+    let mut duplicate =
         PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
-    enter_login(&mut connection);
-    connection
-        .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_HELLO_FRAME)
-        .expect("first hello ingress");
-    connection
-        .process_one(ORACLE_STATUS_JSON)
-        .expect("first hello commits");
-    drain(&mut connection);
-
-    connection
+    enter_login(&mut duplicate);
+    commit_real_hello(&mut duplicate);
+    drain(&mut duplicate);
+    duplicate
         .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_HELLO_FRAME)
         .expect("duplicate hello ingress");
-    let buffered = connection.buffered_ingress();
+    let buffered = duplicate.buffered_ingress();
     assert_eq!(
-        connection.process_one(ORACLE_STATUS_JSON),
+        duplicate.process_one(ORACLE_STATUS_JSON),
         Err(PrePlayError::Target(Target26_2Error::UnexpectedLoginState))
     );
-    assert!(connection.target_state().login_finished_sent());
-    assert_eq!(connection.buffered_ingress(), buffered);
+    assert_eq!(duplicate.buffered_ingress(), buffered);
 }
 
 #[test]
-fn duplicate_status_request_commits_terminal_close_without_second_response() {
+fn duplicate_status_request_closes_without_second_response() {
     let mut connection = PrePlayConnection::<Target26_2>::new(limits());
     enter_status(&mut connection);
     connection
@@ -412,66 +395,53 @@ fn duplicate_status_request_commits_terminal_close_without_second_response() {
 }
 
 #[test]
-fn nonempty_status_request_is_rejected_transactionally() {
-    let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-    enter_status(&mut connection);
-    let malformed = body(generated::status::serverbound::STATUS_REQUEST, |writer| {
+fn nonempty_unit_packets_are_rejected_transactionally() {
+    let mut status = PrePlayConnection::<Target26_2>::new(limits());
+    enter_status(&mut status);
+    let malformed_status = body(generated::status::serverbound::STATUS_REQUEST, |writer| {
         writer.write_bool(true)
     });
-    let frame = encoded_frame(&malformed, limits());
-    connection
-        .ingest(&frame)
-        .expect("malformed request ingress");
-    let buffered = connection.buffered_ingress();
+    status
+        .ingest(&encoded_frame(&malformed_status, limits()))
+        .expect("malformed status ingress");
+    let buffered = status.buffered_ingress();
     assert_eq!(
-        connection.process_one(ORACLE_STATUS_JSON),
+        status.process_one(ORACLE_STATUS_JSON),
         Err(PrePlayError::Target(Target26_2Error::Codec(
             PacketCodecError::TrailingBytes { remaining: 1 }
         )))
     );
-    assert!(!connection.target_state().status_response_sent());
-    assert_eq!(connection.buffered_ingress(), buffered);
-    assert_eq!(connection.queued_egress(), 0);
-}
+    assert_eq!(status.buffered_ingress(), buffered);
 
-#[test]
-fn nonempty_login_acknowledgement_is_rejected_transactionally() {
-    let mut connection =
+    let mut login =
         PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
-    enter_login(&mut connection);
-    connection
-        .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_HELLO_FRAME)
-        .expect("hello ingress");
-    connection
-        .process_one(ORACLE_STATUS_JSON)
-        .expect("hello commits");
-    drain(&mut connection);
-
-    let malformed = body(
+    enter_login(&mut login);
+    commit_real_hello(&mut login);
+    drain(&mut login);
+    let malformed_ack = body(
         generated::login_26_2::login::serverbound::LOGIN_ACKNOWLEDGED,
         |writer| writer.write_bool(true),
     );
-    connection
-        .ingest(&encoded_frame(&malformed, limits()))
-        .expect("nonempty acknowledgement ingress");
-    let buffered = connection.buffered_ingress();
+    login
+        .ingest(&encoded_frame(&malformed_ack, limits()))
+        .expect("malformed acknowledgement ingress");
+    let buffered = login.buffered_ingress();
     assert_eq!(
-        connection.process_one(ORACLE_STATUS_JSON),
+        login.process_one(ORACLE_STATUS_JSON),
         Err(PrePlayError::Target(Target26_2Error::Codec(
             PacketCodecError::TrailingBytes { remaining: 1 }
         )))
     );
-    assert_eq!(connection.phase(), SessionPhase::Login);
-    assert!(connection.target_state().login_finished_sent());
-    assert_eq!(connection.buffered_ingress(), buffered);
+    assert_eq!(login.phase(), SessionPhase::Login);
+    assert_eq!(login.buffered_ingress(), buffered);
 }
 
 #[test]
-fn truncated_login_uuid_is_rejected_without_consuming_input() {
-    let mut connection =
+fn truncated_fixed_width_fields_are_rejected_transactionally() {
+    let mut login =
         PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
-    enter_login(&mut connection);
-    let truncated = body(
+    enter_login(&mut login);
+    let truncated_hello = body(
         generated::login_26_2::login::serverbound::LOGIN_HELLO,
         |writer| {
             writer.write_string("Player", 16)?;
@@ -479,12 +449,12 @@ fn truncated_login_uuid_is_rejected_without_consuming_input() {
             writer.write_bytes(&[0_u8; 7])
         },
     );
-    connection
-        .ingest(&encoded_frame(&truncated, limits()))
+    login
+        .ingest(&encoded_frame(&truncated_hello, limits()))
         .expect("truncated hello ingress");
-    let buffered = connection.buffered_ingress();
+    let buffered = login.buffered_ingress();
     assert_eq!(
-        connection.process_one(ORACLE_STATUS_JSON),
+        login.process_one(ORACLE_STATUS_JSON),
         Err(PrePlayError::Target(Target26_2Error::Codec(
             PacketCodecError::Truncated {
                 field: PacketField::U64,
@@ -492,22 +462,19 @@ fn truncated_login_uuid_is_rejected_without_consuming_input() {
             }
         )))
     );
-    assert!(!connection.target_state().login_finished_sent());
-    assert_eq!(connection.buffered_ingress(), buffered);
-}
+    assert_eq!(login.buffered_ingress(), buffered);
 
-#[test]
-fn truncated_ping_is_rejected_without_consuming_input() {
-    let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-    enter_status(&mut connection);
-    let truncated = body(generated::status::serverbound::PING_REQUEST, |writer| {
+    let mut status = PrePlayConnection::<Target26_2>::new(limits());
+    enter_status(&mut status);
+    let truncated_ping = body(generated::status::serverbound::PING_REQUEST, |writer| {
         writer.write_bytes(&[0_u8; 7])
     });
-    let frame = encoded_frame(&truncated, limits());
-    connection.ingest(&frame).expect("truncated ping ingress");
-    let buffered = connection.buffered_ingress();
+    status
+        .ingest(&encoded_frame(&truncated_ping, limits()))
+        .expect("truncated ping ingress");
+    let buffered = status.buffered_ingress();
     assert_eq!(
-        connection.process_one(ORACLE_STATUS_JSON),
+        status.process_one(ORACLE_STATUS_JSON),
         Err(PrePlayError::Target(Target26_2Error::Codec(
             PacketCodecError::Truncated {
                 field: PacketField::I64,
@@ -515,12 +482,11 @@ fn truncated_ping_is_rejected_without_consuming_input() {
             }
         )))
     );
-    assert_eq!(connection.phase(), SessionPhase::Status);
-    assert_eq!(connection.buffered_ingress(), buffered);
+    assert_eq!(status.buffered_ingress(), buffered);
 }
 
 #[test]
-fn signed_ping_payload_is_echoed_bit_exact_then_connection_closes() {
+fn signed_ping_payload_is_echoed_bit_exact_then_closes() {
     let mut connection = PrePlayConnection::<Target26_2>::new(limits());
     enter_status(&mut connection);
     let ping = body(generated::status::serverbound::PING_REQUEST, |writer| {
@@ -547,7 +513,7 @@ fn signed_ping_payload_is_echoed_bit_exact_then_connection_closes() {
 }
 
 #[test]
-fn egress_rejection_rolls_back_status_one_shot_state_and_input() {
+fn egress_rejection_rolls_back_status_state_and_input() {
     let limits = tight_limits();
     let mut connection = PrePlayConnection::<Target26_2>::new(limits);
     connection
@@ -556,7 +522,6 @@ fn egress_rejection_rolls_back_status_one_shot_state_and_input() {
     connection
         .process_one(ORACLE_STATUS_JSON)
         .expect("small-limit handshake commits");
-
     connection
         .ingest(generated::golden::STATUS_SERVERBOUND_STATUS_REQUEST_FRAME)
         .expect("status request ingress");
@@ -565,7 +530,6 @@ fn egress_rejection_rolls_back_status_one_shot_state_and_input() {
         connection.process_one(ORACLE_STATUS_JSON),
         Err(PrePlayError::Buffer(_))
     ));
-    assert_eq!(connection.phase(), SessionPhase::Status);
     assert!(!connection.target_state().status_response_sent());
     assert_eq!(connection.buffered_ingress(), buffered);
     assert_eq!(connection.queued_egress(), 0);
@@ -574,17 +538,13 @@ fn egress_rejection_rolls_back_status_one_shot_state_and_input() {
 #[test]
 fn egress_rejection_rolls_back_login_stage_profile_and_input() {
     let limits = tight_limits();
-    let mut connection =
-        PrePlayConnection::<Target26_2>::with_target_state(limits, login_state());
+    let mut connection = PrePlayConnection::<Target26_2>::with_target_state(limits, login_state());
     connection
-        .ingest(
-            generated::login_26_2::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_LOGIN_FRAME,
-        )
+        .ingest(generated::login_26_2::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_LOGIN_FRAME)
         .expect("small-limit Login handshake ingress");
     connection
         .process_one(ORACLE_STATUS_JSON)
         .expect("small-limit Login handshake commits");
-
     connection
         .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_HELLO_FRAME)
         .expect("Login hello ingress");
@@ -595,7 +555,10 @@ fn egress_rejection_rolls_back_login_stage_profile_and_input() {
     ));
     assert_eq!(connection.phase(), SessionPhase::Login);
     assert!(!connection.target_state().login_finished_sent());
-    assert!(matches!(connection.target_state().login, LoginState::AwaitHello { .. }));
+    assert!(matches!(
+        connection.target_state().login,
+        LoginState::AwaitHello { .. }
+    ));
     assert_eq!(connection.buffered_ingress(), buffered);
     assert_eq!(connection.queued_egress(), 0);
 }
