@@ -25,6 +25,8 @@ class LoginWireSourceFrontierTests(unittest.TestCase):
             "ServerboundLoginAcknowledgedPacket",
             "FriendlyByteBuf#readUUID",
             "FriendlyByteBuf#writeUUID",
+            "FriendlyByteBuf#readNullable",
+            "FriendlyByteBuf#writeNullable",
             "UUIDUtil#<clinit>()",
             "createOfflinePlayerUUID",
             "createOfflineProfile",
