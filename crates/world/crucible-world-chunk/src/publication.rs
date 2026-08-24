@@ -92,13 +92,17 @@ where
     /// [`Self::is_publication_current`], which also validates chunk position.
     #[must_use]
     pub const fn accepts_stamp(&self, stamp: ChunkStamp) -> bool {
-        self.stamp() == stamp
+        let current = self.stamp();
+        current.generation.0 == stamp.generation.0 && current.revision.0 == stamp.revision.0
     }
 
     /// Whether an immutable publication still describes this exact live chunk state.
     #[must_use]
     pub const fn is_publication_current(&self, publication: &PublishedChunk<S>) -> bool {
-        self.position() == publication.position && self.accepts_stamp(publication.stamp)
+        let current = self.position();
+        current.x == publication.position.x
+            && current.z == publication.position.z
+            && self.accepts_stamp(publication.stamp)
     }
 
     /// Projects the current live chunk into one immutable canonical semantic image.
