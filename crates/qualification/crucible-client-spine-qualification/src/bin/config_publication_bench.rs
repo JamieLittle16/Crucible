@@ -17,6 +17,7 @@ use config_publication::{PublicationCursor, PublicationImage, PublicationStep, p
 const SCHEMA: u32 = 1;
 const CHECKSUM_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const CHECKSUM_PRIME: u64 = 0x0000_0100_0000_01b3;
+const RATIO_SCALE_PPM: u128 = 1_000_000;
 const DRAIN_PATTERN: [usize; 7] = [1, 31, 7, 113, 17, 251, 61];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -186,13 +187,13 @@ fn run() -> Result<(), String> {
         });
     }
 
-    let artifact = render_json(&config, &hardware.to_json(), &results);
+    let artifact = render_json(&config, &hardware.to_json(), &results)?;
     if let Some(path) = config.output {
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent)
-                    .map_err(|error| format!("could not create output directory: {error}"))?;
-            }
+        if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("could not create output directory: {error}"))?;
         }
         fs::write(&path, artifact.as_bytes())
             .map_err(|error| format!("could not write {}: {error}", path.display()))?;
@@ -272,7 +273,7 @@ fn registry_lengths(count: usize, minimum: usize, maximum: usize) -> Vec<usize> 
         .map(|index| {
             let mixed = index
                 .wrapping_mul(1_103)
-                .wrapping_add(index.wrapping_mul(index) * 17);
+                .wrapping_add(index.wrapping_mul(index).wrapping_mul(17));
             minimum + (mixed % span)
         })
         .collect()
@@ -338,7 +339,10 @@ fn publish_connection(
         let mut blocked = false;
         if !cursor.is_complete(image) {
             match publish_one::<()>(image, &mut cursor, &mut driver) {
-                Ok(PublicationStep::Queued { body_bytes, .. }) => {
+                Ok(PublicationStep::Queued { index, body_bytes }) => {
+                    if cursor.next_index() != index + 1 {
+                        return Err("publication cursor advanced by an unexpected amount".to_owned());
+                    }
                     stats.body_bytes = checked_add(stats.body_bytes, body_bytes)?;
                     stats.frames = checked_add(stats.frames, 1)?;
                 }
@@ -411,6 +415,21 @@ fn checked_add(left: usize, right: usize) -> Result<usize, String> {
         .ok_or_else(|| "benchmark accounting overflow".to_owned())
 }
 
+fn checked_mul(left: usize, right: usize) -> Result<usize, String> {
+    left.checked_mul(right)
+        .ok_or_else(|| "benchmark memory accounting overflow".to_owned())
+}
+
+fn ratio_ppm(numerator: u128, denominator: u128) -> Result<u128, String> {
+    if denominator == 0 {
+        return Ok(0);
+    }
+    numerator
+        .checked_mul(RATIO_SCALE_PPM)
+        .ok_or_else(|| "benchmark ratio accounting overflow".to_owned())
+        .map(|scaled| scaled / denominator)
+}
+
 fn parse_args() -> Result<Config, String> {
     let mut mode = Mode::Smoke;
     let mut output = None;
@@ -446,7 +465,11 @@ fn percentile(samples: &[u128], numerator: usize, denominator: usize) -> u128 {
     sorted[rank]
 }
 
-fn render_json(config: &Config, hardware_json: &str, results: &[WorkloadResult]) -> String {
+fn render_json(
+    config: &Config,
+    hardware_json: &str,
+    results: &[WorkloadResult],
+) -> Result<String, String> {
     let mut output = String::new();
     output.push('{');
     output.push_str("\"schema\":");
@@ -477,7 +500,7 @@ fn render_json(config: &Config, hardware_json: &str, results: &[WorkloadResult])
         output.push_str(",\"cursor_bytes\":");
         output.push_str(&result.cursor_bytes.to_string());
         output.push_str(",\"reference_logical_rebuilt_body_bytes\":");
-        output.push_str(&(result.image_body_bytes * result.fanout).to_string());
+        output.push_str(&checked_mul(result.image_body_bytes, result.fanout)?.to_string());
         output.push_str(",\"shared_logical_body_bytes\":");
         output.push_str(&result.image_body_bytes.to_string());
         output.push_str(",\"shared_prepare_ns\":");
@@ -498,18 +521,13 @@ fn render_json(config: &Config, hardware_json: &str, results: &[WorkloadResult])
         push_summary(&mut output, "shared", &result.shared_ns);
         let reference_p50 = percentile(&result.reference_ns, 50, 100);
         let shared_p50 = percentile(&result.shared_ns, 50, 100);
-        output.push_str(",\"shared_over_reference_p50\":");
-        let ratio = if reference_p50 == 0 {
-            0.0
-        } else {
-            shared_p50 as f64 / reference_p50 as f64
-        };
-        output.push_str(&format!("{ratio:.6}"));
+        output.push_str(",\"shared_over_reference_p50_ppm\":");
+        output.push_str(&ratio_ppm(shared_p50, reference_p50)?.to_string());
         output.push('}');
     }
 
     output.push_str("]}");
-    output
+    Ok(output)
 }
 
 fn push_samples(output: &mut String, name: &str, samples: &[u128]) {
