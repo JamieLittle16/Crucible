@@ -165,6 +165,21 @@ class SourceAdmissionGateTests(unittest.TestCase):
             self.assertEqual(report["frontier"]["name"], "test")
             self.assertEqual(report["source"]["protocol_version"], "2")
 
+    def test_one_unresolved_explicit_frontier_root_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _report, db, records, gate_path = self._evaluate(root)
+            frontier_path = root / "vanilla" / "frontiers" / "test.json"
+            frontier = json.loads(frontier_path.read_text(encoding="utf-8"))
+            frontier["root_queries"].append("net.minecraft.test.DoesNotExist")
+            frontier_path.write_text(json.dumps(frontier), encoding="utf-8")
+
+            with working_directory(root), self.assertRaisesRegex(
+                gate.GateError,
+                r"frontier test root query resolved zero methods: net\.minecraft\.test\.DoesNotExist",
+            ):
+                gate.evaluate(db_path=db, gate_path=gate_path, records_dir=records)
+
     def test_report_is_deterministic_for_unchanged_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
