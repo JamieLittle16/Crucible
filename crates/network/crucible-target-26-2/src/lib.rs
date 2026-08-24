@@ -275,11 +275,7 @@ fn decode_status(
             let response = encode_status_response(status_json)?;
             let mut next_state = target_state;
             next_state.status_response_sent = true;
-            Ok(Target26_2Action::new(
-                session,
-                vec![response],
-                next_state,
-            ))
+            Ok(Target26_2Action::new(session, vec![response], next_state))
         }
         generated::status::serverbound::PING_REQUEST => {
             let mut reader = PacketReader::new(frame.payload());
@@ -377,7 +373,7 @@ fn encode_login_finished(
     writer.write_var_int(generated::login_26_2::login::clientbound::LOGIN_FINISHED)?;
     writer.write_bytes(&profile_uuid)?;
     writer.write_string(player_name, MAX_PLAYER_NAME_UTF16_UNITS)?;
-    writer.write_var_int(0)?; // Offline profile carries no properties on the admitted path.
+    writer.write_var_int(0)?;
     writer.write_bytes(&session_uuid)?;
     Ok(writer.into_bytes())
 }
@@ -397,8 +393,8 @@ mod tests {
 
     const ORACLE_STATUS_JSON: &str = "{\"description\":\"Crucible R0 Oracle\",\"players\":{\"max\":20,\"online\":0},\"version\":{\"name\":\"26.2\",\"protocol\":776},\"enforcesSecureChat\":true}";
     const REAL_LOGIN_SESSION_UUID: [u8; 16] = [
-        0x4d, 0x7f, 0x60, 0x4f, 0x19, 0x6a, 0x43, 0xb0, 0x89, 0x87, 0xf0, 0xb2, 0xa2, 0x7c,
-        0x26, 0x63,
+        0x4d, 0x7f, 0x60, 0x4f, 0x19, 0x6a, 0x43, 0xb0, 0x89, 0x87, 0xf0, 0xb2, 0xa2, 0x7c, 0x26,
+        0x63,
     ];
 
     fn limits() -> ConnectionLimits {
@@ -500,18 +496,12 @@ mod tests {
             "PROTO-NET-LOGIN-26-2-001"
         );
         assert_eq!(generated::login_26_2::PROTOCOL_VERSION, 776);
-        assert_eq!(
-            generated::login_26_2::login::serverbound::LOGIN_HELLO,
-            0
-        );
+        assert_eq!(generated::login_26_2::login::serverbound::LOGIN_HELLO, 0);
         assert_eq!(
             generated::login_26_2::login::serverbound::LOGIN_ACKNOWLEDGED,
             3
         );
-        assert_eq!(
-            generated::login_26_2::login::clientbound::LOGIN_FINISHED,
-            2
-        );
+        assert_eq!(generated::login_26_2::login::clientbound::LOGIN_FINISHED, 2);
     }
 
     #[test]
@@ -581,9 +571,7 @@ mod tests {
         drain(&mut connection);
 
         connection
-            .ingest(
-                generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_ACKNOWLEDGED_FRAME,
-            )
+            .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_ACKNOWLEDGED_FRAME)
             .expect("real Login acknowledgement ingress");
         assert_eq!(
             connection.process_one(ORACLE_STATUS_JSON),
@@ -621,10 +609,12 @@ mod tests {
         let buffered = connection.buffered_ingress();
         assert_eq!(
             connection.process_one(ORACLE_STATUS_JSON),
-            Err(PrePlayError::Target(Target26_2Error::LoginProtocolMismatch {
-                expected: 776,
-                actual: 775,
-            }))
+            Err(PrePlayError::Target(
+                Target26_2Error::LoginProtocolMismatch {
+                    expected: 776,
+                    actual: 775,
+                }
+            ))
         );
         assert_eq!(connection.phase(), SessionPhase::Handshake);
         assert_eq!(connection.buffered_ingress(), buffered);
@@ -696,16 +686,12 @@ mod tests {
             PrePlayConnection::<Target26_2>::with_target_state(limits(), login_state());
         enter_login(&mut connection);
         connection
-            .ingest(
-                generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_ACKNOWLEDGED_FRAME,
-            )
+            .ingest(generated::login_26_2::golden::LOGIN_SERVERBOUND_LOGIN_ACKNOWLEDGED_FRAME)
             .expect("early acknowledgement ingress");
         let buffered = connection.buffered_ingress();
         assert_eq!(
             connection.process_one(ORACLE_STATUS_JSON),
-            Err(PrePlayError::Target(
-                Target26_2Error::UnexpectedLoginState
-            ))
+            Err(PrePlayError::Target(Target26_2Error::UnexpectedLoginState))
         );
         assert_eq!(connection.phase(), SessionPhase::Login);
         assert!(!connection.target_state().login_finished_sent());
@@ -731,9 +717,7 @@ mod tests {
         let buffered = connection.buffered_ingress();
         assert_eq!(
             connection.process_one(ORACLE_STATUS_JSON),
-            Err(PrePlayError::Target(
-                Target26_2Error::UnexpectedLoginState
-            ))
+            Err(PrePlayError::Target(Target26_2Error::UnexpectedLoginState))
         );
         assert!(connection.target_state().login_finished_sent());
         assert_eq!(connection.buffered_ingress(), buffered);
