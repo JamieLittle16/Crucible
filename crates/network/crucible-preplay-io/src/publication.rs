@@ -9,7 +9,10 @@ use std::io::{Read, Write};
 
 use crucible_preplay_core::{PrePlayPublicationProcess, PrePlayPublisher, PublicationStep};
 
-use super::{ActionBudget, PrePlayIo, PrePlayIoError, ProcessStop, ReadOutcome, WriteOutcome, add};
+use super::{
+    ActionBudget, PrePlayIo, PrePlayIoError, ProcessReport, ProcessStop, ReadOutcome, WriteOutcome,
+    add,
+};
 
 /// Why one publication-aware I/O service step returned successfully.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -49,6 +52,68 @@ pub struct PublicationServiceReport {
     pub stop: PublicationServiceStop,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct ServiceTally {
+    read_bytes: usize,
+    written_bytes: usize,
+    committed_actions: usize,
+    outbound_frames: usize,
+    remaining_actions: usize,
+}
+
+impl ServiceTally {
+    const fn new(budget: ActionBudget) -> Self {
+        Self {
+            read_bytes: 0,
+            written_bytes: 0,
+            committed_actions: 0,
+            outbound_frames: 0,
+            remaining_actions: budget.get(),
+        }
+    }
+
+    fn account_process<E>(
+        &mut self,
+        report: ProcessReport,
+    ) -> Result<(), PrePlayIoError<E>> {
+        self.committed_actions = add(self.committed_actions, report.committed_actions)?;
+        self.outbound_frames = add(self.outbound_frames, report.outbound_frames)?;
+        self.remaining_actions = self
+            .remaining_actions
+            .checked_sub(report.committed_actions)
+            .ok_or(PrePlayIoError::AccountingOverflow)?;
+        Ok(())
+    }
+
+    fn account_publication<E>(&mut self, admitted_frames: usize) -> Result<(), PrePlayIoError<E>> {
+        self.committed_actions = add(self.committed_actions, 1)?;
+        self.outbound_frames = add(self.outbound_frames, admitted_frames)?;
+        self.remaining_actions = self
+            .remaining_actions
+            .checked_sub(1)
+            .ok_or(PrePlayIoError::AccountingOverflow)?;
+        Ok(())
+    }
+
+    fn account_read<E>(&mut self, read: usize) -> Result<(), PrePlayIoError<E>> {
+        self.read_bytes = add(self.read_bytes, read)?;
+        Ok(())
+    }
+
+    fn account_write<E>(&mut self, written: usize) -> Result<(), PrePlayIoError<E>> {
+        self.written_bytes = add(self.written_bytes, written)?;
+        Ok(())
+    }
+
+    const fn publication_progress_stop(self) -> PublicationServiceStop {
+        if self.remaining_actions == 0 {
+            PublicationServiceStop::ActionBudgetExhausted
+        } else {
+            PublicationServiceStop::PublicationProgress
+        }
+    }
+}
+
 impl<T> PrePlayIo<T>
 where
     T: PrePlayPublisher,
@@ -85,110 +150,39 @@ where
     where
         RW: Read + Write + ?Sized,
     {
-        let mut read_bytes = 0usize;
-        let mut written_bytes = 0usize;
-        let mut committed_actions = 0usize;
-        let mut outbound_frames = 0usize;
-        let mut remaining_actions = budget.get();
+        let mut tally = ServiceTally::new(budget);
 
         match self.write_once(transport)? {
             WriteOutcome::Progress { written, remaining } => {
-                written_bytes = add(written_bytes, written)?;
+                tally.account_write(written)?;
                 if remaining != 0 {
                     return Ok(self.publication_service_report(
-                        read_bytes,
-                        written_bytes,
-                        committed_actions,
-                        outbound_frames,
+                        tally,
                         PublicationServiceStop::OutputPending,
                     ));
                 }
             }
             WriteOutcome::Pending => {
                 return Ok(self.publication_service_report(
-                    read_bytes,
-                    written_bytes,
-                    committed_actions,
-                    outbound_frames,
+                    tally,
                     PublicationServiceStop::OutputPending,
                 ));
             }
             WriteOutcome::Empty => {}
         }
 
-        let first = self.process_limit(context, remaining_actions)?;
-        committed_actions = add(committed_actions, first.committed_actions)?;
-        outbound_frames = add(outbound_frames, first.outbound_frames)?;
-        remaining_actions = remaining_actions
-            .checked_sub(first.committed_actions)
-            .ok_or(PrePlayIoError::AccountingOverflow)?;
-
+        let first = self.process_limit(context, tally.remaining_actions)?;
+        tally.account_process(first)?;
         let mut stop = match first.stop {
             ProcessStop::SessionClosed => PublicationServiceStop::SessionClosed,
             ProcessStop::ActionBudgetExhausted => PublicationServiceStop::ActionBudgetExhausted,
             ProcessStop::Incomplete if self.peer_eof => PublicationServiceStop::PeerEof,
-            ProcessStop::Incomplete => {
-                if let Some(admitted) = self.publish_ready(context)? {
-                    committed_actions = add(committed_actions, 1)?;
-                    outbound_frames = add(outbound_frames, admitted)?;
-                    remaining_actions = remaining_actions
-                        .checked_sub(1)
-                        .ok_or(PrePlayIoError::AccountingOverflow)?;
-                    if remaining_actions == 0 {
-                        PublicationServiceStop::ActionBudgetExhausted
-                    } else {
-                        PublicationServiceStop::PublicationProgress
-                    }
-                } else {
-                    match self.read_once(transport)? {
-                        ReadOutcome::Data(read) => {
-                            read_bytes = add(read_bytes, read)?;
-                            if remaining_actions == 0 {
-                                PublicationServiceStop::ActionBudgetExhausted
-                            } else {
-                                let second = self.process_limit(context, remaining_actions)?;
-                                committed_actions =
-                                    add(committed_actions, second.committed_actions)?;
-                                outbound_frames = add(outbound_frames, second.outbound_frames)?;
-                                remaining_actions = remaining_actions
-                                    .checked_sub(second.committed_actions)
-                                    .ok_or(PrePlayIoError::AccountingOverflow)?;
-                                match second.stop {
-                                    ProcessStop::SessionClosed => {
-                                        PublicationServiceStop::SessionClosed
-                                    }
-                                    ProcessStop::ActionBudgetExhausted => {
-                                        PublicationServiceStop::ActionBudgetExhausted
-                                    }
-                                    ProcessStop::Incomplete => {
-                                        if let Some(admitted) = self.publish_ready(context)? {
-                                            committed_actions = add(committed_actions, 1)?;
-                                            outbound_frames = add(outbound_frames, admitted)?;
-                                            remaining_actions = remaining_actions
-                                                .checked_sub(1)
-                                                .ok_or(PrePlayIoError::AccountingOverflow)?;
-                                            if remaining_actions == 0 {
-                                                PublicationServiceStop::ActionBudgetExhausted
-                                            } else {
-                                                PublicationServiceStop::PublicationProgress
-                                            }
-                                        } else {
-                                            PublicationServiceStop::InputPending
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        ReadOutcome::Pending => PublicationServiceStop::InputPending,
-                        ReadOutcome::Eof => PublicationServiceStop::PeerEof,
-                    }
-                }
-            }
+            ProcessStop::Incomplete => self.service_incomplete(transport, context, &mut tally)?,
         };
 
         match self.write_once(transport)? {
             WriteOutcome::Progress { written, remaining } => {
-                written_bytes = add(written_bytes, written)?;
+                tally.account_write(written)?;
                 if remaining != 0 {
                     stop = PublicationServiceStop::OutputPending;
                 }
@@ -197,20 +191,58 @@ where
             WriteOutcome::Empty => {}
         }
 
-        if stop == PublicationServiceStop::SessionClosed && self.connection.queued_egress() != 0 {
-            stop = PublicationServiceStop::OutputPending;
-        }
-        if stop == PublicationServiceStop::PeerEof && self.connection.queued_egress() != 0 {
+        if matches!(
+            stop,
+            PublicationServiceStop::SessionClosed | PublicationServiceStop::PeerEof
+        ) && self.connection.queued_egress() != 0
+        {
             stop = PublicationServiceStop::OutputPending;
         }
 
-        Ok(self.publication_service_report(
-            read_bytes,
-            written_bytes,
-            committed_actions,
-            outbound_frames,
-            stop,
-        ))
+        Ok(self.publication_service_report(tally, stop))
+    }
+
+    fn service_incomplete<RW>(
+        &mut self,
+        transport: &mut RW,
+        context: &T::Context,
+        tally: &mut ServiceTally,
+    ) -> Result<PublicationServiceStop, PrePlayIoError<T::Error>>
+    where
+        RW: Read + Write + ?Sized,
+    {
+        if let Some(admitted) = self.publish_ready(context)? {
+            tally.account_publication(admitted)?;
+            return Ok(tally.publication_progress_stop());
+        }
+
+        match self.read_once(transport)? {
+            ReadOutcome::Data(read) => {
+                tally.account_read(read)?;
+                if tally.remaining_actions == 0 {
+                    return Ok(PublicationServiceStop::ActionBudgetExhausted);
+                }
+
+                let second = self.process_limit(context, tally.remaining_actions)?;
+                tally.account_process(second)?;
+                match second.stop {
+                    ProcessStop::SessionClosed => Ok(PublicationServiceStop::SessionClosed),
+                    ProcessStop::ActionBudgetExhausted => {
+                        Ok(PublicationServiceStop::ActionBudgetExhausted)
+                    }
+                    ProcessStop::Incomplete => {
+                        if let Some(admitted) = self.publish_ready(context)? {
+                            tally.account_publication(admitted)?;
+                            Ok(tally.publication_progress_stop())
+                        } else {
+                            Ok(PublicationServiceStop::InputPending)
+                        }
+                    }
+                }
+            }
+            ReadOutcome::Pending => Ok(PublicationServiceStop::InputPending),
+            ReadOutcome::Eof => Ok(PublicationServiceStop::PeerEof),
+        }
     }
 
     fn publish_ready(
@@ -226,17 +258,14 @@ where
 
     fn publication_service_report(
         &self,
-        read_bytes: usize,
-        written_bytes: usize,
-        committed_actions: usize,
-        outbound_frames: usize,
+        tally: ServiceTally,
         stop: PublicationServiceStop,
     ) -> PublicationServiceReport {
         PublicationServiceReport {
-            read_bytes,
-            written_bytes,
-            committed_actions,
-            outbound_frames,
+            read_bytes: tally.read_bytes,
+            written_bytes: tally.written_bytes,
+            committed_actions: tally.committed_actions,
+            outbound_frames: tally.outbound_frames,
             buffered_ingress: self.connection.buffered_ingress(),
             queued_egress: self.connection.queued_egress(),
             stop,
