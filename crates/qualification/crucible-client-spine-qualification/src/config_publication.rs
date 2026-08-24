@@ -53,12 +53,6 @@ impl PublicationImage {
     pub(crate) const fn body_bytes(&self) -> usize {
         self.body_bytes
     }
-
-    /// Returns one immutable packet body by publication index.
-    #[must_use]
-    pub(crate) fn body(&self, index: usize) -> Option<&[u8]> {
-        self.bodies.get(index).map(AsRef::as_ref)
-    }
 }
 
 /// Construction failure for an immutable publication image.
