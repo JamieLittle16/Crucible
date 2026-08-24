@@ -9,7 +9,9 @@ publish = false
 
 [dependencies]
 crucible-connection-core = { path = "../network/crucible-connection-core" }
+crucible-preplay-core = { path = "../network/crucible-preplay-core" }
 crucible-preplay-io = { path = "../network/crucible-preplay-io" }
+crucible-session-core = { path = "../network/crucible-session-core" }
 crucible-target-26-2 = { path = "../network/crucible-target-26-2" }
 
 [lints]
