@@ -28,7 +28,7 @@ pub const MAX_STATUS_JSON_UTF16_UNITS: usize = 32_767;
 /// Maximum packet-body bytes needed by the finite R0 target.
 ///
 /// A Rust string containing at most 32,767 Java UTF-16 units can occupy at most 98,301 UTF-8 bytes.
-/// The status response then needs at most three bytes for that byte-length VarInt and one byte for
+/// The status response then needs at most three bytes for that byte-length `VarInt` and one byte for
 /// packet ID zero.
 pub const MAX_R0_PACKET_BODY_BYTES: usize = 98_305;
 
