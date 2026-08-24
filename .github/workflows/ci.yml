@@ -51,6 +51,8 @@ jobs:
       # crucible-generated and crucible-composition are byte-for-byte owned by
       # their generators. Keep them in the workspace for check/clippy/test/doc,
       # but never let rustfmt become a second writer of generated artifacts.
+      # The 26.2 target's generated facts are included! from a generated path;
+      # rustfmt checks the handwritten crate root without rewriting that file.
       - name: Format handwritten Rust
         run: >-
           cargo fmt
@@ -63,6 +65,7 @@ jobs:
           --package crucible-preplay-io
           --package crucible-protocol-core
           --package crucible-session-core
+          --package crucible-target-26-2
           --package crucible-benchmark-support
           --package crucible-client-spine-qualification
           --package crucible-composition-qualification
@@ -103,6 +106,9 @@ jobs:
 
       - name: Session state qualification
         run: cargo test --package crucible-session-core --locked
+
+      - name: Minecraft 26.2 R0 target qualification
+        run: cargo test --package crucible-target-26-2 --locked
 
       - name: Client spine integration qualification
         run: cargo test --package crucible-client-spine-qualification --locked

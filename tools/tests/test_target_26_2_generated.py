@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from tools.protocol_codegen import generate
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CONTRACT = REPO_ROOT / "vanilla/protocol/PROTO-NET-STATUS-26-2-001.json"
+LOCK = REPO_ROOT / "vanilla/vanilla.lock.toml"
+RECORDS = REPO_ROOT / "vanilla/records"
+ADMISSION = REPO_ROOT / "vanilla/reports/r0-status-admission-26.2.json"
+COMMITTED = (
+    REPO_ROOT
+    / "crates/network/crucible-target-26-2/src/generated/status_26_2.rs"
+)
+EXPECTED_GENERATED_SHA256 = (
+    "77aec1160385078ffe8757c362196b41b4801433088d06e3d9c68207c2efecf8"
+)
+
+
+class Target26_2GeneratedTests(unittest.TestCase):
+    def test_committed_packet_facts_are_exact_admitted_codegen(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "status_26_2.rs"
+            generate(
+                CONTRACT,
+                lock_path=LOCK,
+                records_root=RECORDS,
+                output_path=output,
+                check=False,
+            )
+            expected = output.read_bytes()
+
+        committed = COMMITTED.read_bytes()
+        self.assertEqual(committed, expected)
+        digest = hashlib.sha256(committed).hexdigest()
+        self.assertEqual(digest, EXPECTED_GENERATED_SHA256)
+
+        admission = json.loads(ADMISSION.read_text(encoding="utf-8"))
+        self.assertEqual(admission["generated_rust"]["sha256"], digest)
+        self.assertEqual(
+            admission["session_sha256"],
+            "fb57c003d0e96c467dad55c209237dd23478ff287caea51943823cc62848cea0",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
