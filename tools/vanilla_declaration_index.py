@@ -24,7 +24,7 @@ from typing import Sequence
 
 import vanilla_atlas as atlas
 
-DECLARATION_INDEX_VERSION = "0.1.1"
+DECLARATION_INDEX_VERSION = "0.1.2"
 SYNTHETIC_NAME = "<clinit>"
 SYNTHETIC_SIGNATURE = "<clinit>()"
 SYNTHETIC_MODIFIERS = "static synthetic atlas-declaration-v1"
@@ -49,12 +49,23 @@ def _token_texts(tokens: Sequence[atlas.Token]) -> set[str]:
     return {token.text for token in tokens}
 
 
-def _is_static_field(tokens: Sequence[atlas.Token]) -> bool:
-    """Return whether a semicolon-terminated member is an initialized static field."""
+def _is_static_field(
+    tokens: Sequence[atlas.Token], *, implicit_static: bool = False
+) -> bool:
+    """Return whether a semicolon-terminated member is an initialized static field.
+
+    Java interface fields are implicitly ``public static final`` even when the declaration omits
+    those modifiers. ``implicit_static`` is therefore enabled only for interface member scanning.
+    """
     texts = [token.text for token in tokens]
     try:
-        static_index = texts.index("static")
         equals_index = texts.index("=")
+    except ValueError:
+        return False
+    if implicit_static:
+        return True
+    try:
+        static_index = texts.index("static")
     except ValueError:
         return False
     # `static` must be part of the declaration, not appear inside an initializer expression.
@@ -127,7 +138,9 @@ def _static_spans(
 
         if token.text == ";":
             member = tuple(tokens[member_start : index + 1])
-            if member and _is_static_field(member):
+            if member and _is_static_field(
+                member, implicit_static=typ.kind == "interface"
+            ):
                 token_spans.append(member)
                 raw_spans.append(text[member[0].start : member[-1].end])
             member_start = index + 1
