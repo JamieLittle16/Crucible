@@ -15,7 +15,10 @@ fn limits(max_body: usize, egress: usize) -> ConnectionLimits {
 
 fn body(packet_id: u8, len: usize) -> Vec<u8> {
     assert!(len >= 1, "synthetic body includes one-byte packet id");
-    assert!(packet_id < 0x80, "synthetic helper uses one-byte packet ids");
+    assert!(
+        packet_id < 0x80,
+        "synthetic helper uses one-byte packet ids"
+    );
     let mut body = Vec::with_capacity(len);
     body.push(packet_id);
     for index in 1..len {
