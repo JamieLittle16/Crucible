@@ -89,11 +89,7 @@ pub struct Target26_2Action {
 }
 
 impl Target26_2Action {
-    fn new(
-        candidate: SessionState,
-        frames: Vec<Vec<u8>>,
-        next_state: Target26_2State,
-    ) -> Self {
+    fn new(candidate: SessionState, frames: Vec<Vec<u8>>, next_state: Target26_2State) -> Self {
         Self {
             candidate,
             frames,
@@ -173,11 +169,7 @@ fn decode_handshake(
 
     let mut candidate = session;
     candidate.advance(SessionPhase::Status)?;
-    Ok(Target26_2Action::new(
-        candidate,
-        Vec::new(),
-        target_state,
-    ))
+    Ok(Target26_2Action::new(candidate, Vec::new(), target_state))
 }
 
 fn decode_status(
@@ -194,11 +186,7 @@ fn decode_status(
             if target_state.status_response_sent {
                 let mut candidate = session;
                 let _changed = candidate.close();
-                return Ok(Target26_2Action::new(
-                    candidate,
-                    Vec::new(),
-                    target_state,
-                ));
+                return Ok(Target26_2Action::new(candidate, Vec::new(), target_state));
             }
 
             let response = encode_status_response(status_json)?;
@@ -218,11 +206,7 @@ fn decode_status(
             let pong = encode_pong(payload)?;
             let mut candidate = session;
             let _changed = candidate.close();
-            Ok(Target26_2Action::new(
-                candidate,
-                vec![pong],
-                target_state,
-            ))
+            Ok(Target26_2Action::new(candidate, vec![pong], target_state))
         }
         packet_id => Err(Target26_2Error::UnknownPacket {
             phase: SessionPhase::Status,
@@ -283,7 +267,8 @@ mod tests {
         packet_id: i32,
         encode: impl FnOnce(&mut PacketWriter) -> Result<(), PacketCodecError>,
     ) -> Vec<u8> {
-        let mut writer = PacketWriter::new(MAX_R0_PACKET_BODY_BYTES).expect("positive packet bound");
+        let mut writer =
+            PacketWriter::new(MAX_R0_PACKET_BODY_BYTES).expect("positive packet bound");
         writer.write_var_int(packet_id).expect("packet id fits");
         encode(&mut writer).expect("test payload fits");
         writer.into_bytes()
@@ -317,7 +302,9 @@ mod tests {
 
     fn drain(connection: &mut PrePlayConnection<Target26_2>) {
         let queued = connection.queued_egress();
-        connection.consume_written(queued).expect("drain exact egress");
+        connection
+            .consume_written(queued)
+            .expect("drain exact egress");
     }
 
     #[test]
@@ -437,7 +424,9 @@ mod tests {
             writer.write_bool(true)
         });
         let frame = encoded_frame(&malformed, limits());
-        connection.ingest(&frame).expect("malformed request ingress");
+        connection
+            .ingest(&frame)
+            .expect("malformed request ingress");
         let buffered = connection.buffered_ingress();
         assert_eq!(
             connection.process_one(ORACLE_STATUS_JSON),
@@ -494,7 +483,10 @@ mod tests {
                 outbound_frames: 1,
             })
         ));
-        assert_eq!(connection.pending_egress(), encoded_frame(&expected, limits()));
+        assert_eq!(
+            connection.pending_egress(),
+            encoded_frame(&expected, limits())
+        );
     }
 
     #[test]
