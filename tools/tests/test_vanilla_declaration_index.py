@@ -46,12 +46,28 @@ public final class Protocols {
         static final Object VALUE = create("nested");
     }
 }
+
+enum Intent {
+    STATUS(1),
+    LOGIN(2) {
+        @Override
+        public String toString() {
+            return "login";
+        }
+    };
+
+    private final int id;
+
+    Intent(int id) {
+        this.id = id;
+    }
+}
 '''
 
 
 class DeclarationIndexTests(unittest.TestCase):
-    def _archive(self, root: Path, *, source: str = SOURCE) -> Path:
-        archive = root / "source.zip"
+    def _archive(self, root: Path, *, source: str = SOURCE, name: str = "source.zip") -> Path:
+        archive = root / name
         version = {
             "id": "test",
             "world_version": 1,
@@ -62,7 +78,7 @@ class DeclarationIndexTests(unittest.TestCase):
             zf.writestr("src/net/minecraft/network/protocol/test/Protocols.java", source)
         return archive
 
-    def test_static_initialization_is_one_reviewable_node_per_type(self) -> None:
+    def test_class_initialization_is_one_reviewable_node_per_type(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             archive = self._archive(root)
@@ -70,8 +86,8 @@ class DeclarationIndexTests(unittest.TestCase):
             atlas.index_archive(archive, db, None, None)
 
             report = declarations.index_declarations(archive, db, check=False)
-            self.assertEqual(report["synthetic_clinit"], 2)
-            self.assertEqual(report["protocol_synthetic_clinit"], 2)
+            self.assertEqual(report["synthetic_clinit"], 3)
+            self.assertEqual(report["protocol_synthetic_clinit"], 3)
 
             conn = sqlite3.connect(db)
             rows = conn.execute(
@@ -83,6 +99,7 @@ class DeclarationIndexTests(unittest.TestCase):
             self.assertEqual(
                 [row[0] for row in rows],
                 [
+                    "net.minecraft.network.protocol.test.Intent",
                     "net.minecraft.network.protocol.test.Protocols",
                     "net.minecraft.network.protocol.test.Protocols$Nested",
                 ],
@@ -105,15 +122,45 @@ class DeclarationIndexTests(unittest.TestCase):
             self.assertIn("CLIENT_OBSERVABLE", hazards)
             conn.close()
 
-            # The exact class-initializer identity is now consumable by the unchanged Atlas lookup
-            # and VAR tooling instead of being hidden in an unreviewable field initializer.
+            # The exact class-initializer identity is consumable by unchanged Atlas lookup/VAR
+            # tooling instead of being hidden in an unreviewable declaration.
             conn = atlas.connect_db(db)
-            matched = atlas.resolve_methods(
-                conn,
+            for query in (
                 "net.minecraft.network.protocol.test.Protocols#<clinit>()",
-            )
-            self.assertEqual(len(matched), 1)
+                "net.minecraft.network.protocol.test.Intent#<clinit>()",
+            ):
+                self.assertEqual(len(atlas.resolve_methods(conn, query)), 1)
             conn.close()
+
+    def test_enum_constant_literals_are_fingerprint_significant(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            first_archive = self._archive(root, name="first.zip")
+            first_db = root / "first.sqlite"
+            atlas.index_archive(first_archive, first_db, None, None)
+            declarations.index_declarations(first_archive, first_db, check=False)
+            first_conn = sqlite3.connect(first_db)
+            first_hash = first_conn.execute(
+                """SELECT m.normalized_sha256 FROM methods m JOIN types t ON t.id=m.type_id
+                   WHERE t.qualified_name=? AND m.signature='<clinit>()'""",
+                ("net.minecraft.network.protocol.test.Intent",),
+            ).fetchone()[0]
+            first_conn.close()
+
+            changed_source = SOURCE.replace("STATUS(1)", "STATUS(7)")
+            changed_archive = self._archive(root, source=changed_source, name="changed.zip")
+            changed_db = root / "changed.sqlite"
+            atlas.index_archive(changed_archive, changed_db, None, None)
+            declarations.index_declarations(changed_archive, changed_db, check=False)
+            changed_conn = sqlite3.connect(changed_db)
+            changed_hash = changed_conn.execute(
+                """SELECT m.normalized_sha256 FROM methods m JOIN types t ON t.id=m.type_id
+                   WHERE t.qualified_name=? AND m.signature='<clinit>()'""",
+                ("net.minecraft.network.protocol.test.Intent",),
+            ).fetchone()[0]
+            changed_conn.close()
+
+            self.assertNotEqual(first_hash, changed_hash)
 
     def test_index_is_idempotent_and_check_detects_no_drift(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -133,7 +180,7 @@ class DeclarationIndexTests(unittest.TestCase):
                 "SELECT COUNT(*) FROM methods WHERE name=?",
                 (declarations.SYNTHETIC_NAME,),
             ).fetchone()[0]
-            self.assertEqual(count, 2)
+            self.assertEqual(count, 3)
             conn.close()
 
     def test_source_identity_mismatch_fails_closed(self) -> None:
