@@ -278,7 +278,7 @@ fn coalesced_actions_respect_explicit_action_budget() {
     let mut input = select_status();
     input.extend_from_slice(&status_query(nonce));
     let mut transport = MemoryTransport::new(input);
-    let mut io = PrePlayIo::<SyntheticTarget>::new(limits(), scratch());
+    let mut io = PrePlayIo::<SyntheticTarget>::new(limits(), large_scratch());
 
     let first = io
         .service_once(&mut transport, STATUS_LABEL, budget(1))
