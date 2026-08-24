@@ -288,10 +288,12 @@ mod tests {
 
         assert_eq!(
             connection.service_publication(&context),
-            Ok(PrePlayPublicationProcess::Progress(PublicationStep::Queued {
-                index: 0,
-                body_bytes: 2,
-            }))
+            Ok(PrePlayPublicationProcess::Progress(
+                PublicationStep::Queued {
+                    index: 0,
+                    body_bytes: 2,
+                }
+            ))
         );
         assert_eq!(connection.target_state().cursor.next_index(), 1);
         assert_eq!(connection.target_state().commits, 1);
@@ -314,10 +316,9 @@ mod tests {
 
         assert!(matches!(
             connection.service_publication(&context),
-            Ok(PrePlayPublicationProcess::Progress(PublicationStep::Queued {
-                index: 0,
-                ..
-            }))
+            Ok(PrePlayPublicationProcess::Progress(
+                PublicationStep::Queued { index: 0, .. }
+            ))
         ));
         let state_before = *connection.target_state();
         let egress_before = connection.pending_egress().to_vec();
@@ -370,7 +371,9 @@ mod tests {
 
         assert_eq!(
             connection.service_publication(&context),
-            Ok(PrePlayPublicationProcess::Progress(PublicationStep::Complete))
+            Ok(PrePlayPublicationProcess::Progress(
+                PublicationStep::Complete
+            ))
         );
         assert_eq!(connection.target_state().cursor.next_index(), 2);
         assert_eq!(connection.target_state().commits, 3);
