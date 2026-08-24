@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R1B-CONFIG-26_2-001",
+  "minecraft": "26.2",
+  "protocol": 776,
+  "semantic_contract": "vanilla/semantics/network/R1_CONFIGURATION_SEMANTICS.md",
+  "capture_semantic_rules": [
+    "SEM-NET-R1B-012"
+  ],
+  "manual_review_policy": {
+    "source_must_be_inspected": true,
+    "atlas_hazards_are_prompts_not_dispositions": true,
+    "all_observed_hazards_must_be_explicitly_disposed": true,
+    "semantic_rule_candidates_are_prompts_not_claims": true,
+    "record_status_before_review": "INDEXED",
+    "record_status_after_acceptance": "VAR_REVIEWED"
+  },
+  "candidates": [
+    {
+      "var_id": "VAR-NET-R1B-CONFIG-REGISTRATION-001",
+      "query": "net.minecraft.network.protocol.configuration.ConfigurationProtocols#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-001"],
+      "review_focus": [
+        "Confirm clientbound/serverbound Configuration registration insertion order used to derive selected packet IDs.",
+        "Separate registered-but-unused packet surfaces from packets required by the selected route."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R1B-FINISH-CLIENTBOUND-CODEC-001",
+      "query": "net.minecraft.network.protocol.configuration.ClientboundFinishConfigurationPacket#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-010"],
+      "review_focus": ["Confirm clientbound finish_configuration is a unit/terminal packet with no hidden payload fields."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-FINISH-SERVERBOUND-CODEC-001",
+      "query": "net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-010", "SEM-NET-R1B-011"],
+      "review_focus": ["Confirm serverbound finish_configuration acknowledgement is a unit packet and identify its handoff role only through the listener handler, not the codec alone."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-REGISTRY-DATA-CODEC-001",
+      "query": "net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-007"],
+      "review_focus": ["Confirm registry_data field order and identify every subordinate codec/bound which must receive its own source evidence before production materialization."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-SELECT-KNOWN-CB-CODEC-001",
+      "query": "net.minecraft.network.protocol.configuration.ClientboundSelectKnownPacks#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-005"],
+      "review_focus": ["Confirm clientbound known-pack list encoding and any list bound relevant to the server request."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-SELECT-KNOWN-SB-CODEC-001",
+      "query": "net.minecraft.network.protocol.configuration.ServerboundSelectKnownPacks#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-005", "SEM-NET-R1B-006"],
+      "review_focus": ["Confirm serverbound known-pack response encoding and the maximum accepted element count; keep negotiation decision semantics in the handler review."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-ENABLED-FEATURES-CODEC-001",
+      "query": "net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-002", "SEM-NET-R1B-008"],
+      "review_focus": ["Confirm enabled-feature identifier collection wire law used by the selected minecraft:vanilla publication."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-UPDATE-TAGS-CODEC-001",
+      "query": "net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-007"],
+      "review_focus": ["Confirm update_tags outer structure and enumerate subordinate registry/tag/identifier/count codecs still requiring evidence."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-CB-CUSTOM-PAYLOAD-CODEC-001",
+      "query": "net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-002", "SEM-NET-R1B-003"],
+      "review_focus": ["Confirm common clientbound custom-payload envelope used for the server brand publication."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-SB-CUSTOM-PAYLOAD-CODEC-001",
+      "query": "net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-003"],
+      "review_focus": ["Confirm common serverbound custom-payload envelope accepted during Configuration."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-CLIENT-INFO-PACKET-CODEC-001",
+      "query": "net.minecraft.network.protocol.common.ServerboundClientInformationPacket#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-004"],
+      "review_focus": ["Confirm ClientInformation field order, UTF-8 bound, signed/unsigned widths and enum/boolean encoding dependencies."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-BRAND-PAYLOAD-CODEC-001",
+      "query": "net.minecraft.network.protocol.common.custom.BrandPayload#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-002", "SEM-NET-R1B-003"],
+      "review_focus": ["Confirm minecraft:brand payload identifier/value encoding without turning the observed brand string into gameplay state."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-KNOWN-PACK-CODEC-001",
+      "query": "net.minecraft.server.packs.repository.KnownPack#<clinit>()",
+      "semantic_rule_candidates": ["SEM-NET-R1B-005"],
+      "review_focus": ["Confirm KnownPack is exactly namespace, id and version UTF-8 strings in wire order and identify their subordinate string codec bounds."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-CONFIG-START-001",
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#startConfiguration",
+      "semantic_rule_candidates": ["SEM-NET-R1B-002", "SEM-NET-R1B-008", "SEM-NET-R1B-009"],
+      "review_focus": [
+        "Trace exact initial task/publication order: brand, conditional links, enabled features, registry synchronization and subsequent optional/mandatory tasks.",
+        "Confirm selected profile exclusions are policy conditions rather than missing registered functionality."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R1B-CLIENT-INFO-HANDLER-001",
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleClientInformation",
+      "semantic_rule_candidates": ["SEM-NET-R1B-004", "SEM-NET-R1B-011"],
+      "review_focus": ["Confirm received client information replaces listener state and that the latest value is the one carried into the later player handoff."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-KNOWN-PACK-HANDLER-001",
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleSelectKnownPacks",
+      "semantic_rule_candidates": ["SEM-NET-R1B-006"],
+      "review_focus": ["Confirm response is valid only during registry synchronization and is delegated to that active task rather than treated as stateless input."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-CONFIG-FINISH-HANDLER-001",
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleConfigurationFinished",
+      "semantic_rule_candidates": ["SEM-NET-R1B-010", "SEM-NET-R1B-011"],
+      "review_focus": [
+        "Confirm the acknowledgement completes JoinWorld, installs the Play clientbound protocol and immediately enters the prepared spawn path.",
+        "Record duplicate/admission checks and all state passed into the inseparable spawn handoff."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R1B-CUSTOM-PAYLOAD-HANDLER-001",
+      "query": "net.minecraft.server.network.ServerCommonPacketListenerImpl#handleCustomPayload",
+      "semantic_rule_candidates": ["SEM-NET-R1B-003"],
+      "review_focus": ["Confirm the selected vanilla common custom-payload handler performs no gameplay-relevant state mutation for the client brand payload."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-REGISTRY-SYNC-START-001",
+      "query": "net.minecraft.server.network.config.SynchronizeRegistriesTask#start",
+      "semantic_rule_candidates": ["SEM-NET-R1B-005", "SEM-NET-R1B-006", "SEM-NET-R1B-007"],
+      "review_focus": ["Confirm requested known-pack publication precedes registry packing and identify the state retained until the client response arrives."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-REGISTRY-SYNC-SEND-001",
+      "query": "net.minecraft.server.network.config.SynchronizeRegistriesTask#sendRegistries",
+      "semantic_rule_candidates": ["SEM-NET-R1B-006", "SEM-NET-R1B-007"],
+      "review_focus": ["Confirm negotiated known-pack set controls registry packing and that registry_data packets precede exactly one update_tags publication."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-REGISTRY-SYNC-RESPONSE-001",
+      "query": "net.minecraft.server.network.config.SynchronizeRegistriesTask#handleResponse",
+      "semantic_rule_candidates": ["SEM-NET-R1B-006", "SEM-NET-R1B-007"],
+      "review_focus": ["Confirm exact-list equality selects requested packs and every other accepted response selects the empty set before publication/task completion."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-PREPARE-SPAWN-START-001",
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask#start",
+      "semantic_rule_candidates": ["SEM-NET-R1B-009"],
+      "review_focus": ["Trace saved/default spawn resolution, target spawn position and radius-3 player-spawn chunk request; identify which readiness may be satisfied by an already-loaded pregenerated world."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-PREPARE-SPAWN-TICK-001",
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask#tick",
+      "semantic_rule_candidates": ["SEM-NET-R1B-009"],
+      "review_focus": ["Confirm chunk-load and entity-readiness conditions that must hold before the task can expose a prepared spawn/player capability."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-JOIN-WORLD-START-001",
+      "query": "net.minecraft.server.network.config.JoinWorldTask#start",
+      "semantic_rule_candidates": ["SEM-NET-R1B-009", "SEM-NET-R1B-010"],
+      "review_focus": ["Confirm clientbound finish_configuration is sent only after prior Configuration work and prepared-spawn dependencies have completed."]
+    },
+    {
+      "var_id": "VAR-NET-R1B-PLACE-NEW-PLAYER-001",
+      "query": "net.minecraft.server.players.PlayerList#placeNewPlayer",
+      "semantic_rule_candidates": ["SEM-NET-R1B-011"],
+      "review_focus": [
+        "Identify the minimum fresh-player Play/bootstrap output and state changes immediately caused by the Configuration acknowledgement handoff.",
+        "Separate source-inseparable client-visible bootstrap from later world visibility/chunk streaming work that belongs to the next milestone."
+      ]
+    }
+  ]
+}
