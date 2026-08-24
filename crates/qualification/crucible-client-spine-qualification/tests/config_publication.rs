@@ -40,9 +40,9 @@ fn image(lengths: &[usize]) -> PublicationImage {
 
 fn reference_stream(image: &PublicationImage, max_body: usize) -> Vec<u8> {
     let mut driver = ConnectionDriver::new(limits(max_body, 64 * 1_024));
-    for index in 0..image.frame_count() {
+    for body in image.bodies() {
         driver
-            .queue_frame::<()>(image.body(index).expect("body exists"))
+            .queue_frame::<()>(body.as_ref())
             .expect("reference image fits");
     }
     driver.pending_egress().to_vec()
@@ -199,8 +199,10 @@ fn irregular_partial_writes_preserve_complete_stream() {
 #[test]
 fn two_connections_share_image_but_not_cursor_or_backpressure() {
     let image = image(&[8, 16, 31, 4, 63, 7]);
-    let original = (0..image.frame_count())
-        .map(|index| image.body(index).expect("body exists").to_vec())
+    let original = image
+        .bodies()
+        .iter()
+        .map(|body| body.to_vec())
         .collect::<Vec<_>>();
     let expected = reference_stream(&image, 63);
 
@@ -209,8 +211,8 @@ fn two_connections_share_image_but_not_cursor_or_backpressure() {
 
     assert_eq!(fast, expected);
     assert_eq!(slow, expected);
-    for (index, before) in original.iter().enumerate() {
-        assert_eq!(image.body(index).expect("body exists"), before);
+    for (body, before) in image.bodies().iter().zip(&original) {
+        assert_eq!(body.as_ref(), before);
     }
 }
 
