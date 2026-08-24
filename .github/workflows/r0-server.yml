@@ -1,0 +1,43 @@
+name: R0 Server Gate
+
+on:
+  pull_request:
+    paths:
+      - "crates/crucible-server/**"
+      - "crates/network/crucible-target-26-2/**"
+      - "crates/network/crucible-preplay-io/**"
+      - "crates/network/crucible-preplay-core/**"
+      - "crates/network/crucible-connection-*/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/r0-server.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: Runnable R0 localhost qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: Format server composition
+        run: cargo fmt --package crucible-server -- --check
+
+      - name: Check server composition
+        run: cargo check --package crucible-server --all-targets --all-features --locked
+
+      - name: Clippy server composition
+        run: cargo clippy --package crucible-server --all-targets --all-features --locked -- -D warnings
+
+      - name: R0 localhost black-box qualification
+        run: cargo test --package crucible-server --locked
