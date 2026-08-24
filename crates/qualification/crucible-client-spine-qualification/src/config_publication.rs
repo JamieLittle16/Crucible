@@ -53,6 +53,12 @@ impl PublicationImage {
     pub(crate) const fn body_bytes(&self) -> usize {
         self.body_bytes
     }
+
+    /// Immutable ordered body view shared by the candidate and independent reference paths.
+    #[must_use]
+    pub(crate) fn bodies(&self) -> &[Box<[u8]>] {
+        self.bodies.as_ref()
+    }
 }
 
 /// Construction failure for an immutable publication image.
@@ -86,7 +92,7 @@ impl PublicationCursor {
     /// Whether every body has already been admitted to bounded egress.
     #[must_use]
     pub(crate) fn is_complete(self, image: &PublicationImage) -> bool {
-        self.0.is_complete(image.bodies.as_ref())
+        self.0.is_complete(image.bodies())
     }
 }
 
@@ -104,5 +110,5 @@ pub(crate) fn publish_one<E>(
     cursor: &mut PublicationCursor,
     driver: &mut ConnectionDriver,
 ) -> Result<PublicationStep, DriverError<E>> {
-    crucible_publication_core::publish_one(image.bodies.as_ref(), &mut cursor.0, driver)
+    crucible_publication_core::publish_one(image.bodies(), &mut cursor.0, driver)
 }
