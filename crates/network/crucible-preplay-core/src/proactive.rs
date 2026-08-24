@@ -17,12 +17,10 @@ use super::{
 ///
 /// `bodies` are borrowed for this service opportunity only. The binder does not prescribe whether
 /// their owner is a static generated array, an immutable composition image, or another qualified
-/// representation. `commit` is deliberately `Copy`, preventing this token from becoming a second
-/// owner for publication bytes or another hidden queue.
-pub struct PrePlayPublication<'a, B, C>
-where
-    C: Copy,
-{
+/// representation. The public constructor requires `commit` to be `Copy`, preventing this token
+/// from becoming a second owner for publication bytes or another hidden queue.
+#[derive(Debug)]
+pub struct PrePlayPublication<'a, B, C> {
     bodies: &'a [B],
     cursor: PublicationCursor,
     commit: C,
@@ -42,6 +40,9 @@ where
         }
     }
 }
+
+/// Fallible optional proactive publication proposal returned by a target.
+pub type PrePlayPublicationResult<'a, B, C, E> = Result<Option<PrePlayPublication<'a, B, C>>, E>;
 
 /// Optional proactive-publication capability for a statically bound pre-play target.
 ///
@@ -67,8 +68,10 @@ pub trait PrePlayPublisher: PrePlayTarget {
         context: &'a Self::Context,
         session: SessionState,
         target_state: &'a Self::State,
-    ) -> Result<
-        Option<PrePlayPublication<'a, Self::PublicationBody, Self::PublicationCommit>>,
+    ) -> PrePlayPublicationResult<
+        'a,
+        Self::PublicationBody,
+        Self::PublicationCommit,
         Self::Error,
     >;
 
@@ -150,8 +153,8 @@ mod tests {
     use crucible_session_core::{SessionPhase, SessionState};
 
     use super::{
-        PrePlayPublication, PrePlayPublicationProcess, PrePlayPublisher, PublicationCursor,
-        PublicationStep,
+        PrePlayPublication, PrePlayPublicationProcess, PrePlayPublicationResult, PrePlayPublisher,
+        PublicationCursor, PublicationStep,
     };
     use crate::{PrePlayAction, PrePlayConnection, PrePlayError, PrePlayTarget};
 
@@ -218,8 +221,10 @@ mod tests {
             context: &'a Self::Context,
             session: SessionState,
             target_state: &'a Self::State,
-        ) -> Result<
-            Option<PrePlayPublication<'a, Self::PublicationBody, Self::PublicationCommit>>,
+        ) -> PrePlayPublicationResult<
+            'a,
+            Self::PublicationBody,
+            Self::PublicationCommit,
             Self::Error,
         > {
             if session.phase() != SessionPhase::Configuration || target_state.done {
