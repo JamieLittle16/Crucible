@@ -125,6 +125,25 @@ def _status_admitted(status: str, minimum: str) -> bool:
     return atlas.REVIEW_RANK[status] >= atlas.REVIEW_RANK[minimum]
 
 
+def _require_each_frontier_root(
+    conn: Any,
+    config: dict[str, Any],
+    frontier_name: str,
+) -> None:
+    root_queries = config.get("root_queries")
+    if not isinstance(root_queries, list) or not root_queries:
+        raise GateError(f"frontier {frontier_name} must declare non-empty root_queries")
+    for index, value in enumerate(root_queries):
+        if not isinstance(value, str) or not value:
+            raise GateError(
+                f"frontier {frontier_name} root_queries[{index}] must be a non-empty string"
+            )
+        if not atlas.resolve_methods(conn, value):
+            raise GateError(
+                f"frontier {frontier_name} root query resolved zero methods: {value}"
+            )
+
+
 def _frontier_identity(
     conn: Any,
     frontier_name: str | None,
@@ -136,6 +155,7 @@ def _frontier_identity(
         raise GateError(f"frontier config not found: {path}")
     raw = path.read_bytes()
     config = _object(json.loads(raw), f"frontier {frontier_name}")
+    _require_each_frontier_root(conn, config, frontier_name)
     roots, reachable = atlas.compute_frontier_method_ids(conn, config)
     if not roots:
         raise GateError(f"frontier {frontier_name} has no resolved roots")
