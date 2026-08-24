@@ -17,6 +17,9 @@ use crucible_connection_core::ConnectionLimits;
 use crucible_preplay_core::{PrePlayConnection, PrePlayError, PrePlayProcess, PrePlayTarget};
 use crucible_session_core::SessionPhase;
 
+mod publication;
+pub use publication::{PublicationServiceReport, PublicationServiceStop};
+
 /// Positive maximum number of semantic actions admitted by one processing/service call.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ActionBudget(NonZeroUsize);
