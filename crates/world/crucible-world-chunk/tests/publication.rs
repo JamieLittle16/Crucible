@@ -120,11 +120,11 @@ fn publication_is_canonical_and_matches_live_reads() {
         let section = publication
             .section_states(section_index)
             .expect("published section exists");
-        for index in 0..BLOCK_SECTION_CELLS {
+        for (index, &published_state) in section.iter().enumerate() {
             let expected = u16::try_from(section_index * BLOCK_SECTION_CELLS + index + 1)
                 .expect("test state fits u16");
             let local = section_pos(index);
-            assert_eq!(section[index], expected);
+            assert_eq!(published_state, expected);
             assert_eq!(publication.get(section_index, local), Some(expected));
             assert_eq!(
                 chunk
