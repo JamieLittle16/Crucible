@@ -1,28 +1,46 @@
 //! Source-admitted Minecraft Java 26.2 pre-play target for Crucible.
 //!
-//! This crate is the first target-version semantic layer above Crucible's target-neutral packet,
-//! connection and pre-play machinery. It implements only the finite R0 surface admitted by
-//! `PROTO-NET-STATUS-26-2-001`: Handshake -> Status -> Status request / response -> Ping / Pong.
+//! This crate is the target-version semantic layer above Crucible's target-neutral packet,
+//! connection and pre-play machinery. It currently implements two independently admitted finite
+//! surfaces:
 //!
-//! Packet identities are generated from the admitted contract. Runtime dispatch is direct static
+//! - R0: Handshake -> Status -> Status response -> Ping/Pong;
+//! - R1A: Handshake(LOGIN) -> offline Hello -> `LoginFinished` -> `LoginAcknowledged` -> Configuration.
+//!
+//! Packet identities are generated from admitted contracts. Runtime dispatch is direct static
 //! matching; there is no packet registry, target lookup, trait object, socket runtime or second
 //! framing/buffering layer here.
 
 #![forbid(unsafe_code)]
+
+mod login_profile;
+mod offline_uuid;
 
 use crucible_connection_core::FrameView;
 use crucible_connection_driver::OutboundBatch;
 use crucible_packet_core::{PacketCodecError, PacketReader, PacketWriter};
 use crucible_preplay_core::{PrePlayAction, PrePlayTarget};
 use crucible_session_core::{SessionPhase, SessionState, SessionStateError};
+use login_profile::LoginProfile;
 
 /// Generated compile-time packet identities and qualification-only golden bytes.
+///
+/// The historical top-level exports remain the R0 Status contract so existing product startup and
+/// qualification code stays source-compatible. The independently admitted Login contract lives in
+/// [`generated::login_26_2`].
 pub mod generated {
     include!("generated/status_26_2.rs");
+
+    /// Generated packet identities for `PROTO-NET-LOGIN-26-2-001`.
+    pub mod login_26_2 {
+        include!("generated/login_26_2.rs");
+    }
 }
 
 /// Source-admitted Java UTF-16 unit bound for the handshake server-address field.
 pub const MAX_SERVER_ADDRESS_UTF16_UNITS: usize = 255;
+/// Source-admitted Java UTF-16 unit bound for a Login player name.
+pub const MAX_PLAYER_NAME_UTF16_UNITS: usize = 16;
 /// Source-admitted Java UTF-16 unit bound for the status-response JSON string.
 pub const MAX_STATUS_JSON_UTF16_UNITS: usize = 32_767;
 /// Maximum packet-body bytes needed by the finite R0 target.
@@ -31,24 +49,70 @@ pub const MAX_STATUS_JSON_UTF16_UNITS: usize = 32_767;
 /// The status response then needs at most three bytes for that byte-length `VarInt` and one byte for
 /// packet ID zero.
 pub const MAX_R0_PACKET_BODY_BYTES: usize = 98_305;
+/// Exact maximum body size for the selected zero-property R1A `LoginFinished` representation.
+///
+/// The source-valid player-name predicate narrows the already-16-unit codec field to printable
+/// ASCII, so the maximum body is `id(1) + profile UUID(16) + name length(1) + name(16) + property
+/// count(1) + session UUID(16)`.
+pub const MAX_R1A_LOGIN_PACKET_BODY_BYTES: usize = 51;
 
 const STATUS_INTENT: i32 = 1;
+const LOGIN_INTENT: i32 = 2;
 
-/// Per-connection 26.2 state that is finer than the generic [`SessionPhase`].
+/// Fine-grained Login state carried only by the 26.2 target.
+///
+/// Each variant owns exactly the data valid at that point, preventing partial combinations such as
+/// an accepted profile without a session UUID. After acknowledgement the generic session moves to
+/// Configuration while this value remains `AwaitAcknowledgement`, retaining the immutable accepted
+/// profile for the Configuration handoff rather than duplicating the coarse phase bit.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum LoginState {
+    /// Status-only/default connection; Login is not product-enabled.
+    #[default]
+    Disabled,
+    /// Login is enabled and waiting for the first source-admitted hello.
+    AwaitHello { session_uuid: [u8; 16] },
+    /// `LoginFinished` committed; the accepted profile must survive into Configuration.
+    AwaitAcknowledgement {
+        session_uuid: [u8; 16],
+        profile: LoginProfile,
+    },
+}
+
+/// Per-connection 26.2 state finer than the generic [`SessionPhase`].
+///
+/// Status-only product composition may use [`Default`]. Login-capable product composition supplies
+/// the runtime server connection session UUID explicitly through [`Self::with_login_session_uuid`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Target26_2State {
     status_response_sent: bool,
+    login: LoginState,
 }
 
 impl Target26_2State {
+    /// Creates target-local state capable of the admitted R1A Login route.
+    #[must_use]
+    pub const fn with_login_session_uuid(session_uuid: [u8; 16]) -> Self {
+        Self {
+            status_response_sent: false,
+            login: LoginState::AwaitHello { session_uuid },
+        }
+    }
+
     /// Whether the one allowed status response has already committed on this connection.
     #[must_use]
     pub const fn status_response_sent(&self) -> bool {
         self.status_response_sent
     }
+
+    /// Whether `LoginFinished` has committed and the accepted profile is retained.
+    #[must_use]
+    pub const fn login_finished_sent(&self) -> bool {
+        matches!(self.login, LoginState::AwaitAcknowledgement { .. })
+    }
 }
 
-/// Fail-closed semantic/codec error from the admitted 26.2 R0 target.
+/// Fail-closed semantic/codec error from the admitted 26.2 target.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Target26_2Error {
     /// A packet ID is not admitted in the current target phase.
@@ -58,9 +122,22 @@ pub enum Target26_2Error {
         /// Rejected wire packet ID.
         packet_id: i32,
     },
-    /// R0 supports only the source-admitted STATUS handshake intent.
+    /// The handshake selected an intent outside the currently admitted Status/Login surfaces.
     UnsupportedIntent(i32),
-    /// R0 was asked to decode a phase outside Handshake/Status.
+    /// Login requires the exact pinned protocol version while Status deliberately remains tolerant.
+    LoginProtocolMismatch {
+        /// Pinned protocol required by Minecraft 26.2 Login.
+        expected: i32,
+        /// Protocol supplied by the peer.
+        actual: i32,
+    },
+    /// Product code attempted Login without supplying the runtime server connection session UUID.
+    MissingLoginSessionUuid,
+    /// A source-known Login packet arrived in the wrong fine-grained Login state.
+    UnexpectedLoginState,
+    /// The requested Login name violated vanilla's `StringUtil.isValidPlayerName` law.
+    InvalidPlayerName,
+    /// The current target slice does not yet admit packets in this generic phase.
     UnsupportedPhase(SessionPhase),
     /// A packet body violated the source-admitted field law.
     Codec(PacketCodecError),
@@ -80,7 +157,7 @@ impl From<SessionStateError> for Target26_2Error {
     }
 }
 
-/// One owned R0 action proposed by [`Target26_2`] before transactional admission.
+/// One owned target action proposed before transactional admission.
 #[derive(Debug)]
 pub struct Target26_2Action {
     candidate: SessionState,
@@ -112,7 +189,7 @@ impl PrePlayAction for Target26_2Action {
     }
 }
 
-/// Static Minecraft Java 26.2 / protocol-776 target adapter for the finite R0 status slice.
+/// Static Minecraft Java 26.2 / protocol-776 target adapter.
 #[derive(Debug)]
 pub struct Target26_2;
 
@@ -120,8 +197,7 @@ impl PrePlayTarget for Target26_2 {
     type Error = Target26_2Error;
     /// Already-constructed `ServerStatus` JSON supplied by the product adapter.
     ///
-    /// This target owns the source-admitted JSON string envelope and bound, not product status
-    /// policy or a Mojang-shaped object graph.
+    /// Login needs no product service object: its per-connection state is target-local and inline.
     type Context = str;
     type State = Target26_2State;
     type Action = Target26_2Action;
@@ -135,6 +211,7 @@ impl PrePlayTarget for Target26_2 {
         match session.phase() {
             SessionPhase::Handshake => decode_handshake(session, *target_state, frame),
             SessionPhase::Status => decode_status(context, session, *target_state, frame),
+            SessionPhase::Login => decode_login(session, *target_state, frame),
             phase => Err(Target26_2Error::UnsupportedPhase(phase)),
         }
     }
@@ -157,18 +234,31 @@ fn decode_handshake(
     }
 
     let mut reader = PacketReader::new(frame.payload());
-    let _protocol_version = reader.read_var_int()?;
+    let protocol_version = reader.read_var_int()?;
     let _server_address = reader.read_string(MAX_SERVER_ADDRESS_UTF16_UNITS)?;
     let _server_port = reader.read_u16()?;
     let intent = reader.read_var_int()?;
     reader.finish()?;
 
-    if intent != STATUS_INTENT {
-        return Err(Target26_2Error::UnsupportedIntent(intent));
+    let mut candidate = session;
+    match intent {
+        STATUS_INTENT => candidate.advance(SessionPhase::Status)?,
+        LOGIN_INTENT => {
+            let expected = generated::login_26_2::PROTOCOL_VERSION;
+            if protocol_version != expected {
+                return Err(Target26_2Error::LoginProtocolMismatch {
+                    expected,
+                    actual: protocol_version,
+                });
+            }
+            if matches!(target_state.login, LoginState::Disabled) {
+                return Err(Target26_2Error::MissingLoginSessionUuid);
+            }
+            candidate.advance(SessionPhase::Login)?;
+        }
+        unsupported => return Err(Target26_2Error::UnsupportedIntent(unsupported)),
     }
 
-    let mut candidate = session;
-    candidate.advance(SessionPhase::Status)?;
     Ok(Target26_2Action::new(candidate, Vec::new(), target_state))
 }
 
@@ -190,13 +280,9 @@ fn decode_status(
             }
 
             let response = encode_status_response(status_json)?;
-            Ok(Target26_2Action::new(
-                session,
-                vec![response],
-                Target26_2State {
-                    status_response_sent: true,
-                },
-            ))
+            let mut next_state = target_state;
+            next_state.status_response_sent = true;
+            Ok(Target26_2Action::new(session, vec![response], next_state))
         }
         generated::status::serverbound::PING_REQUEST => {
             let mut reader = PacketReader::new(frame.payload());
@@ -215,6 +301,62 @@ fn decode_status(
     }
 }
 
+fn decode_login(
+    session: SessionState,
+    target_state: Target26_2State,
+    frame: FrameView<'_>,
+) -> Result<Target26_2Action, Target26_2Error> {
+    use generated::login_26_2::login::serverbound::{LOGIN_ACKNOWLEDGED, LOGIN_HELLO};
+
+    match (target_state.login, frame.packet_id()) {
+        (LoginState::AwaitHello { session_uuid }, LOGIN_HELLO) => {
+            let mut reader = PacketReader::new(frame.payload());
+            let player_name = reader.read_string(MAX_PLAYER_NAME_UTF16_UNITS)?;
+            let _client_uuid_msb = reader.read_u64()?;
+            let _client_uuid_lsb = reader.read_u64()?;
+            reader.finish()?;
+
+            if !valid_player_name(player_name) {
+                return Err(Target26_2Error::InvalidPlayerName);
+            }
+
+            let profile =
+                LoginProfile::new(offline_uuid::offline_player_uuid(player_name), player_name);
+            let response = encode_login_finished(profile.name(), profile.id(), session_uuid)?;
+
+            let mut next_state = target_state;
+            next_state.login = LoginState::AwaitAcknowledgement {
+                session_uuid,
+                profile,
+            };
+            Ok(Target26_2Action::new(session, vec![response], next_state))
+        }
+        (LoginState::AwaitAcknowledgement { .. }, LOGIN_ACKNOWLEDGED) => {
+            let reader = PacketReader::new(frame.payload());
+            reader.finish()?;
+
+            let mut candidate = session;
+            candidate.advance(SessionPhase::Configuration)?;
+            Ok(Target26_2Action::new(candidate, Vec::new(), target_state))
+        }
+        (_, LOGIN_HELLO | LOGIN_ACKNOWLEDGED) => Err(Target26_2Error::UnexpectedLoginState),
+        (_, packet_id) => Err(Target26_2Error::UnknownPacket {
+            phase: SessionPhase::Login,
+            packet_id,
+        }),
+    }
+}
+
+fn valid_player_name(player_name: &str) -> bool {
+    // Java 26.2 `StringUtil.isValidPlayerName`: after the codec's <=16 UTF-16-unit bound, reject
+    // any UTF-16 unit <=32 or >=127. The surviving strings are therefore exactly printable ASCII;
+    // the source predicate intentionally also accepts the empty string.
+    player_name
+        .as_bytes()
+        .iter()
+        .all(|byte| (b'!'..=b'~').contains(byte))
+}
+
 fn encode_status_response(status_json: &str) -> Result<Vec<u8>, Target26_2Error> {
     let mut writer = PacketWriter::new(MAX_R0_PACKET_BODY_BYTES)?;
     writer.write_var_int(generated::status::clientbound::STATUS_RESPONSE)?;
@@ -229,288 +371,19 @@ fn encode_pong(payload: i64) -> Result<Vec<u8>, Target26_2Error> {
     Ok(writer.into_bytes())
 }
 
-#[cfg(test)]
-mod tests {
-    use crucible_connection_core::ConnectionLimits;
-    use crucible_connection_driver::ConnectionDriver;
-    use crucible_packet_core::{PacketCodecError, PacketField, PacketWriter};
-    use crucible_preplay_core::{PrePlayConnection, PrePlayError, PrePlayProcess};
-    use crucible_session_core::SessionPhase;
-
-    use super::{
-        MAX_R0_PACKET_BODY_BYTES, MAX_SERVER_ADDRESS_UTF16_UNITS, Target26_2, Target26_2Error,
-        generated,
-    };
-
-    const ORACLE_STATUS_JSON: &str = "{\"description\":\"Crucible R0 Oracle\",\"players\":{\"max\":20,\"online\":0},\"version\":{\"name\":\"26.2\",\"protocol\":776},\"enforcesSecureChat\":true}";
-
-    fn limits() -> ConnectionLimits {
-        ConnectionLimits::new(
-            MAX_R0_PACKET_BODY_BYTES,
-            MAX_R0_PACKET_BODY_BYTES * 2,
-            MAX_R0_PACKET_BODY_BYTES * 2,
-        )
-        .expect("coherent R0 test limits")
-    }
-
-    fn tight_limits() -> ConnectionLimits {
-        ConnectionLimits::new(32, 256, 33).expect("one 32-byte frame fits")
-    }
-
-    fn encoded_frame(body: &[u8], limits: ConnectionLimits) -> Vec<u8> {
-        let mut driver = ConnectionDriver::new(limits);
-        driver.queue_frame::<()>(body).expect("test frame fits");
-        driver.pending_egress().to_vec()
-    }
-
-    fn body(
-        packet_id: i32,
-        encode: impl FnOnce(&mut PacketWriter) -> Result<(), PacketCodecError>,
-    ) -> Vec<u8> {
-        let mut writer =
-            PacketWriter::new(MAX_R0_PACKET_BODY_BYTES).expect("positive packet bound");
-        writer.write_var_int(packet_id).expect("packet id fits");
-        encode(&mut writer).expect("test payload fits");
-        writer.into_bytes()
-    }
-
-    fn handshake_body(protocol: i32, intent: i32) -> Vec<u8> {
-        body(
-            generated::handshake::serverbound::CLIENT_INTENTION,
-            |writer| {
-                writer.write_var_int(protocol)?;
-                writer.write_string("127.0.0.1", MAX_SERVER_ADDRESS_UTF16_UNITS)?;
-                writer.write_u16(25_566)?;
-                writer.write_var_int(intent)
-            },
-        )
-    }
-
-    fn enter_status(connection: &mut PrePlayConnection<Target26_2>) {
-        connection
-            .ingest(generated::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_FRAME)
-            .expect("golden handshake ingress");
-        assert_eq!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Ok(PrePlayProcess::Committed {
-                from: SessionPhase::Handshake,
-                to: SessionPhase::Status,
-                outbound_frames: 0,
-            })
-        );
-    }
-
-    fn drain(connection: &mut PrePlayConnection<Target26_2>) {
-        let queued = connection.queued_egress();
-        connection
-            .consume_written(queued)
-            .expect("drain exact egress");
-    }
-
-    #[test]
-    fn generated_identity_is_the_admitted_r0_contract() {
-        assert_eq!(generated::CONTRACT_ID, "PROTO-NET-STATUS-26-2-001");
-        assert_eq!(generated::MINECRAFT_VERSION, "26.2");
-        assert_eq!(generated::PROTOCOL_VERSION, 776);
-        assert_eq!(generated::handshake::serverbound::CLIENT_INTENTION, 0);
-        assert_eq!(generated::status::serverbound::STATUS_REQUEST, 0);
-        assert_eq!(generated::status::serverbound::PING_REQUEST, 1);
-        assert_eq!(generated::status::clientbound::STATUS_RESPONSE, 0);
-        assert_eq!(generated::status::clientbound::PONG_RESPONSE, 1);
-    }
-
-    #[test]
-    fn real_oracle_golden_status_and_ping_exchange_is_byte_exact() {
-        let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-        enter_status(&mut connection);
-        assert!(!connection.target_state().status_response_sent());
-
-        connection
-            .ingest(generated::golden::STATUS_SERVERBOUND_STATUS_REQUEST_FRAME)
-            .expect("golden status request ingress");
-        assert_eq!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Ok(PrePlayProcess::Committed {
-                from: SessionPhase::Status,
-                to: SessionPhase::Status,
-                outbound_frames: 1,
-            })
-        );
-        assert!(connection.target_state().status_response_sent());
-        assert_eq!(
-            connection.pending_egress(),
-            generated::golden::STATUS_CLIENTBOUND_STATUS_RESPONSE_FRAME
-        );
-        drain(&mut connection);
-
-        connection
-            .ingest(generated::golden::STATUS_SERVERBOUND_PING_REQUEST_FRAME)
-            .expect("golden ping ingress");
-        assert_eq!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Ok(PrePlayProcess::Committed {
-                from: SessionPhase::Status,
-                to: SessionPhase::Closed,
-                outbound_frames: 1,
-            })
-        );
-        assert_eq!(
-            connection.pending_egress(),
-            generated::golden::STATUS_CLIENTBOUND_PONG_RESPONSE_FRAME
-        );
-    }
-
-    #[test]
-    fn status_handshake_does_not_require_client_protocol_to_equal_776() {
-        let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-        let frame = encoded_frame(&handshake_body(775, 1), limits());
-        connection.ingest(&frame).expect("handshake ingress");
-        assert!(matches!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Ok(PrePlayProcess::Committed {
-                from: SessionPhase::Handshake,
-                to: SessionPhase::Status,
-                outbound_frames: 0,
-            })
-        ));
-    }
-
-    #[test]
-    fn unsupported_handshake_intent_is_rejected_without_consuming_input() {
-        let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-        let frame = encoded_frame(&handshake_body(776, 2), limits());
-        connection.ingest(&frame).expect("handshake ingress");
-        let buffered = connection.buffered_ingress();
-        assert_eq!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Err(PrePlayError::Target(Target26_2Error::UnsupportedIntent(2)))
-        );
-        assert_eq!(connection.phase(), SessionPhase::Handshake);
-        assert_eq!(connection.buffered_ingress(), buffered);
-    }
-
-    #[test]
-    fn duplicate_status_request_commits_terminal_close_without_second_response() {
-        let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-        enter_status(&mut connection);
-        connection
-            .ingest(generated::golden::STATUS_SERVERBOUND_STATUS_REQUEST_FRAME)
-            .expect("first status request");
-        connection
-            .process_one(ORACLE_STATUS_JSON)
-            .expect("first status response commits");
-        drain(&mut connection);
-
-        connection
-            .ingest(generated::golden::STATUS_SERVERBOUND_STATUS_REQUEST_FRAME)
-            .expect("duplicate status request");
-        assert_eq!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Ok(PrePlayProcess::Committed {
-                from: SessionPhase::Status,
-                to: SessionPhase::Closed,
-                outbound_frames: 0,
-            })
-        );
-        assert_eq!(connection.queued_egress(), 0);
-        assert_eq!(connection.buffered_ingress(), 0);
-    }
-
-    #[test]
-    fn nonempty_status_request_is_rejected_transactionally() {
-        let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-        enter_status(&mut connection);
-        let malformed = body(generated::status::serverbound::STATUS_REQUEST, |writer| {
-            writer.write_bool(true)
-        });
-        let frame = encoded_frame(&malformed, limits());
-        connection
-            .ingest(&frame)
-            .expect("malformed request ingress");
-        let buffered = connection.buffered_ingress();
-        assert_eq!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Err(PrePlayError::Target(Target26_2Error::Codec(
-                PacketCodecError::TrailingBytes { remaining: 1 }
-            )))
-        );
-        assert!(!connection.target_state().status_response_sent());
-        assert_eq!(connection.buffered_ingress(), buffered);
-        assert_eq!(connection.queued_egress(), 0);
-    }
-
-    #[test]
-    fn truncated_ping_is_rejected_without_consuming_input() {
-        let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-        enter_status(&mut connection);
-        let truncated = body(generated::status::serverbound::PING_REQUEST, |writer| {
-            writer.write_bytes(&[0_u8; 7])
-        });
-        let frame = encoded_frame(&truncated, limits());
-        connection.ingest(&frame).expect("truncated ping ingress");
-        let buffered = connection.buffered_ingress();
-        assert_eq!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Err(PrePlayError::Target(Target26_2Error::Codec(
-                PacketCodecError::Truncated {
-                    field: PacketField::I64,
-                    remaining: 7,
-                }
-            )))
-        );
-        assert_eq!(connection.phase(), SessionPhase::Status);
-        assert_eq!(connection.buffered_ingress(), buffered);
-    }
-
-    #[test]
-    fn signed_ping_payload_is_echoed_bit_exact_then_connection_closes() {
-        let mut connection = PrePlayConnection::<Target26_2>::new(limits());
-        enter_status(&mut connection);
-        let ping = body(generated::status::serverbound::PING_REQUEST, |writer| {
-            writer.write_i64(-0x0102_0304_0506_0708_i64)
-        });
-        let expected = body(generated::status::clientbound::PONG_RESPONSE, |writer| {
-            writer.write_i64(-0x0102_0304_0506_0708_i64)
-        });
-        connection
-            .ingest(&encoded_frame(&ping, limits()))
-            .expect("signed ping ingress");
-        assert!(matches!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Ok(PrePlayProcess::Committed {
-                from: SessionPhase::Status,
-                to: SessionPhase::Closed,
-                outbound_frames: 1,
-            })
-        ));
-        assert_eq!(
-            connection.pending_egress(),
-            encoded_frame(&expected, limits())
-        );
-    }
-
-    #[test]
-    fn egress_rejection_rolls_back_status_one_shot_state_and_input() {
-        let limits = tight_limits();
-        let mut connection = PrePlayConnection::<Target26_2>::new(limits);
-        connection
-            .ingest(generated::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_FRAME)
-            .expect("small-limit handshake ingress");
-        connection
-            .process_one(ORACLE_STATUS_JSON)
-            .expect("small-limit handshake commits");
-
-        connection
-            .ingest(generated::golden::STATUS_SERVERBOUND_STATUS_REQUEST_FRAME)
-            .expect("status request ingress");
-        let buffered = connection.buffered_ingress();
-        assert!(matches!(
-            connection.process_one(ORACLE_STATUS_JSON),
-            Err(PrePlayError::Buffer(_))
-        ));
-        assert_eq!(connection.phase(), SessionPhase::Status);
-        assert!(!connection.target_state().status_response_sent());
-        assert_eq!(connection.buffered_ingress(), buffered);
-        assert_eq!(connection.queued_egress(), 0);
-    }
+fn encode_login_finished(
+    player_name: &str,
+    profile_uuid: [u8; 16],
+    session_uuid: [u8; 16],
+) -> Result<Vec<u8>, Target26_2Error> {
+    let mut writer = PacketWriter::new(MAX_R1A_LOGIN_PACKET_BODY_BYTES)?;
+    writer.write_var_int(generated::login_26_2::login::clientbound::LOGIN_FINISHED)?;
+    writer.write_bytes(&profile_uuid)?;
+    writer.write_string(player_name, MAX_PLAYER_NAME_UTF16_UNITS)?;
+    writer.write_var_int(0)?;
+    writer.write_bytes(&session_uuid)?;
+    Ok(writer.into_bytes())
 }
+
+#[cfg(test)]
+mod tests;
