@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "GATE-NET-LOGIN-POLICY-26_2-001",
+  "frontier": "r1a-login-policy",
+  "minimum_status": "VAR_REVIEWED",
+  "require_semantic_rules": true,
+  "require_hazards_reviewed": true,
+  "methods": [
+    {"query":"net.minecraft.network.protocol.login.LoginProtocols#<clinit>()","var_id":"VAR-NET-R1A-LOGIN-REGISTRATION-001"},
+    {"query":"net.minecraft.network.protocol.login.LoginPacketTypes#<clinit>()","var_id":"VAR-NET-R1A-LOGIN-PACKET-TYPES-001"},
+    {"query":"net.minecraft.server.network.ServerHandshakePacketListenerImpl#beginLogin(final ClientIntentionPacket packet , final boolean transfer)","var_id":"VAR-NET-R1A-BEGIN-LOGIN-001"},
+    {"query":"net.minecraft.network.protocol.login.ServerboundHelloPacket#<clinit>()","var_id":"VAR-NET-R1A-SERVERBOUND-HELLO-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.login.ServerboundHelloPacket#ServerboundHelloPacket(final FriendlyByteBuf input)","var_id":"VAR-NET-R1A-SERVERBOUND-HELLO-DECODE-001"},
+    {"query":"net.minecraft.network.protocol.login.ServerboundHelloPacket#write(final FriendlyByteBuf output)","var_id":"VAR-NET-R1A-SERVERBOUND-HELLO-ENCODE-001"},
+    {"query":"net.minecraft.server.network.ServerLoginPacketListenerImpl#handleHello(final ServerboundHelloPacket packet)","var_id":"VAR-NET-R1A-LOGIN-HELLO-HANDLER-001"},
+    {"query":"net.minecraft.server.network.ServerLoginPacketListenerImpl#startClientVerification(final GameProfile profile)","var_id":"VAR-NET-R1A-LOGIN-VERIFY-START-001"},
+    {"query":"net.minecraft.server.network.ServerLoginPacketListenerImpl#verifyLoginAndFinishConnectionSetup(final GameProfile profile)","var_id":"VAR-NET-R1A-LOGIN-VERIFY-FINISH-001"},
+    {"query":"net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket#<clinit>()","var_id":"VAR-NET-R1A-LOGIN-FINISHED-CODEC-001"},
+    {"query":"net.minecraft.server.network.ServerLoginPacketListenerImpl#finishLoginAndWaitForClient(final GameProfile gameProfile)","var_id":"VAR-NET-R1A-LOGIN-FINISHED-HANDLER-001"},
+    {"query":"net.minecraft.network.protocol.login.ServerboundLoginAcknowledgedPacket#<clinit>()","var_id":"VAR-NET-R1A-LOGIN-ACK-CODEC-001"},
+    {"query":"net.minecraft.server.network.ServerLoginPacketListenerImpl#handleLoginAcknowledgement(final ServerboundLoginAcknowledgedPacket packet)","var_id":"VAR-NET-R1A-LOGIN-ACK-HANDLER-001"}
+  ]
+}
