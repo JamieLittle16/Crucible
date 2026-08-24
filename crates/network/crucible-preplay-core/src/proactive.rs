@@ -68,12 +68,7 @@ pub trait PrePlayPublisher: PrePlayTarget {
         context: &'a Self::Context,
         session: SessionState,
         target_state: &'a Self::State,
-    ) -> PrePlayPublicationResult<
-        'a,
-        Self::PublicationBody,
-        Self::PublicationCommit,
-        Self::Error,
-    >;
+    ) -> PrePlayPublicationResult<'a, Self::PublicationBody, Self::PublicationCommit, Self::Error>;
 
     /// Adopts progression after the publication primitive completed successfully.
     ///
@@ -221,12 +216,8 @@ mod tests {
             context: &'a Self::Context,
             session: SessionState,
             target_state: &'a Self::State,
-        ) -> PrePlayPublicationResult<
-            'a,
-            Self::PublicationBody,
-            Self::PublicationCommit,
-            Self::Error,
-        > {
+        ) -> PrePlayPublicationResult<'a, Self::PublicationBody, Self::PublicationCommit, Self::Error>
+        {
             if session.phase() != SessionPhase::Configuration || target_state.done {
                 return Ok(None);
             }
