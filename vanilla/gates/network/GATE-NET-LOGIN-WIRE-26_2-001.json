@@ -16,6 +16,8 @@
     {"query":"net.minecraft.network.codec.ByteBufCodecs#readCount(final ByteBuf input , final int maxSize)","var_id":"VAR-NET-R1A-PROPERTY-COUNT-READ-001"},
     {"query":"net.minecraft.network.codec.ByteBufCodecs#writeCount(final ByteBuf output , final int count , final int maxSize)","var_id":"VAR-NET-R1A-PROPERTY-COUNT-WRITE-001"},
     {"query":"net.minecraft.network.FriendlyByteBuf#readNullable(final B input , final StreamDecoder < ? super B , T > valueDecoder)","var_id":"VAR-NET-R1A-NULLABLE-READ-001"},
-    {"query":"net.minecraft.network.FriendlyByteBuf#writeNullable(final B output , final @ Nullable T value , final StreamEncoder < ? super B , T > valueEncoder)","var_id":"VAR-NET-R1A-NULLABLE-WRITE-001"}
+    {"query":"net.minecraft.network.FriendlyByteBuf#writeNullable(final B output , final @ Nullable T value , final StreamEncoder < ? super B , T > valueEncoder)","var_id":"VAR-NET-R1A-NULLABLE-WRITE-001"},
+    {"query":"net.minecraft.network.codec.StreamCodec#composite(final StreamCodec < ? super B , T1 > codec1 , final Function < C , T1 > getter1 , final StreamCodec < ? super B , T2 > codec2 , final Function < C , T2 > getter2 , final BiFunction < T1 , T2 , C > constructor)","var_id":"VAR-NET-R1A-COMPOSITE-2-001"},
+    {"query":"net.minecraft.network.codec.StreamCodec#composite(final StreamCodec < ? super B , T1 > codec1 , final Function < C , T1 > getter1 , final StreamCodec < ? super B , T2 > codec2 , final Function < C , T2 > getter2 , final StreamCodec < ? super B , T3 > codec3 , final Function < C , T3 > getter3 , final Function3 < T1 , T2 , T3 , C > constructor)","var_id":"VAR-NET-R1A-COMPOSITE-3-001"}
   ]
 }
