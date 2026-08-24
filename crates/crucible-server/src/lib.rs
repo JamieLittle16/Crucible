@@ -1,10 +1,18 @@
-//! Product composition for Crucible's first runnable Minecraft Java server slice.
+//! Product composition for Crucible's first runnable Minecraft Java server slices.
 //!
-//! R0 intentionally composes the already-qualified blocking transport adapter and the
-//! source-admitted Minecraft 26.2 target without selecting a long-term async/runtime architecture.
-//! Listener policy stays here; target packet semantics stay in `crucible-target-26-2`.
+//! R0 composes the source-admitted Status target. R1A additionally composes the admitted offline
+//! Login path up to the Configuration boundary without guessing any R1B semantics. Transport
+//! composition lives here; listener/runtime policy stays in the executable, while target packet
+//! semantics stay in `crucible-target-26-2`.
 
 #![forbid(unsafe_code)]
+
+mod login_server;
+
+pub use login_server::{
+    R1AConnectionExit, ServerSessionEpoch, ServerSessionEpochParseError,
+    serve_r1a_blocking_transport,
+};
 
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;

@@ -122,7 +122,9 @@ name = "crucible-server"
 version = "0.0.0"
 dependencies = [
  "crucible-connection-core",
+ "crucible-preplay-core",
  "crucible-preplay-io",
+ "crucible-session-core",
  "crucible-target-26-2",
 ]
 
