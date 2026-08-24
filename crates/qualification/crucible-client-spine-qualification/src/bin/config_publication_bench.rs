@@ -341,7 +341,9 @@ fn publish_connection(
             match publish_one::<()>(image, &mut cursor, &mut driver) {
                 Ok(PublicationStep::Queued { index, body_bytes }) => {
                     if cursor.next_index() != index + 1 {
-                        return Err("publication cursor advanced by an unexpected amount".to_owned());
+                        return Err(
+                            "publication cursor advanced by an unexpected amount".to_owned()
+                        );
                     }
                     stats.body_bytes = checked_add(stats.body_bytes, body_bytes)?;
                     stats.frames = checked_add(stats.frames, 1)?;
