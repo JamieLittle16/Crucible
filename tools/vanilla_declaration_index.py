@@ -2,13 +2,14 @@
 """Index source-backed Java class initialization as reviewable Atlas evidence.
 
 Vanilla Atlas intentionally models source methods conservatively. Modern Minecraft protocol law,
-however, also lives in static field initializers: packet registrations, codecs and packet-type
-constants are commonly declared there. This pass augments a generated Atlas database with one
-synthetic ``<clinit>()`` method per type that has static initialization.
+however, also lives in static field initializers and enum constants: packet registrations, codecs,
+packet-type constants and state IDs are commonly declared there. This pass augments a generated
+Atlas database with one synthetic ``<clinit>()`` method per type that has class initialization.
 
 The synthetic node is evidence tooling only. It is the ordered token/raw-source projection of the
-actual static field initializers and static initializer blocks for that source type, mirroring the
-single class-initialization unit Java exposes at runtime. No Mojang source body is written to Git.
+actual enum constants, static field initializers and static initializer blocks for that source type,
+mirroring the single class-initialization unit Java exposes at runtime. No Mojang source body is
+written to Git.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from typing import Sequence
 
 import vanilla_atlas as atlas
 
-DECLARATION_INDEX_VERSION = "0.1.0"
+DECLARATION_INDEX_VERSION = "0.1.1"
 SYNTHETIC_NAME = "<clinit>"
 SYNTHETIC_SIGNATURE = "<clinit>()"
 SYNTHETIC_MODIFIERS = "static synthetic atlas-declaration-v1"
@@ -35,7 +36,7 @@ class DeclarationIndexError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class StaticInitialization:
-    """Canonical source projection for one type's static initialization."""
+    """Canonical source projection for one type's class initialization."""
 
     start_line: int
     end_line: int
@@ -67,16 +68,58 @@ def _is_static_block_prefix(tokens: Sequence[atlas.Token]) -> bool:
     return not any(kind in texts for kind in atlas.TYPE_DECL_KINDS)
 
 
+def _enum_preamble(
+    text: str,
+    tokens: Sequence[atlas.Token],
+    typ: atlas.TypeDecl,
+    braces: dict[int, int],
+) -> tuple[tuple[atlas.Token, ...] | None, str | None, int]:
+    """Return an enum's implicitly static constant declaration and next member index."""
+    start = typ.body_open + 1
+    if typ.kind != "enum":
+        return None, None, start
+
+    index = start
+    while index < typ.body_close:
+        token = tokens[index]
+        if token.text == "{" and index in braces:
+            close = braces[index]
+            if close > typ.body_close:
+                raise DeclarationIndexError(
+                    f"enum constant body escapes type {typ.qualified_name} at line {token.line}"
+                )
+            # Anonymous enum-constant class bodies may contain semicolons. They remain part of the
+            # enum constant projection, but cannot terminate the outer enum preamble.
+            index = close + 1
+            continue
+        if token.text == ";":
+            span = tuple(tokens[start : index + 1])
+            if not span or all(item.text == ";" for item in span):
+                return None, None, index + 1
+            return span, text[span[0].start : span[-1].end], index + 1
+        index += 1
+
+    # An enum with constants and no following members may legally omit the semicolon.
+    span = tuple(tokens[start : typ.body_close])
+    if not span:
+        return None, None, typ.body_close
+    return span, text[span[0].start : span[-1].end], typ.body_close
+
+
 def _static_spans(
     text: str,
     tokens: Sequence[atlas.Token],
     typ: atlas.TypeDecl,
     braces: dict[int, int],
 ) -> tuple[tuple[atlas.Token, ...], tuple[str, ...]]:
-    """Extract top-level static initialization from one Java type in source order."""
+    """Extract top-level class initialization from one Java type in source order."""
     token_spans: list[tuple[atlas.Token, ...]] = []
     raw_spans: list[str] = []
-    member_start = typ.body_open + 1
+
+    enum_span, enum_raw, member_start = _enum_preamble(text, tokens, typ, braces)
+    if enum_span is not None and enum_raw is not None:
+        token_spans.append(enum_span)
+        raw_spans.append(enum_raw)
     index = member_start
 
     while index < typ.body_close:
@@ -202,9 +245,14 @@ def _hazards(package: str, initialization: StaticInitialization) -> tuple[str, .
     hazards: set[str] = set()
     if package.startswith("net.minecraft.network.protocol"):
         hazards.add("CLIENT_OBSERVABLE")
-    if texts.intersection({"Codec", "MapCodec", "StreamCodec", "ByteBufCodecs", "STREAM_CODEC", "addPacket"}):
+    if texts.intersection(
+        {"Codec", "MapCodec", "StreamCodec", "ByteBufCodecs", "STREAM_CODEC", "addPacket"}
+    ):
         hazards.add("CODEC")
-    if any(text.startswith("Registry") or text in {"RegistryAccess", "RegistryOps"} for text in texts):
+    if any(
+        text.startswith("Registry") or text in {"RegistryAccess", "RegistryOps"}
+        for text in texts
+    ):
         hazards.add("REGISTRY")
     return tuple(sorted(hazards))
 
@@ -234,14 +282,8 @@ def _expected_initializers(
             """SELECT t.id,t.qualified_name,f.path,f.package
                FROM types t JOIN source_files f ON f.id=t.file_id"""
         ).fetchall()
-        type_ids = {
-            (str(row[2]), str(row[1])): int(row[0])
-            for row in type_rows
-        }
-        type_meta = {
-            int(row[0]): (str(row[3]), str(row[2]))
-            for row in type_rows
-        }
+        type_ids = {(str(row[2]), str(row[1])): int(row[0]) for row in type_rows}
+        type_meta = {int(row[0]): (str(row[3]), str(row[2])) for row in type_rows}
 
         expected: dict[int, StaticInitialization] = {}
         for path in sorted(name for name in zf.namelist() if name.endswith(".java")):
@@ -276,7 +318,7 @@ def _existing_initializers(conn: sqlite3.Connection) -> dict[int, tuple[str, str
 
 
 def index_declarations(source: Path, db_path: Path, *, check: bool) -> dict[str, object]:
-    """Index or verify all source-level static initialization in one generated Atlas DB."""
+    """Index or verify all source-level class initialization in one generated Atlas DB."""
     conn = atlas.connect_db(db_path)
     try:
         expected, type_meta = _expected_initializers(conn, source)
