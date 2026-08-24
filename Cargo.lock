@@ -113,6 +113,17 @@ name = "crucible-session-core"
 version = "0.0.0"
 
 [[package]]
+name = "crucible-target-26-2"
+version = "0.0.0"
+dependencies = [
+ "crucible-connection-core",
+ "crucible-connection-driver",
+ "crucible-packet-core",
+ "crucible-preplay-core",
+ "crucible-session-core",
+]
+
+[[package]]
 name = "crucible-section-qualification"
 version = "0.0.0"
 dependencies = [
