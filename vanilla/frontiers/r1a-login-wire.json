@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "description": "Narrow official-source frontier for the R1A finite Login wire contract after policy admission. It adds only the UUID, offline-profile, GameProfile property/count/nullability and generic composite-codec dependencies needed by the selected offline/uncompressed 26.2 Login path. Configuration and Play remain out of scope.",
+  "max_depth": 4,
+  "include_package_prefixes": [
+    "net.minecraft.core",
+    "net.minecraft.network",
+    "net.minecraft.server.network"
+  ],
+  "exclude_package_prefixes": [
+    "net.minecraft.data",
+    "net.minecraft.gametest",
+    "net.minecraft.network.protocol.configuration",
+    "net.minecraft.network.protocol.game",
+    "net.minecraft.network.protocol.status"
+  ],
+  "root_queries": [
+    "net.minecraft.network.protocol.login.ServerboundHelloPacket",
+    "net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket",
+    "net.minecraft.network.protocol.login.ServerboundLoginAcknowledgedPacket",
+    "net.minecraft.network.FriendlyByteBuf#readUUID(final ByteBuf input)",
+    "net.minecraft.network.FriendlyByteBuf#writeUUID(final ByteBuf output , final UUID uuid)",
+    "net.minecraft.network.FriendlyByteBuf#readNullable",
+    "net.minecraft.network.FriendlyByteBuf#writeNullable",
+    "net.minecraft.core.UUIDUtil#<clinit>()",
+    "net.minecraft.core.UUIDUtil#createOfflinePlayerUUID(final String playerName)",
+    "net.minecraft.core.UUIDUtil#createOfflineProfile(final String playerName)",
+    "net.minecraft.network.codec.ByteBufCodecs#<clinit>()",
+    "net.minecraft.network.codec.ByteBufCodecs#stringUtf8(final int maxStringLength)",
+    "net.minecraft.network.codec.ByteBufCodecs#readCount(final ByteBuf input , final int maxSize)",
+    "net.minecraft.network.codec.ByteBufCodecs#writeCount(final ByteBuf output , final int count , final int maxSize)",
+    "net.minecraft.network.codec.StreamCodec"
+  ]
+}
