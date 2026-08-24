@@ -71,9 +71,7 @@ enum LoginState {
     #[default]
     Disabled,
     /// Login is enabled and waiting for the first source-admitted hello.
-    AwaitHello {
-        session_uuid: [u8; 16],
-    },
+    AwaitHello { session_uuid: [u8; 16] },
     /// `LoginFinished` committed; the accepted profile must survive into Configuration.
     AwaitAcknowledgement {
         session_uuid: [u8; 16],
@@ -322,10 +320,8 @@ fn decode_login(
                 return Err(Target26_2Error::InvalidPlayerName);
             }
 
-            let profile = LoginProfile::new(
-                offline_uuid::offline_player_uuid(player_name),
-                player_name,
-            );
+            let profile =
+                LoginProfile::new(offline_uuid::offline_player_uuid(player_name), player_name);
             let response = encode_login_finished(profile.name(), profile.id(), session_uuid)?;
 
             let mut next_state = target_state;
