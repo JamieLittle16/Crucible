@@ -1,18 +1,20 @@
-//! Qualification-only model for bounded immutable Configuration publication.
+//! Qualification model for immutable Configuration publication.
 //!
-//! This module intentionally contains no Minecraft packet identity. It exercises the architectural
-//! mechanism proposed by `CONFIGURATION_PUBLICATION_LAB.md` against Crucible's real bounded
-//! `ConnectionDriver` egress path.
+//! This module intentionally contains no Minecraft packet identity. It supplies the lab's immutable
+//! shared-image representation while exercising the production `crucible-publication-core` cursor
+//! directly against Crucible's real bounded `ConnectionDriver` egress path.
 
 #![forbid(unsafe_code)]
 
 use crucible_connection_driver::{ConnectionDriver, DriverError};
+pub(crate) use crucible_publication_core::PublicationStep;
 
-/// One immutable ordered set of already-formed packet bodies.
+/// One immutable ordered set of already-formed packet bodies used by the qualification laboratory.
 ///
 /// Each body includes its synthetic/target packet-ID bytes and payload, but not the outer frame
 /// length. The production `ConnectionDriver` remains responsible for exact framing and egress
-/// bounds. The image is built once and can be borrowed by arbitrarily many independent cursors.
+/// bounds. This image representation is deliberately lab-local: production callers remain free to
+/// use generated static slices or another immutable/shared owner without changing the cursor core.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct PublicationImage {
     bodies: Box<[Box<[u8]>]>,
@@ -66,51 +68,39 @@ pub(crate) enum PublicationImageError {
     BodyBytesOverflow,
 }
 
-/// Tiny per-connection progress state over one immutable publication image.
+/// Lab-facing transparent wrapper over the production one-word cursor.
+///
+/// The wrapper exists only so the original image-oriented qualification API remains stable. All
+/// progression logic is delegated to `crucible-publication-core`.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) struct PublicationCursor {
-    next: usize,
-}
+pub(crate) struct PublicationCursor(crucible_publication_core::PublicationCursor);
 
 impl PublicationCursor {
     /// Cursor before the first publication body.
     #[must_use]
     pub(crate) const fn new() -> Self {
-        Self { next: 0 }
+        Self(crucible_publication_core::PublicationCursor::new())
     }
 
     /// Index of the next body which has not yet been admitted to bounded egress.
     #[must_use]
     pub(crate) const fn next_index(self) -> usize {
-        self.next
+        self.0.next_index()
     }
 
     /// Whether every body has already been admitted to bounded egress.
     #[must_use]
     pub(crate) const fn is_complete(self, image: &PublicationImage) -> bool {
-        self.next >= image.frame_count()
+        self.0.is_complete(image.bodies.as_ref())
     }
 }
 
-/// Evidence from one bounded publication attempt.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum PublicationStep {
-    /// The cursor was already complete; no egress or state changed.
-    Complete,
-    /// Exactly one publication body was admitted and the cursor advanced exactly once.
-    Queued {
-        /// Body index admitted by this step.
-        index: usize,
-        /// Packet-body bytes admitted, excluding the outer frame-length prefix.
-        body_bytes: usize,
-    },
-}
-
-/// Admits at most one immutable publication body through the real bounded driver egress path.
+/// Admits at most one immutable publication body through the production bounded cursor primitive.
 ///
-/// The cursor advances only after `ConnectionDriver::queue_frame` succeeds. Therefore frame/body
-/// validation or egress-capacity rejection leaves both semantic publication position and existing
-/// queued egress unchanged according to the driver's already-qualified fail-closed contract.
+/// This wrapper keeps the existing lab/benchmark call shape stable while ensuring every permanent
+/// Configuration publication invariant is now exercised against production code rather than a
+/// qualification-only progression implementation.
 ///
 /// # Errors
 ///
@@ -120,18 +110,5 @@ pub(crate) fn publish_one<E>(
     cursor: &mut PublicationCursor,
     driver: &mut ConnectionDriver,
 ) -> Result<PublicationStep, DriverError<E>> {
-    let index = cursor.next;
-    let Some(body) = image.body(index) else {
-        return Ok(PublicationStep::Complete);
-    };
-
-    driver.queue_frame::<E>(body)?;
-    cursor.next = cursor
-        .next
-        .checked_add(1)
-        .ok_or(DriverError::AccountingOverflow)?;
-    Ok(PublicationStep::Queued {
-        index,
-        body_bytes: body.len(),
-    })
+    crucible_publication_core::publish_one(image.bodies.as_ref(), &mut cursor.0, driver)
 }
