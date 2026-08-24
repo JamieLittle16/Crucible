@@ -1,0 +1,3 @@
+# Canonical source/runtime names used as prose identifiers in this target crate.
+# `..` retains Clippy's default valid-identifier set.
+doc-valid-idents = ["LoginFinished", "LoginAcknowledged", "OpenJDK", ".."]
