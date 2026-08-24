@@ -1,0 +1,80 @@
+{
+  "archive": {
+    "archive_bytes": 2174431,
+    "format": "zip",
+    "member": "crucible-r1a2-login-capture.json",
+    "member_bytes": 25174268,
+    "member_sha256": "4ce3858d39e2501f92842e7c7cddd39c5a53037c12d47bed6e4f3000153d9c5f",
+    "sha256": "1af7943df7b97763654294cf9f7b97dcdf1b051b1aa70ff7c52f1105e2dc8d8f"
+  },
+  "capture_sha256": "11ead8de74df70b40d7fb045ff9561f06f6e24238765d4141a1d090cab546b57",
+  "kind": "r1-login-capture-commitment-v1",
+  "limits": {
+    "max_frame_bytes": 8388608,
+    "max_frames_per_direction": 4096,
+    "max_stream_bytes": 67108864
+  },
+  "login_prefix": {
+    "client-to-server": [
+      {
+        "body_bytes": 16,
+        "body_hex": "008806096c6f63616c686f737463de02",
+        "frame_bytes": 17,
+        "frame_hex": "10008806096c6f63616c686f737463de02",
+        "frame_sha256": "e49289329dbba2e9be96062cd3435aad89f79df326f41be4afd5f5461e6e068e",
+        "ordinal": 0,
+        "stream_offset": 0
+      },
+      {
+        "body_bytes": 25,
+        "body_hex": "0007537461746f31362d9dce97d5554aefbd7d8ba8124eb36c",
+        "frame_bytes": 26,
+        "frame_hex": "190007537461746f31362d9dce97d5554aefbd7d8ba8124eb36c",
+        "frame_sha256": "acce0a49d4e15bf3bf7a44936d63a1d7cc28ac03b22c4a8628eb4c0a8d05af51",
+        "ordinal": 1,
+        "stream_offset": 17
+      },
+      {
+        "body_bytes": 1,
+        "body_hex": "03",
+        "frame_bytes": 2,
+        "frame_hex": "0103",
+        "frame_sha256": "c79b932e1e1da3c0e098e5ad2c422937eb904a76cf61d83975a74a68fbb04b99",
+        "ordinal": 2,
+        "stream_offset": 43
+      }
+    ],
+    "server-to-client": [
+      {
+        "body_bytes": 42,
+        "body_hex": "02682014fead633699aada79aa08d95b4507537461746f3136004d7f604f196a43b08987f0b2a27c2663",
+        "frame_bytes": 43,
+        "frame_hex": "2a02682014fead633699aada79aa08d95b4507537461746f3136004d7f604f196a43b08987f0b2a27c2663",
+        "frame_sha256": "e35691fada97e75d42245721e72f3f8b761a35002d4e0ab1a6a7d0491154edcb",
+        "ordinal": 0,
+        "stream_offset": 0
+      }
+    ]
+  },
+  "schema": 1,
+  "streams": [
+    {
+      "direction": "client-to-server",
+      "frame_count": 67,
+      "stream_bytes": 492,
+      "stream_sha256": "336fa624537a4c8c39986f625c8f4609403f6592dc5a9e7a9759f8347581c14b"
+    },
+    {
+      "direction": "server-to-client",
+      "frame_count": 2366,
+      "stream_bytes": 6182711,
+      "stream_sha256": "b464ffe40e4af6c3c269307576161e03391e65f7c52d532bd983d23c89c148be"
+    }
+  ],
+  "target": {
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "minecraft": "26.2",
+    "protocol": 776,
+    "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750"
+  }
+}
