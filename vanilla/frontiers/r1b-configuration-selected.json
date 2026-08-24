@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "description": "Narrow official-source frontier for the first strict Minecraft 26.2 Configuration route and its source-inseparable fresh-player handoff. It intentionally excludes optional server-links, code-of-conduct, resource-pack, cookie and unrelated Play/gameplay branches. Packet IDs remain derived only after reviewed VAR admission.",
+  "max_depth": 4,
+  "include_package_prefixes": [
+    "net.minecraft.core",
+    "net.minecraft.network",
+    "net.minecraft.resources",
+    "net.minecraft.server.level",
+    "net.minecraft.server.network",
+    "net.minecraft.server.packs",
+    "net.minecraft.server.players",
+    "net.minecraft.tags",
+    "net.minecraft.world.entity.player"
+  ],
+  "exclude_package_prefixes": [
+    "net.minecraft.data",
+    "net.minecraft.gametest",
+    "net.minecraft.network.protocol.status"
+  ],
+  "root_queries": [
+    "net.minecraft.network.protocol.configuration.ConfigurationProtocols",
+    "net.minecraft.network.protocol.configuration.ClientboundFinishConfigurationPacket",
+    "net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket",
+    "net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket",
+    "net.minecraft.network.protocol.configuration.ClientboundSelectKnownPacks",
+    "net.minecraft.network.protocol.configuration.ServerboundSelectKnownPacks",
+    "net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket",
+    "net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket",
+    "net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket",
+    "net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket",
+    "net.minecraft.network.protocol.common.ServerboundClientInformationPacket",
+    "net.minecraft.network.protocol.common.custom.BrandPayload",
+    "net.minecraft.server.level.ClientInformation",
+    "net.minecraft.server.packs.repository.KnownPack",
+    "net.minecraft.core.RegistrySynchronization",
+    "net.minecraft.tags.TagNetworkSerialization",
+    "net.minecraft.server.network.ServerCommonPacketListenerImpl#handleCustomPayload(final ServerboundCustomPayloadPacket packet)",
+    "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#startConfiguration()",
+    "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleClientInformation(final ServerboundClientInformationPacket packet)",
+    "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleSelectKnownPacks(final ServerboundSelectKnownPacks packet)",
+    "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleConfigurationFinished(final ServerboundFinishConfigurationPacket packet)",
+    "net.minecraft.server.network.config.SynchronizeRegistriesTask",
+    "net.minecraft.server.network.config.PrepareSpawnTask",
+    "net.minecraft.server.network.config.JoinWorldTask",
+    "net.minecraft.server.players.PlayerList#placeNewPlayer(final Connection connection , final ServerPlayer player , final CommonListenerCookie cookie)"
+  ]
+}

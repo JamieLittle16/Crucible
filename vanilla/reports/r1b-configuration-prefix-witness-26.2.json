@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "WITNESS-NET-CONFIG-26-2-001",
+  "target": {
+    "minecraft": "26.2",
+    "protocol": 776,
+    "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive"
+  },
+  "source_capture_sha256": "11ead8de74df70b40d7fb045ff9561f06f6e24238765d4141a1d090cab546b57",
+  "scope": "Configuration prefix only; subsequent Play traffic is intentionally uninterpreted here",
+  "selected_profile": {
+    "server_brand": "vanilla",
+    "enabled_features": ["minecraft:vanilla"],
+    "requested_known_packs": [
+      {"namespace": "minecraft", "id": "core", "version": "26.2"}
+    ],
+    "client_selected_known_packs": [
+      {"namespace": "minecraft", "id": "core", "version": "26.2"}
+    ],
+    "server_links_present": false,
+    "code_of_conduct_present": false,
+    "server_resource_pack_present": false
+  },
+  "observed_sequence": {
+    "client_to_server": [
+      {"full_capture_ordinal": 3, "packet_id": 2, "name": "custom_payload_brand", "body_bytes": 25},
+      {"full_capture_ordinal": 4, "packet_id": 0, "name": "client_information", "body_bytes": 15},
+      {"full_capture_ordinal": 5, "packet_id": 7, "name": "select_known_packs", "body_bytes": 22},
+      {"full_capture_ordinal": 6, "packet_id": 3, "name": "finish_configuration", "body_bytes": 1}
+    ],
+    "server_to_client": [
+      {"full_capture_ordinal": 1, "packet_id": 1, "name": "custom_payload_brand", "body_bytes": 25},
+      {"full_capture_ordinal": 2, "packet_id": 12, "name": "update_enabled_features", "body_bytes": 20},
+      {"full_capture_ordinal": 3, "packet_id": 14, "name": "select_known_packs", "body_bytes": 22},
+      {"full_capture_ordinals": [4, 32], "packet_id": 7, "name": "registry_data", "frames": 29, "body_bytes": 9160},
+      {"full_capture_ordinal": 33, "packet_id": 13, "name": "update_tags", "body_bytes": 35204},
+      {"full_capture_ordinal": 34, "packet_id": 3, "name": "finish_configuration", "body_bytes": 1}
+    ]
+  },
+  "publication_commitments": {
+    "registry_data_frames": 29,
+    "registry_data_body_bytes": 9160,
+    "registry_data_body_concat_sha256": "db187b6c6168b5d86a33fc4a385b7e40c08c475a74e2b6af8346716204f18b87",
+    "update_tags_body_bytes": 35204,
+    "update_tags_body_sha256": "f72b48963c5230b0cac1b108316d485183bd91e3e2674069a833eacfa84ce344",
+    "publication_before_finish_frames": 33,
+    "publication_before_finish_body_bytes": 44431,
+    "publication_before_finish_body_concat_sha256": "1ce2d47f1bf418752e281a7cd993f19184b4cd28c97d5456534d3c0739c6cac2",
+    "server_configuration_frames": 34,
+    "server_configuration_body_bytes": 44432,
+    "server_configuration_frame_bytes": 44482,
+    "server_configuration_body_concat_sha256": "a27058707adc7ad73f7960ce5a06a1443ada8e38ffe5a647452aadd44a1a0ec7",
+    "server_configuration_frame_concat_sha256": "6f6a5f8ed72fda010453ecbfdfc3c5bd2959b08d5902b0254ee4c2e7716df6cd"
+  },
+  "admission_note": "Observed packet IDs and bytes are independent black-box evidence only until the R1B fingerprint-pinned source gate admits the corresponding registration and codec law."
+}
