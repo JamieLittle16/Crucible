@@ -109,6 +109,15 @@ name = "crucible-protocol-core"
 version = "0.0.0"
 
 [[package]]
+name = "crucible-server"
+version = "0.0.0"
+dependencies = [
+ "crucible-connection-core",
+ "crucible-preplay-io",
+ "crucible-target-26-2",
+]
+
+[[package]]
 name = "crucible-session-core"
 version = "0.0.0"
 

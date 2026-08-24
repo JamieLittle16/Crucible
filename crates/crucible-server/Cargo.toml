@@ -1,0 +1,16 @@
+[package]
+name = "crucible-server"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+crucible-connection-core = { path = "../network/crucible-connection-core" }
+crucible-preplay-io = { path = "../network/crucible-preplay-io" }
+crucible-target-26-2 = { path = "../network/crucible-target-26-2" }
+
+[lints]
+workspace = true
