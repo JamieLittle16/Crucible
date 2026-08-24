@@ -1,6 +1,6 @@
 # Minecraft 26.2 R1A Login Source Review
 
-Status: **selected Login policy/state and delegated payload primitives source-reviewed; final evidence admission pending**  
+Status: **selected offline/uncompressed Login source law complete; final local gate rerun and independent capture pending**  
 Tracker: #145 / #143  
 Source: pinned official Minecraft 26.2 archive  
 Archive SHA-256: `1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750`
@@ -98,10 +98,10 @@ The selected offline route does not traverse `KEY` or `AUTHENTICATING`. It moves
 Crucible should preserve the observable/order constraints, not reproduce this enum mechanically.
 The existing typed `Target26_2State` is the correct ownership boundary.
 
-## Delegated payload review — now closed
+## Delegated payload review
 
-The identity-bound residual source read covers `FriendlyByteBuf`, `UUIDUtil`, and `ByteBufCodecs`
-from the same pinned 26.2 archive.
+The identity-bound source read covers `FriendlyByteBuf`, `UUIDUtil`, `ByteBufCodecs`, and the exact
+relevant `StreamCodec.composite` overloads from the same pinned 26.2 archive.
 
 ### UUID primitive
 
@@ -147,8 +147,21 @@ signature  nullable; boolean presence then UTF-8 max 1024 when present
 Encoding uses the same fields and rejects a property count above 16. The source helpers establish
 that the count is a VarInt and nullable presence is a boolean.
 
-`ClientboundLoginFinishedPacket` declares its `GameProfile` component before its session UUID and
-uses `UUIDUtil.STREAM_CODEC` for that session UUID.
+### Composite ordering — closed
+
+The exact `StreamCodec.java` source closes the final generic ordering dependency.
+
+The two-component overload used by `ClientboundLoginFinishedPacket` decodes `codec1`, then `codec2`,
+then calls the constructor with `(v1, v2)`; encode invokes `codec1` then `codec2` in that same order.
+Therefore the LoginFinished payload is exactly GameProfile followed by session UUID.
+
+The three-component overload used by `ByteBufCodecs.GAME_PROFILE` decodes `codec1`, `codec2`, then
+`codec3`, passes `(v1, v2, v3)` to the constructor, and encodes in the same codec1 -> codec2 ->
+codec3 order. Therefore the GameProfile payload order is exactly profile UUID, player name,
+properties.
+
+Both overloads are now represented by fingerprint-pinned VAR records and required by the R1A wire
+gate.
 
 ## Evidence-index consequence
 
@@ -156,20 +169,21 @@ uses `UUIDUtil.STREAM_CODEC` for that session UUID.
 final`, even though the source does not spell the `static` modifier on each declaration. The older
 declaration-index projection missed those implicit interface class-initialization fields.
 
-That tooling defect was fixed by declaration-index 0.1.2 in #149. The local generated declaration
-index must be refreshed before a fingerprint-pinned `ByteBufCodecs#<clinit>()` VAR is admitted.
+That tooling defect was fixed by declaration-index 0.1.2 in #149. The refreshed local declaration
+index reports 3,481 synthetic class-initialization nodes, including the corrected interface
+initialization evidence.
 
-## One remaining generic source dependency
+## Local source-gate result
 
-The packet/profile declarations establish which component codecs are supplied to
-`StreamCodec.composite`, but the final finite wire contract should also pin the generic
-`StreamCodec.composite` implementation that establishes encode/decode component ordering. No
-existing committed VAR currently names that helper. This is the only remaining source read required
-for R1A; it is a generic codec-framework dependency, not an unresolved Login branch or field.
+The first real local `GATE-NET-LOGIN-WIRE-26_2-001` run admitted all eleven UUID/profile/count/string/
+nullable primitives with `failures: []` against the pinned Atlas DB. After the composite source read,
+the gate was strengthened to require the exact two- and three-component `StreamCodec.composite`
+overloads as well. One final local gate rerun must confirm those two reconstructed fingerprints before
+this source-admission PR merges.
 
 ## Configuration boundary advanced
 
-The same source read materially narrows R1B:
+The same source review materially narrows R1B:
 
 - `SynchronizeRegistriesTask.start` sends `ClientboundSelectKnownPacks` first;
 - the client response is compared with the exact requested-pack list;
@@ -184,11 +198,12 @@ The same source read materially narrows R1B:
 R1B must therefore model known-pack negotiation as semantic state. It may not hardcode an assumption
 that the client always knows vanilla registry contents.
 
-## Remaining R1A admission actions
+## Remaining R1A qualification actions
 
-1. refresh the local declaration index under 0.1.2;
-2. fingerprint/review the UUID/profile helpers and corrected `ByteBufCodecs#<clinit>()`;
-3. source-read and fingerprint the relevant `StreamCodec.composite` helper;
-4. seal the final source gate and finite Login contract;
-5. require an independent unmodified 26.2 client capture under the selected offline/uncompressed
-   policy before production Login admission.
+1. rerun the strengthened wire source gate against the real pinned Atlas DB and require
+   `admitted: true` with no failures;
+2. independently qualify the Java 25 `UUID.nameUUIDFromBytes` behavior used by the offline profile;
+3. materialize the finite Login contract;
+4. require an independent unmodified 26.2 client capture under the selected offline/uncompressed
+   policy and source-contract/capture convergence;
+5. only then admit the production Login implementation.
