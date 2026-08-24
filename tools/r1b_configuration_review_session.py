@@ -12,8 +12,10 @@ import argparse
 import contextlib
 import hashlib
 import json
+import shlex
 import shutil
 import sys
+import zipfile
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -73,6 +75,11 @@ def _write_manifest(path: Path, manifest: Mapping[str, object]) -> None:
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _shell_command(parts: Sequence[object]) -> str:
+    """Render one copy-paste-safe POSIX shell command."""
+    return " ".join(shlex.quote(str(part)) for part in parts)
 
 
 def build_session(
@@ -204,6 +211,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     except (
         OSError,
+        json.JSONDecodeError,
+        zipfile.BadZipFile,
         ReviewSessionError,
         source_probe.ProbeError,
         bundle_review.ReviewPackError,
@@ -221,6 +230,34 @@ def main(argv: Sequence[str] | None = None) -> int:
     records = reviewed / "records"
     source_gate_output = session / f"{bundle_review.GATE_ID}-source-admission.json"
 
+    finalize_command = _shell_command(
+        [
+            "python3",
+            "tools/r1b_configuration_review.py",
+            "finalize",
+            "--review-pack",
+            review_pack,
+            "--worksheet",
+            worksheet,
+            "--output-dir",
+            reviewed,
+        ]
+    )
+    source_gate_command = _shell_command(
+        [
+            "python3",
+            "tools/vanilla_source_gate.py",
+            "--db",
+            args.db,
+            "--gate",
+            gate,
+            "--records",
+            records,
+            "--output",
+            source_gate_output,
+        ]
+    )
+
     print(f"review_session={session}")
     print(f"candidates={manifest['candidate_count']}")
     print("contains_official_source_text=true")
@@ -228,15 +265,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"review_dossier={session / 'review-dossier.json'}")
     print(f"worksheet={worksheet}")
     print("next_finalize_command=")
-    print(
-        "python3 tools/r1b_configuration_review.py finalize "
-        f"--review-pack {review_pack} --worksheet {worksheet} --output-dir {reviewed}"
-    )
+    print(finalize_command)
     print("next_source_gate_command=")
-    print(
-        "python3 tools/vanilla_source_gate.py "
-        f"--db {args.db} --gate {gate} --records {records} --output {source_gate_output}"
-    )
+    print(source_gate_command)
     return 0
 
 
