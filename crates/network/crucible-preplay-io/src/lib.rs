@@ -266,7 +266,7 @@ where
             {
                 Ok(ReadOutcome::Pending)
             }
-            Err(error) => Err(io_error(IoOperation::Read, error)),
+            Err(error) => Err(io_error(IoOperation::Read, &error)),
         }
     }
 
@@ -312,7 +312,7 @@ where
             {
                 Ok(WriteOutcome::Pending)
             }
-            Err(error) => Err(io_error(IoOperation::Write, error)),
+            Err(error) => Err(io_error(IoOperation::Write, &error)),
         }
     }
 
@@ -527,7 +527,7 @@ fn add<E>(left: usize, right: usize) -> Result<usize, PrePlayIoError<E>> {
         .ok_or(PrePlayIoError::AccountingOverflow)
 }
 
-fn io_error<E>(operation: IoOperation, error: io::Error) -> PrePlayIoError<E> {
+fn io_error<E>(operation: IoOperation, error: &io::Error) -> PrePlayIoError<E> {
     PrePlayIoError::Io {
         operation,
         kind: error.kind(),
