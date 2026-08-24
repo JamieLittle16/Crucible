@@ -1,0 +1,79 @@
+name: Configuration Publication Lab
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/qualification/crucible-client-spine-qualification/**"
+      - "docs/qualification/CONFIGURATION_PUBLICATION_LAB.md"
+      - ".github/workflows/config-publication-lab.yml"
+  pull_request:
+    paths:
+      - "crates/qualification/crucible-client-spine-qualification/**"
+      - "docs/qualification/CONFIGURATION_PUBLICATION_LAB.md"
+      - ".github/workflows/config-publication-lab.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publication-lab:
+    name: Publication semantics and smoke evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Permanent publication semantics
+        run: >-
+          cargo test --locked
+          --package crucible-client-spine-qualification
+          --test config_publication
+
+      # Hosted timing is diagnostic only. This gate proves artifact shape and semantic/memory
+      # accounting; it deliberately does not select the faster candidate.
+      - name: Configuration publication benchmark smoke
+        run: |
+          cargo run --release --locked \
+            --package crucible-client-spine-qualification \
+            --bin config_publication_bench -- \
+            --smoke \
+            --output target/config-publication-smoke.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(Path("target/config-publication-smoke.json").read_text())
+          assert artifact["schema"] == 1
+          assert artifact["mode"] == "smoke"
+          assert artifact["warmup_rounds"] >= 1
+          assert artifact["measured_rounds"] >= 3
+          assert len(artifact["workloads"]) == 3
+
+          for workload in artifact["workloads"]:
+              assert workload["fanout"] > 1
+              assert workload["frame_count"] > 0
+              assert workload["image_body_bytes"] > 0
+              assert workload["cursor_bytes"] in (4, 8)
+              assert workload["shared_logical_body_bytes"] == workload["image_body_bytes"]
+              assert workload["reference_logical_rebuilt_body_bytes"] == (
+                  workload["image_body_bytes"] * workload["fanout"]
+              )
+              semantic = workload["semantic"]
+              assert semantic["frames"] == workload["frame_count"] * workload["fanout"]
+              assert semantic["body_bytes"] == workload["image_body_bytes"] * workload["fanout"]
+              assert semantic["framed_bytes"] >= semantic["body_bytes"]
+              assert semantic["checksum"] != 0
+              assert len(workload["reference_ns"]) == artifact["measured_rounds"]
+              assert len(workload["shared_ns"]) == artifact["measured_rounds"]
+              assert workload["reference_p50_ns"] > 0
+              assert workload["shared_p50_ns"] > 0
+              assert workload["shared_over_reference_p50_ppm"] > 0
+          PY
