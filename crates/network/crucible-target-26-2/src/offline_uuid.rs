@@ -1,15 +1,14 @@
 //! Java-compatible offline-player UUID derivation for the admitted 26.2 Login path.
 //!
 //! Minecraft's offline Login branch calls `UUID.nameUUIDFromBytes` over the UTF-8 bytes of
-//! `"OfflinePlayer:" + player_name`. OpenJDK 25 defines that operation as MD5 followed by UUID
+//! `"OfflinePlayer:" + player_name`. `OpenJDK` 25 defines that operation as MD5 followed by UUID
 //! version-3 / IETF-variant bit normalization. This module implements only that compatibility law;
 //! it is not a cryptographic API.
 
 const OFFLINE_PREFIX: &[u8; 14] = b"OfflinePlayer:";
-const MAX_PLAYER_NAME_UTF8_BYTES: usize = 16 * 3;
-const MAX_OFFLINE_INPUT_BYTES: usize = OFFLINE_PREFIX.len() + MAX_PLAYER_NAME_UTF8_BYTES;
+const MAX_PLAYER_NAME_ASCII_BYTES: usize = 16;
+const MAX_OFFLINE_INPUT_BYTES: usize = OFFLINE_PREFIX.len() + MAX_PLAYER_NAME_ASCII_BYTES;
 const MD5_BLOCK_BYTES: usize = 64;
-const MD5_WORK_BYTES: usize = MD5_BLOCK_BYTES * 2;
 
 const SHIFT: [u32; 64] = [
     7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9,
@@ -85,105 +84,88 @@ const TABLE: [u32; 64] = [
 ];
 
 /// Returns the exact 16 UUID bytes produced by Java's offline-profile identity law.
-///
-/// `player_name` is expected to have already passed the source-backed 16-UTF-16-unit Login name
-/// bound. The implementation still keeps a hard UTF-8 byte assertion so future callers cannot
-/// silently extend this compatibility routine beyond its fixed two-block work buffer.
 pub(crate) fn offline_player_uuid(player_name: &str) -> [u8; 16] {
     let name = player_name.as_bytes();
-    assert!(
-        name.len() <= MAX_PLAYER_NAME_UTF8_BYTES,
-        "source-bounded Login name exceeded offline UUID work buffer"
-    );
+    debug_assert!(name.len() <= MAX_PLAYER_NAME_ASCII_BYTES);
+    debug_assert!(name.iter().all(|byte| (b'!'..=b'~').contains(byte)));
 
     let mut input = [0_u8; MAX_OFFLINE_INPUT_BYTES];
     input[..OFFLINE_PREFIX.len()].copy_from_slice(OFFLINE_PREFIX);
     input[OFFLINE_PREFIX.len()..OFFLINE_PREFIX.len() + name.len()].copy_from_slice(name);
 
-    let mut uuid = md5(&input[..OFFLINE_PREFIX.len() + name.len()]);
+    let mut uuid = md5_single_block(&input[..OFFLINE_PREFIX.len() + name.len()]);
     uuid[6] = (uuid[6] & 0x0f) | 0x30;
     uuid[8] = (uuid[8] & 0x3f) | 0x80;
     uuid
 }
 
-fn md5(input: &[u8]) -> [u8; 16] {
-    // The admitted Login input is at most 62 bytes, therefore MD5 padding requires at most two
-    // blocks. Keeping this fixed-size is both simpler and allocation-free on the cold Login path.
-    assert!(input.len() <= MAX_OFFLINE_INPUT_BYTES);
+fn md5_single_block(input: &[u8]) -> [u8; 16] {
+    // The admitted input is at most 30 bytes, so MD5 padding always fits one 64-byte block.
+    assert!(input.len() + 9 <= MD5_BLOCK_BYTES);
 
-    let total_bytes = if input.len() + 9 <= MD5_BLOCK_BYTES {
-        MD5_BLOCK_BYTES
-    } else {
-        MD5_WORK_BYTES
-    };
-    let mut padded = [0_u8; MD5_WORK_BYTES];
-    padded[..input.len()].copy_from_slice(input);
-    padded[input.len()] = 0x80;
+    let mut block = [0_u8; MD5_BLOCK_BYTES];
+    block[..input.len()].copy_from_slice(input);
+    block[input.len()] = 0x80;
     let bit_len = u64::try_from(input.len())
         .expect("offline UUID input length fits u64")
         .wrapping_mul(8);
-    padded[total_bytes - 8..total_bytes].copy_from_slice(&bit_len.to_le_bytes());
+    block[MD5_BLOCK_BYTES - 8..].copy_from_slice(&bit_len.to_le_bytes());
 
-    let mut a0 = 0x6745_2301_u32;
-    let mut b0 = 0xefcd_ab89_u32;
-    let mut c0 = 0x98ba_dcfe_u32;
-    let mut d0 = 0x1032_5476_u32;
-
-    for block in padded[..total_bytes].chunks_exact(MD5_BLOCK_BYTES) {
-        let mut words = [0_u32; 16];
-        for (index, word) in words.iter_mut().enumerate() {
-            let start = index * 4;
-            *word = u32::from_le_bytes([
-                block[start],
-                block[start + 1],
-                block[start + 2],
-                block[start + 3],
-            ]);
-        }
-
-        let mut a = a0;
-        let mut b = b0;
-        let mut c = c0;
-        let mut d = d0;
-
-        for index in 0..64 {
-            let (function, word_index) = match index {
-                0..=15 => ((b & c) | ((!b) & d), index),
-                16..=31 => ((d & b) | ((!d) & c), (5 * index + 1) % 16),
-                32..=47 => (b ^ c ^ d, (3 * index + 5) % 16),
-                _ => (c ^ (b | !d), (7 * index) % 16),
-            };
-
-            let next_d = c;
-            let next_c = b;
-            let mixed = a
-                .wrapping_add(function)
-                .wrapping_add(TABLE[index])
-                .wrapping_add(words[word_index]);
-            let next_b = b.wrapping_add(mixed.rotate_left(SHIFT[index]));
-            a = d;
-            b = next_b;
-            c = next_c;
-            d = next_d;
-        }
-
-        a0 = a0.wrapping_add(a);
-        b0 = b0.wrapping_add(b);
-        c0 = c0.wrapping_add(c);
-        d0 = d0.wrapping_add(d);
+    let mut words = [0_u32; 16];
+    for (index, word) in words.iter_mut().enumerate() {
+        let start = index * 4;
+        *word = u32::from_le_bytes([
+            block[start],
+            block[start + 1],
+            block[start + 2],
+            block[start + 3],
+        ]);
     }
 
+    let mut a = 0x6745_2301_u32;
+    let mut b = 0xefcd_ab89_u32;
+    let mut c = 0x98ba_dcfe_u32;
+    let mut d = 0x1032_5476_u32;
+    let initial = [a, b, c, d];
+
+    for index in 0..64 {
+        let (function, word_index) = match index {
+            0..=15 => ((b & c) | ((!b) & d), index),
+            16..=31 => ((d & b) | ((!d) & c), (5 * index + 1) % 16),
+            32..=47 => (b ^ c ^ d, (3 * index + 5) % 16),
+            _ => (c ^ (b | !d), (7 * index) % 16),
+        };
+
+        let next_d = c;
+        let next_c = b;
+        let mixed = a
+            .wrapping_add(function)
+            .wrapping_add(TABLE[index])
+            .wrapping_add(words[word_index]);
+        let next_b = b.wrapping_add(mixed.rotate_left(SHIFT[index]));
+        a = d;
+        b = next_b;
+        c = next_c;
+        d = next_d;
+    }
+
+    let state = [
+        initial[0].wrapping_add(a),
+        initial[1].wrapping_add(b),
+        initial[2].wrapping_add(c),
+        initial[3].wrapping_add(d),
+    ];
     let mut digest = [0_u8; 16];
-    digest[0..4].copy_from_slice(&a0.to_le_bytes());
-    digest[4..8].copy_from_slice(&b0.to_le_bytes());
-    digest[8..12].copy_from_slice(&c0.to_le_bytes());
-    digest[12..16].copy_from_slice(&d0.to_le_bytes());
+    for (index, value) in state.into_iter().enumerate() {
+        let start = index * 4;
+        digest[start..start + 4].copy_from_slice(&value.to_le_bytes());
+    }
     digest
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{md5, offline_player_uuid};
+    use super::{md5_single_block, offline_player_uuid};
 
     fn parse_uuid(text: &str) -> [u8; 16] {
         let compact: String = text.chars().filter(|character| *character != '-').collect();
@@ -212,17 +194,17 @@ mod tests {
     }
 
     #[test]
-    fn md5_standard_vectors_cover_one_and_two_block_padding() {
+    fn md5_standard_vectors_cover_the_admitted_single_block_domain() {
         for (input, expected) in [
             ("", "d41d8cd98f00b204e9800998ecf8427e"),
             ("a", "0cc175b9c0f1b6a831c399e269772661"),
             ("abc", "900150983cd24fb0d6963f7d28e17f72"),
             (
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-                "d174ab98d277d9f5a5611c2c9f419d9f",
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234",
+                "e8be43556a680604ebb5369c8540e180",
             ),
         ] {
-            assert_eq!(md5(input.as_bytes()).as_slice(), hex(expected));
+            assert_eq!(md5_single_block(input.as_bytes()).as_slice(), hex(expected));
         }
     }
 
