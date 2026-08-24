@@ -28,9 +28,9 @@ The fingerprint algorithm and normalized fingerprint are mandatory. The normaliz
 
 ## Static declaration evidence
 
-Java class-initialization law can live outside ordinary source methods, especially protocol packet registrations and `StreamCodec` declarations. After `tools/vanilla_declaration_index.py` augments a generated Atlas, such source-level static initialization is exposed under the reserved synthetic signature `<clinit>()`.
+Java class-initialization law can live outside ordinary source methods, especially protocol packet registrations, `StreamCodec` declarations and enum constants carrying protocol/state IDs. After `tools/vanilla_declaration_index.py` augments a generated Atlas, such source-level class initialization is exposed under the reserved synthetic signature `<clinit>()`.
 
-A `<clinit>()` row is **not a claim that Mojang wrote a method with that name**. It is an evidence-only projection of that type's initialized static fields and static initializer blocks, concatenated in source order. Its normalized fingerprint uses the same literal-sensitive Java-token algorithm; its exact body fingerprint hashes the corresponding raw source spans with unambiguous separators. Methods, constructors, instance fields and instance initializer blocks are excluded. Nested types receive their own independent `<clinit>()` node.
+A `<clinit>()` row is **not a claim that Mojang wrote a method with that name**. It is an evidence-only projection of that type's enum-constant preamble, initialized static fields and static initializer blocks, concatenated in source order. Its normalized fingerprint uses the same literal-sensitive Java-token algorithm; its exact body fingerprint hashes the corresponding raw source spans with unambiguous separators. Methods, constructors, instance fields and instance initializer blocks are excluded. Nested types receive their own independent `<clinit>()` node.
 
 This projection lets the existing VAR/source-gate machinery pin declarations that materially define protocol semantics without copying Mojang source into Git or laundering a declaration fact through an unrelated method.
 
