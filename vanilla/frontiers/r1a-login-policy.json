@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "description": "Narrow discovery-only official-source frontier for R1A Login policy, registration and plaintext local-development handoff. It identifies only the Login anchors required to prove protocol-version entry, registration order, hello/auth/compression branching, LoginFinished emission and LoginAcknowledged handoff. It is not a finite wire contract and deliberately excludes Configuration/Play payload law.",
+  "max_depth": 8,
+  "include_package_prefixes": [
+    "net.minecraft.network",
+    "net.minecraft.server.network"
+  ],
+  "exclude_package_prefixes": [
+    "net.minecraft.data",
+    "net.minecraft.gametest",
+    "net.minecraft.network.protocol.game"
+  ],
+  "root_queries": [
+    "net.minecraft.network.protocol.handshake.ClientIntent",
+    "net.minecraft.server.network.ServerHandshakePacketListenerImpl",
+    "net.minecraft.network.protocol.login.LoginPacketTypes",
+    "net.minecraft.network.protocol.login.LoginProtocols",
+    "net.minecraft.network.protocol.login.ServerboundHelloPacket",
+    "net.minecraft.network.protocol.login.ClientboundLoginFinishedPacket",
+    "net.minecraft.network.protocol.login.ServerboundLoginAcknowledgedPacket",
+    "net.minecraft.server.network.ServerLoginPacketListenerImpl"
+  ]
+}
