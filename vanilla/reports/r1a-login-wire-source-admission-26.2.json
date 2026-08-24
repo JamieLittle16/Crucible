@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "kind": "r1a-login-wire-source-admission-checkpoint",
+  "status": "partial-gate-passed-before-composite-strengthening",
+  "source": {
+    "minecraft": "26.2",
+    "protocol": 776,
+    "data_version": 4903,
+    "archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive"
+  },
+  "declaration_index": {
+    "version": "0.1.2",
+    "synthetic_clinit": 3481,
+    "protocol_synthetic_clinit": 277,
+    "check": "exact"
+  },
+  "gate": {
+    "id": "GATE-NET-LOGIN-WIRE-26_2-001",
+    "admitted": true,
+    "failures": [],
+    "required_methods": 11,
+    "frontier_root_methods": 49,
+    "frontier_reachable_methods": 54,
+    "note": "This checkpoint records the successful real-local-Atlas run before the gate was strengthened to require the two- and three-component StreamCodec.composite overloads. A final strengthened gate run is required before merge."
+  }
+}
