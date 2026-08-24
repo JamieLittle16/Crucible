@@ -19,7 +19,7 @@
     "net.minecraft.server.network.ServerHandshakePacketListenerImpl",
     "net.minecraft.network.protocol.status.ServerboundStatusRequestPacket",
     "net.minecraft.network.protocol.status.ClientboundStatusResponsePacket",
-    "net.minecraft.network.protocol.status.ServerboundPingRequestPacket",
-    "net.minecraft.network.protocol.status.ClientboundPongResponsePacket"
+    "net.minecraft.network.protocol.ping.ServerboundPingRequestPacket",
+    "net.minecraft.network.protocol.ping.ClientboundPongResponsePacket"
   ]
 }
