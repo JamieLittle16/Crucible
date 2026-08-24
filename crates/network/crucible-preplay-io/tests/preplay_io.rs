@@ -68,11 +68,13 @@ struct SyntheticTarget;
 impl PrePlayTarget for SyntheticTarget {
     type Error = SyntheticError;
     type Context = str;
+    type State = ();
     type Action = Action;
 
     fn decode(
         context: &Self::Context,
         state: SessionState,
+        _target_state: &Self::State,
         frame: FrameView<'_>,
     ) -> Result<Self::Action, Self::Error> {
         let mut reader = PacketReader::new(frame.payload());

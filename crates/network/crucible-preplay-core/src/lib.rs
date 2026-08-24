@@ -2,8 +2,9 @@
 //!
 //! This crate is the production boundary between the bounded byte/connection machinery and a
 //! source-backed target-version packet adapter. It owns no Minecraft packet identities or field
-//! layouts. A target decoder produces an owned candidate action; the live session state is adopted
-//! only after the complete outbound batch is admitted and the inbound frame is consumed atomically.
+//! layouts. A target decoder produces an owned candidate action; the live session and target-local
+//! connection state are adopted only after the complete outbound batch is admitted and the inbound
+//! frame is consumed atomically.
 
 #![forbid(unsafe_code)]
 
@@ -27,13 +28,15 @@ pub trait PrePlayAction: OutboundBatch {
 /// Statically bound target-version decoder above the generic pre-play transport.
 ///
 /// Implementations should be small adapters generated/built from admitted protocol evidence. The
-/// target receives immutable context and the current session by value; it never receives mutable
-/// access to the live [`PrePlayConnection`].
+/// target receives immutable context, the current session by value and immutable target-local
+/// connection state. It never receives mutable access to the live [`PrePlayConnection`].
 pub trait PrePlayTarget {
     /// Target-specific semantic/codec error.
     type Error;
     /// Immutable runtime context used while constructing candidate actions.
     type Context: ?Sized;
+    /// Target-local per-connection state not represented by the coarse generic session phase.
+    type State: Default;
     /// Owned candidate action returned by one successful decode.
     type Action: PrePlayAction;
 
@@ -44,12 +47,22 @@ pub trait PrePlayTarget {
     ///
     /// # Errors
     ///
-    /// Returns a target-specific error for a packet that is invalid in the supplied session state.
+    /// Returns a target-specific error for a packet that is invalid in the supplied session or
+    /// target-local connection state.
     fn decode(
         context: &Self::Context,
-        state: SessionState,
+        session: SessionState,
+        target_state: &Self::State,
         frame: FrameView<'_>,
     ) -> Result<Self::Action, Self::Error>;
+
+    /// Applies target-local state carried by one action after the complete driver transaction
+    /// committed successfully.
+    ///
+    /// Stateless targets use the default no-op implementation. Implementations must perform only
+    /// infallible owner-local state adoption here; all validation and fallible work belongs in
+    /// [`Self::decode`] before transactional admission.
+    fn commit_target_state(_state: &mut Self::State, _action: Self::Action) {}
 }
 
 /// Result of one target-bound pre-play processing attempt.
@@ -123,13 +136,15 @@ where
 /// One bounded pre-play connection statically specialized for target `T`.
 ///
 /// `T` is present only at the type level. No target registry, trait object or runtime service lookup
-/// exists on the frame-processing path.
+/// exists on the frame-processing path. Target-local state is owned directly by this connection and
+/// is visible to the target decoder only through an immutable reference.
 pub struct PrePlayConnection<T>
 where
     T: PrePlayTarget,
 {
     driver: ConnectionDriver,
     session: SessionState,
+    target_state: T::State,
     target: PhantomData<fn() -> T>,
 }
 
@@ -150,12 +165,19 @@ impl<T> PrePlayConnection<T>
 where
     T: PrePlayTarget,
 {
-    /// Creates an empty target-bound connection in the handshake phase.
+    /// Creates an empty target-bound connection in the handshake phase with default target state.
     #[must_use]
-    pub const fn new(limits: ConnectionLimits) -> Self {
+    pub fn new(limits: ConnectionLimits) -> Self {
+        Self::with_target_state(limits, T::State::default())
+    }
+
+    /// Creates an empty target-bound connection with an explicit initial target-local state.
+    #[must_use]
+    pub fn with_target_state(limits: ConnectionLimits, target_state: T::State) -> Self {
         Self {
             driver: ConnectionDriver::new(limits),
             session: SessionState::new(),
+            target_state,
             target: PhantomData,
         }
     }
@@ -172,6 +194,12 @@ where
         self.session.phase()
     }
 
+    /// Current admitted target-local connection state.
+    #[must_use]
+    pub const fn target_state(&self) -> &T::State {
+        &self.target_state
+    }
+
     /// Appends one arbitrary socket-read fragment to bounded ingress storage.
     ///
     /// # Errors
@@ -185,15 +213,16 @@ where
 
     /// Processes at most one complete target packet as one semantic/outbound transaction.
     ///
-    /// The target decoder sees the current session by value and a borrowed frame. The driver admits
-    /// the target action's complete outbound batch before consuming the frame. Only after both have
-    /// committed does this binder install the prevalidated candidate session.
+    /// The target decoder sees the current session by value, immutable target-local state and a
+    /// borrowed frame. The driver admits the target action's complete outbound batch before
+    /// consuming the frame. Only after both have committed does this binder install the prevalidated
+    /// candidate session and invoke the target's infallible owner-local state adoption hook.
     ///
     /// # Errors
     ///
     /// Returns fail-closed on terminal sessions, target rejection, an invalid candidate transition,
     /// bounded egress failure, malformed wire input, rollback failure or internal accounting
-    /// overflow. No error path adopts the candidate session.
+    /// overflow. No error path adopts the candidate session or target-local state.
     pub fn process_one(
         &mut self,
         context: &T::Context,
@@ -203,11 +232,12 @@ where
         }
 
         let before = self.session;
+        let target_state = &self.target_state;
         let transaction = self
             .driver
             .process_one_transactional(|frame| {
-                let action =
-                    T::decode(context, before, frame).map_err(TargetBoundaryError::Target)?;
+                let action = T::decode(context, before, target_state, frame)
+                    .map_err(TargetBoundaryError::Target)?;
                 let candidate = action.candidate_session();
                 if !candidate_is_admitted(before, candidate) {
                     return Err(TargetBoundaryError::InvalidCandidate {
@@ -223,9 +253,11 @@ where
             TransactionResult::Incomplete => Ok(PrePlayProcess::Incomplete),
             TransactionResult::Committed(validated) => {
                 let from = before.phase();
-                let to = validated.candidate.phase();
+                let candidate = validated.candidate;
+                let to = candidate.phase();
                 let outbound_frames = validated.outbound_frames().len();
-                self.session = validated.candidate;
+                self.session = candidate;
+                T::commit_target_state(&mut self.target_state, validated.action);
                 Ok(PrePlayProcess::Committed {
                     from,
                     to,
@@ -374,11 +406,13 @@ mod tests {
     impl PrePlayTarget for SyntheticTarget {
         type Error = SyntheticError;
         type Context = SyntheticContext;
+        type State = ();
         type Action = SyntheticAction;
 
         fn decode(
             context: &Self::Context,
             state: SessionState,
+            _target_state: &Self::State,
             frame: FrameView<'_>,
         ) -> Result<Self::Action, Self::Error> {
             let packet_id = frame.packet_id();
@@ -456,6 +490,66 @@ mod tests {
                 other => return Err(SyntheticError::UnknownPacket(other)),
             };
             Ok(SyntheticAction { candidate, frames })
+        }
+    }
+
+    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    struct StatefulCounter {
+        committed: u64,
+    }
+
+    #[derive(Debug)]
+    struct StatefulAction {
+        candidate: SessionState,
+        frames: Vec<Vec<u8>>,
+        next: StatefulCounter,
+    }
+
+    impl OutboundBatch for StatefulAction {
+        type Body = Vec<u8>;
+
+        fn outbound_frames(&self) -> &[Self::Body] {
+            &self.frames
+        }
+    }
+
+    impl PrePlayAction for StatefulAction {
+        fn candidate_session(&self) -> SessionState {
+            self.candidate
+        }
+    }
+
+    struct StatefulTarget;
+
+    impl PrePlayTarget for StatefulTarget {
+        type Error = SyntheticError;
+        type Context = ();
+        type State = StatefulCounter;
+        type Action = StatefulAction;
+
+        fn decode(
+            _context: &Self::Context,
+            session: SessionState,
+            target_state: &Self::State,
+            frame: FrameView<'_>,
+        ) -> Result<Self::Action, Self::Error> {
+            let reader = PacketReader::new(frame.payload());
+            reader.finish()?;
+            let frames = match frame.packet_id() {
+                STATUS_QUERY => vec![vec![0_u8; 40]],
+                other => return Err(SyntheticError::UnknownPacket(other)),
+            };
+            Ok(StatefulAction {
+                candidate: session,
+                frames,
+                next: StatefulCounter {
+                    committed: target_state.committed + 1,
+                },
+            })
+        }
+
+        fn commit_target_state(state: &mut Self::State, action: Self::Action) {
+            *state = action.next;
         }
     }
 
@@ -601,6 +695,39 @@ mod tests {
             .consume_written(queued)
             .expect("ack exact egress");
         assert_eq!(connection.queued_egress(), 0);
+    }
+
+    #[test]
+    fn target_local_state_adopts_only_after_driver_transaction_commit() {
+        let body = empty_body(STATUS_QUERY);
+
+        let mut rejected = PrePlayConnection::<StatefulTarget>::new(tight_limits());
+        rejected
+            .ingest(&encoded_frame(&body))
+            .expect("stateful frame fits ingress");
+        let ingress_before = rejected.buffered_ingress();
+        assert!(matches!(
+            rejected.process_one(&()),
+            Err(PrePlayError::Buffer(_))
+        ));
+        assert_eq!(rejected.target_state().committed, 0);
+        assert_eq!(rejected.buffered_ingress(), ingress_before);
+        assert_eq!(rejected.queued_egress(), 0);
+
+        let mut admitted = PrePlayConnection::<StatefulTarget>::new(generous_limits());
+        admitted
+            .ingest(&encoded_frame(&body))
+            .expect("stateful frame fits ingress");
+        assert!(matches!(
+            admitted.process_one(&()),
+            Ok(PrePlayProcess::Committed {
+                outbound_frames: 1,
+                ..
+            })
+        ));
+        assert_eq!(admitted.target_state().committed, 1);
+        assert_eq!(admitted.buffered_ingress(), 0);
+        assert!(admitted.queued_egress() > 0);
     }
 
     #[test]
