@@ -19,7 +19,11 @@ impl LoginProfile {
     /// Copies one already-source-validated printable-ASCII player name into fixed inline storage.
     pub(super) fn new(id: [u8; 16], name: &str) -> Self {
         debug_assert!(name.len() <= MAX_PLAYER_NAME_ASCII_BYTES);
-        debug_assert!(name.as_bytes().iter().all(|byte| (b'!'..=b'~').contains(byte)));
+        debug_assert!(
+            name.as_bytes()
+                .iter()
+                .all(|byte| (b'!'..=b'~').contains(byte))
+        );
 
         let mut stored = [0_u8; MAX_PLAYER_NAME_ASCII_BYTES];
         stored[..name.len()].copy_from_slice(name.as_bytes());
