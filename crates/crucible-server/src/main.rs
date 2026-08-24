@@ -1,15 +1,13 @@
-mod login_server;
-
 use std::env;
 use std::net::TcpListener;
 use std::process::ExitCode;
 use std::time::Duration;
 
 use crucible_server::{
-    DEFAULT_R0_BIND_ADDRESS, R0_ADMISSION_SESSION_SHA256, serve_r0_blocking_transport,
+    DEFAULT_R0_BIND_ADDRESS, R0_ADMISSION_SESSION_SHA256, ServerSessionEpoch,
+    serve_r0_blocking_transport, serve_r1a_blocking_transport,
 };
 use crucible_target_26_2::generated;
-use login_server::{ServerSessionEpoch, serve_r1a_blocking_transport};
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(15);
 const LOGIN_SESSION_EPOCH_PREFIX: &str = "--login-session-epoch=";
