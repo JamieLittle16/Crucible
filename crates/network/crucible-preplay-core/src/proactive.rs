@@ -41,8 +41,9 @@ where
     }
 }
 
-/// Fallible optional proactive publication proposal returned by a target.
-pub type PrePlayPublicationResult<'a, B, C, E> = Result<Option<PrePlayPublication<'a, B, C>>, E>;
+/// Internal shorthand for the transparent public proposal result shape.
+pub(crate) type PrePlayPublicationResult<'a, B, C, E> =
+    Result<Option<PrePlayPublication<'a, B, C>>, E>;
 
 /// Optional proactive-publication capability for a statically bound pre-play target.
 ///
