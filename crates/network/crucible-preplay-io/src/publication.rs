@@ -72,10 +72,7 @@ impl ServiceTally {
         }
     }
 
-    fn account_process<E>(
-        &mut self,
-        report: ProcessReport,
-    ) -> Result<(), PrePlayIoError<E>> {
+    fn account_process<E>(&mut self, report: ProcessReport) -> Result<(), PrePlayIoError<E>> {
         self.committed_actions = add(self.committed_actions, report.committed_actions)?;
         self.outbound_frames = add(self.outbound_frames, report.outbound_frames)?;
         self.remaining_actions = self
@@ -156,17 +153,14 @@ where
             WriteOutcome::Progress { written, remaining } => {
                 tally.account_write(written)?;
                 if remaining != 0 {
-                    return Ok(self.publication_service_report(
-                        tally,
-                        PublicationServiceStop::OutputPending,
-                    ));
+                    return Ok(self
+                        .publication_service_report(tally, PublicationServiceStop::OutputPending));
                 }
             }
             WriteOutcome::Pending => {
-                return Ok(self.publication_service_report(
-                    tally,
-                    PublicationServiceStop::OutputPending,
-                ));
+                return Ok(
+                    self.publication_service_report(tally, PublicationServiceStop::OutputPending)
+                );
             }
             WriteOutcome::Empty => {}
         }
