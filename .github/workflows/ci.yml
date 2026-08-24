@@ -60,6 +60,7 @@ jobs:
           --package crucible-connection-driver
           --package crucible-packet-core
           --package crucible-preplay-core
+          --package crucible-preplay-io
           --package crucible-protocol-core
           --package crucible-session-core
           --package crucible-benchmark-support
@@ -96,6 +97,9 @@ jobs:
 
       - name: Pre-play production binder qualification
         run: cargo test --package crucible-preplay-core --locked
+
+      - name: Pre-play I/O adapter qualification
+        run: cargo test --package crucible-preplay-io --locked
 
       - name: Session state qualification
         run: cargo test --package crucible-session-core --locked
