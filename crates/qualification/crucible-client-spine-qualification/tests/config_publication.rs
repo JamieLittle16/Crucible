@@ -63,8 +63,8 @@ fn drain_with_pattern(
     while !cursor.is_complete(image) || driver.queued_egress() != 0 {
         if !cursor.is_complete(image) {
             match publish_one::<()>(image, &mut cursor, &mut driver) {
-                Ok(PublicationStep::Queued { .. } | PublicationStep::Complete) => {}
-                Err(DriverError::Buffer(ConnectionBufferError::EgressLimitExceeded { .. })) => {}
+                Ok(PublicationStep::Queued { .. } | PublicationStep::Complete)
+                | Err(DriverError::Buffer(ConnectionBufferError::EgressLimitExceeded { .. })) => {}
                 Err(error) => panic!("unexpected publication error: {error:?}"),
             }
         }
