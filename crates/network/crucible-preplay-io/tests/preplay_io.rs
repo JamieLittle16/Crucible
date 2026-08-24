@@ -385,7 +385,10 @@ fn terminal_close_stops_before_following_buffered_frame() {
     let mut transport = MemoryTransport::new(input);
     let mut io = PrePlayIo::<SyntheticTarget>::new(limits(), large_scratch());
 
-    assert!(matches!(io.read_once(&mut transport), Ok(ReadOutcome::Data(_))));
+    assert!(matches!(
+        io.read_once(&mut transport),
+        Ok(ReadOutcome::Data(_))
+    ));
     let report = io
         .process_available(STATUS_LABEL, budget(8))
         .expect("bounded buffered processing");
@@ -401,7 +404,10 @@ fn processing_only_api_is_explicitly_bounded() {
     stream.extend_from_slice(&status_query(2));
     let mut transport = MemoryTransport::new(stream);
     let mut io = PrePlayIo::<SyntheticTarget>::new(limits(), large_scratch());
-    assert!(matches!(io.read_once(&mut transport), Ok(ReadOutcome::Data(_))));
+    assert!(matches!(
+        io.read_once(&mut transport),
+        Ok(ReadOutcome::Data(_))
+    ));
 
     let report = io
         .process_available(STATUS_LABEL, budget(2))
@@ -491,7 +497,10 @@ fn write_once_exposes_partial_progress_without_copying_to_second_queue() {
     let mut transport = MemoryTransport::new(input);
     let mut io = PrePlayIo::<SyntheticTarget>::new(limits(), large_scratch());
 
-    assert!(matches!(io.read_once(&mut transport), Ok(ReadOutcome::Data(_))));
+    assert!(matches!(
+        io.read_once(&mut transport),
+        Ok(ReadOutcome::Data(_))
+    ));
     let process = io
         .process_available(STATUS_LABEL, budget(2))
         .expect("queue status response");
