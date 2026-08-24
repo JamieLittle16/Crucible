@@ -1,6 +1,6 @@
 # R0 Status Semantic Contract — Minecraft Java 26.2
 
-Status: **source-reviewed, packet-ID derivation pending final `ProtocolCodecBuilder` link**  
+Status: **source-reviewed; protocol-776 R0 packet IDs source-derived**  
 Target: Minecraft **26.2**, protocol **776**, data version **4903**  
 Source archive SHA-256: `1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750`  
 Fingerprint algorithm: `java-token-v2-literal-sensitive`
@@ -24,9 +24,8 @@ registry objects, listener allocation, JSON implementation, or socket/runtime ar
   registers `CLIENT_INTENTION` as its only packet codec entry.
 - **SEM-NET-R0-005 — status registration order.** In the status protocol, serverbound registration
   order is status request followed by ping request; clientbound registration order is status
-  response followed by pong response. This rule records source order only; the final claim that the
-  zero-based codec position is the wire packet ID is completed by the separate
-  `ProtocolCodecBuilder` review.
+  response followed by pong response. Combined with `SEM-NET-R0-015`, these positions are the
+  target wire packet IDs.
 - **SEM-NET-R0-006 — status request payload.** `ServerboundStatusRequestPacket` is a unit packet:
   after the packet ID it carries no payload bytes.
 - **SEM-NET-R0-007 — status response envelope.** `ClientboundStatusResponsePacket` carries one
@@ -51,15 +50,21 @@ registry objects, listener allocation, JSON implementation, or socket/runtime ar
 - **SEM-NET-R0-014 — protocol-builder order preservation.** `ProtocolInfoBuilder.addPacket` appends
   codec entries to one ordered list; packet-codec construction iterates that list in order and feeds
   each entry to `ProtocolCodecBuilder`; `Details.listPackets` reports each entry with its zero-based
-  list index. This rule deliberately stops one link short of asserting that the
-  `ProtocolCodecBuilder` integer is the on-wire packet ID.
+  list index.
+- **SEM-NET-R0-015 — wire packet-ID dispatch.** `ProtocolCodecBuilder.add` forwards each accepted
+  packet type/serializer to one `IdDispatchCodec.Builder` in registration order. The dispatch builder
+  appends entries in that order; `build` assigns each unique type the current map size, producing
+  zero-based consecutive IDs in insertion order. Decode reads a Minecraft `VarInt`, indexes the
+  ordered entry list by that integer, and rejects out-of-range IDs. Encode looks up the same assigned
+  integer for the packet type, writes it with Minecraft `VarInt`, and selects the serializer at that
+  same list index. Consequently the source-derived R0 IDs are: handshake intention `0`; status
+  request `0`; ping request `1`; status response `0`; pong response `1`.
 
-## Pending final source link
+## Derived finite identities
 
-Before `PROTO-NET-STATUS-26_2-001` may freeze numeric packet IDs, the exact target
-`ProtocolCodecBuilder` source must be reviewed and fingerprint-pinned to prove how the integer used
-by its encoder/decoder is assigned from insertion order. Black-box capture is an independent
-convergence gate, not a substitute for this source link.
+The packet IDs above are now admitted source facts rather than community-table constants or
+black-box inferences. The independent capture gate still has to converge on the selected golden
+frames before the generated target adapter is admitted as an R0 session.
 
 ## Crucible implementation freedom
 

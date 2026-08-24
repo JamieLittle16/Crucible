@@ -6,93 +6,33 @@
   "require_semantic_rules": true,
   "require_hazards_reviewed": true,
   "methods": [
-    {
-      "query": "net.minecraft.network.protocol.handshake.ClientIntent#<clinit>()",
-      "var_id": "VAR-NET-R0-CLIENT-INTENT-DECL-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.handshake.ClientIntent#byId(final int id)",
-      "var_id": "VAR-NET-R0-CLIENT-INTENT-BY-ID-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.handshake.ClientIntentionPacket#<clinit>()",
-      "var_id": "VAR-NET-R0-CLIENT-INTENTION-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.handshake.ClientIntentionPacket#ClientIntentionPacket(final FriendlyByteBuf input)",
-      "var_id": "VAR-NET-R0-HANDSHAKE-DECODE-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.handshake.HandshakeProtocols#<clinit>()",
-      "var_id": "VAR-NET-R0-HANDSHAKE-REGISTRATION-001"
-    },
-    {
-      "query": "net.minecraft.server.network.ServerHandshakePacketListenerImpl#handleIntention(final ClientIntentionPacket packet)",
-      "var_id": "VAR-NET-R0-HANDSHAKE-STATUS-TRANSITION-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.status.ServerboundStatusRequestPacket#<clinit>()",
-      "var_id": "VAR-NET-R0-STATUS-REQUEST-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.status.ClientboundStatusResponsePacket#<clinit>()",
-      "var_id": "VAR-NET-R0-STATUS-RESPONSE-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.status.StatusProtocols#<clinit>()",
-      "var_id": "VAR-NET-R0-STATUS-REGISTRATION-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.status.ServerStatus#<clinit>()",
-      "var_id": "VAR-NET-R0-SERVER-STATUS-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.status.ServerStatus$Players#<clinit>()",
-      "var_id": "VAR-NET-R0-SERVER-STATUS-PLAYERS-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.status.ServerStatus$Version#<clinit>()",
-      "var_id": "VAR-NET-R0-SERVER-STATUS-VERSION-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.server.network.ServerStatusPacketListenerImpl#handleStatusRequest(final ServerboundStatusRequestPacket packet)",
-      "var_id": "VAR-NET-R0-STATUS-REQUEST-HANDLER-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.ping.ServerboundPingRequestPacket#<clinit>()",
-      "var_id": "VAR-NET-R0-PING-REQUEST-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.ping.ServerboundPingRequestPacket#ServerboundPingRequestPacket(final ByteBuf input)",
-      "var_id": "VAR-NET-R0-PING-DECODE-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.ping.ClientboundPongResponsePacket#<clinit>()",
-      "var_id": "VAR-NET-R0-PONG-RESPONSE-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.ping.ClientboundPongResponsePacket#write(final FriendlyByteBuf output)",
-      "var_id": "VAR-NET-R0-PONG-ENCODE-001"
-    },
-    {
-      "query": "net.minecraft.server.network.ServerStatusPacketListenerImpl#handlePingRequest(final ServerboundPingRequestPacket packet)",
-      "var_id": "VAR-NET-R0-PING-HANDLER-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.ProtocolInfoBuilder#addPacket(final PacketType < P > type , final StreamCodec < ? super B , P > serializer)",
-      "var_id": "VAR-NET-R0-PROTOCOL-BUILDER-ADD-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.ProtocolInfoBuilder#buildPacketCodec(final Function < ByteBuf , B > contextWrapper , final List < ProtocolInfoBuilder . CodecEntry < T , ? , B , C >> codecs , final C context)",
-      "var_id": "VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.ProtocolInfoBuilder#buildDetails(final ConnectionProtocol protocol , final PacketFlow flow , final List < ? extends ProtocolInfoBuilder . CodecEntry < ? , ? , ? , ? >> codecs)",
-      "var_id": "VAR-NET-R0-PROTOCOL-BUILDER-DETAILS-001"
-    },
-    {
-      "query": "net.minecraft.network.protocol.ProtocolInfoBuilder$CodecEntry#addToBuilder(final ProtocolCodecBuilder < ByteBuf , T > codecBuilder , final Function < ByteBuf , B > contextWrapper , final C context)",
-      "var_id": "VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001"
-    }
+    {"query":"net.minecraft.network.protocol.handshake.ClientIntent#<clinit>()","var_id":"VAR-NET-R0-CLIENT-INTENT-DECL-001"},
+    {"query":"net.minecraft.network.protocol.handshake.ClientIntent#byId(final int id)","var_id":"VAR-NET-R0-CLIENT-INTENT-BY-ID-001"},
+    {"query":"net.minecraft.network.protocol.handshake.ClientIntentionPacket#<clinit>()","var_id":"VAR-NET-R0-CLIENT-INTENTION-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.handshake.ClientIntentionPacket#ClientIntentionPacket(final FriendlyByteBuf input)","var_id":"VAR-NET-R0-HANDSHAKE-DECODE-001"},
+    {"query":"net.minecraft.network.protocol.handshake.HandshakeProtocols#<clinit>()","var_id":"VAR-NET-R0-HANDSHAKE-REGISTRATION-001"},
+    {"query":"net.minecraft.server.network.ServerHandshakePacketListenerImpl#handleIntention(final ClientIntentionPacket packet)","var_id":"VAR-NET-R0-HANDSHAKE-STATUS-TRANSITION-001"},
+    {"query":"net.minecraft.network.protocol.status.ServerboundStatusRequestPacket#<clinit>()","var_id":"VAR-NET-R0-STATUS-REQUEST-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.status.ClientboundStatusResponsePacket#<clinit>()","var_id":"VAR-NET-R0-STATUS-RESPONSE-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.status.StatusProtocols#<clinit>()","var_id":"VAR-NET-R0-STATUS-REGISTRATION-001"},
+    {"query":"net.minecraft.network.protocol.status.ServerStatus#<clinit>()","var_id":"VAR-NET-R0-SERVER-STATUS-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.status.ServerStatus$Players#<clinit>()","var_id":"VAR-NET-R0-SERVER-STATUS-PLAYERS-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.status.ServerStatus$Version#<clinit>()","var_id":"VAR-NET-R0-SERVER-STATUS-VERSION-CODEC-001"},
+    {"query":"net.minecraft.server.network.ServerStatusPacketListenerImpl#handleStatusRequest(final ServerboundStatusRequestPacket packet)","var_id":"VAR-NET-R0-STATUS-REQUEST-HANDLER-001"},
+    {"query":"net.minecraft.network.protocol.ping.ServerboundPingRequestPacket#<clinit>()","var_id":"VAR-NET-R0-PING-REQUEST-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.ping.ServerboundPingRequestPacket#ServerboundPingRequestPacket(final ByteBuf input)","var_id":"VAR-NET-R0-PING-DECODE-001"},
+    {"query":"net.minecraft.network.protocol.ping.ClientboundPongResponsePacket#<clinit>()","var_id":"VAR-NET-R0-PONG-RESPONSE-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.ping.ClientboundPongResponsePacket#write(final FriendlyByteBuf output)","var_id":"VAR-NET-R0-PONG-ENCODE-001"},
+    {"query":"net.minecraft.server.network.ServerStatusPacketListenerImpl#handlePingRequest(final ServerboundPingRequestPacket packet)","var_id":"VAR-NET-R0-PING-HANDLER-001"},
+    {"query":"net.minecraft.network.protocol.ProtocolInfoBuilder#addPacket(final PacketType < P > type , final StreamCodec < ? super B , P > serializer)","var_id":"VAR-NET-R0-PROTOCOL-BUILDER-ADD-001"},
+    {"query":"net.minecraft.network.protocol.ProtocolInfoBuilder#buildPacketCodec(final Function < ByteBuf , B > contextWrapper , final List < ProtocolInfoBuilder . CodecEntry < T , ? , B , C >> codecs , final C context)","var_id":"VAR-NET-R0-PROTOCOL-BUILDER-CODEC-001"},
+    {"query":"net.minecraft.network.protocol.ProtocolInfoBuilder#buildDetails(final ConnectionProtocol protocol , final PacketFlow flow , final List < ? extends ProtocolInfoBuilder . CodecEntry < ? , ? , ? , ? >> codecs)","var_id":"VAR-NET-R0-PROTOCOL-BUILDER-DETAILS-001"},
+    {"query":"net.minecraft.network.protocol.ProtocolInfoBuilder$CodecEntry#addToBuilder(final ProtocolCodecBuilder < ByteBuf , T > codecBuilder , final Function < ByteBuf , B > contextWrapper , final C context)","var_id":"VAR-NET-R0-PROTOCOL-BUILDER-ENTRY-001"},
+    {"query":"net.minecraft.network.protocol.ProtocolCodecBuilder#add(final PacketType < T > type , final StreamCodec < ? super B , T > serializer)","var_id":"VAR-NET-R0-PROTOCOL-CODEC-ADD-001"},
+    {"query":"net.minecraft.network.protocol.ProtocolCodecBuilder#build()","var_id":"VAR-NET-R0-PROTOCOL-CODEC-BUILD-001"},
+    {"query":"net.minecraft.network.codec.IdDispatchCodec$Builder#add(final T type , final StreamCodec < ? super B , ? extends V > serializer)","var_id":"VAR-NET-R0-ID-DISPATCH-BUILDER-ADD-001"},
+    {"query":"net.minecraft.network.codec.IdDispatchCodec$Builder#build()","var_id":"VAR-NET-R0-ID-DISPATCH-BUILDER-BUILD-001"},
+    {"query":"net.minecraft.network.codec.IdDispatchCodec#decode(final B input)","var_id":"VAR-NET-R0-ID-DISPATCH-DECODE-001"},
+    {"query":"net.minecraft.network.codec.IdDispatchCodec#encode(final B output , final V value)","var_id":"VAR-NET-R0-ID-DISPATCH-ENCODE-001"}
   ]
 }

@@ -4,9 +4,9 @@ Target: Minecraft Java **26.2**, protocol **776**, data version **4903**.
 Pinned source archive SHA-256:
 `1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750`.
 
-This review records client-observable source facts for the first multiplayer-list milestone. It
-separates target semantics from Mojang mechanism and intentionally does not yet admit numeric packet
-IDs: one final `ProtocolCodecBuilder` source link is still required.
+This review records client-observable source facts for the first multiplayer-list milestone and
+separates target semantics from Mojang mechanism. The numeric R0 packet-ID derivation is now closed
+against the pinned source through `ProtocolCodecBuilder` and `IdDispatchCodec`.
 
 ## Handshake
 
@@ -57,17 +57,34 @@ disconnects.
 This lifecycle is important: R0 must not turn the status connection into a reusable generic request
 loop simply because that would be a convenient abstraction.
 
-## Packet-number derivation frontier
+## Packet-number derivation
 
 `ProtocolInfoBuilder.addPacket` appends to an `ArrayList`. Both `buildPacketCodec` and
 `buildDetails` consume a copied ordered codec list. `buildPacketCodec` visits entries in list order;
 `CodecEntry.addToBuilder` forwards each type/codec to `ProtocolCodecBuilder.add`.
 `Details.listPackets` exposes the same list position `i` as the reported network ID.
 
-That is strong evidence that registration order is intentional, but it is not yet sufficient for
-Crucible's source firewall to assert the actual wire integer. The missing proof obligation is narrow:
-review the exact 26.2 `ProtocolCodecBuilder.add/build` encode/decode mapping and pin those method
-fingerprints. Only then will the source contract derive handshake/status/ping numeric IDs.
+`ProtocolCodecBuilder.add` validates packet flow and forwards the packet type/serializer to one
+`IdDispatchCodec.Builder`; `build` returns that builder's codec. The dispatch builder appends entries
+in registration order. During `build`, it walks those entries in the same order and assigns each
+unique type `id = toId.size()`, so the first registration receives 0, the second 1, and so on.
+Duplicate type registration is rejected.
+
+`IdDispatchCodec.decode` reads a Minecraft `VarInt` and uses that integer directly as the index into
+the ordered entry list, rejecting negative or out-of-range IDs. `encode` obtains the type's assigned
+integer from the same map, writes it with Minecraft `VarInt`, and chooses the serializer at that
+same list index.
+
+Combining those rules with the reviewed registration declarations closes the R0 identities:
+
+- handshake serverbound `CLIENT_INTENTION` = 0;
+- status serverbound `STATUS_REQUEST` = 0;
+- status serverbound `PING_REQUEST` = 1;
+- status clientbound `STATUS_RESPONSE` = 0;
+- status clientbound `PONG_RESPONSE` = 1.
+
+These are source-derived protocol-776 facts. The independent black-box capture remains a byte-level
+convergence test; it is not the source of packet meaning or identity.
 
 ## Mechanisms not frozen
 

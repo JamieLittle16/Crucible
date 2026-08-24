@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Narrow discovery-only official-source frontier for the R0 multiplayer-list milestone. Roots are a strict subset of the broader P0 pre-play frontier and identify only connection, handshake and status/ping review anchors, including the exact protocol-construction declarations needed to derive finite packet identity. They are not packet IDs, semantic assertions or an admission gate.",
+  "description": "Narrow discovery-only official-source frontier for the R0 multiplayer-list milestone. Roots are a strict subset of the broader P0 pre-play frontier and identify only connection, handshake and status/ping review anchors, including the exact protocol-construction and integer-dispatch source needed to derive finite packet identity. They are not packet IDs, semantic assertions or an admission gate.",
   "max_depth": 8,
   "include_package_prefixes": [
     "net.minecraft.network",
@@ -17,6 +17,7 @@
     "net.minecraft.network.protocol.Packet",
     "net.minecraft.network.protocol.ProtocolInfoBuilder",
     "net.minecraft.network.protocol.ProtocolCodecBuilder",
+    "net.minecraft.network.codec.IdDispatchCodec",
     "net.minecraft.network.protocol.handshake.ClientIntent",
     "net.minecraft.network.protocol.handshake.ClientIntentionPacket",
     "net.minecraft.network.protocol.handshake.HandshakeProtocols",
