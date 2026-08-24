@@ -73,18 +73,16 @@ impl ServerSessionEpoch {
         while output < bytes.len() {
             let high_index = output * 2;
             let low_index = high_index + 1;
-            let high = hex_nibble(source[high_index]).ok_or(
-                ServerSessionEpochParseError::InvalidHex {
+            let high =
+                hex_nibble(source[high_index]).ok_or(ServerSessionEpochParseError::InvalidHex {
                     index: high_index,
                     byte: source[high_index],
-                },
-            )?;
-            let low = hex_nibble(source[low_index]).ok_or(
-                ServerSessionEpochParseError::InvalidHex {
+                })?;
+            let low =
+                hex_nibble(source[low_index]).ok_or(ServerSessionEpochParseError::InvalidHex {
                     index: low_index,
                     byte: source[low_index],
-                },
-            )?;
+                })?;
             bytes[output] = (high << 4) | low;
             output += 1;
         }
@@ -175,11 +173,7 @@ where
     let budget = action_budget();
 
     loop {
-        let report = io.service_once(
-            transport,
-            crucible_server::R0_ORACLE_STATUS_JSON,
-            budget,
-        )?;
+        let report = io.service_once(transport, crucible_server::R0_ORACLE_STATUS_JSON, budget)?;
 
         if io.connection().phase() == SessionPhase::Configuration {
             debug_assert_eq!(io.connection().queued_egress(), 0);
@@ -282,9 +276,8 @@ mod tests {
         stream.extend_from_slice(
             admitted_login_codegen::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_LOGIN_FRAME,
         );
-        stream.extend_from_slice(
-            admitted_login_codegen::golden::LOGIN_SERVERBOUND_LOGIN_HELLO_FRAME,
-        );
+        stream
+            .extend_from_slice(admitted_login_codegen::golden::LOGIN_SERVERBOUND_LOGIN_HELLO_FRAME);
         stream.extend_from_slice(
             admitted_login_codegen::golden::LOGIN_SERVERBOUND_LOGIN_ACKNOWLEDGED_FRAME,
         );
@@ -298,8 +291,8 @@ mod tests {
         assert_eq!(
             epoch.into_bytes(),
             [
-                0x4d, 0x7f, 0x60, 0x4f, 0x19, 0x6a, 0x43, 0xb0, 0x89, 0x87, 0xf0, 0xb2, 0xa2,
-                0x7c, 0x26, 0x63,
+                0x4d, 0x7f, 0x60, 0x4f, 0x19, 0x6a, 0x43, 0xb0, 0x89, 0x87, 0xf0, 0xb2, 0xa2, 0x7c,
+                0x26, 0x63,
             ]
         );
     }
