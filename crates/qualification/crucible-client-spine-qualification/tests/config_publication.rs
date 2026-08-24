@@ -3,9 +3,7 @@ mod config_publication;
 
 use std::mem::size_of;
 
-use config_publication::{
-    PublicationCursor, PublicationImage, PublicationStep, publish_one, publish_until_blocked,
-};
+use config_publication::{PublicationCursor, PublicationImage, PublicationStep, publish_one};
 use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
 use crucible_connection_driver::{ConnectionDriver, DriverError};
 
@@ -58,7 +56,7 @@ fn drain_with_pattern(
 ) -> Vec<u8> {
     assert!(!pattern.is_empty());
     let mut driver = ConnectionDriver::new(limits(max_body, egress));
-    let mut cursor = image.cursor();
+    let mut cursor = PublicationCursor::new();
     let mut observed = Vec::new();
     let mut pattern_index = 0usize;
 
@@ -90,7 +88,7 @@ fn drain_with_pattern(
 #[test]
 fn empty_publication_is_a_noop() {
     let image = image(&[]);
-    let mut cursor = image.cursor();
+    let mut cursor = PublicationCursor::new();
     let mut driver = ConnectionDriver::new(limits(16, 17));
 
     assert_eq!(
@@ -106,12 +104,18 @@ fn empty_publication_is_a_noop() {
 fn candidate_is_byte_exact_with_repeated_reference_queueing() {
     let image = image(&[1, 2, 15, 16, 31, 63, 127]);
     let expected = reference_stream(&image, 127);
-    let mut cursor = image.cursor();
+    let mut cursor = PublicationCursor::new();
     let mut driver = ConnectionDriver::new(limits(127, 4 * 1_024));
 
+    for expected_index in 0..image.frame_count() {
+        assert!(matches!(
+            publish_one::<()>(&image, &mut cursor, &mut driver),
+            Ok(PublicationStep::Queued { index, .. }) if index == expected_index
+        ));
+    }
     assert_eq!(
-        publish_until_blocked::<()>(&image, &mut cursor, &mut driver),
-        Ok(image.frame_count())
+        publish_one::<()>(&image, &mut cursor, &mut driver),
+        Ok(PublicationStep::Complete)
     );
     assert!(cursor.is_complete(&image));
     assert_eq!(driver.pending_egress(), expected);
@@ -120,7 +124,7 @@ fn candidate_is_byte_exact_with_repeated_reference_queueing() {
 #[test]
 fn capacity_rejection_preserves_cursor_and_existing_egress() {
     let image = image(&[16, 16]);
-    let mut cursor = image.cursor();
+    let mut cursor = PublicationCursor::new();
     let mut driver = ConnectionDriver::new(limits(16, 17));
 
     assert!(matches!(
@@ -148,7 +152,7 @@ fn capacity_rejection_preserves_cursor_and_existing_egress() {
 fn partial_drain_then_compaction_allows_exact_resume() {
     let image = image(&[16, 16]);
     let expected = reference_stream(&image, 16);
-    let mut cursor = image.cursor();
+    let mut cursor = PublicationCursor::new();
     let mut driver = ConnectionDriver::new(limits(16, 17));
     let mut observed = Vec::new();
 
@@ -213,7 +217,7 @@ fn two_connections_share_image_but_not_cursor_or_backpressure() {
 #[test]
 fn oversized_next_body_is_rejected_without_cursor_progress() {
     let image = image(&[17]);
-    let mut cursor = image.cursor();
+    let mut cursor = PublicationCursor::new();
     let mut driver = ConnectionDriver::new(limits(16, 17));
 
     assert!(matches!(
