@@ -15,6 +15,12 @@ use crucible_connection_core::{ConnectionBufferError, ConnectionLimits, FrameVie
 use crucible_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
 use crucible_session_core::{SessionPhase, SessionState};
 
+mod proactive;
+pub use proactive::{
+    PrePlayPublication, PrePlayPublicationProcess, PrePlayPublisher, PublicationCursor,
+    PublicationStep,
+};
+
 /// One target-decoded candidate action which can be committed atomically.
 ///
 /// The candidate session must be derived from the session passed to [`PrePlayTarget::decode`]. The

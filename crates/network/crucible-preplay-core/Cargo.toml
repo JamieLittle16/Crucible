@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 crucible-connection-core = { path = "../crucible-connection-core" }
 crucible-connection-driver = { path = "../crucible-connection-driver" }
+crucible-publication-core = { path = "../crucible-publication-core" }
 crucible-session-core = { path = "../crucible-session-core" }
 
 [dev-dependencies]
