@@ -87,10 +87,19 @@ class R1BConfigurationSourceClosureTests(unittest.TestCase):
                 "notes": [],
             }
             (review / "records" / "VAR-X.json").write_text(json.dumps(record))
-            (review / "gate" / f"{closure.GATE_ID}.json").write_text("{}")
+            gate = {
+                "schema": 1,
+                "id": closure.GATE_ID,
+                "minimum_status": "VAR_REVIEWED",
+                "require_semantic_rules": True,
+                "require_hazards_reviewed": True,
+                "methods": [{"query": "example.X#work()", "var_id": "VAR-X"}],
+            }
+            (review / "gate" / f"{closure.GATE_ID}.json").write_text(json.dumps(gate))
             worksheet = {
                 "schema": 1,
                 "kind": closure.WORKSHEET_KIND,
+                "contains_official_source_text": False,
                 "candidate_count": 1,
                 "candidates": [
                     {
@@ -112,6 +121,7 @@ class R1BConfigurationSourceClosureTests(unittest.TestCase):
             worksheet_path.write_text(json.dumps(worksheet))
             with self.assertRaises(closure.ClosureError):
                 closure.finalize(review, output)
+            self.assertFalse(output.exists())
 
             decision = worksheet["candidates"][0]["decision"]
             decision.update(
@@ -124,6 +134,7 @@ class R1BConfigurationSourceClosureTests(unittest.TestCase):
             worksheet_path.write_text(json.dumps(worksheet))
             with self.assertRaises(closure.ClosureError):
                 closure.finalize(review, output)
+            self.assertFalse(output.exists())
 
             decision["hazards_reviewed"] = ["CODEC"]
             worksheet_path.write_text(json.dumps(worksheet))
