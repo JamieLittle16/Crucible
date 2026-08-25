@@ -38,6 +38,13 @@ class R1BConfigurationSourceClosureTests(unittest.TestCase):
         self.assertEqual(candidates["VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001"].param_count, 2)
         self.assertEqual(candidates["VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-INTO-001"].param_count, 3)
         self.assertEqual(candidates["VAR-NET-R1B-CLOSURE-UTF8-WRITE-001"].param_count, 3)
+        self.assertEqual(
+            candidates[
+                "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001"
+            ].exact_signature,
+            "collection(final IntFunction < C > constructor , "
+            "final StreamCodec < ? super B , V > elementCodec)",
+        )
 
     def _connection(self) -> sqlite3.Connection:
         connection = sqlite3.connect(":memory:")
