@@ -626,8 +626,13 @@ fn validate_replay_profile(base: Target26_2State) -> Result<(), R1xError> {
     Ok(())
 }
 
+/// Public only because [`PrePlayPublisher`] exposes its commit token as an associated type.
+///
+/// R1X callers should never construct or branch on this token; it is hidden plumbing between the
+/// target proposal and the target-neutral publication binder.
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum R1xPublicationCommit {
+pub enum R1xPublicationCommit {
     ConfigurationEntry,
     ConfigurationRegistry,
     ConfigurationFinish,
@@ -721,7 +726,6 @@ impl PrePlayPublisher for Target26_2R1x {
 #[cfg(test)]
 mod tests {
     use crucible_preplay_core::{PrePlayPublisher, PublicationCursor, PublicationStep};
-    use crucible_protocol_core::encode_var_int;
 
     use super::{
         CONFIGURATION_BODY_SIZES, CONFIGURATION_ENTRY_END, CONFIGURATION_REGISTRY_END,
@@ -799,13 +803,9 @@ mod tests {
 
     #[test]
     fn known_pack_branch_is_exactly_the_selected_core_pack() {
-        let mut payload = Vec::new();
-        encode_var_int(1, &mut payload);
+        let mut payload = vec![1];
         for value in ["minecraft", "core", "26.2"] {
-            encode_var_int(
-                i32::try_from(value.len()).expect("small string"),
-                &mut payload,
-            );
+            payload.push(u8::try_from(value.len()).expect("selected strings fit one-byte VarInt"));
             payload.extend_from_slice(value.as_bytes());
         }
         assert_eq!(super::decode_selected_known_pack(&payload), Ok(()));
