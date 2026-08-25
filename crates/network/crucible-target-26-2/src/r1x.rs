@@ -244,7 +244,7 @@ fn validate_play(play: &[Box<[u8]>]) -> Result<usize, R1xContextError> {
     Ok(total)
 }
 
-/// Compact latest ClientInformation retained across Configuration.
+/// Compact latest `ClientInformation` retained across Configuration.
 ///
 /// The language is inline because target state is deliberately Copy and allocation-free. The
 /// admitted 16-UTF-16-unit bound implies at most 48 UTF-8 bytes.
@@ -321,7 +321,7 @@ impl ClientInformation {
 // PacketReader intentionally exposes only the generic primitives R0/R1A needed so far. These two
 // one-byte Configuration fields stay local to the target rather than widening packet-core solely
 // for this experimental slice. Rebuilding the reader over the borrowed tail remains allocation-free.
-fn read_u8<'a>(reader: &mut PacketReader<'a>) -> Result<u8, R1xError> {
+fn read_u8(reader: &mut PacketReader<'_>) -> Result<u8, R1xError> {
     let remaining = reader.read_remaining();
     let Some((&value, tail)) = remaining.split_first() else {
         return Err(R1xError::InvalidClientInformation);
@@ -330,7 +330,7 @@ fn read_u8<'a>(reader: &mut PacketReader<'a>) -> Result<u8, R1xError> {
     Ok(value)
 }
 
-fn read_i8<'a>(reader: &mut PacketReader<'a>) -> Result<i8, R1xError> {
+fn read_i8(reader: &mut PacketReader<'_>) -> Result<i8, R1xError> {
     Ok(i8::from_be_bytes([read_u8(reader)?]))
 }
 
@@ -418,7 +418,7 @@ pub enum R1xError {
     ConfigurationNotStarted,
     /// Selected known-pack response did not match the one immutable registry image.
     KnownPackSelectionMismatch,
-    /// ClientInformation violated the admitted field law.
+    /// `ClientInformation` violated the admitted field law.
     InvalidClientInformation,
     /// Finish acknowledgement arrived before the clientbound finish publication completed.
     PrematureFinishAcknowledgement,
