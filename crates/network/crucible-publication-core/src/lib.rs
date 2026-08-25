@@ -20,6 +20,10 @@
 
 #![forbid(unsafe_code)]
 
+mod staged;
+
+pub use staged::{StagedPublicationCursor, StagedPublicationStep, publish_staged_one};
+
 use crucible_connection_driver::{ConnectionDriver, DriverError};
 
 /// Allocation-free per-connection progress through one ordered immutable publication.
