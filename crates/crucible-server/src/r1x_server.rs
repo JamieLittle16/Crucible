@@ -362,8 +362,7 @@ fn serverbound_keep_alive_frame(
     id: i64,
 ) -> [u8; crucible_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1] {
     let body = crucible_target_26_2::play_liveness::encode_serverbound_keep_alive(id);
-    let mut frame =
-        [0_u8; crucible_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1];
+    let mut frame = [0_u8; crucible_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1];
     frame[0] = u8::try_from(body.len()).expect("keep-alive body length fits one-byte VarInt");
     frame[1..].copy_from_slice(&body);
     frame
@@ -434,8 +433,8 @@ fn action_budget() -> ActionBudget {
 #[cfg(test)]
 mod tests {
     use super::{
-        EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, LiveDisposition, LiveLivenessService, limits,
-        process_one_live_inbound, serverbound_keep_alive_frame, service_live_liveness,
+        EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, LiveDisposition, LiveLivenessService,
+        limits, process_one_live_inbound, serverbound_keep_alive_frame, service_live_liveness,
     };
     use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
     use crucible_connection_driver::ConnectionDriver;
