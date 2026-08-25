@@ -1,0 +1,22 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLIENT-INFO-HANDLER-001",
+  "notes": [
+    "Client-information handler directly replaces the retained listener value.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-004"
+  ],
+  "source": {
+    "body_sha256": "1044714e574f11809a363f21275e481bacff76e7b0fd3e9a0026b491407f928e",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "732b6cf6939c44365cb5a5772d86f17162fb18e650fb34476bc822a409ef3dc3",
+    "signature": "handleClientInformation(final ServerboundClientInformationPacket packet)",
+    "type": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl"
+  },
+  "status": "VAR_REVIEWED"
+}

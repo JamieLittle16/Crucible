@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-BRAND-PAYLOAD-CODEC-001",
+  "notes": [
+    "Brand payload type and STREAM_CODEC delegation reviewed. String constructor/writer bodies require the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-003"
+  ],
+  "source": {
+    "body_sha256": "afa3231fb4ea1203b8d3b54b4facd5e3b9a6229ece038f247ec6d28b1d1db32b",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "32d3d97c8ad4144f46b270553e5aa5d5c1afcf55bf7c3816cf9a4f7c36a95fdf",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.common.custom.BrandPayload"
+  },
+  "status": "VAR_REVIEWED"
+}

@@ -1,0 +1,22 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-KNOWN-PACK-HANDLER-001",
+  "notes": [
+    "Handler requires an active registry-sync task, delegates the response, then completes that task. Task-progression helper bodies require the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-006"
+  ],
+  "source": {
+    "body_sha256": "764195ac9c9a4a36cf49f1ad6d9b73e617929687732ba3460d9ec94be36ad6be",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "3dd869fc216c8226841f4ea541796c1be1504ca4068b54605b4ad78f6bab02a0",
+    "signature": "handleSelectKnownPacks(final ServerboundSelectKnownPacks packet)",
+    "type": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl"
+  },
+  "status": "VAR_REVIEWED"
+}

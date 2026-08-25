@@ -1,0 +1,24 @@
+{
+  "classifications": [
+    "LIFECYCLE_CANDIDATE"
+  ],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-PREPARE-SPAWN-TICK-001",
+  "notes": [
+    "Outer tick delegates the Preparing-to-Ready transition. The nested Preparing.tick body must be fingerprinted by the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-009"
+  ],
+  "source": {
+    "body_sha256": "bc845c37cc1bfcc83ce464d26dee352362620c483b0dcc2f84a2a74e45f6cb92",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "b9aeca46449574792da2c78c84f9ea148f259878a2383313564cacb676e16111",
+    "signature": "tick()",
+    "type": "net.minecraft.server.network.config.PrepareSpawnTask"
+  },
+  "status": "VAR_REVIEWED"
+}

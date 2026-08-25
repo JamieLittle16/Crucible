@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-CONFIG-REGISTRATION-001",
+  "notes": [
+    "Exact Configuration registration insertion order reviewed. Registered-but-unused surfaces remain distinct from selected-route sends.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-001"
+  ],
+  "source": {
+    "body_sha256": "39dd59e8827044bb8f25ee6fe527e6a1c281a8829f61596788fd06191e0cf0db",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "43cb185a580203f60926381c7898eb8bac2d113abb262de81b3e6f32eab19b09",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.configuration.ConfigurationProtocols"
+  },
+  "status": "VAR_REVIEWED"
+}

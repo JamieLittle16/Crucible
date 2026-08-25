@@ -1,0 +1,22 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CUSTOM-PAYLOAD-HANDLER-001",
+  "notes": [
+    "Common server custom-payload handler is a no-op on the selected route.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-003"
+  ],
+  "source": {
+    "body_sha256": "f44598b6f64a3e1ff38d05c3eb80eea453f4d2b468b198876e1fdc1debdfa8d9",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "signature": "handleCustomPayload(final ServerboundCustomPayloadPacket packet)",
+    "type": "net.minecraft.server.network.ServerCommonPacketListenerImpl"
+  },
+  "status": "VAR_REVIEWED"
+}

@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-FINISH-SERVERBOUND-CODEC-001",
+  "notes": [
+    "Direct unit serverbound finish codec reviewed. Configuration-to-Play handoff behavior is separately bound by the finish handler.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-010"
+  ],
+  "source": {
+    "body_sha256": "8504ff5e677e4e6b7a26fff493e513ce2dfb2b97e4fb74556967a14de44b914a",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "f8bd646e9359f9b3f9c9abdf465c3e1b3c615af18001a49e195b625cb55ab63f",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket"
+  },
+  "status": "VAR_REVIEWED"
+}

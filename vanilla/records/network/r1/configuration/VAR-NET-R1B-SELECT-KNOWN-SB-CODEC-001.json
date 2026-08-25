@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-SELECT-KNOWN-SB-CODEC-001",
+  "notes": [
+    "Direct KnownPack list envelope with literal maximum 64 reviewed. Container mechanics require the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-005"
+  ],
+  "source": {
+    "body_sha256": "d1611aff6b2b52eb7181bb22949fdfded41b4a3eb2c8a237733e32be964fbb21",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "cbfd4537b1f3b332509d7112107180d1c00fa477ccf899f80310dc255407cfd6",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.configuration.ServerboundSelectKnownPacks"
+  },
+  "status": "VAR_REVIEWED"
+}

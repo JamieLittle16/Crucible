@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-UPDATE-TAGS-CODEC-001",
+  "notes": [
+    "Outer update-tags STREAM_CODEC delegation reviewed. Constructor, writer and nested map/list bodies require the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "d73d43bd9eabbe6c7564e9953f420d9cde6850c4a98f6d0b5b45f73b25f3a648",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "7100016fd8ddaf992739b49c44ed83014ef0b72a5d0412389dc03c5f1b35a537",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket"
+  },
+  "status": "VAR_REVIEWED"
+}

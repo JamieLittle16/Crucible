@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-ENABLED-FEATURES-CODEC-001",
+  "notes": [
+    "STREAM_CODEC delegation reviewed. Detailed collection/identifier read-write bodies require the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-002"
+  ],
+  "source": {
+    "body_sha256": "027eed584815a36958dad2d1ee8fe5b458ab2cacc2de893b09a16ef6a1447a26",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "ba4b2f7187dc14577bc61c43c68610dffb37cb92274ffd82c8891e66f7477638",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket"
+  },
+  "status": "VAR_REVIEWED"
+}

@@ -1,0 +1,22 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CONFIG-START-001",
+  "notes": [
+    "Entry body directly sends brand, conditional links and enabled features, then begins registry synchronization. Delegated task-insertion/progression helpers require the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-002"
+  ],
+  "source": {
+    "body_sha256": "62ed3230cf9ae6a11339ca549dcc9dad94022b5a4afa641ea8aeaadd62b2becf",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "8c058c5025174b149261cfe8ace5f5172ae57e3c5a0c16c464608340fb122f65",
+    "signature": "startConfiguration()",
+    "type": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl"
+  },
+  "status": "VAR_REVIEWED"
+}

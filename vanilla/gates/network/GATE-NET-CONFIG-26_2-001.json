@@ -1,0 +1,110 @@
+{
+  "frontier": "r1b-configuration-selected",
+  "id": "GATE-NET-CONFIG-26_2-001",
+  "methods": [
+    {
+      "query": "net.minecraft.network.protocol.configuration.ConfigurationProtocols#<clinit>()",
+      "var_id": "VAR-NET-R1B-CONFIG-REGISTRATION-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.configuration.ClientboundFinishConfigurationPacket#<clinit>()",
+      "var_id": "VAR-NET-R1B-FINISH-CLIENTBOUND-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.configuration.ServerboundFinishConfigurationPacket#<clinit>()",
+      "var_id": "VAR-NET-R1B-FINISH-SERVERBOUND-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket#<clinit>()",
+      "var_id": "VAR-NET-R1B-REGISTRY-DATA-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.configuration.ClientboundSelectKnownPacks#<clinit>()",
+      "var_id": "VAR-NET-R1B-SELECT-KNOWN-CB-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.configuration.ServerboundSelectKnownPacks#<clinit>()",
+      "var_id": "VAR-NET-R1B-SELECT-KNOWN-SB-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket#<clinit>()",
+      "var_id": "VAR-NET-R1B-ENABLED-FEATURES-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket#<clinit>()",
+      "var_id": "VAR-NET-R1B-UPDATE-TAGS-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket#<clinit>()",
+      "var_id": "VAR-NET-R1B-CB-CUSTOM-PAYLOAD-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket#<clinit>()",
+      "var_id": "VAR-NET-R1B-SB-CUSTOM-PAYLOAD-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.ServerboundClientInformationPacket#<clinit>()",
+      "var_id": "VAR-NET-R1B-CLIENT-INFO-PACKET-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.custom.BrandPayload#<clinit>()",
+      "var_id": "VAR-NET-R1B-BRAND-PAYLOAD-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.server.packs.repository.KnownPack#<clinit>()",
+      "var_id": "VAR-NET-R1B-KNOWN-PACK-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#startConfiguration",
+      "var_id": "VAR-NET-R1B-CONFIG-START-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleClientInformation",
+      "var_id": "VAR-NET-R1B-CLIENT-INFO-HANDLER-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleSelectKnownPacks",
+      "var_id": "VAR-NET-R1B-KNOWN-PACK-HANDLER-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#handleConfigurationFinished",
+      "var_id": "VAR-NET-R1B-CONFIG-FINISH-HANDLER-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerCommonPacketListenerImpl#handleCustomPayload",
+      "var_id": "VAR-NET-R1B-CUSTOM-PAYLOAD-HANDLER-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.SynchronizeRegistriesTask#start",
+      "var_id": "VAR-NET-R1B-REGISTRY-SYNC-START-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.SynchronizeRegistriesTask#sendRegistries",
+      "var_id": "VAR-NET-R1B-REGISTRY-SYNC-SEND-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.SynchronizeRegistriesTask#handleResponse",
+      "var_id": "VAR-NET-R1B-REGISTRY-SYNC-RESPONSE-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask#start",
+      "var_id": "VAR-NET-R1B-PREPARE-SPAWN-START-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask#tick",
+      "var_id": "VAR-NET-R1B-PREPARE-SPAWN-TICK-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.JoinWorldTask#start",
+      "var_id": "VAR-NET-R1B-JOIN-WORLD-START-001"
+    },
+    {
+      "query": "net.minecraft.server.players.PlayerList#placeNewPlayer",
+      "var_id": "VAR-NET-R1B-PLACE-NEW-PLAYER-001"
+    }
+  ],
+  "minimum_status": "VAR_REVIEWED",
+  "require_hazards_reviewed": true,
+  "require_semantic_rules": true,
+  "schema": 1
+}

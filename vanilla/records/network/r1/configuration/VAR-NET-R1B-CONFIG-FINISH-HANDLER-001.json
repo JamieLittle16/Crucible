@@ -1,0 +1,23 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CONFIG-FINISH-HANDLER-001",
+  "notes": [
+    "Finish handler completes the JoinWorld task, installs Play outbound protocol, performs admission checks and invokes the prepared-spawn handoff.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-010",
+    "SEM-NET-R1B-011"
+  ],
+  "source": {
+    "body_sha256": "4fdf430b8d8326546dc43e0fcafb71860440717e1f506de7d10c1bd25f6277fe",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "8bab7f66dd5ce25fc5cc8cc9a344af9f796968084f1b9076d887861b161378ae",
+    "signature": "handleConfigurationFinished(final ServerboundFinishConfigurationPacket packet)",
+    "type": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl"
+  },
+  "status": "VAR_REVIEWED"
+}

@@ -1,0 +1,22 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-JOIN-WORLD-START-001",
+  "notes": [
+    "JoinWorldTask.start directly sends clientbound finish_configuration. Queue/task ordering is separately bound by the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-010"
+  ],
+  "source": {
+    "body_sha256": "5a16a5bb89c7034392c541f2934d552c4b6c10569bd8a66f4aea2bfd40d10c16",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "e56d57159773cb9fc0bf5299ebf83802af00f8559b1b0b2655a7a5cb73eb0934",
+    "signature": "start(final Consumer < Packet < ? >> connection)",
+    "type": "net.minecraft.server.network.config.JoinWorldTask"
+  },
+  "status": "VAR_REVIEWED"
+}

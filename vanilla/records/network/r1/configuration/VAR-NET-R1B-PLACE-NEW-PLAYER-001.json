@@ -1,0 +1,22 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-PLACE-NEW-PLAYER-001",
+  "notes": [
+    "PlayerList.placeNewPlayer is the immediate source-inseparable Play-bootstrap entry reached by Configuration completion. Its downstream Play packet/codecs remain a separate Play-entry closure.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-011"
+  ],
+  "source": {
+    "body_sha256": "872a10a2b6990bd5bbee427998ffa6df92cc6ae1b03e76db1a7b2870edcfb116",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "19aff799c444c6ee51634579718824a9fff4041affbd2f935dab3a8b9f9fb959",
+    "signature": "placeNewPlayer(final Connection connection , final ServerPlayer player , final CommonListenerCookie cookie)",
+    "type": "net.minecraft.server.players.PlayerList"
+  },
+  "status": "VAR_REVIEWED"
+}

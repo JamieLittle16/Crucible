@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-FINISH-CLIENTBOUND-CODEC-001",
+  "notes": [
+    "Direct unit clientbound finish codec reviewed.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-010"
+  ],
+  "source": {
+    "body_sha256": "5f498e0d001b5c785c8f361cc219807a1851f9530a8c2a354664d298a526c0a8",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "502cd353449a7ec5bd4df79f9bef7438aac2c23c2f0013aa8896d4a90037d1ca",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.configuration.ClientboundFinishConfigurationPacket"
+  },
+  "status": "VAR_REVIEWED"
+}
