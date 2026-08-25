@@ -9,15 +9,17 @@ If you are new to the project, do not try to read everything in repository order
 ### I want to understand what Crucible is
 
 1. [`architecture/CRUCIBLE_MASTER_BLUEPRINT.md`](architecture/CRUCIBLE_MASTER_BLUEPRINT.md) — the concise architectural narrative: semantic fidelity, efficiency, concurrency, replaceability and the reference/production split.
-2. [`execution/EXECUTION_MASTER_PLAN.md`](execution/EXECUTION_MASTER_PLAN.md) — how the project advances by qualified vertical slices rather than feature accumulation.
-3. [`../README.md`](../README.md) — public project status, contributor quick-start and current milestone.
+2. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — the first stock-client Handshake → Play → visible-world black-box milestone and its exact claim limits.
+3. [`execution/EXECUTION_MASTER_PLAN.md`](execution/EXECUTION_MASTER_PLAN.md) — how the project advances by qualified vertical slices rather than feature accumulation.
+4. [`../README.md`](../README.md) — public project status, contributor quick-start and current milestone.
 
 ### I want to work on the current milestone
 
-1. [`architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md`](architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) — the M0 boundary and acceptance model.
-2. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — the current world/section implementation slice.
-3. [`qualification/SECTION_EQUIVALENCE_LAB.md`](qualification/SECTION_EQUIVALENCE_LAB.md) — how section implementations are checked against their reference semantics.
-4. [`qualification/SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) — representation candidates and the performance questions they must answer.
+1. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — the established client-join boundary and next persistent-live-Play gate.
+2. [`architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md`](architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) — the M0 foundation boundary and acceptance model.
+3. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — the current world/section implementation slice.
+4. [`qualification/SECTION_EQUIVALENCE_LAB.md`](qualification/SECTION_EQUIVALENCE_LAB.md) — how section implementations are checked against their reference semantics.
+5. [`qualification/SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) — representation candidates and the performance questions they must answer.
 
 ### I want to understand how claims become evidence
 
@@ -27,12 +29,20 @@ If you are new to the project, do not try to read everything in repository order
 4. [`qualification/SECTION_BENCHMARK_HARNESS.md`](qualification/SECTION_BENCHMARK_HARNESS.md) — benchmark methodology for the current foundational subsystem.
 5. [`qualification/SECTION_SEMANTIC_FIXTURES.md`](qualification/SECTION_SEMANTIC_FIXTURES.md) — source-backed semantic fixtures.
 
+## Milestones
+
+| Document | Purpose |
+| --- | --- |
+| [`R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) | 2026-08-25 stock Minecraft 26.2 client join, Play entry and visible-world evidence; records the finite replay boundary and next live-Play gate. |
+
+Milestone records are durable black-box/product evidence. They do not silently promote experimental mechanisms to production semantics.
+
 ## Architecture
 
 | Document | Purpose |
 | --- | --- |
 | [`CRUCIBLE_MASTER_BLUEPRINT.md`](architecture/CRUCIBLE_MASTER_BLUEPRINT.md) | End-to-end architectural narrative and project identity. |
-| [`M0_FOUNDATION_IMPLEMENTATION_SPEC.md`](architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) | Current milestone contract and implementation boundary. |
+| [`M0_FOUNDATION_IMPLEMENTATION_SPEC.md`](architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) | Foundation milestone contract and implementation boundary. |
 | [`WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) | Current world/section slice and its dependency/evidence shape. |
 
 Architecture documents should separate **semantic laws** from **replaceable mechanisms**. A useful design can still be experimental; a convenient implementation detail does not become product semantics merely because it exists in code.
