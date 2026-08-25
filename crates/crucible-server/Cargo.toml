@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 crucible-connection-core = { path = "../network/crucible-connection-core" }
+crucible-connection-driver = { path = "../network/crucible-connection-driver" }
 crucible-preplay-core = { path = "../network/crucible-preplay-core" }
 crucible-preplay-io = { path = "../network/crucible-preplay-io" }
 crucible-session-core = { path = "../network/crucible-session-core" }
