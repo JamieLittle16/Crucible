@@ -300,7 +300,9 @@ mod tests {
                                     assert_eq!(driver.pending_egress()[0], 2);
                                     observed.push(driver.pending_egress()[1..3].to_vec());
                                     let queued = driver.queued_egress();
-                                    driver.consume_written(queued).expect("drain test frame");
+                                    driver
+                                        .consume_written::<()>(queued)
+                                        .expect("drain test frame");
                                 }
                                 StagedPublicationStep::StageComplete { .. } => {
                                     stage_completions += 1;
