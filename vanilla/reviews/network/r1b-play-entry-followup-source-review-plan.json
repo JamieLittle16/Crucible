@@ -1,0 +1,331 @@
+{
+  "candidates": [
+    {
+      "exact_signature": "sendCommands(final ServerPlayer player)",
+      "method_name": "sendCommands",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the permission-driven command-tree publication reached unconditionally during fresh-player placement and identify only material packet-building delegates."
+      ],
+      "type_name": "net.minecraft.commands.Commands",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-COMMANDS-SEND-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the clientbound commands packet codec declaration used by permission publication."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundCommandsPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-COMMANDS-CODEC-001"
+    },
+    {
+      "exact_signature": "ClientboundCommandsPacket(final RootCommandNode < S > root , final ClientboundCommandsPacket . NodeInspector < S > inspector)",
+      "method_name": "ClientboundCommandsPacket",
+      "param_count": 2,
+      "review_focus": [
+        "Bind command-tree snapshot construction and expose only source-inseparable node enumeration/entry dependencies."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundCommandsPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-COMMANDS-CONSTRUCT-001"
+    },
+    {
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind command packet outbound field/order law without importing Brigadier's runtime representation into Crucible."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundCommandsPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-COMMANDS-WRITE-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the permission entity-event packet codec declaration."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundEntityEventPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-ENTITY-EVENT-CODEC-001"
+    },
+    {
+      "exact_signature": "ClientboundEntityEventPacket(final Entity entity , final byte eventId)",
+      "method_name": "ClientboundEntityEventPacket",
+      "param_count": 2,
+      "review_focus": [
+        "Bind the entity id and permission event byte snapshot emitted by initial permission publication."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundEntityEventPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-ENTITY-EVENT-CONSTRUCT-001"
+    },
+    {
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind outbound permission entity-event wire order and primitive encodings."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundEntityEventPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-ENTITY-EVENT-WRITE-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the always-emitted initial recipe-book settings codec."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundRecipeBookSettingsPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-RECIPE-SETTINGS-CODEC-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the always-emitted initial recipe-book add packet codec, including empty-entry behavior."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-RECIPE-ADD-CODEC-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the initial world-border packet codec."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundInitializeBorderPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-BORDER-CODEC-001"
+    },
+    {
+      "exact_signature": "ClientboundInitializeBorderPacket(final WorldBorder border)",
+      "method_name": "ClientboundInitializeBorderPacket",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the exact world-border state snapshot selected for a joining player."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundInitializeBorderPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-BORDER-FROM-STATE-001"
+    },
+    {
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind initial world-border outbound field order and primitive encodings."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundInitializeBorderPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-BORDER-WRITE-001"
+    },
+    {
+      "method_name": "createFullSyncPacket",
+      "param_count": 0,
+      "review_focus": [
+        "Determine the exact full clock-sync packet emitted unconditionally by sendLevelInfo and its packet dependency."
+      ],
+      "type_name": "net.minecraft.world.clock.ServerClockManager",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-CLOCK-FULL-SYNC-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the default-spawn packet codec used by every fresh-player level-info publication."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundSetDefaultSpawnPositionPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-SPAWN-POSITION-CODEC-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the game-event packet codec used for mandatory level-chunks-load-start and conditional weather events."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundGameEventPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-GAME-EVENT-CODEC-001"
+    },
+    {
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind game-event outbound type/parameter encoding while keeping weather route conditions separate."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundGameEventPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-GAME-EVENT-WRITE-001"
+    },
+    {
+      "exact_signature": "updateJoiningPlayer(final ServerPlayer player)",
+      "method_name": "updateJoiningPlayer",
+      "param_count": 1,
+      "review_focus": [
+        "Determine exactly which ticking-state packets are sent to every joining player and whether any branch is selected-profile conditional."
+      ],
+      "type_name": "net.minecraft.server.ServerTickRateManager",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-TICK-RATE-JOIN-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the ticking-state packet codec reached from joining-player tick-rate synchronization."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundTickingStatePacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-TICKING-STATE-CODEC-001"
+    },
+    {
+      "method_name": "from",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the tick-rate manager state snapshot used for joining-player ticking-state publication."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundTickingStatePacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-TICKING-STATE-FROM-001"
+    },
+    {
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind ticking-state outbound primitive encoding."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundTickingStatePacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-TICKING-STATE-WRITE-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the ticking-step packet codec reached from joining-player tick-rate synchronization."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundTickingStepPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-TICKING-STEP-CODEC-001"
+    },
+    {
+      "method_name": "from",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the tick-step manager state snapshot used for joining-player publication."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundTickingStepPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-TICKING-STEP-FROM-001"
+    },
+    {
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind ticking-step outbound primitive encoding."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundTickingStepPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-TICKING-STEP-WRITE-001"
+    },
+    {
+      "exact_signature": "sendActiveEffects(final LivingEntity livingEntity , final ServerGamePacketListenerImpl connection)",
+      "method_name": "sendActiveEffects",
+      "param_count": 2,
+      "review_focus": [
+        "Prove whether a selected fresh/default player with no active effects emits no effect packets; only if non-empty must the effect packet codec enter R1B."
+      ],
+      "type_name": "net.minecraft.server.players.PlayerList",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-ACTIVE-EFFECTS-001"
+    },
+    {
+      "exact_signature": "initMenu(final AbstractContainerMenu container)",
+      "method_name": "initMenu",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the actual inventory/menu synchronization reached by initInventoryMenu and enumerate only packets emitted for the selected default inventory menu."
+      ],
+      "type_name": "net.minecraft.server.level.ServerPlayer",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-INIT-MENU-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the primary inventory content packet codec if initMenu confirms it is emitted on the selected route."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-CONTAINER-CONTENT-CODEC-001"
+    },
+    {
+      "exact_signature": "createCommonSpawnInfo(final ServerLevel level)",
+      "method_name": "createCommonSpawnInfo",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the exact dynamic world/player state selected for ClientboundLoginPacket common spawn info."
+      ],
+      "type_name": "net.minecraft.server.level.ServerPlayer",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-CREATE-SPAWN-INFO-001"
+    },
+    {
+      "exact_signature": "write(final RegistryFriendlyByteBuf output)",
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind CommonPlayerSpawnInfo outbound field order and subordinate registry/resource-key codecs used by Login."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.CommonPlayerSpawnInfo",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-SPAWN-INFO-WRITE-001"
+    },
+    {
+      "method_name": "getSynchronizedItemProperties",
+      "param_count": 0,
+      "review_focus": [
+        "Classify synchronized recipe item properties as composition-stable publication data and identify any material ordering law."
+      ],
+      "type_name": "net.minecraft.world.item.crafting.RecipeManager",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-RECIPE-PROPERTIES-001"
+    },
+    {
+      "method_name": "getSynchronizedStonecutterRecipes",
+      "param_count": 0,
+      "review_focus": [
+        "Classify synchronized stonecutter recipes as composition-stable publication data and identify any material ordering law."
+      ],
+      "type_name": "net.minecraft.world.item.crafting.RecipeManager",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-STONECUTTER-RECIPES-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the action reader/writer table and enum order used by initial player-info publication."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Action",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-PLAYER-INFO-ACTIONS-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the position/velocity/rotation subordinate codec embedded in ClientboundPlayerPositionPacket."
+      ],
+      "type_name": "net.minecraft.world.entity.PositionMoveRotation",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-POSITION-MOVE-ROTATION-CODEC-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind relative-coordinate set codec/mask semantics used by fresh-player teleport; selected route begins with an empty set."
+      ],
+      "type_name": "net.minecraft.world.entity.Relative",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-RELATIVE-CODEC-001"
+    },
+    {
+      "exact_signature": "broadcastAll(final Packet < ? > packet)",
+      "method_name": "broadcastAll",
+      "param_count": 1,
+      "review_focus": [
+        "Determine whether the joining player receives the post-add player-info broadcast on a one-player selected profile and separate self-visible traffic from traffic only to existing peers."
+      ],
+      "type_name": "net.minecraft.server.players.PlayerList",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-BROADCAST-ALL-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the server-status packet codec behind the already-reviewed status-non-null and not-transferred condition without making that optional branch a universal runtime requirement."
+      ],
+      "type_name": "net.minecraft.network.protocol.game.ClientboundServerDataPacket",
+      "var_id": "DISC-NET-R1B-PLAY-FOLLOWUP-SERVER-DATA-CODEC-001"
+    }
+  ],
+  "id": "REVIEW-NET-R1B-PLAY-ENTRY-FOLLOWUP-26_2-001",
+  "schema": 1
+}
