@@ -12,18 +12,20 @@ If you are new to the project, do not try to read everything in repository order
 2. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — the first stock-client Handshake → Play → visible-world black-box milestone and its exact claim limits.
 3. [`architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — the persistent live-server architecture: regionized ownership, dimension/chunk/section locality, generated HOT data, shared client projection, interest deltas and R2/R3 gates.
 4. [`architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md`](architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md) — the whole-engine optimization search: every major R2/R3 cost surface, mechanism candidate, red-team question and benchmark needed before production choices freeze.
-5. [`execution/EXECUTION_MASTER_PLAN.md`](execution/EXECUTION_MASTER_PLAN.md) — how the project advances by qualified vertical slices rather than feature accumulation.
-6. [`../README.md`](../README.md) — public project status, contributor quick-start and current milestone.
+5. [`architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md`](architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md) — the high-risk mechanism register: snapshotting, chunk demand, logical frontier, region cells, watchers, projection caches, scheduler/NUMA, compression, persistence and future entity storage.
+6. [`execution/EXECUTION_MASTER_PLAN.md`](execution/EXECUTION_MASTER_PLAN.md) — how the project advances by qualified vertical slices rather than feature accumulation.
+7. [`../README.md`](../README.md) — public project status, contributor quick-start and current milestone.
 
 ### I want to work on the current milestone
 
 1. [`architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — architectural law and implementation order for R2 persistent world and R3 walkability.
 2. [`architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md`](architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md) — performance completeness review for regionization, scheduling, world layout, generated facts, dirty state, client projection, networking, persistence and hardware locality.
-3. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — the established client-join boundary and replay-scaffold claim limits.
-4. [`architecture/OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) — authority, migration, staged effects and schedule-invariance law used by the regionized engine.
-5. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — world/section implementation and HOT-path constraints.
-6. [`qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md`](qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md) — resolve-once dense chunk-window access versus repeated world routing.
-7. [`qualification/SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) — section representation candidates and the performance questions they must answer.
+3. [`architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md`](architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md) — unresolved choices that must not become permanent without representative semantic/performance evidence.
+4. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — the established client-join boundary and replay-scaffold claim limits.
+5. [`architecture/OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) — authority, migration, staged effects and schedule-invariance law used by the regionized engine.
+6. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — world/section implementation and HOT-path constraints.
+7. [`qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md`](qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md) — resolve-once dense chunk-window access versus repeated world routing.
+8. [`qualification/SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) — section representation candidates and the performance questions they must answer.
 
 ### I want to understand how claims become evidence
 
@@ -48,6 +50,7 @@ Milestone records are durable black-box/product evidence. They do not silently p
 | [`CRUCIBLE_MASTER_BLUEPRINT.md`](architecture/CRUCIBLE_MASTER_BLUEPRINT.md) | End-to-end architectural narrative and project identity. |
 | [`R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) | Persistent live-server design: R2/R3 gates, region cells, dimensions, chunk/section locality, generated lookup policy, revision-keyed projection/fan-out and client-work minimization. |
 | [`R2_R3_PERFORMANCE_SEARCH_PLAN.md`](architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md) | R2/R3 optimization search and red-team plan: two-tier world addressing, region/scheduler design, logical time/RNG firewall, active sets, generated facts, incremental derived state, client-interest/projection sharing, network/persistence cost and qualification matrix. |
+| [`R2_R3_PERFORMANCE_DECISION_REGISTER.md`](architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md) | Mandatory unresolved-mechanism register and evidence gates for high-risk performance choices. |
 | [`OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) | Singular authority, migration generations, staged effects and schedule invariance. |
 | [`PROTOCOL_CLIENT_SPINE.md`](architecture/PROTOCOL_CLIENT_SPINE.md) | Version-pinned client route and protocol layering. |
 | [`PREPLAY_TARGET_BINDING.md`](architecture/PREPLAY_TARGET_BINDING.md) | Static target binding across the pre-Play connection spine. |
