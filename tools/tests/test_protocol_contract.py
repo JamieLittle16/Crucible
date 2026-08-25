@@ -239,6 +239,13 @@ class ProtocolContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(ContractError, expected):
                     self._validate(contract)
 
+    def test_same_packet_name_is_allowed_across_directions(self) -> None:
+        contract = copy.deepcopy(self.contract)
+        opposite = copy.deepcopy(contract["packets"][0])
+        opposite["direction"] = "clientbound"
+        contract["packets"].append(opposite)
+        self.assertEqual(self._validate(contract)["packets"], 2)
+
     def test_golden_hex_is_canonical_and_packet_id_must_match(self) -> None:
         mutations = [
             ("body_hex", "0A"),
