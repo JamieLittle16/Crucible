@@ -26,7 +26,11 @@ EXPECTED_RULES: dict[str, tuple[str, ...]] = {
         "SEM-NET-R2-LIVE-010",
     ),
     "VAR-NET-R2-KEEPALIVE-CB-CODEC-001": ("SEM-NET-R2-LIVE-009",),
+    "VAR-NET-R2-KEEPALIVE-CB-READ-001": ("SEM-NET-R2-LIVE-009",),
+    "VAR-NET-R2-KEEPALIVE-CB-WRITE-001": ("SEM-NET-R2-LIVE-009",),
     "VAR-NET-R2-KEEPALIVE-SB-CODEC-001": ("SEM-NET-R2-LIVE-010",),
+    "VAR-NET-R2-KEEPALIVE-SB-READ-001": ("SEM-NET-R2-LIVE-010",),
+    "VAR-NET-R2-KEEPALIVE-SB-WRITE-001": ("SEM-NET-R2-LIVE-010",),
     "VAR-NET-R2-LIVENESS-CONSTRUCT-001": (
         "SEM-NET-R2-LIVE-001",
         "SEM-NET-R2-LIVE-005",
@@ -120,7 +124,9 @@ def _source(value: object, *, candidate_id: str, fingerprint: str) -> dict[str, 
     return result
 
 
-def finalize(worksheet: dict[str, Any], *, lock_path: Path) -> tuple[list[dict[str, object]], dict[str, object], str]:
+def finalize(
+    worksheet: dict[str, Any], *, lock_path: Path
+) -> tuple[list[dict[str, object]], dict[str, object], str]:
     target = _lock_target(lock_path)
     expected_top = {
         "schema",
@@ -142,7 +148,7 @@ def finalize(worksheet: dict[str, Any], *, lock_path: Path) -> tuple[list[dict[s
     if not isinstance(candidates, list) or worksheet["candidate_count"] != len(candidates):
         raise FinalizeError("worksheet candidate count is invalid")
     if len(candidates) != len(EXPECTED_RULES):
-        raise FinalizeError("worksheet does not contain the complete eight-body frontier")
+        raise FinalizeError("worksheet does not contain the complete twelve-body frontier")
 
     records: list[dict[str, object]] = []
     seen: set[str] = set()
@@ -167,8 +173,12 @@ def finalize(worksheet: dict[str, Any], *, lock_path: Path) -> tuple[list[dict[s
         if sorted(set(reviewed)) != sorted(set(observed)):
             raise FinalizeError(f"{candidate_id}: all observed hazards must be explicitly reviewed")
         rules = decision.get("semantic_rules")
-        if not isinstance(rules, list) or tuple(sorted(rules)) != tuple(sorted(EXPECTED_RULES[candidate_id])):
-            raise FinalizeError(f"{candidate_id}: semantic-rule links do not match the closed frontier")
+        if not isinstance(rules, list) or tuple(sorted(rules)) != tuple(
+            sorted(EXPECTED_RULES[candidate_id])
+        ):
+            raise FinalizeError(
+                f"{candidate_id}: semantic-rule links do not match the closed frontier"
+            )
         followups = decision.get("followup_dependencies")
         if followups != []:
             raise FinalizeError(f"{candidate_id}: unresolved follow-up dependencies remain")
@@ -215,6 +225,8 @@ def finalize(worksheet: dict[str, Any], *, lock_path: Path) -> tuple[list[dict[s
                 "source_records": [
                     "VAR-NET-R2-PLAY-REGISTRATION-001",
                     "VAR-NET-R2-KEEPALIVE-CB-CODEC-001",
+                    "VAR-NET-R2-KEEPALIVE-CB-READ-001",
+                    "VAR-NET-R2-KEEPALIVE-CB-WRITE-001",
                 ],
                 "golden": {
                     "body_hex": cb_body.hex(),
@@ -230,6 +242,8 @@ def finalize(worksheet: dict[str, Any], *, lock_path: Path) -> tuple[list[dict[s
                 "source_records": [
                     "VAR-NET-R2-PLAY-REGISTRATION-001",
                     "VAR-NET-R2-KEEPALIVE-SB-CODEC-001",
+                    "VAR-NET-R2-KEEPALIVE-SB-READ-001",
+                    "VAR-NET-R2-KEEPALIVE-SB-WRITE-001",
                 ],
                 "golden": {
                     "body_hex": sb_body.hex(),
@@ -244,7 +258,10 @@ def finalize(worksheet: dict[str, Any], *, lock_path: Path) -> tuple[list[dict[s
 
 def _write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
 
 
 def main() -> int:
