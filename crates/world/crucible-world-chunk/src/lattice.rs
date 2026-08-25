@@ -16,8 +16,8 @@ pub enum VerticalSectionLatticeError {
 /// Compact validated vertical layout shared by chunk access paths.
 ///
 /// Construction resolves all signed section/block boundary arithmetic once. After validation,
-/// ordinary block-Y lookup is a pair of range comparisons, one subtraction and one power-of-two
-/// shift; it does not perform signed Euclidean division in the HOT path.
+/// ordinary block-Y lookup is a pair of range comparisons, one subtraction and bit operations; it
+/// does not perform signed Euclidean division in the HOT path.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VerticalSectionLattice {
     min_block_y: i32,
@@ -87,28 +87,36 @@ impl VerticalSectionLattice {
         self.section_count as usize
     }
 
-    /// Returns the zero-based section slot containing `block_y`.
+    /// Resolves one admitted world block Y into its zero-based section slot and section-local Y.
     ///
     /// The constructor has already proved the range subtraction cannot overflow for an in-range
-    /// coordinate. The division by 16 is therefore represented as a shift over a non-negative
-    /// relative coordinate.
+    /// coordinate. Division/remainder by 16 therefore become one shift and one mask over the
+    /// validated coordinate. Callers needing both values should use this method so the range check
+    /// and subtraction are performed once.
     #[inline]
     #[must_use]
-    pub fn section_index_for_block_y(self, block_y: i32) -> Option<usize> {
+    pub fn resolve_block_y(self, block_y: i32) -> Option<(usize, u8)> {
         if block_y < self.min_block_y || block_y >= self.max_block_y_exclusive {
             return None;
         }
         let relative = block_y - self.min_block_y;
-        let index = relative >> 4;
-        usize::try_from(index).ok()
+        let index = usize::try_from(relative >> 4).ok()?;
+        let local_y = u8::try_from(block_y & 15).ok()?;
+        Some((index, local_y))
+    }
+
+    /// Returns the zero-based section slot containing `block_y`.
+    #[inline]
+    #[must_use]
+    pub fn section_index_for_block_y(self, block_y: i32) -> Option<usize> {
+        self.resolve_block_y(block_y).map(|(index, _)| index)
     }
 
     /// Returns the local Y coordinate within the containing section for an admitted block Y.
     #[inline]
     #[must_use]
     pub fn local_y_for_block_y(self, block_y: i32) -> Option<u8> {
-        self.section_index_for_block_y(block_y)?;
-        u8::try_from(block_y & 15).ok()
+        self.resolve_block_y(block_y).map(|(_, local_y)| local_y)
     }
 
     /// Returns the logical section Y represented by one zero-based slot.
@@ -165,20 +173,24 @@ mod tests {
         let lattice = VerticalSectionLattice::new(-8, 40).expect("test lattice");
         for y in -160_i32..560 {
             let expected = if (-128_i32..512).contains(&y) {
-                Some(usize::try_from(y.div_euclid(16) + 8).expect("non-negative slot"))
+                Some((
+                    usize::try_from(y.div_euclid(16) + 8).expect("non-negative slot"),
+                    u8::try_from(y.rem_euclid(16)).expect("local y"),
+                ))
             } else {
                 None
             };
-            assert_eq!(lattice.section_index_for_block_y(y), expected, "y={y}");
-            if let Some(index) = expected {
-                assert_eq!(
-                    lattice.local_y_for_block_y(y),
-                    Some(u8::try_from(y.rem_euclid(16)).expect("local y")),
-                    "y={y} index={index}"
-                );
-            } else {
-                assert_eq!(lattice.local_y_for_block_y(y), None, "y={y}");
-            }
+            assert_eq!(lattice.resolve_block_y(y), expected, "y={y}");
+            assert_eq!(
+                lattice.section_index_for_block_y(y),
+                expected.map(|(index, _)| index),
+                "y={y}"
+            );
+            assert_eq!(
+                lattice.local_y_for_block_y(y),
+                expected.map(|(_, local_y)| local_y),
+                "y={y}"
+            );
         }
     }
 
@@ -187,12 +199,11 @@ mod tests {
         let min_section_y = i32::MIN / 16;
         let lattice = VerticalSectionLattice::new(min_section_y, 2).expect("minimum lattice");
         assert_eq!(lattice.min_block_y(), i32::MIN);
-        assert_eq!(lattice.section_index_for_block_y(i32::MIN), Some(0));
-        assert_eq!(lattice.local_y_for_block_y(i32::MIN), Some(0));
-        assert_eq!(lattice.section_index_for_block_y(i32::MIN + 15), Some(0));
-        assert_eq!(lattice.section_index_for_block_y(i32::MIN + 16), Some(1));
-        assert_eq!(lattice.section_index_for_block_y(i32::MIN + 31), Some(1));
-        assert_eq!(lattice.section_index_for_block_y(i32::MIN + 32), None);
+        assert_eq!(lattice.resolve_block_y(i32::MIN), Some((0, 0)));
+        assert_eq!(lattice.resolve_block_y(i32::MIN + 15), Some((0, 15)));
+        assert_eq!(lattice.resolve_block_y(i32::MIN + 16), Some((1, 0)));
+        assert_eq!(lattice.resolve_block_y(i32::MIN + 31), Some((1, 15)));
+        assert_eq!(lattice.resolve_block_y(i32::MIN + 32), None);
     }
 
     #[test]
@@ -201,8 +212,7 @@ mod tests {
         for index in 0..lattice.section_count() {
             let section_y = lattice.section_y_for_index(index).expect("valid index");
             let block_y = section_y.checked_mul(16).expect("test block y");
-            assert_eq!(lattice.section_index_for_block_y(block_y), Some(index));
-            assert_eq!(lattice.local_y_for_block_y(block_y), Some(0));
+            assert_eq!(lattice.resolve_block_y(block_y), Some((index, 0)));
         }
         assert_eq!(lattice.section_y_for_index(lattice.section_count()), None);
     }
