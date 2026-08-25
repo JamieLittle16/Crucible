@@ -2,6 +2,7 @@
 
 **Status:** architectural direction for the first persistent live server  
 **Parent laws:** `CRUCIBLE_MASTER_BLUEPRINT.md`, `OWNERSHIP_SIMULATION_CONTRACT.md`, `PROTOCOL_CLIENT_SPINE.md`, `WORLD_SECTION_IMPLEMENTATION_SLICE.md`  
+**Performance search:** `R2_R3_PERFORMANCE_SEARCH_PLAN.md`, `R2_R3_PERFORMANCE_DECISION_REGISTER.md`  
 **Target:** Minecraft: Java Edition 26.2 / protocol 776  
 **Immediate predecessor:** `milestone-r1x-first-visible-world`
 
@@ -16,6 +17,8 @@ The governing rule is:
 > **Vanilla defines the game. Crucible chooses the engine.**
 
 R2/R3 therefore freezes semantic contracts first and allows optimized mechanisms to compete behind those contracts. Playability is not permission to introduce avoidable allocation, repeated lookup, global mutation locks, runtime registries, redundant client publication, or scheduler-defined gameplay.
+
+`R2_R3_PERFORMANCE_SEARCH_PLAN.md` expands this architecture into a whole-engine cost-elimination and qualification programme. `R2_R3_PERFORMANCE_DECISION_REGISTER.md` names the high-risk choices that must remain mechanism candidates until representative evidence selects them. Those documents are part of this architecture contract rather than optional later optimization notes.
 
 ## Non-negotiable live-engine laws
 
@@ -219,202 +222,107 @@ Inactive structures should not be scanned merely because a region exists.
 
 ## Dimension abstraction
 
-A dimension is a semantic/runtime namespace, not a subclass hierarchy.
+A dimension is not a polymorphic world object whose hot operations repeatedly ask dynamic questions.
 
-Crucible should separate three identities:
-
-```text
-DimensionTypeFacts   immutable target/datapack semantics
-DimensionInstance    one loaded runtime dimension/world namespace
-DimensionId          compact runtime identity used after cold resolution
-```
-
-### Dimension type facts
-
-Cold/generated/data-driven facts include, where applicable:
-
-- minimum Y and height/section lattice;
-- coordinate scale;
-- fixed time / skylight / ceiling / ultra-warm / natural-style flags;
-- bed/respawn and other dimension-type semantics;
-- protocol registry identity;
-- target-specific constants required by projection.
-
-Namespaced/string identities are resolved at cold boundaries. HOT code should consume compact IDs/handles and direct facts.
-
-### Dimension instance
-
-A loaded dimension instance owns:
-
-- immutable `DimensionTypeFacts` reference/handle;
-- frozen `SectionLattice` mapping world Y -> dense section index;
-- chunk directory / regionizer root;
-- dimension-global semantic state that truly belongs to that dimension;
-- region/domain ownership graph;
-- persistence/world-source identity;
-- projection/cache namespaces.
-
-Standard Overworld/Nether/End assumptions must not leak into generic HOT world access. The current qualification firewall already treats dimensions separately because their vertical lattices and representative section distributions differ; the runtime architecture should preserve that explicitness.
-
-### No virtual dimension dispatch in inner loops
-
-Dimension differences should be resolved before inner block/collision loops where possible. Examples:
-
-- resolve `SectionLattice` once;
-- resolve dimension-local chunk window once;
-- carry compact generated facts;
-- specialize target/version static facts at build/composition time where appropriate.
-
-A generic dimension abstraction must not mean repeated trait-object calls or string map lookups per block access.
-
-## Chunk and section layout
-
-Chunk/section identity remains semantic. Physical layout is replaceable.
-
-### Vertical lattice
-
-For a loaded dimension, establish one immutable dense section lattice:
+Crucible should separate:
 
 ```text
-min_section_y
-section_count
-max_section_y
+DimensionTypeFacts
+    immutable semantic/type facts
+
+DimensionInstance
+    loaded world state for one dimension
+
+DimensionId
+    compact runtime identity
 ```
 
-A chunk should normally address vertical sections by direct dense index after a single bounds transform, not by a hash map keyed by section Y.
+The standard dimensions may have generated/resolved facts such as vertical lattice, skylight capability, coordinate scale and protocol identifiers. These facts should be resolved at load/composition boundaries and passed to hot code in compact form.
 
-Uniform/empty sections should not require a 4096-cell backing allocation. The selected production `world.section-store/1` provider may use `direct`, `adaptive`, `fast-local`, `packed-local`, or a later qualified mechanism; correctness and per-dimension Pareto evidence decide.
+Strings/resource locations remain boundary identities rather than ordinary inner-loop keys.
 
-### Chunk core
+The architecture must also preserve dimension-specific performance evidence. Existing section qualification already demonstrates why Overworld, Nether and End must not be silently collapsed into one workload score.
 
-The live chunk core should keep frequently accessed semantic metadata compact and locality-friendly. Candidate organization:
+## Chunk and section topology
+
+Crucible already owns the right foundational shape:
 
 ```text
-LiveChunkCore
-  header / revision identities
-  contiguous section descriptors
-  compact occupancy/summary masks
-  derived-state revision stamps
-  light/heightmap handles or compact state
-  owner-local active metadata
+chunk column
+  |
+  +-- contiguous logical section lattice
+  +-- compact vertical summary masks
+  +-- generation + semantic revision
 ```
 
-Do not insert per-section boxed polymorphism merely to make representation replaceable. Replaceability belongs at the selected concrete component boundary.
+The normal production direction is:
 
-### Joining chunks for hot local work
+- section Y resolves by arithmetic against the dimension lattice, not by a per-section hash map;
+- empty/uniform sections do not allocate 4096 cells;
+- the selected production section representation comes from the existing correctness + representative population + hardware Pareto process;
+- block-state facts use generated dense target data;
+- repeated local spatial work resolves chunk windows once instead of repeatedly traversing a global world directory.
 
-Do not repeatedly route every block query through a world-global directory.
+### Region cell -> chunk slot -> section
 
-The already-qualified `ResolvedChunkWindow` direction is the model:
+The intended hot lookup hierarchy is:
 
 ```text
-resolve exact local chunk set once
-        -> dense row-major chunk handles
-        -> repeated block/collision/path/streaming access
+already-owned region/local view
+    -> coarse cell / dense chunk slot
+    -> chunk
+    -> section index
+    -> local block cell
 ```
 
-For collision, pathfinding, explosions, local AI and other dense local work, boundary/generalization cost should be paid once and amortized. If profiling proves coordinate transforms remain material, candidates may precompute window origin/bounds so inner reads use non-negative offsets, shifts and masks instead of repeated signed division/remainder.
+The global sparse world directory remains necessary for lifecycle/discovery. It is not the inner-loop block lookup API.
 
-### Region-local chunk joining
+### Resolved local windows
 
-Regions may additionally maintain a dense/slab-like local chunk-slot view or other locality-optimized index so owner-local operations resolve world coordinates into local slots without a process-global hash lookup. Exact representation remains a measured mechanism.
+Collision/pathfinding/streaming-shaped operations should be able to resolve a fixed chunk neighborhood once and reuse dense references. The existing `ResolvedChunkWindow` qualification is the first concrete experiment in this direction.
 
-The key law is:
+## Generated target data
 
-> **Global/general lookup may discover locality. It must not remain inside a loop after locality is known.**
+Static target-version facts should be compiler output, not repeatedly interpreted runtime data.
 
-## Generated data and lookup policy
+Priority order for immutable hot lookup is:
 
-Minecraft target data is unusually suitable for code generation because the target version is pinned and many semantic universes are finite.
+```text
+identity arithmetic
+→ dense array
+→ bitset/packed table
+→ generated specialized lookup
+→ generic hash map only when actually dynamic/sparse
+```
 
-Crucible should aggressively move resolution from runtime HOT paths into generation/cold startup where correctness permits.
+The current target data already uses dense compact block-state identities. R2/R3 should extend that pattern to additional proven hot facts rather than introducing registries back into inner loops.
 
-### Existing direction
+## Mutation, revisions and derived state
 
-The generated target database already demonstrates the intended shape:
+A semantic mutation should advance the smallest authoritative revision(s) necessary and update derived state incrementally.
 
-- dense vanilla block-state identity;
-- `u16` `BlockStateId` for the 26.2 state universe;
-- direct array indexing;
-- generated mutation flags/facts;
-- source/generation SHA-256 identity.
+Potential derived state includes:
 
-### R2/R3 generated-data rules
-
-Prefer, in order where applicable:
-
-1. identity/no mapping at all;
-2. direct dense array indexed by compact numeric ID;
-3. bitset/packed flag table for boolean/small facts;
-4. generated sorted/static table with cold binary search;
-5. generated perfect/minimal hash or match tree for cold string/name resolution;
-6. generic `HashMap` only where the key universe is truly runtime/dynamic and the whole-cost evidence justifies it.
-
-HOT gameplay should not repeatedly resolve namespaced IDs, packet names, block-state properties, dimension names, registry keys, shape flags, or protocol IDs from strings.
-
-### Pre-generated protocol artifacts
-
-Target-global immutable protocol material should be generated or encoded once where legal. Per-connection bootstrap should reference shared immutable artifacts and only synthesize genuinely connection-specific fields.
-
-## Derived maps and world-generated state
-
-Crucible should avoid treating derived world structures as throwaway values that are repeatedly rediscovered.
-
-Examples include:
-
+- section/chunk activity summaries;
 - heightmaps;
-- occupancy/non-air summaries;
-- collision/shape summaries;
-- light dirtiness/frontiers;
+- light dirtiness/frontier;
+- collision/occupancy summaries;
 - block-entity presence;
-- tickable/active-state summaries;
-- section/chunk protocol projection dirtiness.
+- client projection dirtiness.
 
-Rules:
+The source of truth and coherence law for every derived structure must be explicit.
 
-- every derived structure declares its semantic source of truth;
-- every cached/derived structure declares a revision/coherence rule;
-- mutations should update a compact summary incrementally when cheaper than later full rescans;
-- a mutation that cannot affect a derived map should not dirty it;
-- expensive recomputation should be deferred/lazy when the result is not currently observable;
-- deferred preparation may run anywhere but installation obeys generation/revision freshness and current authority.
+A change that provably cannot affect a derived subsystem should not mark that subsystem dirty merely because "a block changed."
 
-### World generation future direction
+Generated old/new block-state facts should allow many of these decisions with direct table/bit operations.
 
-World generation is not an R2 prerequisite, but its future architecture should exploit the same data-oriented model:
+## Client interest and minimal publication
 
-- generate directly into Crucible section/chunk representations where practical;
-- avoid transient object graphs mirroring Mojang internals;
-- pre-resolve generated target facts;
-- construct derived maps during generation when the producer already has the necessary information and the whole cost is lower;
-- parallelize genuinely independent generation stages/chunks while installing through explicit ownership/freshness boundaries;
-- cache reusable generator structures at world/dimension scope rather than reconstructing them per chunk;
-- benchmark intermediate-representation elimination as a first-class optimization.
+The target client is a semantic endpoint, not a reason to resend the world repeatedly.
 
-## Minimize work required from the stock client
+For each client maintain compact current interest/observation state.
 
-Crucible cannot change the vanilla client, but it can avoid making that client parse, decompress, integrate, render, or discard redundant server output.
-
-The target is **minimal semantically sufficient publication**, not maximum packet throughput.
-
-### Publication law
-
-For every client-visible semantic fact, ask:
-
-```text
-Is it observable by this client now?
-Has the client already been told an equivalent revision?
-Can multiple clients share the expensive projection work?
-Does vanilla require ordering/batching that constrains this optimization?
-```
-
-If the first answer is no or the second is yes, ordinary publication work should approach zero.
-
-### Incremental interest tracking
-
-Maintain each client's observable chunk/entity/world interest incrementally.
-
-When a player crosses an interest boundary:
+When position/view settings change:
 
 ```text
 entered = new_interest - old_interest
@@ -422,212 +330,143 @@ left    = old_interest - new_interest
 kept    = intersection
 ```
 
-Only `entered`, `left`, and dirty observable members create work. A stationary player in an unchanged world should not cause a per-tick rescan/resend of its entire view.
+Only the delta needs lifecycle work.
 
-The mechanism should avoid a large independent `HashMap` per client where a region-local watcher/index or compact generation-stamped structure can represent the same semantics more cheaply.
+A stationary client in an unchanged area should require approximately zero chunk-interest CPU.
 
-### Revision-keyed shared projection
+Dirty world state should reach only actual observers; do not scan every connected player to discover which ones care.
 
-For expensive world payloads, use a semantic identity such as:
+## Shared revision-keyed projection
+
+Client projection should be cacheable by exact semantic identity.
+
+Conceptually:
 
 ```text
-(chunk identity, chunk semantic revision, target protocol, projection variant)
+(chunk identity, generation/revision, target protocol, projection variant)
+       ↓
+immutable encoded/projection artifact
+       ↓
+fan-out to interested clients
 ```
 
-A projection cache may then produce one immutable encoded artifact and fan it out to every interested client that needs that exact revision.
+When multiple clients need identical chunk state, the expensive semantic-to-protocol work should not be repeated independently unless whole-cost evidence shows sharing costs more.
 
-Mutation advances semantic revision and makes old projections ineligible. Cache coherence is therefore explicit rather than heuristic.
+Caches must be bounded by bytes and must never weaken revision coherence.
 
-The same principle may apply to other sufficiently large/shared state, but not every packet deserves caching. Whole-cost evidence must include cache memory, invalidation, construction, compression and fan-out savings.
+After a client already observes a chunk, smaller target-supported deltas should normally replace full chunk retransmission for local changes.
 
-### Encode/compress once where bytes are identical
+## Network/projector boundary
 
-If the exact framed/compressed body is valid for multiple clients under the same negotiated target/compression state, expensive serialization/compression should be shareable. If connection-specific framing or compression state prevents exact byte sharing, share the highest immutable common intermediate that remains correct.
+The existing borrowed-decode/bounded-publication architecture remains.
 
-### Dirty propagation instead of polling
+Future production egress should be able to consume shared immutable projection segments while retaining per-client bounded backpressure/accounting.
 
-World/entity mutations should mark or enqueue only affected observer/projection work. Do not scan every loaded chunk/entity/player each tick merely to discover nothing changed.
+Compression, encryption, buffer pools and vectored I/O belong at their true boundaries. Shared work should extend only as far as bytes remain semantically identical across clients.
 
-### Prioritize useful initial world data
+## Chunk lifecycle and persistence
 
-Within vanilla-permitted ordering, initial chunk publication should prioritize data that makes the client become useful/visible quickly rather than spending bandwidth and client CPU on distant work first. Any ordering optimization must be source/differential qualified so it does not alter required vanilla semantics.
+Pregenerated R2 world import should construct Crucible semantic chunks/sections without requiring a Mojang-shaped object graph.
 
-### No redundant semantic updates
+Long-term chunk lifecycle should distinguish resident semantic state from active region-local runtime structures so inactive loaded chunks do not pay every active/ticking/watch structure cost.
 
-Suppress no-op/redundant publication where vanilla semantics permit. A server-side no-op should not become a packet merely because an implementation callback ran.
+Persistence and other background work use immutable/revision-bound preparation and install/commit rules. Stale asynchronous completion must fail or be superseded according to an explicit durability contract.
 
-## Fan-out architecture
+## World generation reserve
 
-Many server costs scale with `observers x changed facts`. Crucible should aggressively separate:
+World generation is not an R2 prerequisite, but R2 storage must not obstruct a future optimized generator.
+
+A future generator should be able to:
+
+- generate directly toward selected Crucible section/chunk representations;
+- precompute/cache dimension- and seed-wide immutable structures;
+- compute derived state while generation data is already hot;
+- parallelize true independent work with explicit dependencies;
+- install through normal generation/revision authority;
+- qualify SIMD/unsafe/specialized noise paths only while preserving exact vanilla output for the strict profile.
+
+## Active-set scheduling
+
+Inactive state should not be scanned to prove it is inactive.
+
+Use explicit active/due/dirty structures where semantics permit:
+
+- scheduled block/fluid work;
+- random-tick-eligible sections;
+- dirty chunks/sections;
+- clients needing publication;
+- deferred completions;
+- chunks needing lifecycle transition;
+- persistence flush work.
+
+The container is a mechanism decision: bitset, dense list, timing wheel/bucket, heap or hybrid depending on exact ordering and density.
+
+## Extensibility reserve
+
+Future package/plugin semantics must attach at semantic boundaries rather than forcing unconditional dynamic dispatch/event allocation through every hot operation.
+
+If no installed extension observes a class of event, the ordinary production path should be able to approach zero extension overhead.
+
+Static composition remains preferred for trusted HOT engine capabilities.
+
+## Qualification principle
+
+A sophisticated mechanism is not automatically a production optimization.
+
+Every candidate must answer:
 
 ```text
-semantic change
-    -> projection construction
-    -> immutable publication artifact
-    -> observer fan-out
+same semantics?
+less total work?
+less/reasonable memory?
+better p50/p95/p99/max?
+scales on representative topology?
+benefit survives construction/invalidation/migration cost?
+complexity justified?
 ```
 
-from a naïve shape:
+The companion performance-search and decision-register documents define the mechanism tournament and red-team gates in detail.
+
+## Implementation ordering rule
+
+R2 must not become a disposable single-thread architecture.
+
+A simple reference executor is permitted, but the persistent APIs and state layout introduced for R2 must already respect:
+
+- explicit world/domain authority;
+- region-compatible chunk identity/storage;
+- connection/player-presence separation;
+- revisioned world state;
+- incremental interest/projection;
+- bounded asynchronous work;
+- future multi-worker schedule invariance.
+
+This lets R2 be implemented quickly without making R3 a rewrite of every world/client subsystem.
+
+## Closing target
+
+The intended progression is:
 
 ```text
-for each observer:
-    rediscover state
-    reserialize state
-    recompress state
-    send
-```
-
-Fan-out must remain bounded and backpressure-aware. One slow client must not retain unbounded shared artifacts or block unrelated observers indefinitely.
-
-## Active-set scheduling: do not scan inactivity
-
-R2/R3 should introduce the permanent pattern used later by ticks/entities/chunks:
-
-- liveness deadlines live in an active deadline structure;
-- dirty projections live in dirty sets/queues;
-- scheduled block/fluid work lives in deadline/bucket structures;
-- active/tickable entities live in active region-local sets;
-- changed client interest is triggered by movement/settings/world events;
-- unloaded/inactive chunks consume no ordinary tick scanning.
-
-Reference implementations may scan to prove semantics. Production mechanisms must justify any broad scan with evidence that it wins total cost.
-
-## Network and publication mechanics
-
-The existing network laws remain:
-
-- borrowed decode;
-- bounded ingress/egress;
-- transactional publication admission;
-- explicit backpressure;
-- compact connection state;
-- no second hidden outbound queue.
-
-Potential later optimizations include:
-
-- vectored I/O;
-- syscall batching;
-- shared packet bodies;
-- buffer pools;
-- preframed immutable artifacts;
-- compression caching;
-- alternate executors.
-
-None is admitted by aesthetics. Each must preserve exact bytes/semantics and demonstrate a whole-cost win including memory and tail behavior.
-
-## Modularity rules
-
-Create a durable component/module boundary when at least one is true:
-
-- it owns a semantic law;
-- it owns mutation authority/state lifetime;
-- it is target-version specific;
-- it has an independent qualification surface;
-- multiple mechanisms genuinely need to compete behind one contract.
-
-Do not create micro-components for every packet, field, coordinate or helper merely for directory symmetry.
-
-Likely durable boundaries:
-
-```text
-wire/framing
-connection/session
-26.2 target protocol
-client projection/interest
-simulation authority/regionizer
-world/chunk/section storage
-persistence/world import
-lighting/derived world state
-```
-
-HOT replacement should normally be installation-time/static composition, not runtime virtual dispatch.
-
-## Qualification obligations
-
-Every R2/R3 mechanism should carry four evidence classes where applicable.
-
-### 1. Vanilla semantic evidence
-
-- source-backed VAR/SEM contract;
-- golden bytes/state transitions;
-- differential capture where observable;
-- stock-client black-box probe.
-
-### 2. Reference equivalence
-
-- deterministic reference implementation;
-- randomized/property/fuzz traces;
-- schedule/worker perturbation for concurrency-sensitive state;
-- exact semantic digests.
-
-### 3. Resource evidence
-
-- bounded queues/buffers;
-- allocation counts;
-- logical owned bytes / RSS where meaningful;
-- no monotone growth over long sessions;
-- slow-client/backpressure adversaries.
-
-### 4. Performance evidence
-
-- representative workloads;
-- synthetic stress/tails;
-- target-hardware runs;
-- p50/p95/p99/max and raw samples;
-- whole-cost accounting including setup, cache memory and invalidation;
-- explicit complexity threshold before optimized machinery becomes permanent.
-
-## R2/R3 implementation order
-
-The intended sequence is:
-
-```text
-R2A live control plane
-  -> keepalive + bounded continuing Play
-
-R2B source-backed replay-free bootstrap
-  -> semantic Play plan + player/inventory/position state
-
-R2C dimension/world import and projection
-  -> DimensionInstance + SectionLattice
-  -> pregenerated chunk/section import
-  -> chunk/light projection
-  -> revision-keyed publication candidate
-
+R1X visible replay-backed world
+    ↓
+R2A live Play liveness
+    ↓
+R2B replay-free bootstrap
+    ↓
+R2C Crucible world projection
+    ↓
 R2D persistent visible world
-  -> zero replay + reconnect + resource qualification
-
-R3A movement semantic input
-  -> connection -> authority handoff
-
-R3B collision
-  -> resolved local windows + vanilla differential/reference
-
-R3C interest tracking
-  -> incremental chunk/entity observable sets
-
-R3D regionized production executor
-  -> region cells + local data + merge/split/migration
-
-R3E walkable server
-  -> multi-domain schedule-invariant qualification
+    ↓
+R3A authoritative movement
+    ↓
+R3B collision/local world access
+    ↓
+R3C incremental chunk interest
+    ↓
+R3D regionized execution
+    ↓
+R3E qualified walkable server
 ```
 
-Do not postpone the ownership/region shape until after a single-thread-shaped gameplay implementation has spread through the codebase. Reference execution may remain simple, but interfaces and state ownership from R2 onward must be compatible with the intended regionized engine.
-
-## Final principle
-
-The target is not merely a fast Minecraft server.
-
-The target is a server where the architecture makes wasted work difficult to express:
-
-- locality is resolved once and reused;
-- immutable facts are generated once and directly indexed;
-- unchanged state produces no work;
-- unobservable state produces no client work;
-- shared output is computed once when safe;
-- owner-local state mutates without locks;
-- independent regions execute in parallel without sharing gameplay authority;
-- the stock client sees vanilla-faithful results regardless of execution topology.
-
-That is the standard R2/R3 should establish before Crucible expands into broader gameplay.
+At R3E the server is not merely playable. It should already embody the ownership, locality, generated-data, incremental-work and shared-projection laws that make later survival breadth and large-player scaling tractable.
