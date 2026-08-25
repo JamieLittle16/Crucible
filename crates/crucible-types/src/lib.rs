@@ -20,6 +20,21 @@ pub struct ChunkPos {
     pub z: i32,
 }
 
+/// Compact process-local identity of one loaded dimension instance.
+///
+/// Resource-location strings and target registry identities belong at cold/protocol boundaries.
+/// HOT world code should carry this resolved identity instead of repeatedly looking up a dimension
+/// by string.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct DimensionId(pub u16);
+
+/// Compact process-local identity of one immutable dimension-type fact set.
+///
+/// Multiple loaded dimensions may share one type identity while retaining distinct
+/// [`DimensionId`] world state.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct DimensionTypeId(pub u16);
+
 /// Canonical logical simulation epoch.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct TickEpoch(pub u64);
@@ -48,9 +63,11 @@ pub struct ComponentGeneration(pub u64);
 
 #[cfg(test)]
 mod tests {
+    use core::mem::size_of;
+
     use super::{
         BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp, ComponentGeneration,
-        TickEpoch,
+        DimensionId, DimensionTypeId, TickEpoch,
     };
 
     #[test]
@@ -66,6 +83,15 @@ mod tests {
         assert!(TickEpoch(4) > TickEpoch(3));
         assert_ne!(ChunkGeneration(1), ChunkGeneration(2));
         assert_ne!(ComponentGeneration(1), ComponentGeneration(2));
+        assert_ne!(DimensionId(1), DimensionId(2));
+        assert_ne!(DimensionTypeId(1), DimensionTypeId(2));
+    }
+
+    #[test]
+    fn dimension_runtime_identities_remain_compact_and_distinct() {
+        assert_eq!(size_of::<DimensionId>(), size_of::<u16>());
+        assert_eq!(size_of::<DimensionTypeId>(), size_of::<u16>());
+        assert_ne!(DimensionId(7).0, DimensionTypeId(8).0);
     }
 
     #[test]
