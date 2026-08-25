@@ -35,6 +35,7 @@ const INGRESS_LIMIT: usize = 256 * 1_024;
 const EGRESS_LIMIT: usize = 128 * 1_024;
 const READ_SCRATCH_BYTES: usize = 16 * 1_024;
 const ACTIONS_PER_SERVICE: usize = 4;
+const _: () = assert!(ACTIONS_PER_SERVICE > 0);
 
 const KEEP_ALIVE_INTERVAL_MS: u64 = 15_000;
 const CLOSED_LISTENER_TIMEOUT_MS: u64 = 15_000;
@@ -449,10 +450,9 @@ fn action_budget() -> ActionBudget {
 #[cfg(test)]
 mod tests {
     use super::{
-        ACTIONS_PER_SERVICE, EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, LiveDisposition,
-        LiveLivenessService, SERVERBOUND_KEEP_ALIVE_PACKET_ID, keep_alive_body, limits,
-        liveness_policy, process_one_live_inbound, serverbound_keep_alive_frame,
-        service_live_liveness,
+        EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, LiveDisposition, LiveLivenessService,
+        SERVERBOUND_KEEP_ALIVE_PACKET_ID, keep_alive_body, limits, liveness_policy,
+        process_one_live_inbound, serverbound_keep_alive_frame, service_live_liveness,
     };
     use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
     use crucible_connection_driver::ConnectionDriver;
@@ -470,7 +470,6 @@ mod tests {
         assert_eq!(limits.max_frame_body_len(), FRAME_BODY_LIMIT);
         assert_eq!(limits.max_ingress_buffered(), INGRESS_LIMIT);
         assert_eq!(limits.max_egress_queued(), EGRESS_LIMIT);
-        assert!(ACTIONS_PER_SERVICE > 0);
     }
 
     #[test]
