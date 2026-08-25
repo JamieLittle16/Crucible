@@ -221,10 +221,7 @@ fn vertical_reference_one(lattice: &VerticalSectionLattice, y: i32) -> Option<(u
 }
 
 fn vertical_candidate_one(lattice: &VerticalSectionLattice, y: i32) -> Option<(usize, u8)> {
-    Some((
-        lattice.section_index_for_block_y(y)?,
-        lattice.local_y_for_block_y(y)?,
-    ))
+    lattice.resolve_block_y(y)
 }
 
 fn vertical_reference(lattice: &VerticalSectionLattice, ys: &[i32]) -> u64 {
