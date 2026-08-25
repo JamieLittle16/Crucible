@@ -345,7 +345,7 @@ def validate_contract(
     if not isinstance(packets, list) or not packets:
         raise ContractError("protocol contract packets must be a non-empty array")
     records = _load_records(records_root)
-    seen_names: set[str] = set()
+    seen_names: set[tuple[str, str, str]] = set()
     seen_identities: set[tuple[str, str, int]] = set()
     for index, value in enumerate(packets):
         packet = _object(value, f"packets[{index}]")
@@ -355,14 +355,15 @@ def validate_contract(
             records=records,
             fingerprint_algorithm=expected_target["fingerprint_algorithm"],
         )
-        if name in seen_names:
-            raise ContractError(f"duplicate packet name: {name}")
+        phase, direction, packet_id = identity
+        name_identity = (phase, direction, name)
+        if name_identity in seen_names:
+            raise ContractError(f"duplicate packet name: {phase}/{direction}/{name}")
         if identity in seen_identities:
-            phase, direction, packet_id = identity
             raise ContractError(
                 f"duplicate packet identity: {phase}/{direction}/{packet_id}"
             )
-        seen_names.add(name)
+        seen_names.add(name_identity)
         seen_identities.add(identity)
 
     return {
