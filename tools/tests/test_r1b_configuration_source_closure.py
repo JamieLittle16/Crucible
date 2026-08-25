@@ -11,17 +11,14 @@ from tools import r1b_configuration_source_closure as closure
 
 
 class R1BConfigurationSourceClosureTests(unittest.TestCase):
-    def test_candidate_ids_and_selectors_are_unique(self) -> None:
+    def test_candidate_ids_and_effective_selectors_are_unique(self) -> None:
         ids = [candidate.var_id for candidate in closure.CANDIDATES]
-        selectors = [
-            (candidate.type_name, candidate.method_name, candidate.param_count)
-            for candidate in closure.CANDIDATES
-        ]
+        selectors = [closure._selector_key(candidate) for candidate in closure.CANDIDATES]
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(selectors), len(set(selectors)))
         self.assertGreater(len(ids), 25)
 
-    def test_resolve_requires_exactly_one_type_method_arity_match(self) -> None:
+    def _connection(self) -> sqlite3.Connection:
         connection = sqlite3.connect(":memory:")
         connection.row_factory = sqlite3.Row
         connection.executescript(
@@ -38,6 +35,10 @@ class R1BConfigurationSourceClosureTests(unittest.TestCase):
             INSERT INTO methods VALUES(1, 1, 'work', 'work(final int value)', 1, 10, 12);
             """
         )
+        return connection
+
+    def test_arity_selector_requires_exactly_one_match(self) -> None:
+        connection = self._connection()
         candidate = closure.Candidate(
             "VAR-X", "example.X", "work", 1, ("SEM-X",), ("review",)
         )
@@ -49,6 +50,57 @@ class R1BConfigurationSourceClosureTests(unittest.TestCase):
         )
         with self.assertRaises(closure.ClosureError):
             closure._resolve(connection, candidate)
+
+    def test_exact_signature_disambiguates_same_arity_overloads(self) -> None:
+        connection = self._connection()
+        connection.execute(
+            "INSERT INTO methods VALUES(2, 1, 'work', 'work(final String value)', 1, 20, 22)"
+        )
+        candidate = closure.Candidate(
+            "VAR-X",
+            "example.X",
+            "work",
+            1,
+            ("SEM-X",),
+            ("review",),
+            "work(final String value)",
+        )
+        row = closure._resolve(connection, candidate)
+        self.assertEqual(row["id"], 2)
+        self.assertEqual(row["signature"], "work(final String value)")
+
+    def test_exact_signature_must_agree_with_declared_method_and_arity(self) -> None:
+        connection = self._connection()
+        candidate = closure.Candidate(
+            "VAR-X",
+            "example.X",
+            "other",
+            1,
+            ("SEM-X",),
+            ("review",),
+            "work(final int value)",
+        )
+        with self.assertRaisesRegex(closure.ClosureError, "disagrees with declared method/arity"):
+            closure._resolve(connection, candidate)
+
+    def test_selector_preflight_reports_all_failures(self) -> None:
+        connection = self._connection()
+        connection.execute(
+            "INSERT INTO methods VALUES(2, 1, 'work', 'work(final String value)', 1, 20, 22)"
+        )
+        ambiguous = closure.Candidate(
+            "VAR-AMBIG", "example.X", "work", 1, ("SEM-X",), ("review",)
+        )
+        missing = closure.Candidate(
+            "VAR-MISSING", "example.X", "missing", 0, ("SEM-X",), ("review",)
+        )
+        with mock.patch.object(closure, "CANDIDATES", (ambiguous, missing)):
+            with self.assertRaises(closure.ClosureError) as captured:
+                closure._resolve_all(connection)
+        message = str(captured.exception)
+        self.assertIn("selector preflight failed", message)
+        self.assertIn("VAR-AMBIG", message)
+        self.assertIn("VAR-MISSING", message)
 
     def test_source_rich_output_is_rejected_inside_repository(self) -> None:
         with tempfile.TemporaryDirectory(dir=closure.REPO_ROOT) as temporary:
