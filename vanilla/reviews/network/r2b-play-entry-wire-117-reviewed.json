@@ -1,0 +1,2787 @@
+{
+  "candidate_count": 117,
+  "candidates": [
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-001",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "2f8114b42aeee758a77e17b4975e66a10bced3686136065ebe980c9ac91e5c9a",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "3d362ceb147c97656933e9610308266241b0b9d66c81f007eeb792d1505241bf",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.commands.Commands"
+      },
+      "source_identity": "net.minecraft.commands.Commands#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-002",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e61d88ad04bb62e6aff73414ef880b5c7afff84e792701bd19055c33c4c00b29",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "7226028b669b3892167c302260b7b1f8342314d7833665c66abcc16c606c4270",
+        "signature": "fillUsableCommands(final CommandNode < S > source , final CommandNode < S > target , final S commandFilter , final Map < CommandNode < S > , CommandNode < S >> converted)",
+        "type": "net.minecraft.commands.Commands"
+      },
+      "source_identity": "net.minecraft.commands.Commands#fillUsableCommands(final CommandNode < S > source , final CommandNode < S > target , final S commandFilter , final Map < CommandNode < S > , CommandNode < S >> converted)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-003",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "9f69deeeacfd91fbd77a52ba803782943a82950ec27a8feb62761c1e51a159e1",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e6a16088941fdae9800fb849c1da665bd5381842ed9ee28278526bbb38f9b324",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.commands.synchronization.ArgumentTypeInfos"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.ArgumentTypeInfos#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-004",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "REGISTRY"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "0d7fdc32a14a92c8a84ef3028c877812000493fe2a0e42f57410b2f6b3abb6e9",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "d2f1d02da266a546f0ddac7fdb01267f88af0b3caf024ce4b3ce95e45e70063a",
+        "signature": "register(final Registry < ArgumentTypeInfo < ? , ? >> registry , final String id , final Class < ? extends A > brigadierType , final ArgumentTypeInfo < A , T > info)",
+        "type": "net.minecraft.commands.synchronization.ArgumentTypeInfos"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.ArgumentTypeInfos#register(final Registry < ArgumentTypeInfo < ? , ? >> registry , final String id , final Class < ? extends A > brigadierType , final ArgumentTypeInfo < A , T > info)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-005",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "0794c8122587499ee277d1e89f706f26002d96d438687879d27f47a31da04d6b",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "2ab4ad0eb68be80adfd9f3a7cfb68ee9af978494dd1bfbf9f89b2b38b78c591e",
+        "signature": "bootstrap(final Registry < ArgumentTypeInfo < ? , ? >> registry)",
+        "type": "net.minecraft.commands.synchronization.ArgumentTypeInfos"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.ArgumentTypeInfos#bootstrap(final Registry < ArgumentTypeInfo < ? , ? >> registry)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-006",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "6f3c6292f5f6cec9d70a67872f3ff5077e92d5e470c1f21f06df7caa6c720c09",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "2cfb471733c0cf51f37d72f2eb5c0b9adc94b178c7514f6c7aef065b6977e557",
+        "signature": "fixClassType(final Class < ? super T > cls)",
+        "type": "net.minecraft.commands.synchronization.ArgumentTypeInfos"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.ArgumentTypeInfos#fixClassType(final Class < ? super T > cls)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-007",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "2712683db73d26d3672d4a1747eda1779b27ada6be5edf051a3c10d2fc021814",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "bd6589b46c8e98845c8590dacb86f57dc0b587f669e156057c6557050309fa55",
+        "signature": "isClassRecognized(final Class < ? > cls)",
+        "type": "net.minecraft.commands.synchronization.ArgumentTypeInfos"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.ArgumentTypeInfos#isClassRecognized(final Class < ? > cls)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-008",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "5bdfb532716513e3f391d1bdc0368e8378fe72bc0a14d3ee3be4ed0c26904046",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "0b4b9818b1b8717b06e15b0f0afc20371e621f6bdbb28407897ae121ad68d77f",
+        "signature": "byClass(final A argumentType)",
+        "type": "net.minecraft.commands.synchronization.ArgumentTypeInfos"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.ArgumentTypeInfos#byClass(final A argumentType)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-009",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "3197c1d6072070b5362327d9cb7187bfb95b8f4a5b7989265f0b2cda0c0ed77a",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "8a5c1ed896965f116b6297c367a2f01c6d8c887de193cf6eb844d721c0d470f4",
+        "signature": "unpack(final A argumentType)",
+        "type": "net.minecraft.commands.synchronization.ArgumentTypeInfos"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.ArgumentTypeInfos#unpack(final A argumentType)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-010",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "1f54d27f1cbafd7d216f1ae8b4b9aed945d1b0cc3e3b2d1e487493785edc5eb3",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "cbbd3f310ced4d6fb3250d6dc3034424c6edb54f751392625d409a420126f57",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.commands.synchronization.SuggestionProviders"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.SuggestionProviders#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-011",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "7150941901d18d4133bae980bd523241b2e3cde929b98404689990e6e9fe50d9",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "806ff51de6ebfaa2365b1d83d41610d373241217df10a39c9b4ff655f327d44d",
+        "signature": "register(final Identifier name , final SuggestionProvider < SharedSuggestionProvider > provider)",
+        "type": "net.minecraft.commands.synchronization.SuggestionProviders"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.SuggestionProviders#register(final Identifier name , final SuggestionProvider < SharedSuggestionProvider > provider)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-012",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "4d9c5580d8e1b94b2b44f11abfe69470dd1c240d86cd2dd1ec523825f796e5fd",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e829899a7f606c0011f37593ac18e213ed4fcf602a05a348d9a519904e57c577",
+        "signature": "cast(final SuggestionProvider < SharedSuggestionProvider > provider)",
+        "type": "net.minecraft.commands.synchronization.SuggestionProviders"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.SuggestionProviders#cast(final SuggestionProvider < SharedSuggestionProvider > provider)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-013",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "a912e2243cf7dad738bfacd3a37ac7095e714a5a3d427d310f48fa6725ae0f20",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "df122ed11412a1aa6b8d23801ca6881d902bfac48455afe863998bf14c988243",
+        "signature": "getProvider(final Identifier name)",
+        "type": "net.minecraft.commands.synchronization.SuggestionProviders"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.SuggestionProviders#getProvider(final Identifier name)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-014",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "523f01266f5ab329a68369a2bd6c7f0f0cde2449e22e9b1103224033d6c7f3df",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "7cc8d85c5ff0bfab473ac3964622c9cd15ae361cb60a1c0a3f05d34565913887",
+        "signature": "getName(final SuggestionProvider < ? > provider)",
+        "type": "net.minecraft.commands.synchronization.SuggestionProviders"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.SuggestionProviders#getName(final SuggestionProvider < ? > provider)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CONCURRENCY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-015",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CONCURRENCY"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "dacf33def9d40cd70ccf6a73cb5b12459cf93d4d17cb7a4ecb65ca4fbd0afff1",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "148c76f7b833918ce9238540484cefe17863af11f1ec662c6831131de73d4b66",
+        "signature": "RegisteredSuggestion(Identifier name , SuggestionProvider < SharedSuggestionProvider > delegate)",
+        "type": "net.minecraft.commands.synchronization.SuggestionProviders"
+      },
+      "source_identity": "net.minecraft.commands.synchronization.SuggestionProviders#RegisteredSuggestion(Identifier name , SuggestionProvider < SharedSuggestionProvider > delegate)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-016",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "cbd73d04ba3fcf112d223ef42591d4a61bc85a900ce0c920702397399f9cc1a0",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "a539082db034ce94f8a502f5f0851c04494b7b9ac34fe035764ccb08b3b6f18d",
+        "signature": "enumerateNodes(final RootCommandNode < S > root)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket#enumerateNodes(final RootCommandNode < S > root)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-017",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "79fb47255fa89abed1be5a0ed5f29a7429a78ea1d313acf5e79b42d072a48da2",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "c6c73d251d721a86ef41ddd12850bfddcf97a70d23670c9cd4d2ef3f0bac7cd8",
+        "signature": "createEntries(final Object2IntMap < CommandNode < S >> nodeToId , final ClientboundCommandsPacket . NodeInspector < S > inspector)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket#createEntries(final Object2IntMap < CommandNode < S >> nodeToId , final ClientboundCommandsPacket . NodeInspector < S > inspector)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-018",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "aa53cdcba1b5857025166356492536acc8ef062df33758a13073331798e7e70b",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "787759691b6cc7faf7d091126d4c6816220c1d8706f0128a25e0a04774e847a7",
+        "signature": "createEntry(final CommandNode < S > node , final ClientboundCommandsPacket . NodeInspector < S > inspector , final Object2IntMap < CommandNode < S >> ids)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket#createEntry(final CommandNode < S > node , final ClientboundCommandsPacket . NodeInspector < S > inspector , final Object2IntMap < CommandNode < S >> ids)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-019",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "91de9aba52f6228899eb94aaeb5c50829da56d1fda285076b1dcfb46439ca413",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "3b08d6eade4a975f9515227dbee78bd04042fa2fcaa8601f7467d49fcc04d756",
+        "signature": "build(final CommandBuildContext context , final ClientboundCommandsPacket . NodeBuilder < S > builder)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$ArgumentNodeStub"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$ArgumentNodeStub#build(final CommandBuildContext context , final ClientboundCommandsPacket . NodeBuilder < S > builder)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-020",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "3eb1c14e9234374e664b07e438bbaf532418348d188a5c74883e5659b907b148",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "433e5748f9975da753a9710e110bd1ae48297ac85ae153ea4661ca35e6c9495e",
+        "signature": "write(final FriendlyByteBuf output)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$ArgumentNodeStub"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$ArgumentNodeStub#write(final FriendlyByteBuf output)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-021",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "c091b0ba6f68344223e5346d1969d5062d09a0efcb6413170636518fcfc73581",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "d9460e0126fb640407d8f63864dd13a403a60432f8164ec0e7920314ddfa8714",
+        "signature": "serializeCap(final FriendlyByteBuf output , final ArgumentTypeInfo . Template < A > argumentType)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$ArgumentNodeStub"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$ArgumentNodeStub#serializeCap(final FriendlyByteBuf output , final ArgumentTypeInfo . Template < A > argumentType)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE",
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-022",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE",
+          "REGISTRY"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "2c3aaa28bc73640c8da09b657c78d3e479fe790836ab714fc4a68284e8a7186a",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "8aeeb7490516c4625b7a53beb93a2cabcc4b57d4ad788fd142b7f2eeb78975c3",
+        "signature": "serializeCap(final FriendlyByteBuf output , final ArgumentTypeInfo < A , T > info , final ArgumentTypeInfo . Template < A > argumentType)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$ArgumentNodeStub"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$ArgumentNodeStub#serializeCap(final FriendlyByteBuf output , final ArgumentTypeInfo < A , T > info , final ArgumentTypeInfo . Template < A > argumentType)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-023",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "47ede4bb3a178ac0fde6d1fa67a4883d8012a1376d9c8af5d17668d799bdd81c",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "7db8fc92a44b7f29a8c47c7cb3c8108cae2f80cb172d9469a75110c322cccee2",
+        "signature": "write(final FriendlyByteBuf output)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$Entry"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$Entry#write(final FriendlyByteBuf output)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-024",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "81ffd0704ec57e4f15417d515a48d30afae560c36134d70ab87a64d4afd95d94",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "f9543a79d1026f519c85445e5df4ea41b7419ace18c714141fe42a8e8b9ef6e3",
+        "signature": "canBuild(final IntSet unbuiltNodes)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$Entry"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$Entry#canBuild(final IntSet unbuiltNodes)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-025",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "2fa2a5c8f177d2200b46212c928e9a3ac0bde26f15feb33507a446e6c44a91c1",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "2b0c91afcddcbe572a6dd5712f06989c2bd2f79ef01661c3c7217fe366c3c572",
+        "signature": "canResolve(final IntSet unresolvedNodes)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$Entry"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$Entry#canResolve(final IntSet unresolvedNodes)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-026",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "6a1599c5b0eaf631d69427ec7fd39bc6ded3e5b7e3825e583c5ec9d3c25b8c58",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "84095d7a1993aef8fe04f226f06d8cefb5163f06bbfa7a14a8a0a1f769786025",
+        "signature": "build(final CommandBuildContext context , final ClientboundCommandsPacket . NodeBuilder < S > builder)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$LiteralNodeStub"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$LiteralNodeStub#build(final CommandBuildContext context , final ClientboundCommandsPacket . NodeBuilder < S > builder)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-027",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "07eef1b6af4d72b3dede3aba1bb2c4899c0c8dcef44fa22fedef07cdd794aeda",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "45cf6f53d6da0f89d94f74c42548ebd6cfbe3fe44b30ab0517e0211433f09d2d",
+        "signature": "write(final FriendlyByteBuf output)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$LiteralNodeStub"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$LiteralNodeStub#write(final FriendlyByteBuf output)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-028",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "createLiteral(String id)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeBuilder"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeBuilder#createLiteral(String id)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-029",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "createArgument(String id , ArgumentType < ? > argumentType , @ Nullable Identifier suggestionId)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeBuilder"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeBuilder#createArgument(String id , ArgumentType < ? > argumentType , @ Nullable Identifier suggestionId)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-030",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "configure(ArgumentBuilder < S , ? > input , boolean executable , boolean restricted)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeBuilder"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeBuilder#configure(ArgumentBuilder < S , ? > input , boolean executable , boolean restricted)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-031",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "suggestionId(ArgumentCommandNode < S , ? > node)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeInspector"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeInspector#suggestionId(ArgumentCommandNode < S , ? > node)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-032",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "isExecutable(CommandNode < S > node)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeInspector"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeInspector#isExecutable(CommandNode < S > node)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-033",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "isRestricted(CommandNode < S > node)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeInspector"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeInspector#isRestricted(CommandNode < S > node)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-034",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "42d704dfd5cf70b0f54fdc5fc2ab35a03cc7478e95e3ef81e8f3fe10292aaa9d",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "9e2dabf8abd0cd263e99255823eb5b3cca87d5b9f789288b750cc23b650c52e4",
+        "signature": "NodeResolver(final CommandBuildContext context , final ClientboundCommandsPacket . NodeBuilder < S > builder , final List < ClientboundCommandsPacket . Entry > entries)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeResolver"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeResolver#NodeResolver(final CommandBuildContext context , final ClientboundCommandsPacket . NodeBuilder < S > builder , final List < ClientboundCommandsPacket . Entry > entries)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-035",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "088ee8c6709f12f6aee6eff61eb17da27a82f39e2fc1ac2cd5d39deb99fc03f",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "90888ec233519a3b291081733c126b5aac31654b86bfc6a77e8549d21dd0ae4c",
+        "signature": "resolve(final int index)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeResolver"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeResolver#resolve(final int index)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-036",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "build(CommandBuildContext context , ClientboundCommandsPacket . NodeBuilder < S > builder)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeStub"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeStub#build(CommandBuildContext context , ClientboundCommandsPacket . NodeBuilder < S > builder)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-037",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default non-operator command publication is composition-locked; dynamic concrete ArgumentTypeInfo serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "COMMAND_TREE"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "write(FriendlyByteBuf output)",
+        "type": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeStub"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$NodeStub#write(FriendlyByteBuf output)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE",
+        "CODEC",
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-038",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE",
+          "CODEC",
+          "REGISTRY"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "4301c191b3c18b7b843fc69ad893a80bcb171d7a3693aea669c82e3df3145654",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "6a56899e73a19286ea7da1a1a219301b797ceaa45b79be0104abfc011ce11315",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.network.protocol.game.ClientboundSetTimePacket"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundSetTimePacket#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-039",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "a5c002bf669a97de72d2c25675b57fd88e142b8666c0ac74ff52d6215415b69a",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "39af6106d8a4fc7799299755ac2b1060ca57e235a16ec2895fc4ed08c11838be",
+        "signature": "type()",
+        "type": "net.minecraft.network.protocol.game.ClientboundSetTimePacket"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundSetTimePacket#type()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CLIENT_OBSERVABLE"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-040",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CLIENT_OBSERVABLE"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "7796fcb00347bab7f1381cb080cf0b05acb76fdc96faf979b6ae816994fc9f25",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "72eeb034333cd98a3c6c1df67e84e9975f05fabd7dec326e0a4605dea87f0703",
+        "signature": "handle(final ClientGamePacketListener listener)",
+        "type": "net.minecraft.network.protocol.game.ClientboundSetTimePacket"
+      },
+      "source_identity": "net.minecraft.network.protocol.game.ClientboundSetTimePacket#handle(final ClientGamePacketListener listener)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-041",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "39bb0c77513714fe7c336fe8b0e86aa0e3e48b115f42b7c46adf1d0158d47bba",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "ab5359e878a12370b87538ccf95d92f6e3492cbde95b7c8b5320e966654cf11f",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-042",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "4aeca6fcb660d817fef0ef68cd77e51d05ff8570b86e5830cf8bac985aeaa8af",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "8094aec4c73cb6cd87d46c8f603826b415540bbaf4e76d7d646656f5570a8467",
+        "signature": "RecipeBookSettings()",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#RecipeBookSettings()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-043",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "bf72138dbfc45608d593e8538d5bd0b9d13a626e6484dca4baa9bbc88a2c4604",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "d3defa63dfefbf5c59f8c6021a59ea3f466fada7e2a6fe3d68245837d0bc8764",
+        "signature": "RecipeBookSettings(final RecipeBookSettings . TypeSettings crafting , final RecipeBookSettings . TypeSettings furnace , final RecipeBookSettings . TypeSettings blastFurnace , final RecipeBookSettings . TypeSettings smoker)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#RecipeBookSettings(final RecipeBookSettings . TypeSettings crafting , final RecipeBookSettings . TypeSettings furnace , final RecipeBookSettings . TypeSettings blastFurnace , final RecipeBookSettings . TypeSettings smoker)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-044",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "b79660665b9404a94afe1298a9c16d4e6c85b9510342111ed6d5626fa43440ab",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "7b444d6d90ae13e038bd2b3a1a9d4eab078ab3e9619496713e4c8a0353d86cdc",
+        "signature": "getSettings(final RecipeBookType type)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#getSettings(final RecipeBookType type)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-045",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "0257b5a97f6b1861456cc20b8b414849775f17ab15f604d3fdf09313684d126f",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "8b84f536d9d9a3c935b05114368e377f5f6a498d08bec6f66e9f199931c2f4fa",
+        "signature": "updateSettings(final RecipeBookType recipeBookType , final UnaryOperator < RecipeBookSettings . TypeSettings > operator)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#updateSettings(final RecipeBookType recipeBookType , final UnaryOperator < RecipeBookSettings . TypeSettings > operator)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-046",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "fde2cefe684c21cbb2e09ba168dc421fbfd69a5a426efb5982a786e7375f2e03",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "3320b979f937c3bef8221b0dd1f98b8340a517e5bb1e3dae1c54dcac2d2d108b",
+        "signature": "isOpen(final RecipeBookType type)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#isOpen(final RecipeBookType type)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-047",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "a8f3d84a385980046274ed9ef6060deaf34c18505e11d3889e0ff8b71dfe8356",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "8abcd3c99a3cf22a880193cef80f90b29d105ff4201e77ebd5c09fed8f3ff9d0",
+        "signature": "setOpen(final RecipeBookType type , final boolean open)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#setOpen(final RecipeBookType type , final boolean open)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-048",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "78308e1954c2c67dbf473dcd1367ee61ce6b6d297be9dca6e5a44f069a9ad1a7",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "7d96e6773a7d45d9ffbfa4e3560f234dfadbf9552e55e341fa1f63c51220f732",
+        "signature": "isFiltering(final RecipeBookType type)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#isFiltering(final RecipeBookType type)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-049",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "b79f5dfa47d11a87d27215f9341ec520c77752da276db0afd0f76342c2926183",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "ce13fe3717452186048c4812e844bd1f5f2daa4d648b8c71a2981b0542bc9e88",
+        "signature": "setFiltering(final RecipeBookType type , final boolean filtering)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#setFiltering(final RecipeBookType type , final boolean filtering)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-050",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "8976a11267d23dd066f1d518bd7197de206281ff279be16d80836d99b74a9aaf",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "2d9535c9d939b6a871e66932e5fcbb41efd45cb57fbc45a38a8808864849b340",
+        "signature": "copy()",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#copy()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-051",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "620b506ec8023e7b1ef79f8a4f5720929d97600966182711e2182effe4c64f33",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "bd0e2d846f0344a4ed62572c41d094a5e8c0c821ea6227acf7590b306cb56b87",
+        "signature": "replaceFrom(final RecipeBookSettings other)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#replaceFrom(final RecipeBookSettings other)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-052",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "Four TypeSettings encode in crafting/furnace/blast_furnace/smoker order; each is open BOOL then filtering BOOL.",
+        "selected_mechanism": "DYNAMIC_WIRE_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "RECIPE_BOOK_SETTINGS"
+      ],
+      "source": {
+        "body_sha256": "af65700389ea56f6e6635597d8b0260c38db75a0947ec616c2e6b424fcef6638",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "debd01529038ea5eda74066ce21c09f8cc6b29a4ef6799c3bdb948cd5dce6743",
+        "signature": "TypeSettings(boolean open , boolean filtering)",
+        "type": "net.minecraft.stats.RecipeBookSettings"
+      },
+      "source_identity": "net.minecraft.stats.RecipeBookSettings#TypeSettings(boolean open , boolean filtering)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-053",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "signature": "getTotalTicks(Holder < WorldClock > definition)",
+        "type": "net.minecraft.world.clock.ClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockManager#getTotalTicks(Holder < WorldClock > definition)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-054",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "71d1c38eaa88c882a36f73a3fcd1128ab29c28655eea9f4fd43f50ad03b97323",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "92cc97eb86eef253f08e1e321b5c1f72179e21ca81a2555edca858001c0f660b",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.clock.ClockNetworkState"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockNetworkState#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-055",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "291e40b7d6c16683996dc73a9b2b8790d74628224cb883a7611ef8661c42f1b7",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "33f2e51f86afa2f35db461aa5dcae576bb100595d8a06a0d22df85134084754e",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.clock.ClockState"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockState#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-056",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "b51abf4132163ad4e561239324178415d80fdf9a40b19f310f1598a6391cfefb",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "db72a78e5bbcdfa27217f1b728031f1b64f01ce2b6dfe376ed988c14694a3522",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.clock.ClockTimeMarker"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockTimeMarker#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-057",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "d185feeb1e6a76d38ac67d18dd6b656fc0732471ea73ae6083c91321f4c89d1f",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "b4c2b679141dcfc52748985e8e3bc13c763fe721816c6ad7de047971c9f2b3ed",
+        "signature": "getRepetitionCount(final long totalTicks)",
+        "type": "net.minecraft.world.clock.ClockTimeMarker"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockTimeMarker#getRepetitionCount(final long totalTicks)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-058",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "495446440b40bcbc241f9468cbec73b95aae945571c1db8d8fbd19cbc0a90d30",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "9e7f27165a11f9ad10925aae809f4bce84c75d1e64fe3b5d7e0de32029af220e",
+        "signature": "resolveTimeToMoveTo(final long totalTicks)",
+        "type": "net.minecraft.world.clock.ClockTimeMarker"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockTimeMarker#resolveTimeToMoveTo(final long totalTicks)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-059",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "de35b600f0eca9cef058123e24e06e76a501c0d8a6fcb1c381d240956357dc48",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "0edc302fb94eebb81cc4a772b65302d6627a2383ccb94941fd019f4273058f2a",
+        "signature": "occursAt(final long totalTicks)",
+        "type": "net.minecraft.world.clock.ClockTimeMarker"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockTimeMarker#occursAt(final long totalTicks)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-060",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "b625969d5a041749ba27cca9edd58ec5ff437bcbe5b6cdddc2ea02edf154e97e",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "241619929875e1998d720adf0548cac5baf9d591acc7e68139b479f83dd9d36b",
+        "signature": "durationToNext(final int periodTicks , final long from , final long to)",
+        "type": "net.minecraft.world.clock.ClockTimeMarker"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockTimeMarker#durationToNext(final int periodTicks , final long from , final long to)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-061",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "REGISTRY"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "f769cd3079ff7585518f03580c39cbf1050947e6cb6deb87c7ee0b5228eac03c",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "00686af5d0faef9e6d94b7f4f219aefd6c973d9f36fca12b3fe60910741f8a5f",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.clock.ClockTimeMarkers"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockTimeMarkers#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-062",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "REGISTRY"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "b0eb6f419a6d80159c9800c54e78bae301a5862f366a55f210c1d96085cb8b0e",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "41eb4f72ec8e67baccb2a7394e723d012dbc480a542d080ca7df704abc74268b",
+        "signature": "createKey(final String name)",
+        "type": "net.minecraft.world.clock.ClockTimeMarkers"
+      },
+      "source_identity": "net.minecraft.world.clock.ClockTimeMarkers#createKey(final String name)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-063",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "cceb643cee7f18d79cc39cfe1921e6c4e601d7d5e29ef85ec11ca7e3559fd1ce",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "87a9766fd0ffe3666da3358c6880a85eb8fcfac33557532aec52da4d3a11e4e6",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.clock.PackedClockStates"
+      },
+      "source_identity": "net.minecraft.world.clock.PackedClockStates#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-064",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "a51955e4446e65f92244fc604bd05c530e4495f29ee22edd49962fa0ec8d1aac",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "1028fd0594bf2dc8475e0fdb2e638d6cc067da2b5fff4be4aa19a946865578e2",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-065",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "130c12281fc6db081ac7da27f72ba682808d9215c37ab18ca7855e77c60375e4",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "9c5b823764113c6331dd50ae70002e50fe40c2b5394bcc8851a2c2026a362dba",
+        "signature": "<fieldinit:clocks>()",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#<fieldinit:clocks>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-066",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "784afbe6e38c92ed9e1821fb045e4e43c664076ecf709216f2b50524561d45ec",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "3816a903787ff5090b0a05cbf9dfdcf550df323bae62313c1f047a4e20eb7e8e",
+        "signature": "ServerClockManager(final PackedClockStates packedClockStates)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#ServerClockManager(final PackedClockStates packedClockStates)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-067",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "REGISTRY"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "681dd300df3cd150edb7e6b0bbf638c5f6694856c4f396c56a4c4f67d895a986",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "eca8fe1cf334d0de6843d825dd43f1044e43da34abebe9b87d33d506779c7904",
+        "signature": "init(final MinecraftServer server)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#init(final MinecraftServer server)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-068",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "fec037a42e671858db32d5f2555c8ff1693b0f520ec6225b08b3aaa0fce17d28",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "c673d67b78bfe7c167c172e7631ab11bfc4b5cf8fa3418b81d5072c5d35f2cfd",
+        "signature": "registerTimeMarker(final ResourceKey < ClockTimeMarker > timeMarkerId , final ClockTimeMarker timeMarker)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#registerTimeMarker(final ResourceKey < ClockTimeMarker > timeMarkerId , final ClockTimeMarker timeMarker)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-069",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "fda0f59b8de0bc50d1f69c64535fa2741cfa3d1265f80d139d04c8a59851033d",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "5bf3d08acd231a5899ed7081a325a80520419acac01bb9c7d2af8664969518c6",
+        "signature": "packState()",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#packState()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-070",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "0064ba7bc40f005536b589e5d8928bd147774855e7c103b31027a4fb86dcf047",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "b3f4eef50dd53ff96293b131086ea21fa29c897cda438025a34c8674b9a4576a",
+        "signature": "tick()",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#tick()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-071",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "28aa49d2915ef2a01ee183a4205511b6d2e54e067ae34c8cc48222fa81b9c847",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "6c577c70396fc8946c2f0b8c6d05bd6551dd73cb6784ebdd47246ee127a6e0d3",
+        "signature": "getInstance(final Holder < WorldClock > definition)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#getInstance(final Holder < WorldClock > definition)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-072",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "8784f7325c02c127f3e93ab8391b8d73dabacd8f952db713544dad9abd3317f3",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "a14db03278bfeb8f364d5fa9e795570eec4068e50406c9d7a23d6a3a796263fd",
+        "signature": "setTotalTicks(final Holder < WorldClock > clock , final long totalTicks)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#setTotalTicks(final Holder < WorldClock > clock , final long totalTicks)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-073",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "e06cac5f94767bbecead4e08b5f31e2a7b21579db1a11a914b5f9af1335a762e",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "b591ebb83e4e5c4b4f1d84cf19460b4547a40f048deaedf1c0d67151286fbdae",
+        "signature": "moveToTimeMarker(final Holder < WorldClock > clock , final ResourceKey < ClockTimeMarker > timeMarkerId)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#moveToTimeMarker(final Holder < WorldClock > clock , final ResourceKey < ClockTimeMarker > timeMarkerId)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-074",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "699770a0fd7726ec6bb194ff0e4f096d26990cfd5bfeef6e23388f5e510f19e1",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "8172d68843b5c2e5cee3458065661301bf4fd6be2be74058c5cbf50b6fa92776",
+        "signature": "addTicks(final Holder < WorldClock > clock , final int ticks)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#addTicks(final Holder < WorldClock > clock , final int ticks)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-075",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "42c06d553ca5188f0d461aa239996e118d9073011844970f072c320bf8ec2f54",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "f2165c05c42c8f220d406adbf451003d83fa451867fa6494bc60109689db3eca",
+        "signature": "setPaused(final Holder < WorldClock > clock , final boolean paused)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#setPaused(final Holder < WorldClock > clock , final boolean paused)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-076",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "bb1348811ccef0d7193d21fbf6a4e112aaaaa1764947fe55fcdfad1af287e364",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "0c4478be85c4f69467901952d2ef23a1e53b2792d61d3e5886f2c82b04446b55",
+        "signature": "setRate(final Holder < WorldClock > clock , final float rate)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#setRate(final Holder < WorldClock > clock , final float rate)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-077",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "REGISTRY"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "562a9ddbc46585eae139eae2a53b9ef36884433510f6d23dd21e332b123a3c82",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "540a646f0f16721298f6a3c0e7d3c3eda52aee16c1ceb818953cc1c69d8778a0",
+        "signature": "modifyClock(final Holder < WorldClock > clock , final Consumer < ? super ServerClockManager . ClockInstance > action)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#modifyClock(final Holder < WorldClock > clock , final Consumer < ? super ServerClockManager . ClockInstance > action)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-078",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "68b7b849e0675aa6e798e229343ab1751dce3e0d388c62e1da4974e6313fc292",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "98bc2d48e6dacbd6f29f8b268fdd21785535fa1dc3a55616a96c56876bc96297",
+        "signature": "getTotalTicks(final Holder < WorldClock > definition)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#getTotalTicks(final Holder < WorldClock > definition)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-079",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "c1afcc1c4c3db97e7228f18e7660e44204b6514f9a28f65ff6d2cd602d3e7c8d",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "af8f06fac8d681374cab693659f77fa2adacfb286256eec152af3e5606449dae",
+        "signature": "getGameTime()",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#getGameTime()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-080",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "09b4f7dfb989d48d104faa0068f9ed76f6cdcf0ba7968fc347e92713301ab630",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "9ba3b25ee2b69b8e10edcf423f472de8f00262c0463b8513478963aee8a02f0d",
+        "signature": "isAtTimeMarker(final Holder < WorldClock > clock , final ResourceKey < ClockTimeMarker > timeMarkerId)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#isAtTimeMarker(final Holder < WorldClock > clock , final ResourceKey < ClockTimeMarker > timeMarkerId)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-081",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "9308a31312e7ba60144529114478aa417199bb3da2c0c9102f68e4d256f396be4",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "c466dc29571d58b7ef2eb2946b813d3072ee16951607c67314a33c69e5c9f0ea",
+        "signature": "commandTimeMarkersForClock(final Holder < WorldClock > clock)",
+        "type": "net.minecraft.world.clock.ServerClockManager"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager#commandTimeMarkersForClock(final Holder < WorldClock > clock)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-082",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "77eed7c29d6ef3214ad6273ac4b9ba54b39e3649679d83fe3cf2a9192e276f6f",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "b5e3fc7a0307ee12f41ec0f68b47d962449328c8929e97a60e3c526581316c59",
+        "signature": "<fieldinit:timeMarkers>()",
+        "type": "net.minecraft.world.clock.ServerClockManager$ClockInstance"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager$ClockInstance#<fieldinit:timeMarkers>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-083",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "c06eaf35ded93d60b58b70629c5f64cd033bf40cfb1e701ccbb4ca978f6db5fc",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "614e0b7fa603f1d296d5b23a3e529a7f3f1b8faf3b5002465317de0a82e4e384",
+        "signature": "<fieldinit:rate>()",
+        "type": "net.minecraft.world.clock.ServerClockManager$ClockInstance"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager$ClockInstance#<fieldinit:rate>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-084",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "284d52d02ccbd33bc3443793a9a80b29b8b2f3d6370fd5bd9505987bbe5dd6e2",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "d76262eb373976381edc8f0fd58083517029011b90147c27c5ace6676d28776c",
+        "signature": "loadFrom(final ClockState state)",
+        "type": "net.minecraft.world.clock.ServerClockManager$ClockInstance"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager$ClockInstance#loadFrom(final ClockState state)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-085",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "1701ffbe36e243a8b6d0af2fed2cc4c5f8cd15beef81f7ca0c9b3604c641756c",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "7cb7d57852327c2e50a1bfd022f633c823915b3a704bb66c5e2ab0af21184111",
+        "signature": "tick()",
+        "type": "net.minecraft.world.clock.ServerClockManager$ClockInstance"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager$ClockInstance#tick()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-086",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "313ff4eed6d9298400bd663cfab1f2b59b58b9625af10733dabf8ee6d27681764",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "43c3597d25c1930795418c04a00db90dc3466689160166d71e56064ed458208a",
+        "signature": "packState()",
+        "type": "net.minecraft.world.clock.ServerClockManager$ClockInstance"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager$ClockInstance#packState()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-087",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "180b4ad79d4c0dfd7dcf865ff09dd326901c7b9b062e356804057691c57477a7",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "b5653ea83bbdbe10af99c8868c139d98a5fa6d19f2cd5d2b2ac7a98ba5507076",
+        "signature": "packNetworkState(final MinecraftServer server)",
+        "type": "net.minecraft.world.clock.ServerClockManager$ClockInstance"
+      },
+      "source_identity": "net.minecraft.world.clock.ServerClockManager$ClockInstance#packNetworkState(final MinecraftServer server)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC",
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-088",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC",
+          "REGISTRY"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "8b94844929d266f344b752581d5ee58dfbfeebca71f10c1da0e9bf656e96cf85",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "763bff26191f9a02b2a9304e24ade4c1c7c2e71bda9df887715f1a7597f81bee",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.clock.WorldClock"
+      },
+      "source_identity": "net.minecraft.world.clock.WorldClock#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-089",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "843d00f17ff14e41651e81984ce4b3e33fa52eac4cf35d522e61ec1e2fcb8ecb",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "8cda51a51ff15c0c0b5df305574502108c01a642062392419533206d008ff189",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.clock.WorldClocks"
+      },
+      "source_identity": "net.minecraft.world.clock.WorldClocks#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-090",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "73ad73cd967d76f21e99999a748400289407d8975547065f7133884767eecdbc",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "4fedfb1990038dbd48a635f4f6f02d2082e0711034c38101cd423df65e5798fd",
+        "signature": "bootstrap(final BootstrapContext < WorldClock > context)",
+        "type": "net.minecraft.world.clock.WorldClocks"
+      },
+      "source_identity": "net.minecraft.world.clock.WorldClocks#bootstrap(final BootstrapContext < WorldClock > context)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-091",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "REGISTRY"
+        ],
+        "note": "Clock packet/network-state law is reviewed; reusable map/registry-holder wire helpers remain in the final-seams review.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "CLOCK_FULL_SYNC"
+      ],
+      "source": {
+        "body_sha256": "6b956151fc58f8f7af8a559baf1c09f48437d0e5c12f81015319619493554334",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "3b13eb3295771a1a1577931c0626467209ec4492eeb99d23f23e33055aceef24",
+        "signature": "key(final String id)",
+        "type": "net.minecraft.world.clock.WorldClocks"
+      },
+      "source_identity": "net.minecraft.world.clock.WorldClocks#key(final String id)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC",
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-092",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC",
+          "REGISTRY"
+        ],
+        "note": "R2B profile explicitly requires an empty initial inventory/crafting snapshot; empty ItemStack encodes as VarInt 0; non-empty item/component codecs are not admitted.",
+        "selected_mechanism": "EMPTY_STATE_ONLY_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "INITIAL_INVENTORY"
+      ],
+      "source": {
+        "body_sha256": "c231fa1c4c17a4fdf7fd1ac85681b5775af492a706e6096f5159e872b22000f9",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "947b1c5b632b85494501b5c0304f66d88d70e10cc2a8c2fe83c677a40843108c",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.item.ItemStack"
+      },
+      "source_identity": "net.minecraft.world.item.ItemStack#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC",
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-093",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC",
+          "REGISTRY"
+        ],
+        "note": "R2B profile explicitly requires an empty initial inventory/crafting snapshot; empty ItemStack encodes as VarInt 0; non-empty item/component codecs are not admitted.",
+        "selected_mechanism": "EMPTY_STATE_ONLY_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "INITIAL_INVENTORY"
+      ],
+      "source": {
+        "body_sha256": "a14a0d90916d55b399c63f0cfa8bfec13c2a939c63b005305f0b8be8acdc8e30",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "79f423af1be600d25be1cd59349234663945303258b93a3b81fac69959985b8f",
+        "signature": "createOptionalStreamCodec(final StreamCodec < RegistryFriendlyByteBuf , DataComponentPatch > patchCodec)",
+        "type": "net.minecraft.world.item.ItemStack"
+      },
+      "source_identity": "net.minecraft.world.item.ItemStack#createOptionalStreamCodec(final StreamCodec < RegistryFriendlyByteBuf , DataComponentPatch > patchCodec)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-094",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "R2B profile explicitly requires an empty initial inventory/crafting snapshot; empty ItemStack encodes as VarInt 0; non-empty item/component codecs are not admitted.",
+        "selected_mechanism": "EMPTY_STATE_ONLY_CLOSED",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "INITIAL_INVENTORY"
+      ],
+      "source": {
+        "body_sha256": "8916fc9af2aa96db7573196b3ca9750bbf5fb18d693b69d93f9e4ef0624ed44c",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "90d0c2df87d39ecfe2ae574257ad5b5ef5f30bd482ec4288c0f0a532b712b41a",
+        "signature": "validatedStreamCodec(final StreamCodec < RegistryFriendlyByteBuf , ItemStack > codec)",
+        "type": "net.minecraft.world.item.ItemStack"
+      },
+      "source_identity": "net.minecraft.world.item.ItemStack#validatedStreamCodec(final StreamCodec < RegistryFriendlyByteBuf , ItemStack > codec)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC",
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-095",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC",
+          "REGISTRY"
+        ],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "0ea1cdf4024d37aeea9952e4d36b34210293a4c840ab8f7430001927e263a4f2",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "d6e785938bc718aa68db56f76fdd1887bc965065131f06aa28a6ec1237ba8b35",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.item.crafting.RecipePropertySet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.RecipePropertySet#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-096",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "da60e0b9f25a3a05a65db0b74e95be45c6f18d93983e622d5a35dc588db6b24a",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "4b3a054a82b1b034b4533f38c8547238a3ee3403e1ec4a19da0ed89108078178",
+        "signature": "RecipePropertySet(final Set < Holder < Item >> items)",
+        "type": "net.minecraft.world.item.crafting.RecipePropertySet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.RecipePropertySet#RecipePropertySet(final Set < Holder < Item >> items)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-097",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "REGISTRY"
+        ],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "4a8346ce380512724248824fdd5b7d05dfec0f5bfb7cb43031771263128fa1f77",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "d2f2fcd666bf0e153aec45ede532180f125c6ff48d31a01c1db41780c45b3907",
+        "signature": "registerVanilla(final String name)",
+        "type": "net.minecraft.world.item.crafting.RecipePropertySet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.RecipePropertySet#registerVanilla(final String name)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-098",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "04b34e45d78add12ca44969cf4712572952124400dcc0c13b9c2ccb7c437d1325",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "57f22f6a042b2076206a7d2fe5f1a96012c13e79a33df7c02d7eed35b8551f47",
+        "signature": "test(final ItemStack itemStack)",
+        "type": "net.minecraft.world.item.crafting.RecipePropertySet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.RecipePropertySet#test(final ItemStack itemStack)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-099",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "REGISTRY"
+        ],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "5f3604adb378e2c5e55780f6491c138b530e35fd8c3b492c67d2c79c6706ee2e",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "ff88424cb653b6812e6fdafe6ef4812c83d71c0e18766155719b9f6f7e99b990",
+        "signature": "create(final Collection < Ingredient > ingredients)",
+        "type": "net.minecraft.world.item.crafting.RecipePropertySet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.RecipePropertySet#create(final Collection < Ingredient > ingredients)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-100",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "440f00cbbcea1e0de275702af89b958dc17f83a641ed8983e1c7804b2356956d",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "906c9733ab248cdc627dac9d89cc7b97ea28f21bd61a68d89cea06c18b9f384a",
+        "signature": "empty()",
+        "type": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet#empty()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-101",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "189e88aa5686d2b4d7f90063cad7cd48769b85f5ec4d7b051a3e30492a1c7252",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "64750fafb6a649830177b822246dedb27486946826f78df3b0a12f91a3d49a8f",
+        "signature": "noRecipeCodec()",
+        "type": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet#noRecipeCodec()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-102",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "9a2cdb1925fbb40987c85c89e199a436b2299f76dd763b7d038f432049deec46",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "b3b3edcce71f60e7b664b0a1e8d4feeff2025464aff5af0f6399d5e83d2a3cfc",
+        "signature": "acceptsInput(final ItemStack input)",
+        "type": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet#acceptsInput(final ItemStack input)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-103",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "687f7e840937acf3aec01eb2aa4eb8f449760782a53322c2aa6e08bf80ef920d",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "9b59471a394d6007b940fce57b686386ce155a3b047396f44be9c5354dc12f8e",
+        "signature": "selectByInput(final ItemStack input)",
+        "type": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet#selectByInput(final ItemStack input)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-104",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "4ca0957a0332cb690495019d491bce65787f05298119599816856fb3e413d8fb",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "07fc41d8bca4426968eb810df85032582450270093a79f725630d004d91b885c",
+        "signature": "isEmpty()",
+        "type": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet#isEmpty()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-105",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "Selected default-composition update_recipes publication is composition-locked; deeper item/recipe-display serializers are not admitted by R2B.",
+        "selected_mechanism": "COMPOSITION_ARTIFACT",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "SYNCHRONIZED_RECIPES"
+      ],
+      "source": {
+        "body_sha256": "097170533bb6d56fd48c58f8882141f40dc3ab69f1f0c891ba42710dd9af8953",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "1ccddac10a93e70a16a1877d8892e4919428046b35836021ce0917143dd17a8c",
+        "signature": "size()",
+        "type": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet"
+      },
+      "source_identity": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet#size()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC",
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-106",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC",
+          "REGISTRY"
+        ],
+        "note": "DimensionType Play STREAM_CODEC is registry-holder only; direct/data codecs are outbound-irrelevant; registry-holder helper remains in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DIMENSION_TYPE"
+      ],
+      "source": {
+        "body_sha256": "d56b18572ff9e5b4ae62f9de79b31e9984beb306eeed66da64dc7124413eedb2",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "84f7de811d4fc1553d4a63f68bf308471409d939908129143412da655d07acc2",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.level.dimension.DimensionType"
+      },
+      "source_identity": "net.minecraft.world.level.dimension.DimensionType#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC",
+        "REGISTRY"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-107",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC",
+          "REGISTRY"
+        ],
+        "note": "DimensionType Play STREAM_CODEC is registry-holder only; direct/data codecs are outbound-irrelevant; registry-holder helper remains in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DIMENSION_TYPE"
+      ],
+      "source": {
+        "body_sha256": "2046a36ba6ef11d20523987a178637170367d08fe0e19e6080ff99420504711a",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "3b83cd4e822b94d489907336933892d9886d29b2a620885c367e9e9fe96adcc7",
+        "signature": "createDirectCodec(final Codec < EnvironmentAttributeMap > attributeMapCodec)",
+        "type": "net.minecraft.world.level.dimension.DimensionType"
+      },
+      "source_identity": "net.minecraft.world.level.dimension.DimensionType#createDirectCodec(final Codec < EnvironmentAttributeMap > attributeMapCodec)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-108",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "DimensionType Play STREAM_CODEC is registry-holder only; direct/data codecs are outbound-irrelevant; registry-holder helper remains in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DIMENSION_TYPE"
+      ],
+      "source": {
+        "body_sha256": "4d9f40af68d6ef090e6e55aa55b64123d4a99af3cf74cb07408947d123734f04",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "62ab0f8144760d3094aebd6b9af86e3816605e833b89af3968adb615ce261a4c",
+        "signature": "getTeleportationScale(final DimensionType lastDimensionType , final DimensionType newDimensionType)",
+        "type": "net.minecraft.world.level.dimension.DimensionType"
+      },
+      "source_identity": "net.minecraft.world.level.dimension.DimensionType#getTeleportationScale(final DimensionType lastDimensionType , final DimensionType newDimensionType)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-109",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "DimensionType Play STREAM_CODEC is registry-holder only; direct/data codecs are outbound-irrelevant; registry-holder helper remains in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DIMENSION_TYPE"
+      ],
+      "source": {
+        "body_sha256": "14cfaab2ba46ff05b4a9d6905c8d647379617d73e31e7a6d0355917451788f82",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "39415ec72c8aa36b8c02ee5aff5b7c423a1f483c89b2eff7c0f6dab9834b6ac8",
+        "signature": "getStorageFolder(final ResourceKey < Level > name , final Path baseFolder)",
+        "type": "net.minecraft.world.level.dimension.DimensionType"
+      },
+      "source_identity": "net.minecraft.world.level.dimension.DimensionType#getStorageFolder(final ResourceKey < Level > name , final Path baseFolder)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-110",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "DimensionType Play STREAM_CODEC is registry-holder only; direct/data codecs are outbound-irrelevant; registry-holder helper remains in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DIMENSION_TYPE"
+      ],
+      "source": {
+        "body_sha256": "f659eaf8aa1f616c57318791ef9461431867431313801106e39488f401f40b26",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "991896e2ff80af61a2661b1f11eb026538451cd6ac08341a51cad6040ac83af6",
+        "signature": "monsterSpawnLightTest()",
+        "type": "net.minecraft.world.level.dimension.DimensionType"
+      },
+      "source_identity": "net.minecraft.world.level.dimension.DimensionType#monsterSpawnLightTest()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-111",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "DimensionType Play STREAM_CODEC is registry-holder only; direct/data codecs are outbound-irrelevant; registry-holder helper remains in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DIMENSION_TYPE"
+      ],
+      "source": {
+        "body_sha256": "f4e0e9e74c35768b163fb973510efba683a8cdc74bc3df03fe8edc36a813f40d",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "fa26ccc4331439d813be41fe12f1e9632ff2c40455b47e3358aee976fb8a0ab0",
+        "signature": "monsterSpawnBlockLightLimit()",
+        "type": "net.minecraft.world.level.dimension.DimensionType"
+      },
+      "source_identity": "net.minecraft.world.level.dimension.DimensionType#monsterSpawnBlockLightLimit()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-112",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "DimensionType Play STREAM_CODEC is registry-holder only; direct/data codecs are outbound-irrelevant; registry-holder helper remains in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DIMENSION_TYPE"
+      ],
+      "source": {
+        "body_sha256": "76b87f8dd190f5c688635696906f851fe1cb2f1b6df901235766b6829df4b50d",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "6e69874baecb3c644630c2cd24ea9b2103d908182da92580ac21511638d5ab65",
+        "signature": "hasEndFlashes()",
+        "type": "net.minecraft.world.level.dimension.DimensionType"
+      },
+      "source_identity": "net.minecraft.world.level.dimension.DimensionType#hasEndFlashes()"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-113",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "DimensionType Play STREAM_CODEC is registry-holder only; direct/data codecs are outbound-irrelevant; registry-holder helper remains in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DIMENSION_TYPE"
+      ],
+      "source": {
+        "body_sha256": "97e8532bcdd90cd5e37444cbf06caf3a25b24123708fe4c29bd9edaf6f740479",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "049597003f9dc0007bd9db06f5521fcc125f1f57b9f22571f932c83e25f76fb7",
+        "signature": "MonsterSettings(IntProvider monsterSpawnLightTest , int monsterSpawnBlockLightLimit)",
+        "type": "net.minecraft.world.level.dimension.DimensionType"
+      },
+      "source_identity": "net.minecraft.world.level.dimension.DimensionType#MonsterSettings(IntProvider monsterSpawnLightTest , int monsterSpawnBlockLightLimit)"
+    },
+    {
+      "atlas_observed_hazards": [
+        "CODEC"
+      ],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-114",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [
+          "CODEC"
+        ],
+        "note": "RespawnData is GlobalPos then yaw/pitch FLOAT; GlobalPos/resource-key/packed-position primitives remain in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DEFAULT_SPAWN"
+      ],
+      "source": {
+        "body_sha256": "40e050002492d768186d69795d56dcf3d8e006995416123b512a0eef68c96b52",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "7436f82cb3ec35166d0a3997d45306030c35b044070976191198089888848cd0",
+        "signature": "<clinit>()",
+        "type": "net.minecraft.world.level.storage.LevelData$RespawnData"
+      },
+      "source_identity": "net.minecraft.world.level.storage.LevelData$RespawnData#<clinit>()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-115",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "RespawnData is GlobalPos then yaw/pitch FLOAT; GlobalPos/resource-key/packed-position primitives remain in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DEFAULT_SPAWN"
+      ],
+      "source": {
+        "body_sha256": "67d5a59808cc3f23828f6207d7373816447802d53c92fc8422b3868133825e25",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "d87eceb9269060e1efe7ce490b489330704beb39237e627181af63126f59061c",
+        "signature": "of(final ResourceKey < Level > dimension , final BlockPos pos , final float yaw , final float pitch)",
+        "type": "net.minecraft.world.level.storage.LevelData$RespawnData"
+      },
+      "source_identity": "net.minecraft.world.level.storage.LevelData$RespawnData#of(final ResourceKey < Level > dimension , final BlockPos pos , final float yaw , final float pitch)"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-116",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "RespawnData is GlobalPos then yaw/pitch FLOAT; GlobalPos/resource-key/packed-position primitives remain in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DEFAULT_SPAWN"
+      ],
+      "source": {
+        "body_sha256": "ece551cf050481cb1b15babfc1eca3f2fa53242736241a5d41a813bc4f313d5d",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "6c13694a4ae5295af7efeb93980bad78a9b37a590fcb3c301e20c6602f8d023e",
+        "signature": "dimension()",
+        "type": "net.minecraft.world.level.storage.LevelData$RespawnData"
+      },
+      "source_identity": "net.minecraft.world.level.storage.LevelData$RespawnData#dimension()"
+    },
+    {
+      "atlas_observed_hazards": [],
+      "candidate_id": "DISC-NET-R2B-PLAY-WIRE-CLOSURE-117",
+      "decision": {
+        "accepted": true,
+        "hazards_reviewed": [],
+        "note": "RespawnData is GlobalPos then yaw/pitch FLOAT; GlobalPos/resource-key/packed-position primitives remain in final seams.",
+        "selected_mechanism": "DYNAMIC_WIRE_FINAL_SEAM",
+        "source_inspected": true
+      },
+      "group_ids": [
+        "DEFAULT_SPAWN"
+      ],
+      "source": {
+        "body_sha256": "4edac23483351187e195a94dfbc9c7cf9695ab4b850de7933234880830cc7265",
+        "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+        "normalized_sha256": "1fc203581142eb74be4508251314251bc339d27a7c46a683bef636491453381bd",
+        "signature": "pos()",
+        "type": "net.minecraft.world.level.storage.LevelData$RespawnData"
+      },
+      "source_identity": "net.minecraft.world.level.storage.LevelData$RespawnData#pos()"
+    }
+  ],
+  "contains_official_source_text": false,
+  "dossier_sha256": "93999fca0a4c69eda607e729af61c74e7ce40c96bf4201516904fabf79bc2e3a",
+  "group_counts": {
+    "CLOCK_FULL_SYNC": 42,
+    "COMMAND_TREE": 37,
+    "DEFAULT_SPAWN": 4,
+    "DIMENSION_TYPE": 8,
+    "INITIAL_INVENTORY": 3,
+    "RECIPE_BOOK_SETTINGS": 12,
+    "SYNCHRONIZED_RECIPES": 11
+  },
+  "id": "REVIEW-NET-R2B-PLAY-WIRE-CLOSURE-26_2-001",
+  "kind": "r2b-play-entry-wire-closure-reviewed",
+  "prior_review": {
+    "candidate_count": 67,
+    "dossier_sha256": "aecd49dd79962a905b5edb8f586c109ce731c304afe4f0f7c3ad3275c906b8b9",
+    "id": "REVIEW-NET-R2B-PLAY-ENTRY-FINAL-26_2-001"
+  },
+  "reviewer": "ChatGPT source-review pass",
+  "schema": 1,
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "status": "REVIEWED_FINAL_SEAMS_REQUIRED"
+}
