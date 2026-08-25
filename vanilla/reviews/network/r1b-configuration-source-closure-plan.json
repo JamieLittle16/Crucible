@@ -346,6 +346,7 @@
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-ENUM-001"
     },
     {
+      "exact_signature": "collection(final IntFunction < C > constructor , final StreamCodec < ? super B , V > elementCodec)",
       "method_name": "collection",
       "param_count": 2,
       "review_focus": ["Bind the two-argument collection overload and the exact default maximum delegated by list()."],
