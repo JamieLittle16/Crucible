@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R2B-PLAY-WIRE-CLOSURE-26_2-001",
+  "status": "REVIEWED_FINAL_SEAMS_REQUIRED",
+  "contains_official_source_text": false,
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "dossier_sha256": "93999fca0a4c69eda607e729af61c74e7ce40c96bf4201516904fabf79bc2e3a",
+  "candidate_count": 117,
+  "group_counts": {
+    "COMMAND_TREE": 37,
+    "CLOCK_FULL_SYNC": 42,
+    "RECIPE_BOOK_SETTINGS": 12,
+    "SYNCHRONIZED_RECIPES": 11,
+    "DIMENSION_TYPE": 8,
+    "DEFAULT_SPAWN": 4,
+    "INITIAL_INVENTORY": 3
+  },
+  "mechanisms": {
+    "COMMAND_TREE": "COMPOSITION_ARTIFACT",
+    "SYNCHRONIZED_RECIPES": "COMPOSITION_ARTIFACT",
+    "RECIPE_BOOK_SETTINGS": "DYNAMIC_WIRE_CLOSED",
+    "CLOCK_FULL_SYNC": "DYNAMIC_WIRE_FINAL_SEAM",
+    "DIMENSION_TYPE": "DYNAMIC_WIRE_FINAL_SEAM",
+    "DEFAULT_SPAWN": "DYNAMIC_WIRE_FINAL_SEAM",
+    "INITIAL_INVENTORY": "EMPTY_STATE_ONLY_CLOSED"
+  },
+  "remaining_review_id": "REVIEW-NET-R2B-PLAY-FINAL-SEAMS-26_2-001",
+  "note": "Every exact body in the source-rich 117-body dossier was inspected for its scoped contribution. Individual VAR fingerprints are intentionally not hand-transcribed here; canonical per-body records must be generated from the committed dossier identity after the final reusable dynamic seam closes."
+}
