@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R2-PLAY-LIVENESS-26_2-001",
+  "candidates": [
+    {
+      "var_id": "VAR-NET-R2-PLAY-REGISTRATION-001",
+      "type_name": "net.minecraft.network.protocol.game.GameProtocols",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind exact clientbound and serverbound Play insertion order used to derive keep-alive packet identities without requiring a runtime packet registry."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-KEEPALIVE-CB-CODEC-001",
+      "type_name": "net.minecraft.network.protocol.common.ClientboundKeepAlivePacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the exact clientbound keep-alive STREAM_CODEC and the complete wire payload law."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-KEEPALIVE-SB-CODEC-001",
+      "type_name": "net.minecraft.network.protocol.common.ServerboundKeepAlivePacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the exact serverbound keep-alive STREAM_CODEC and the complete wire payload law."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-LIVENESS-CONSTRUCT-001",
+      "type_name": "net.minecraft.server.network.ServerCommonPacketListenerImpl",
+      "method_name": "ServerCommonPacketListenerImpl",
+      "param_count": 3,
+      "review_focus": [
+        "Bind initial keep-alive anchor, inherited latency, and transfer state relevant to the reusable liveness model."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-LIVENESS-CLOSE-001",
+      "type_name": "net.minecraft.server.network.ServerCommonPacketListenerImpl",
+      "method_name": "close",
+      "param_count": 0,
+      "review_focus": [
+        "Bind first-close timestamp capture and idempotence."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-LIVENESS-CLOSED-GATE-001",
+      "type_name": "net.minecraft.server.network.ServerCommonPacketListenerImpl",
+      "method_name": "checkIfClosed",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the exact closed-listener gate, timeout threshold, and boolean result used before issuing a new challenge."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-LIVENESS-SERVICE-001",
+      "type_name": "net.minecraft.server.network.ServerCommonPacketListenerImpl",
+      "method_name": "keepConnectionAlive",
+      "param_count": 0,
+      "review_focus": [
+        "Bind the 15-second challenge/timeout branch ordering and exact challenge construction/publication semantics."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-LIVENESS-REPLY-001",
+      "type_name": "net.minecraft.server.network.ServerCommonPacketListenerImpl",
+      "method_name": "handleKeepAlive",
+      "param_count": 1,
+      "review_focus": [
+        "Bind exact response-ID admission, latency smoothing, pending-state repair, and invalid-response policy boundary."
+      ]
+    }
+  ]
+}
