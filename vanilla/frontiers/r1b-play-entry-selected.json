@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "description": "Discovery-only frontier for the source-inseparable fresh-player Play bootstrap reached immediately from the reviewed Minecraft 26.2 Configuration finish path. Roots come only from calls or packet types observed in the reviewed PlayerList.placeNewPlayer body. This frontier is not packet IDs, codec admission, selected-route emission proof, or semantic authority; exact VAR/SEM claims require subsequent source-body and capture review.",
+  "max_depth": 4,
+  "include_package_prefixes": [
+    "net.minecraft.core",
+    "net.minecraft.network",
+    "net.minecraft.resources",
+    "net.minecraft.server",
+    "net.minecraft.stats",
+    "net.minecraft.world"
+  ],
+  "exclude_package_prefixes": [
+    "net.minecraft.data",
+    "net.minecraft.gametest",
+    "net.minecraft.network.protocol.configuration",
+    "net.minecraft.network.protocol.handshake",
+    "net.minecraft.network.protocol.login",
+    "net.minecraft.network.protocol.status",
+    "net.minecraft.world.level.chunk",
+    "net.minecraft.world.level.levelgen"
+  ],
+  "root_queries": [
+    "net.minecraft.server.players.PlayerList#placeNewPlayer(final Connection connection , final ServerPlayer player , final CommonListenerCookie cookie)",
+    "net.minecraft.server.players.PlayerList#sendPlayerPermissionLevel",
+    "net.minecraft.server.players.PlayerList#updateEntireScoreboard",
+    "net.minecraft.server.players.PlayerList#sendLevelInfo",
+    "net.minecraft.server.players.PlayerList#sendActivePlayerEffects",
+    "net.minecraft.server.network.ServerGamePacketListenerImpl#teleport",
+    "net.minecraft.server.level.ServerPlayer#sendServerStatus",
+    "net.minecraft.server.level.ServerPlayer#initInventoryMenu",
+    "ServerRecipeBook#sendInitialRecipeBook",
+    "net.minecraft.network.protocol.game.ClientboundLoginPacket",
+    "net.minecraft.network.protocol.game.ClientboundChangeDifficultyPacket",
+    "net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket",
+    "net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket",
+    "net.minecraft.network.protocol.game.ClientboundUpdateRecipesPacket",
+    "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket"
+  ]
+}
