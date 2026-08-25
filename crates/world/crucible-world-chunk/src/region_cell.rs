@@ -74,6 +74,12 @@ impl<const SHIFT: u32> RegionCellLayout<SHIFT> {
     }
 
     /// Resolves an exact chunk position into a coarse cell plus dense local slot.
+    ///
+    /// # Panics
+    ///
+    /// Panics when instantiated with `SHIFT > 15`. For every admitted layout, the mask and masked
+    /// local coordinates are mathematically bounded to `i32`/`u16`; the checked conversions below
+    /// therefore cannot otherwise fail.
     #[inline]
     #[must_use]
     pub fn address(chunk: ChunkPos) -> RegionCellAddress {
