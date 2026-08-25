@@ -163,8 +163,8 @@ mod tests {
     #[test]
     fn resolved_indices_match_euclidean_reference_across_negative_coordinates() {
         let lattice = VerticalSectionLattice::new(-8, 40).expect("test lattice");
-        for y in -160..560 {
-            let expected = if (-128..512).contains(&y) {
+        for y in -160_i32..560 {
+            let expected = if (-128_i32..512).contains(&y) {
                 Some(usize::try_from(y.div_euclid(16) + 8).expect("non-negative slot"))
             } else {
                 None
