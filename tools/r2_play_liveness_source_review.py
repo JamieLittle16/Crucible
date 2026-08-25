@@ -170,7 +170,7 @@ def prepare(output_dir: Path, db: Path, source: Path, lock: Path) -> dict[str, o
                 "review_worksheet": "review-worksheet.json",
             },
             "next_required_step": (
-                "Inspect all eight exact bodies, fill only the source-free worksheet, then finalize "
+                "Inspect all twelve exact bodies, fill only the source-free worksheet, then finalize "
                 "the R2 Play-liveness VAR/protocol contract. The dossier must not be committed."
             ),
         }
