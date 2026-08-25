@@ -52,12 +52,30 @@ def reviewed_worksheet() -> dict[str, object]:
 class R2PlayLivenessFinalizeTests(unittest.TestCase):
     def test_reviewed_frontier_finalizes_static_wire_contract(self) -> None:
         records, contract, generated = finalize.finalize(reviewed_worksheet(), lock_path=LOCK)
-        self.assertEqual(len(records), 8)
+        self.assertEqual(len(records), 12)
         self.assertEqual(contract["id"], finalize.CONTRACT_ID)
         packets = contract["packets"]
         self.assertEqual(
             [(packet["direction"], packet["id"]) for packet in packets],
             [("clientbound", 0x2C), ("serverbound", 0x1C)],
+        )
+        self.assertEqual(
+            packets[0]["source_records"],
+            [
+                "VAR-NET-R2-PLAY-REGISTRATION-001",
+                "VAR-NET-R2-KEEPALIVE-CB-CODEC-001",
+                "VAR-NET-R2-KEEPALIVE-CB-READ-001",
+                "VAR-NET-R2-KEEPALIVE-CB-WRITE-001",
+            ],
+        )
+        self.assertEqual(
+            packets[1]["source_records"],
+            [
+                "VAR-NET-R2-PLAY-REGISTRATION-001",
+                "VAR-NET-R2-KEEPALIVE-SB-CODEC-001",
+                "VAR-NET-R2-KEEPALIVE-SB-READ-001",
+                "VAR-NET-R2-KEEPALIVE-SB-WRITE-001",
+            ],
         )
         self.assertEqual(packets[0]["golden"]["body_hex"], "2c0102030405060708")
         self.assertEqual(packets[0]["golden"]["frame_hex"], "092c0102030405060708")
@@ -94,6 +112,23 @@ class R2PlayLivenessFinalizeTests(unittest.TestCase):
         worksheet = reviewed_worksheet()
         worksheet["candidates"][2]["decision"]["followup_dependencies"] = ["SomeDelegate#work()"]
         with self.assertRaises(finalize.FinalizeError):
+            finalize.finalize(worksheet, lock_path=LOCK)
+
+    def test_eight_body_legacy_worksheet_is_rejected(self) -> None:
+        worksheet = reviewed_worksheet()
+        worksheet["candidates"] = [
+            candidate
+            for candidate in worksheet["candidates"]
+            if candidate["candidate_id"]
+            not in {
+                "VAR-NET-R2-KEEPALIVE-CB-READ-001",
+                "VAR-NET-R2-KEEPALIVE-CB-WRITE-001",
+                "VAR-NET-R2-KEEPALIVE-SB-READ-001",
+                "VAR-NET-R2-KEEPALIVE-SB-WRITE-001",
+            }
+        ]
+        worksheet["candidate_count"] = len(worksheet["candidates"])
+        with self.assertRaisesRegex(finalize.FinalizeError, "twelve-body frontier"):
             finalize.finalize(worksheet, lock_path=LOCK)
 
     def test_input_is_not_mutated(self) -> None:
