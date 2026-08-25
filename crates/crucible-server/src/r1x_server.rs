@@ -450,9 +450,10 @@ fn action_budget() -> ActionBudget {
 #[cfg(test)]
 mod tests {
     use super::{
-        EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, LiveDisposition, LiveLivenessService,
-        SERVERBOUND_KEEP_ALIVE_PACKET_ID, keep_alive_body, limits, liveness_policy,
-        process_one_live_inbound, serverbound_keep_alive_frame, service_live_liveness,
+        EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, KEEP_ALIVE_BODY_BYTES, LiveDisposition,
+        LiveLivenessService, SERVERBOUND_KEEP_ALIVE_PACKET_ID, keep_alive_body, limits,
+        liveness_policy, process_one_live_inbound, serverbound_keep_alive_frame,
+        service_live_liveness,
     };
     use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
     use crucible_connection_driver::ConnectionDriver;
@@ -461,7 +462,8 @@ mod tests {
     use crucible_session_core::LivenessState;
 
     fn test_limits(egress: usize) -> ConnectionLimits {
-        ConnectionLimits::new(64, 256, egress).expect("coherent live test limits")
+        ConnectionLimits::new(KEEP_ALIVE_BODY_BYTES, 256, egress)
+            .expect("coherent live test limits")
     }
 
     #[test]
@@ -488,7 +490,11 @@ mod tests {
 
     #[test]
     fn egress_backpressure_cannot_commit_a_phantom_challenge() {
-        let mut driver = ConnectionDriver::new(test_limits(1));
+        let mut driver = ConnectionDriver::new(test_limits(KEEP_ALIVE_BODY_BYTES + 1));
+        driver
+            .queue_frame::<()>(&[0x00])
+            .expect("prefill frame fits coherent test egress");
+        let egress_before = driver.pending_egress().to_vec();
         let mut liveness = LivenessState::new(0, 7).expect("valid liveness start");
         let before = liveness;
 
@@ -500,7 +506,7 @@ mod tests {
         ));
         assert_eq!(liveness, before);
         assert!(!liveness.keep_alive_pending());
-        assert_eq!(driver.queued_egress(), 0);
+        assert_eq!(driver.pending_egress(), egress_before);
     }
 
     #[test]
