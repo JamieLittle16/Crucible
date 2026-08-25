@@ -1,22 +1,27 @@
 use std::env;
 use std::net::TcpListener;
+use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
 
 use crucible_server::{
-    DEFAULT_R0_BIND_ADDRESS, R0_ADMISSION_SESSION_SHA256, ServerSessionEpoch,
-    serve_r0_blocking_transport, serve_r1a_blocking_transport,
+    DEFAULT_R0_BIND_ADDRESS, R0_ADMISSION_SESSION_SHA256, R0_ORACLE_STATUS_JSON,
+    ServerSessionEpoch, load_r1x_image, serve_r0_blocking_transport, serve_r1a_blocking_transport,
+    serve_r1x_blocking_transport,
 };
 use crucible_target_26_2::generated;
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(15);
 const LOGIN_SESSION_EPOCH_PREFIX: &str = "--login-session-epoch=";
+const R1X_REPLAY_IMAGE_PREFIX: &str = "--r1x-replay-image=";
+const R1X_CAPTURE_SESSION_EPOCH_HEX: &str = "4d7f604f196a43b08987f0b2a27c2663";
 
 #[derive(Debug)]
 struct Options {
     bind_address: String,
     once: bool,
     login_session_epoch: Option<ServerSessionEpoch>,
+    r1x_replay_image: Option<PathBuf>,
 }
 
 fn main() -> ExitCode {
@@ -31,13 +36,30 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), String> {
     let options = options()?;
+    let r1x_context = options
+        .r1x_replay_image
+        .as_deref()
+        .map(|path| {
+            load_r1x_image(path, R0_ORACLE_STATUS_JSON)
+                .map_err(|error| format!("could not load R1X replay image {}: {error}", path.display()))
+        })
+        .transpose()?;
+
     let listener = TcpListener::bind(&options.bind_address)
         .map_err(|error| format!("could not bind {}: {error}", options.bind_address))?;
     let local_address = listener
         .local_addr()
         .map_err(|error| format!("could not read listener address: {error}"))?;
 
-    if options.login_session_epoch.is_some() {
+    if let Some(context) = r1x_context.as_ref() {
+        println!(
+            "Crucible R1X listening on {local_address} | Minecraft {} protocol {} | Configuration admitted | experimental Play frames {} ({} body bytes) | production_admitted=false",
+            generated::login_26_2::MINECRAFT_VERSION,
+            generated::login_26_2::PROTOCOL_VERSION,
+            context.play_frame_count(),
+            context.play_body_bytes(),
+        );
+    } else if options.login_session_epoch.is_some() {
         println!(
             "Crucible R1A listening on {local_address} | Minecraft {} protocol {} | login contract {} | Configuration intentionally not yet admitted",
             generated::login_26_2::MINECRAFT_VERSION,
@@ -68,7 +90,18 @@ fn run() -> Result<(), String> {
             .set_nodelay(true)
             .map_err(|error| format!("could not enable TCP_NODELAY for {peer}: {error}"))?;
 
-        if let Some(session_epoch) = options.login_session_epoch {
+        if let Some(context) = r1x_context.as_ref() {
+            let session_epoch = options
+                .login_session_epoch
+                .expect("R1X option normalization supplies the fixed capture epoch");
+            match serve_r1x_blocking_transport(&mut stream, session_epoch, context) {
+                Ok(exit) => eprintln!("R1X connection {peer} completed: {exit:?}"),
+                Err(error) if !options.once => {
+                    eprintln!("R1X connection {peer} rejected: {error:?}");
+                }
+                Err(error) => return Err(format!("R1X connection {peer} failed: {error:?}")),
+            }
+        } else if let Some(session_epoch) = options.login_session_epoch {
             match serve_r1a_blocking_transport(&mut stream, session_epoch) {
                 Ok(exit) => eprintln!("R1A connection {peer} completed: {exit:?}"),
                 Err(error) if !options.once => {
@@ -96,6 +129,7 @@ fn options() -> Result<Options, String> {
     let mut bind_address = None;
     let mut once = false;
     let mut login_session_epoch = None;
+    let mut r1x_replay_image = None;
 
     for argument in env::args().skip(1) {
         if argument == "--once" {
@@ -109,6 +143,13 @@ fn options() -> Result<Options, String> {
             if login_session_epoch.replace(epoch).is_some() {
                 return Err("--login-session-epoch may be supplied only once".to_owned());
             }
+        } else if let Some(value) = argument.strip_prefix(R1X_REPLAY_IMAGE_PREFIX) {
+            if value.is_empty() {
+                return Err("--r1x-replay-image requires a non-empty path".to_owned());
+            }
+            if r1x_replay_image.replace(PathBuf::from(value)).is_some() {
+                return Err("--r1x-replay-image may be supplied only once".to_owned());
+            }
         } else if argument.starts_with('-') {
             return Err(format!("unknown option {argument:?}"));
         } else if bind_address.replace(argument).is_some() {
@@ -116,16 +157,34 @@ fn options() -> Result<Options, String> {
         }
     }
 
+    if r1x_replay_image.is_some() {
+        let capture_epoch = ServerSessionEpoch::parse_hex(R1X_CAPTURE_SESSION_EPOCH_HEX)
+            .expect("committed R1X capture session epoch is valid");
+        match login_session_epoch {
+            Some(epoch) if epoch != capture_epoch => {
+                return Err(format!(
+                    "R1X replay is capture-qualified and requires --login-session-epoch={R1X_CAPTURE_SESSION_EPOCH_HEX}"
+                ));
+            }
+            Some(_) => {}
+            None => login_session_epoch = Some(capture_epoch),
+        }
+    }
+
     Ok(Options {
         bind_address: bind_address.unwrap_or_else(|| DEFAULT_R0_BIND_ADDRESS.to_owned()),
         once,
         login_session_epoch,
+        r1x_replay_image,
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{DEFAULT_R0_BIND_ADDRESS, LOGIN_SESSION_EPOCH_PREFIX, options};
+    use super::{
+        DEFAULT_R0_BIND_ADDRESS, LOGIN_SESSION_EPOCH_PREFIX, R1X_CAPTURE_SESSION_EPOCH_HEX,
+        R1X_REPLAY_IMAGE_PREFIX, options,
+    };
 
     #[test]
     fn default_bind_address_remains_localhost() {
@@ -136,5 +195,7 @@ mod tests {
     fn option_parser_shape_is_kept_out_of_protocol_semantics() {
         let _ = options as fn() -> Result<super::Options, String>;
         assert_eq!(LOGIN_SESSION_EPOCH_PREFIX, "--login-session-epoch=");
+        assert_eq!(R1X_REPLAY_IMAGE_PREFIX, "--r1x-replay-image=");
+        assert_eq!(R1X_CAPTURE_SESSION_EPOCH_HEX.len(), 32);
     }
 }
