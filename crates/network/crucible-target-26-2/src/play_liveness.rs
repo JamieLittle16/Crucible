@@ -9,7 +9,14 @@ use core::mem::size_of;
 use crucible_connection_core::FrameView;
 use crucible_session_core::LivenessPolicy;
 
-mod generated {
+/// Generated compile-time identities, provenance and qualification-only golden bytes for the finite
+/// R2A Play-liveness contract.
+///
+/// Product composition should normally use this module's semantic encode/decode API rather than
+/// depending directly on packet identities. The generated surface remains public for independent
+/// qualification and provenance inspection without expanding the crate's historical root-generated
+/// namespace.
+pub mod generated {
     include!("generated/play_liveness_26_2.rs");
 }
 
