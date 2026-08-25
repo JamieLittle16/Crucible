@@ -41,14 +41,13 @@ const PLAY_FULL_FRAME_COUNT: usize = 2_331;
 const PLAY_FULL_BODY_BYTES: usize = 6_135_522;
 
 const CONFIGURATION_BODY_SIZES: [usize; CONFIGURATION_BODY_COUNT] = [
-    25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73,
-    980, 282, 116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
+    25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980, 282,
+    116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
 ];
 
 const EXPECTED_PLAYER_NAME: &str = "Stato16";
 const EXPECTED_OFFLINE_UUID: [u8; 16] = [
-    0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9, 0x5b,
-    0x45,
+    0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9, 0x5b, 0x45,
 ];
 
 const CONFIG_SERVERBOUND_CLIENT_INFORMATION: i32 = 0;
@@ -803,7 +802,10 @@ mod tests {
         let mut payload = Vec::new();
         encode_var_int(1, &mut payload);
         for value in ["minecraft", "core", "26.2"] {
-            encode_var_int(i32::try_from(value.len()).expect("small string"), &mut payload);
+            encode_var_int(
+                i32::try_from(value.len()).expect("small string"),
+                &mut payload,
+            );
             payload.extend_from_slice(value.as_bytes());
         }
         assert_eq!(super::decode_selected_known_pack(&payload), Ok(()));
