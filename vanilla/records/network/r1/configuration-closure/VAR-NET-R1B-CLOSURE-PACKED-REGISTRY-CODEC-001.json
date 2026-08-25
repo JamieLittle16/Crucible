@@ -1,0 +1,27 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [
+    "CODEC",
+    "REGISTRY"
+  ],
+  "id": "VAR-NET-R1B-CLOSURE-PACKED-REGISTRY-CODEC-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned source body inspected and consistent with the stated review focus and selected SEM links. Carry forward only; full closure remains blocked on newly identified second-order delegate fingerprints and an independent green source gate."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "08e89c5a2c769bef5e40a92ef7c784c159d180ecef42a95e6bce9e3b8ea2d1c8",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "18cf9c8782fd8c15ebac2645d573018de6c11c900956ce684815f769cd78481d",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.core.RegistrySynchronization$PackedRegistryEntry"
+  },
+  "status": "VAR_REVIEWED"
+}

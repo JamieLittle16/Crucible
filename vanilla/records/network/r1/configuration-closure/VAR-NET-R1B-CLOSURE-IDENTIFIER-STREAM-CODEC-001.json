@@ -1,0 +1,27 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-CLOSURE-IDENTIFIER-STREAM-CODEC-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. Identifier.STREAM_CODEC maps the bounded UTF-8 string codec through Identifier parse/string conversion. For the selected R1B route, composition-stable outbound identifier bytes are additionally sealed by the independent capture/publication image; this review does not claim full malformed-Identifier compatibility outside the admitted route."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-002",
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "a35693963419c95866c2c207da851c7038ec717d8cb2c33f6aaeb1d53137d0f4",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "6613cb50b93ff374c9cf1ea3d508e72c9e3dd21588e889ae35e8149c6d7e86c2",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.resources.Identifier"
+  },
+  "status": "VAR_REVIEWED"
+}

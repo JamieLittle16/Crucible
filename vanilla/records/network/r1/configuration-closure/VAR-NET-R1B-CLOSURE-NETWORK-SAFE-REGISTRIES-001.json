@@ -1,0 +1,24 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLOSURE-NETWORK-SAFE-REGISTRIES-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. Tag serialization concatenates the networked registry stream with STATIC-layer registries. The selected default-composition concrete publication is independently capture-bound; a future dynamic materializer that reconstructs the registry-set membership algorithm must separately close deeper registry-selection helpers."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "0f5e1b7fae0b5c07aa14754e81a3252e0c2f6370e49f30c69681b1e4d986d33c",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "db3ec2b3874aae0f09039e3e18dfdcc642c227dac5f519b041c3db60dc0abf05",
+    "signature": "networkSafeRegistries(final LayeredRegistryAccess < RegistryLayer > registries)",
+    "type": "net.minecraft.core.RegistrySynchronization"
+  },
+  "status": "VAR_REVIEWED"
+}

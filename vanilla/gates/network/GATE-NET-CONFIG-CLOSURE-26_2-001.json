@@ -1,0 +1,229 @@
+{
+  "id": "GATE-NET-CONFIG-CLOSURE-26_2-001",
+  "methods": [
+    {
+      "query": "net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket#ClientboundUpdateEnabledFeaturesPacket(final FriendlyByteBuf input)",
+      "var_id": "VAR-NET-R1B-CLOSURE-ENABLED-FEATURES-READ-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket#write(final FriendlyByteBuf output)",
+      "var_id": "VAR-NET-R1B-CLOSURE-ENABLED-FEATURES-WRITE-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket#ClientboundUpdateTagsPacket(final FriendlyByteBuf input)",
+      "var_id": "VAR-NET-R1B-CLOSURE-UPDATE-TAGS-READ-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket#write(final FriendlyByteBuf output)",
+      "var_id": "VAR-NET-R1B-CLOSURE-UPDATE-TAGS-WRITE-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.ServerboundClientInformationPacket#ServerboundClientInformationPacket(final FriendlyByteBuf input)",
+      "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-PACKET-READ-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.ServerboundClientInformationPacket#write(final FriendlyByteBuf output)",
+      "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-PACKET-WRITE-001"
+    },
+    {
+      "query": "net.minecraft.server.level.ClientInformation#ClientInformation(final FriendlyByteBuf input)",
+      "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-READ-001"
+    },
+    {
+      "query": "net.minecraft.server.level.ClientInformation#write(final FriendlyByteBuf output)",
+      "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-WRITE-001"
+    },
+    {
+      "query": "net.minecraft.server.level.ClientInformation#createDefault()",
+      "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-DEFAULT-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.custom.BrandPayload#BrandPayload(final FriendlyByteBuf input)",
+      "var_id": "VAR-NET-R1B-CLOSURE-BRAND-READ-001"
+    },
+    {
+      "query": "net.minecraft.network.protocol.common.custom.BrandPayload#write(final FriendlyByteBuf output)",
+      "var_id": "VAR-NET-R1B-CLOSURE-BRAND-WRITE-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#addOptionalTasks()",
+      "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-OPTIONAL-TASKS-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#returnToWorld()",
+      "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-RETURN-WORLD-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#startNextTask()",
+      "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-START-NEXT-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#finishCurrentTask(final ConfigurationTask . Type taskTypeToFinish)",
+      "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-FINISH-TASK-001"
+    },
+    {
+      "query": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl#tick()",
+      "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-TICK-001"
+    },
+    {
+      "query": "net.minecraft.core.RegistrySynchronization#packRegistries(final DynamicOps < Tag > ops , final RegistryAccess registries , final Set < KnownPack > clientKnownPacks , final BiConsumer < ResourceKey < ? extends Registry < ? >> , List < RegistrySynchronization . PackedRegistryEntry >> output)",
+      "var_id": "VAR-NET-R1B-CLOSURE-REGISTRY-PACK-ALL-001"
+    },
+    {
+      "query": "net.minecraft.core.RegistrySynchronization#packRegistry(final DynamicOps < Tag > ops , final RegistryDataLoader . RegistryData < T > registryData , final RegistryAccess registries , final Set < KnownPack > clientKnownPacks , final BiConsumer < ResourceKey < ? extends Registry < ? >> , List < RegistrySynchronization . PackedRegistryEntry >> output)",
+      "var_id": "VAR-NET-R1B-CLOSURE-REGISTRY-PACK-ONE-001"
+    },
+    {
+      "query": "net.minecraft.core.RegistrySynchronization$PackedRegistryEntry#<clinit>()",
+      "var_id": "VAR-NET-R1B-CLOSURE-PACKED-REGISTRY-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.tags.TagNetworkSerialization#serializeTagsToNetwork(final LayeredRegistryAccess < RegistryLayer > registries)",
+      "var_id": "VAR-NET-R1B-CLOSURE-TAGS-SERIALIZE-ALL-001"
+    },
+    {
+      "query": "net.minecraft.tags.TagNetworkSerialization#serializeToNetwork(final Registry < T > registry)",
+      "var_id": "VAR-NET-R1B-CLOSURE-TAGS-SERIALIZE-ONE-001"
+    },
+    {
+      "query": "net.minecraft.tags.TagNetworkSerialization$NetworkPayload#write(final FriendlyByteBuf buf)",
+      "var_id": "VAR-NET-R1B-CLOSURE-TAG-PAYLOAD-WRITE-001"
+    },
+    {
+      "query": "net.minecraft.tags.TagNetworkSerialization$NetworkPayload#read(final FriendlyByteBuf buf)",
+      "var_id": "VAR-NET-R1B-CLOSURE-TAG-PAYLOAD-READ-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask#spawnPlayer(final Connection connection , final CommonListenerCookie cookie)",
+      "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-SPAWN-PLAYER-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask#keepAlive()",
+      "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-KEEPALIVE-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask$Preparing#tick()",
+      "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-PREPARING-TICK-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask$Ready#keepAlive()",
+      "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-READY-KEEPALIVE-001"
+    },
+    {
+      "query": "net.minecraft.server.network.config.PrepareSpawnTask$Ready#spawn(final Connection connection , final CommonListenerCookie cookie)",
+      "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-READY-SPAWN-001"
+    },
+    {
+      "query": "net.minecraft.network.codec.ByteBufCodecs#collection(final IntFunction < C > constructor , final StreamCodec < ? super B , V > elementCodec , final int maxSize)",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-001"
+    },
+    {
+      "query": "net.minecraft.network.codec.ByteBufCodecs#list()",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-LIST-UNBOUNDED-001"
+    },
+    {
+      "query": "net.minecraft.network.codec.ByteBufCodecs#list(final int maxSize)",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-LIST-BOUNDED-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeCollection(final Collection < T > collection , final StreamEncoder < ? super FriendlyByteBuf , T > encoder)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-COLLECTION-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readCollection(final IntFunction < C > ctor , final StreamDecoder < ? super FriendlyByteBuf , T > elementDecoder)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-COLLECTION-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeMap(final Map < K , V > map , final StreamEncoder < ? super FriendlyByteBuf , K > keyEncoder , final StreamEncoder < ? super FriendlyByteBuf , V > valueEncoder)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-MAP-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readMap(final StreamDecoder < ? super FriendlyByteBuf , K > keyDecoder , final StreamDecoder < ? super FriendlyByteBuf , V > valueDecoder)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeIntIdList(final IntList ids)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-INT-ID-LIST-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readIntIdList()",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-INT-ID-LIST-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeIdentifier(final Identifier identifier)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-IDENTIFIER-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readIdentifier()",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-IDENTIFIER-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeResourceKey(final ResourceKey < ? > key)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-RESOURCE-KEY-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readRegistryKey()",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-REGISTRY-KEY-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readUtf(final int maxLength)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-UTF-BOUNDED-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readEnum(final Class < T > clazz)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-ENUM-001"
+    },
+    {
+      "query": "net.minecraft.network.codec.ByteBufCodecs#collection(final IntFunction < C > constructor , final StreamCodec < ? super B , V > elementCodec)",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readMap(final IntFunction < M > ctor , final StreamDecoder < ? super FriendlyByteBuf , K > keyDecoder , final StreamDecoder < ? super FriendlyByteBuf , V > valueDecoder)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-INTO-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#readUtf()",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-UTF-DEFAULT-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeUtf(final String value)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-DEFAULT-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeUtf(final String value , final int maxLength)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-BOUNDED-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeEnum(final Enum < ? > value)",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-ENUM-001"
+    },
+    {
+      "query": "net.minecraft.network.Utf8String#read(final ByteBuf input , final int maxLength)",
+      "var_id": "VAR-NET-R1B-CLOSURE-UTF8-READ-001"
+    },
+    {
+      "query": "net.minecraft.network.Utf8String#write(final ByteBuf output , final CharSequence value , final int maxLength)",
+      "var_id": "VAR-NET-R1B-CLOSURE-UTF8-WRITE-001"
+    },
+    {
+      "query": "net.minecraft.network.codec.ByteBufCodecs#optional(final StreamCodec < ? super B , V > original)",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-OPTIONAL-001"
+    },
+    {
+      "query": "net.minecraft.resources.Identifier#<clinit>()",
+      "var_id": "VAR-NET-R1B-CLOSURE-IDENTIFIER-STREAM-CODEC-001"
+    },
+    {
+      "query": "net.minecraft.network.codec.ByteBufCodecs#<clinit>()",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-STATIC-CODECS-001"
+    },
+    {
+      "query": "net.minecraft.core.RegistrySynchronization#networkSafeRegistries(final LayeredRegistryAccess < RegistryLayer > registries)",
+      "var_id": "VAR-NET-R1B-CLOSURE-NETWORK-SAFE-REGISTRIES-001"
+    }
+  ],
+  "minimum_status": "VAR_REVIEWED",
+  "require_hazards_reviewed": true,
+  "require_semantic_rules": true,
+  "schema": 1
+}
