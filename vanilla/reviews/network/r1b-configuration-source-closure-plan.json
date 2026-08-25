@@ -17,6 +17,7 @@
       "var_id": "VAR-NET-R1B-CLOSURE-ENABLED-FEATURES-WRITE-001"
     },
     {
+      "exact_signature": "ClientboundUpdateTagsPacket(final FriendlyByteBuf input)",
       "method_name": "ClientboundUpdateTagsPacket",
       "param_count": 1,
       "review_focus": ["Bind the outer registry-key to NetworkPayload map decoder."],

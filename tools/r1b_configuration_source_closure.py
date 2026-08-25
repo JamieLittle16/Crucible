@@ -37,6 +37,7 @@ class Candidate:
     param_count: int
     semantic_rules: tuple[str, ...]
     review_focus: tuple[str, ...]
+    exact_signature: str | None = None
 
 
 class ClosureError(RuntimeError):
@@ -54,8 +55,10 @@ def _candidate(value: object, index: int) -> Candidate:
         "semantic_rules",
         "review_focus",
     }
-    if set(value) != required:
-        raise ClosureError(f"plan candidate {index} has unexpected fields")
+    allowed = required | {"exact_signature"}
+    keys = set(value)
+    if not required <= keys or not keys <= allowed:
+        raise ClosureError(f"plan candidate {index} has unexpected or missing fields")
     rules = value["semantic_rules"]
     focus = value["review_focus"]
     if not isinstance(rules, list) or not rules or any(
@@ -69,6 +72,11 @@ def _candidate(value: object, index: int) -> Candidate:
     param_count = value["param_count"]
     if type(param_count) is not int or param_count < 0:
         raise ClosureError(f"plan candidate {index} param_count must be non-negative integer")
+    exact_signature = value.get("exact_signature")
+    if exact_signature is not None and (
+        not isinstance(exact_signature, str) or not exact_signature.strip()
+    ):
+        raise ClosureError(f"plan candidate {index} exact_signature must be a non-empty string")
     return Candidate(
         var_id=str(value["var_id"]),
         type_name=str(value["type_name"]),
@@ -76,7 +84,14 @@ def _candidate(value: object, index: int) -> Candidate:
         param_count=param_count,
         semantic_rules=tuple(rules),
         review_focus=tuple(focus),
+        exact_signature=exact_signature,
     )
+
+
+def _selector_key(candidate: Candidate) -> tuple[object, ...]:
+    if candidate.exact_signature is not None:
+        return ("exact", candidate.type_name, candidate.exact_signature)
+    return ("arity", candidate.type_name, candidate.method_name, candidate.param_count)
 
 
 def load_plan(path: Path = DEFAULT_PLAN) -> tuple[Candidate, ...]:
@@ -93,7 +108,7 @@ def load_plan(path: Path = DEFAULT_PLAN) -> tuple[Candidate, ...]:
         raise ClosureError("closure plan candidates must be non-empty")
     candidates = tuple(_candidate(item, index) for index, item in enumerate(raw_candidates))
     ids = [item.var_id for item in candidates]
-    selectors = [(item.type_name, item.method_name, item.param_count) for item in candidates]
+    selectors = [_selector_key(item) for item in candidates]
     if len(ids) != len(set(ids)):
         raise ClosureError("closure plan contains duplicate VAR ids")
     if len(selectors) != len(set(selectors)):
@@ -129,10 +144,33 @@ def _external_fresh_dir(path: Path) -> Path:
 
 
 def _resolve(conn: Any, candidate: Candidate) -> Any:
+    select = """SELECT m.id,t.qualified_name,m.name,m.signature,m.param_count,
+                       m.start_line,m.end_line,f.path
+                FROM methods m JOIN types t ON t.id=m.type_id
+                JOIN source_files f ON f.id=t.file_id"""
+    if candidate.exact_signature is not None:
+        rows = conn.execute(
+            select + " WHERE t.qualified_name=? AND m.signature=? ORDER BY m.start_line",
+            (candidate.type_name, candidate.exact_signature),
+        ).fetchall()
+        if len(rows) != 1:
+            identities = [f"{row['qualified_name']}#{row['signature']}" for row in rows]
+            raise ClosureError(
+                f"{candidate.var_id}: exact selector {candidate.type_name}#"
+                f"{candidate.exact_signature} resolved {len(rows)} methods: {identities}"
+            )
+        row = rows[0]
+        if row["name"] != candidate.method_name or int(row["param_count"]) != candidate.param_count:
+            raise ClosureError(
+                f"{candidate.var_id}: exact signature disagrees with declared method/arity "
+                f"{candidate.method_name}/{candidate.param_count}: "
+                f"{row['qualified_name']}#{row['signature']}"
+            )
+        return row
+
     rows = conn.execute(
-        """SELECT m.id,t.qualified_name,m.name,m.signature,m.start_line,m.end_line,f.path
-           FROM methods m JOIN types t ON t.id=m.type_id JOIN source_files f ON f.id=t.file_id
-           WHERE t.qualified_name=? AND m.name=? AND m.param_count=? ORDER BY m.start_line""",
+        select
+        + " WHERE t.qualified_name=? AND m.name=? AND m.param_count=? ORDER BY m.start_line",
         (candidate.type_name, candidate.method_name, candidate.param_count),
     ).fetchall()
     if len(rows) != 1:
@@ -142,6 +180,21 @@ def _resolve(conn: Any, candidate: Candidate) -> Any:
             f"{candidate.param_count} resolved {len(rows)} methods: {identities}"
         )
     return rows[0]
+
+
+def _resolve_all(conn: Any) -> list[tuple[Candidate, Any]]:
+    """Resolve every selector before source-rich output so ambiguity is reported in one pass."""
+    resolved: list[tuple[Candidate, Any]] = []
+    failures: list[str] = []
+    for candidate in CANDIDATES:
+        try:
+            resolved.append((candidate, _resolve(conn, candidate)))
+        except ClosureError as error:
+            failures.append(str(error))
+    if failures:
+        details = "\n".join(f"  - {failure}" for failure in failures)
+        raise ClosureError(f"selector preflight failed:\n{details}")
+    return resolved
 
 
 def _source_excerpt(archive: zipfile.ZipFile, row: Any) -> str:
@@ -164,13 +217,13 @@ def prepare(output_dir: Path, db: Path, source: Path, lock: Path) -> dict[str, o
     try:
         conn = vanilla_atlas.connect_db(db)
         source_sha = source_probe.require_pinned_source(conn, source, lock)
+        resolved_candidates = _resolve_all(conn)
         dossier_candidates: list[dict[str, object]] = []
         worksheet_candidates: list[dict[str, object]] = []
         records: list[dict[str, object]] = []
         methods: list[dict[str, str]] = []
         with zipfile.ZipFile(source) as archive:
-            for candidate in CANDIDATES:
-                row = _resolve(conn, candidate)
+            for candidate, row in resolved_candidates:
                 record = source_probe.record_template(conn, row, candidate.var_id)
                 source_record = dict(record["source"])
                 identity = f"{source_record['type']}#{source_record['signature']}"
