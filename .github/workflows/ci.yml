@@ -178,6 +178,37 @@ jobs:
               assert workload["shared_p50_ns"] > 0
           PY
 
+      # Hosted timing is diagnostic only. The permanent assertion is semantic equality plus the
+      # structural reduction in resident-session service calls. This does not select the concrete
+      # timer heap/wheel/frontier used by a future production scheduler.
+      - name: Liveness deadline benchmark smoke
+        run: |
+          cargo run --release --locked \
+            --package crucible-client-spine-qualification \
+            --bin liveness_deadline_bench -- \
+            --smoke \
+            --output target/liveness-deadline-smoke.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(Path("target/liveness-deadline-smoke.json").read_text())
+          assert artifact["schema"] == 1
+          assert artifact["benchmark"] == "liveness-deadline-frontier"
+          assert artifact["mode"] == "smoke"
+          assert artifact["hosted_ci_is_diagnostic_only"] is True
+          assert artifact["scheduler_mechanism_selected"] is False
+          assert artifact["semantic_equivalent"] is True
+          assert artifact["checksum"] != 0
+          assert artifact["sessions"] > 0
+          assert artifact["reply_calls"] > 0
+          assert artifact["deadline_service_calls"] < artifact["scan_service_calls"]
+          assert len(artifact["scan_ns"]) == artifact["measured_rounds"]
+          assert len(artifact["deadline_ns"]) == artifact["measured_rounds"]
+          assert all(sample > 0 for sample in artifact["scan_ns"])
+          assert all(sample > 0 for sample in artifact["deadline_ns"])
+          PY
+
       - name: Rust tests
         run: cargo test --workspace --all-features --locked
 
