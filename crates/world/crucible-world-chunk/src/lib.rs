@@ -341,17 +341,13 @@ where
         local_x: u8,
         local_z: u8,
     ) -> Result<(usize, SectionBlockPos), ChunkCoreError> {
-        let Some(section_index) = self.lattice.section_index_for_block_y(pos.y) else {
+        let Some((section_index, local_y)) = self.lattice.resolve_block_y(pos.y) else {
             return Err(ChunkCoreError::PositionOutsideVerticalLattice {
                 pos,
                 min_section_y: self.lattice.min_section_y(),
                 section_count: self.sections.len(),
             });
         };
-        let local_y = self
-            .lattice
-            .local_y_for_block_y(pos.y)
-            .expect("validated vertical coordinate has a local Y");
         let local = SectionBlockPos::new(local_x, local_y, local_z)
             .expect("resolved local coordinates are valid section coordinates");
         Ok((section_index, local))
