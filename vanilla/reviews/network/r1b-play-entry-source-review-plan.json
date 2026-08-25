@@ -182,7 +182,7 @@
       "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket",
       "method_name": "<clinit>",
       "param_count": 0,
-      "review_focus": ["Bind the teleport/player-position packet codec reached by fresh-player placement."],
+      "review_focus": ["Bind the record's static teleport/player-position STREAM_CODEC and identify its real subordinate codecs; 26.2 has no packet-local write method."],
       "var_id": "DISC-NET-R1B-PLAY-POSITION-CODEC-001"
     },
     {
@@ -191,13 +191,6 @@
       "param_count": 3,
       "review_focus": ["Bind the teleport id, position/rotation and relative-coordinate set used to construct the fresh-player position packet."],
       "var_id": "DISC-NET-R1B-PLAY-POSITION-OF-001"
-    },
-    {
-      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket",
-      "method_name": "write",
-      "param_count": 1,
-      "review_focus": ["Bind the player-position packet wire order and subordinate codec dependencies."],
-      "var_id": "DISC-NET-R1B-PLAY-POSITION-WRITE-001"
     }
   ]
 }
