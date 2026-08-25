@@ -25,6 +25,7 @@
       "type_name": "net.minecraft.network.protocol.common.ClientboundKeepAlivePacket",
       "method_name": "ClientboundKeepAlivePacket",
       "param_count": 1,
+      "exact_signature": "ClientboundKeepAlivePacket(final FriendlyByteBuf input)",
       "review_focus": [
         "Bind the clientbound keep-alive decoding constructor and prove it consumes exactly one signed 64-bit value with no additional payload fields."
       ]
@@ -52,6 +53,7 @@
       "type_name": "net.minecraft.network.protocol.common.ServerboundKeepAlivePacket",
       "method_name": "ServerboundKeepAlivePacket",
       "param_count": 1,
+      "exact_signature": "ServerboundKeepAlivePacket(final FriendlyByteBuf input)",
       "review_focus": [
         "Bind the serverbound keep-alive decoding constructor and prove it consumes exactly one signed 64-bit value with no additional payload fields."
       ]
