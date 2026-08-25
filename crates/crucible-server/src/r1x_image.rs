@@ -29,14 +29,12 @@ type PacketBody = Box<[u8]>;
 type LoadedBodies = (Vec<PacketBody>, usize);
 
 const EXPECTED_SOURCE_SHA256: [u8; 32] = [
-    0x1e, 0x9b, 0xca, 0x3d, 0xff, 0x83, 0xcd, 0x83, 0xe7, 0x90, 0x5f, 0x88, 0x10, 0xf1,
-    0xec, 0x98, 0x99, 0x36, 0x1f, 0xa2, 0xdc, 0x83, 0xfe, 0x89, 0x3b, 0xb4, 0x8b, 0xee,
-    0xb0, 0x4d, 0xf7, 0x50,
+    0x1e, 0x9b, 0xca, 0x3d, 0xff, 0x83, 0xcd, 0x83, 0xe7, 0x90, 0x5f, 0x88, 0x10, 0xf1, 0xec, 0x98,
+    0x99, 0x36, 0x1f, 0xa2, 0xdc, 0x83, 0xfe, 0x89, 0x3b, 0xb4, 0x8b, 0xee, 0xb0, 0x4d, 0xf7, 0x50,
 ];
 const EXPECTED_CAPTURE_SHA256: [u8; 32] = [
-    0x11, 0xea, 0xd8, 0xde, 0x74, 0xdf, 0x70, 0xb4, 0x0d, 0x7f, 0xb0, 0x45, 0xff, 0x95,
-    0x61, 0xf0, 0x6f, 0x6e, 0x24, 0x23, 0x87, 0x65, 0xd4, 0x14, 0x1a, 0x1d, 0x09, 0x0c,
-    0xab, 0x54, 0x6b, 0x57,
+    0x11, 0xea, 0xd8, 0xde, 0x74, 0xdf, 0x70, 0xb4, 0x0d, 0x7f, 0xb0, 0x45, 0xff, 0x95, 0x61, 0xf0,
+    0x6f, 0x6e, 0x24, 0x23, 0x87, 0x65, 0xd4, 0x14, 0x1a, 0x1d, 0x09, 0x0c, 0xab, 0x54, 0x6b, 0x57,
 ];
 
 /// Fail-closed compact-image load error.
@@ -111,7 +109,9 @@ impl fmt::Display for R1xImageError {
                 formatter,
                 "replay image protocol mismatch: expected {EXPECTED_PROTOCOL}, got {observed}"
             ),
-            Self::SourceCommitment => formatter.write_str("replay image source commitment mismatch"),
+            Self::SourceCommitment => {
+                formatter.write_str("replay image source commitment mismatch")
+            }
             Self::CaptureCommitment => {
                 formatter.write_str("replay image capture commitment mismatch")
             }
@@ -148,7 +148,10 @@ impl fmt::Display for R1xImageError {
                 "replay image {section:?} aggregate mismatch: declared {declared}, decoded {observed}"
             ),
             Self::TrailingData => formatter.write_str("replay image contains trailing data"),
-            Self::Context(error) => write!(formatter, "replay image target validation failed: {error:?}"),
+            Self::Context(error) => write!(
+                formatter,
+                "replay image target validation failed: {error:?}"
+            ),
         }
     }
 }
@@ -234,11 +237,8 @@ fn decode_image<R: Read>(
         });
     }
 
-    let (configuration, observed_configuration_bytes) = read_bodies(
-        reader,
-        R1xImageSection::Configuration,
-        configuration_count,
-    )?;
+    let (configuration, observed_configuration_bytes) =
+        read_bodies(reader, R1xImageSection::Configuration, configuration_count)?;
     if observed_configuration_bytes != configuration_bytes {
         return Err(R1xImageError::AggregateMismatch {
             section: R1xImageSection::Configuration,
@@ -257,7 +257,10 @@ fn decode_image<R: Read>(
     }
 
     let mut trailing = [0_u8; 1];
-    match reader.read(&mut trailing).map_err(|error| io_error(&error))? {
+    match reader
+        .read(&mut trailing)
+        .map_err(|error| io_error(&error))?
+    {
         0 => {}
         _ => return Err(R1xImageError::TrailingData),
     }
@@ -281,11 +284,13 @@ fn read_bodies<R: Read>(
                 observed: length,
             });
         }
-        total = total.checked_add(length).ok_or(R1xImageError::AggregateMismatch {
-            section,
-            declared: usize::MAX,
-            observed: usize::MAX,
-        })?;
+        total = total
+            .checked_add(length)
+            .ok_or(R1xImageError::AggregateMismatch {
+                section,
+                declared: usize::MAX,
+                observed: usize::MAX,
+            })?;
         let mut body = vec![0_u8; length].into_boxed_slice();
         reader
             .read_exact(&mut body)
@@ -342,8 +347,8 @@ mod tests {
     };
 
     const SIZES: [usize; 34] = [
-        25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81,
-        73, 980, 282, 116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
+        25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980,
+        282, 116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
     ];
 
     fn valid_image(play: &[&[u8]]) -> Vec<u8> {
@@ -353,7 +358,11 @@ mod tests {
         output.extend_from_slice(&EXPECTED_SOURCE_SHA256);
         output.extend_from_slice(&EXPECTED_CAPTURE_SHA256);
         output.extend_from_slice(&34_u32.to_le_bytes());
-        output.extend_from_slice(&u32::try_from(play.len()).expect("small play count").to_le_bytes());
+        output.extend_from_slice(
+            &u32::try_from(play.len())
+                .expect("small play count")
+                .to_le_bytes(),
+        );
         output.extend_from_slice(
             &u64::try_from(EXPECTED_CONFIGURATION_BYTES)
                 .expect("config bytes fit")
@@ -382,7 +391,9 @@ mod tests {
         }
         for body in play {
             output.extend_from_slice(
-                &u32::try_from(body.len()).expect("body length fits").to_le_bytes(),
+                &u32::try_from(body.len())
+                    .expect("body length fits")
+                    .to_le_bytes(),
             );
             output.extend_from_slice(body);
         }
