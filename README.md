@@ -9,11 +9,11 @@ A high-performance, parity-focused Minecraft: Java Edition server engine written
 [![CI](https://github.com/JamieLittle16/Crucible/actions/workflows/ci.yml/badge.svg)](https://github.com/JamieLittle16/Crucible/actions/workflows/ci.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 [![Rust 1.97.1](https://img.shields.io/badge/Rust-1.97.1-orange.svg)](rust-toolchain.toml)
-[![Status: M0 Foundation](https://img.shields.io/badge/status-M0%20foundation-6f42c1.svg)](docs/architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md)
+[![Status: R1X Visible World](https://img.shields.io/badge/status-R1X%20visible%20world-6f42c1.svg)](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md)
 
 **Strict supported vanilla fidelity. Independently designed internals. Measured performance.**
 
-[Documentation](docs/README.md) · [Architecture](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) · [Execution plan](docs/execution/EXECUTION_MASTER_PLAN.md) · [Contributing](CONTRIBUTING.md)
+[Documentation](docs/README.md) · [Latest milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) · [Architecture](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) · [Execution plan](docs/execution/EXECUTION_MASTER_PLAN.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -34,20 +34,30 @@ The project is intentionally strict about the distinction between **correctness 
 ## Project status
 
 > [!IMPORTANT]
-> **Crucible is in foundational development and does not yet provide a playable server release.**
+> **Crucible remains experimental and does not yet provide a playable production server release.**
 >
-> The current milestone is **M0 — Foundation and World Kernel Qualification**. The project is deliberately proving the substrate before broad gameplay is built on top of it.
+> On **25 August 2026**, an unmodified Minecraft: Java Edition **26.2** client completed Handshake → Login → Configuration → Play through Crucible and rendered world data. This first visible-world result used the explicitly experimental R1X target: Configuration is independently admitted, while the demonstrated early Play bootstrap is a finite captured replay and remains `production_admitted=false`.
 
-Current M0 work includes:
+The [R1X First Visible World milestone record](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) preserves the exact test boundary, evidence and claim limits.
+
+Current work includes:
 
 - target-version state data and source-backed Vanilla Atlas infrastructure;
 - section representation candidates and semantic equivalence qualification;
 - world/section contracts and reference implementations;
+- bounded Handshake/Login/Configuration networking accepted by the stock 26.2 client;
+- progressive replacement of the experimental captured Play bootstrap with source-backed, Crucible-owned live Play semantics;
 - deterministic qualification, replay and evidence machinery;
 - repository architecture, dependency and provenance guards;
 - the handoff from correctness-qualified mechanisms to controlled performance qualification.
 
-The first product-facing vertical slice after M0 is a **walkable server**: an unmodified client connects, loads a pregenerated vanilla world, receives chunks/light, moves and collides correctly, teleports, and reconnects. World generation is deliberately not a prerequisite for that first slice.
+The next product-facing vertical slice is a **persistent walkable server**: an unmodified client connects, remains alive without captured Play replay, receives Crucible-owned chunks/light, moves and collides correctly, teleports, and reconnects. World generation is deliberately not a prerequisite for that first live slice.
+
+### Latest milestone: R1X first visible world
+
+The successful black-box smoke test used 34 Configuration frames (44,432 body bytes) followed by a selected 385-frame experimental Play prefix (560,569 body bytes). The client entered Play and displayed one chunk before eventually timing out after the finite replay stopped supplying continuing live-server traffic.
+
+That result establishes the end-to-end client path through Crucible's Rust networking/session spine. It does **not** establish a production Play implementation: the next gate is live keepalive/player state, position and movement handling, inventory initialization, Crucible-owned chunk/light publication, and chunk tracking with no captured Play replay.
 
 ## Why Crucible exists
 
@@ -122,6 +132,7 @@ vanilla/                Crucible-owned target-version records, fixtures and prov
 docs/architecture/      product and architecture contracts
 docs/qualification/     parity, equivalence and performance qualification design
 docs/execution/         milestone, CI and release operating plans
+docs/milestones/        durable black-box/product milestone records
 profiles/               composition/profile policy
 tools/                  qualification, source-indexing and repository tooling
 benchmark-results/      checked-in benchmark/evidence outputs where policy permits
@@ -150,8 +161,9 @@ Before proposing a change, read [`CONTRIBUTING.md`](CONTRIBUTING.md). Crucible i
 
 Good entry points are:
 
+- [R1X First Visible World milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) — the first stock-client Handshake → Play → visible-world black-box result and its exact claim limits.
 - [Master architecture blueprint](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) — what the project is trying to build and why.
-- [M0 foundation implementation spec](docs/architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) — the current implementation boundary.
+- [M0 foundation implementation spec](docs/architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) — the foundational implementation boundary.
 - [World/section implementation slice](docs/architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — the current foundational subsystem.
 - [Execution master plan](docs/execution/EXECUTION_MASTER_PLAN.md) — milestone sequencing and operating model.
 - [CI qualification roadmap](docs/execution/CI_QUALIFICATION_ROADMAP.md) — how evidence becomes enforceable repository law.
