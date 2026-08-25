@@ -263,7 +263,7 @@ fn serve_live_play_liveness(
             }
             Ok(read) => driver
                 .ingest::<Infallible>(&read_scratch[..read])
-                .map_err(map_live_driver_error)?,
+                .map_err(|error| map_live_driver_error(&error))?,
             Err(error)
                 if matches!(
                     error.kind(),
@@ -290,7 +290,7 @@ fn process_one_live_inbound(
         .process_one_transactional::<Infallible, LiveInboundAction, _>(|frame| {
             Ok(decode_live_frame(current, now_ms, frame))
         })
-        .map_err(map_live_driver_error)?;
+        .map_err(|error| map_live_driver_error(&error))?;
 
     match transaction {
         TransactionResult::Incomplete => Ok(None),
@@ -352,13 +352,11 @@ fn service_live_liveness(
             let body = keep_alive_body(id);
             driver
                 .queue_frame::<Infallible>(&body)
-                .map_err(map_live_driver_error)?;
+                .map_err(|error| map_live_driver_error(&error))?;
             *liveness = candidate;
             Ok(LiveLivenessService::ChallengeQueued)
         }
-        Ok(LivenessDecision::KeepAliveTimedOut) => {
-            Ok(LiveLivenessService::KeepAliveTimedOut)
-        }
+        Ok(LivenessDecision::KeepAliveTimedOut) => Ok(LiveLivenessService::KeepAliveTimedOut),
         Ok(LivenessDecision::ClosedTimedOut) => Ok(LiveLivenessService::ClosedTimedOut),
         Err(_) => Ok(LiveLivenessService::ClockInvalid),
     }
@@ -398,7 +396,7 @@ fn write_live_once(
         Ok(0) => Err(PrePlayIoError::ZeroWrite { pending }),
         Ok(written) => driver
             .consume_written::<Infallible>(written)
-            .map_err(map_live_driver_error),
+            .map_err(|error| map_live_driver_error(&error)),
         Err(error) => Err(live_io_error(IoOperation::Write, &error)),
     }
 }
@@ -412,16 +410,16 @@ fn liveness_policy() -> LivenessPolicy {
         .expect("Minecraft 26.2 liveness intervals are positive and representable")
 }
 
-fn map_live_driver_error(error: DriverError<Infallible>) -> PrePlayIoError<R1xError> {
+fn map_live_driver_error(error: &DriverError<Infallible>) -> PrePlayIoError<R1xError> {
     match error {
-        DriverError::Buffer(error) => PrePlayIoError::Connection(PrePlayError::Buffer(error)),
-        DriverError::Handler(never) => match never {},
+        DriverError::Buffer(error) => PrePlayIoError::Connection(PrePlayError::Buffer(*error)),
+        DriverError::Handler(never) => match *never {},
         DriverError::RollbackFailed {
             operation,
             rollback,
         } => PrePlayIoError::Connection(PrePlayError::RollbackFailed {
-            operation,
-            rollback,
+            operation: *operation,
+            rollback: *rollback,
         }),
         DriverError::AccountingOverflow => PrePlayIoError::AccountingOverflow,
     }
@@ -516,7 +514,10 @@ mod tests {
             Ok(LiveLivenessService::ChallengeQueued)
         );
         assert_eq!(liveness.pending_challenge(), Some(15_000));
-        assert_eq!(driver.pending_egress(), &[0x09, 0x2c, 0, 0, 0, 0, 0, 0x3a, 0x98]);
+        assert_eq!(
+            driver.pending_egress(),
+            &[0x09, 0x2c, 0, 0, 0, 0, 0, 0x3a, 0x98]
+        );
     }
 
     #[test]
