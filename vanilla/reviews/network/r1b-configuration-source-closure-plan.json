@@ -344,6 +344,102 @@
       "semantic_rules": ["SEM-NET-R1B-004"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-ENUM-001"
+    },
+    {
+      "method_name": "collection",
+      "param_count": 2,
+      "review_focus": ["Bind the two-argument collection overload and the exact default maximum delegated by list()."],
+      "semantic_rules": ["SEM-NET-R1B-005", "SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.network.codec.ByteBufCodecs",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001"
+    },
+    {
+      "method_name": "readMap",
+      "param_count": 3,
+      "review_focus": ["Bind the delegated map count, allocation and key/value decode loop used by update_tags."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.network.FriendlyByteBuf",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-INTO-001"
+    },
+    {
+      "method_name": "readUtf",
+      "param_count": 0,
+      "review_focus": ["Bind the default UTF length selected by BrandPayload decoding before bounded UTF decoding."],
+      "semantic_rules": ["SEM-NET-R1B-003"],
+      "type_name": "net.minecraft.network.FriendlyByteBuf",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-UTF-DEFAULT-001"
+    },
+    {
+      "method_name": "writeUtf",
+      "param_count": 1,
+      "review_focus": ["Bind the default UTF length selected by brand, ClientInformation and identifier encoding."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-003", "SEM-NET-R1B-004", "SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.network.FriendlyByteBuf",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-DEFAULT-001"
+    },
+    {
+      "method_name": "writeUtf",
+      "param_count": 2,
+      "review_focus": ["Bind bounded UTF encoding delegation and maximum-length propagation."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-003", "SEM-NET-R1B-004", "SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.network.FriendlyByteBuf",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-BOUNDED-001"
+    },
+    {
+      "method_name": "writeEnum",
+      "param_count": 1,
+      "review_focus": ["Bind enum ordinal encoding used by ClientInformation wire-law symmetry."],
+      "semantic_rules": ["SEM-NET-R1B-004"],
+      "type_name": "net.minecraft.network.FriendlyByteBuf",
+      "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-ENUM-001"
+    },
+    {
+      "method_name": "read",
+      "param_count": 2,
+      "review_focus": ["Bind the actual Minecraft UTF-8 bounded decoder behind FriendlyByteBuf.readUtf."],
+      "semantic_rules": ["SEM-NET-R1B-003", "SEM-NET-R1B-004", "SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.network.Utf8String",
+      "var_id": "VAR-NET-R1B-CLOSURE-UTF8-READ-001"
+    },
+    {
+      "method_name": "write",
+      "param_count": 3,
+      "review_focus": ["Bind the actual Minecraft UTF-8 bounded encoder behind FriendlyByteBuf.writeUtf."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-003", "SEM-NET-R1B-004", "SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.network.Utf8String",
+      "var_id": "VAR-NET-R1B-CLOSURE-UTF8-WRITE-001"
+    },
+    {
+      "method_name": "optional",
+      "param_count": 1,
+      "review_focus": ["Bind optional-value codec construction used by PackedRegistryEntry optional Tag data."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.network.codec.ByteBufCodecs",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-OPTIONAL-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind Identifier.STREAM_CODEC used by packed registry entries and identifier wire values."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.resources.Identifier",
+      "var_id": "VAR-NET-R1B-CLOSURE-IDENTIFIER-STREAM-CODEC-001"
+    },
+    {
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the static STRING_UTF8/TAG codec declarations relied upon by KnownPack and PackedRegistryEntry."],
+      "semantic_rules": ["SEM-NET-R1B-005", "SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.network.codec.ByteBufCodecs",
+      "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-STATIC-CODECS-001"
+    },
+    {
+      "method_name": "networkSafeRegistries",
+      "param_count": 1,
+      "review_focus": ["Bind the registry subset supplying network tag serialization before empty-payload filtering."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
+      "type_name": "net.minecraft.core.RegistrySynchronization",
+      "var_id": "VAR-NET-R1B-CLOSURE-NETWORK-SAFE-REGISTRIES-001"
     }
   ],
   "gate_id": "GATE-NET-CONFIG-CLOSURE-26_2-001",
