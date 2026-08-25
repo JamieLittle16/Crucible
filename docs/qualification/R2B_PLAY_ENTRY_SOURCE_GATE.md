@@ -1,6 +1,6 @@
 # R2B Play-Entry Source Gate
 
-Status: **open; closure probe in qualification**  
+Status: **final exact-body review prepared; admission pending source inspection**  
 Target: Minecraft Java Edition 26.2, protocol 776  
 Gate: `GATE-NET-PLAY-ENTRY-26_2-001` (reserved; not yet admitted)
 
@@ -21,9 +21,11 @@ pinned Minecraft 26.2 source
         |
 existing fresh-player placement review
         |
-hardened delegate/codec closure probe
+hardened delegate/codec closure probe       COMPLETE
         |
-one bounded exact-body source review
+instance-field evidence projection           COMPLETE
+        |
+one bounded exact-body source review         PREPARED
         |
 VAR_REVIEWED records
         |
@@ -37,6 +39,57 @@ target-owned semantic stage plan + codecs
 No packet identity, field order, default branch or mandatory stage may be admitted from replay
 position alone.
 
+## Hardened closure-probe result
+
+The source-free 26.2 Atlas probe is now resolved. It confirms the inventory path is structurally:
+
+```text
+ServerPlayer.initMenu(AbstractContainerMenu)
+    -> AbstractContainerMenu.setSynchronizer(ContainerSynchronizer)
+    -> AbstractContainerMenu.sendAllDataToRemote()
+    -> ContainerSynchronizer.sendInitialData(...)
+```
+
+The probe also enumerates the available methods for every selected bootstrap packet class, allowing
+the final review to distinguish packet classes with explicit `write(...)` bodies from record/static
+`STREAM_CODEC` surfaces rather than assuming one codec shape for all packets.
+
+One important gap was exposed by the probe itself: the concrete `ContainerSynchronizer` is an
+anonymous implementation stored in `ServerPlayer.containerSynchronizer`. Atlas method discovery sees
+the interface callback but cannot name that anonymous implementation as an ordinary method. Reviewing
+only `sendInitialData(...)` plus `ClientboundContainerSetContentPacket` would therefore leave the
+observable bridge inferred.
+
+Crucible now solves this generally with synthetic instance-field evidence. The local generated Atlas
+projects the full initialized field declaration as:
+
+```text
+net.minecraft.server.level.ServerPlayer#<fieldinit:containerSynchronizer>()
+```
+
+The fingerprint includes the entire anonymous implementation and uses the same literal-sensitive
+source fingerprint/staleness machinery as ordinary methods and `<clinit>()` declarations. This is an
+evidence-only node and creates no runtime abstraction.
+
+## Final review frontier
+
+`tools/r2b_play_entry_source_review.py` is the final source-rich packer. It unifies:
+
+- the original **27** exact Play-entry review bodies;
+- the **35** exact follow-up bodies;
+- four fixed inventory-closure nodes:
+  - `AbstractContainerMenu#setSynchronizer(...)`;
+  - `AbstractContainerMenu#sendAllDataToRemote()`;
+  - `ServerPlayer#<fieldinit:containerSynchronizer>()`;
+  - `ContainerSynchronizer#sendInitialData(...)`;
+- every actual `InventoryMenu` constructor reported by the pinned Atlas, selected dynamically by exact
+  signature rather than guessed from memory.
+
+The base frontier is therefore `66 + InventoryMenu constructor count`. All selectors are preflighted
+before any official source excerpt is materialized. Duplicate IDs/selectors fail closed. The source
+review also regenerates/checks the local instance-field evidence from the exact pinned archive before
+resolving the field node.
+
 ## Existing reviewed facts carried forward as evidence leads
 
 The historical first-pass and follow-up reviews already establish the selected-profile shape strongly
@@ -49,29 +102,27 @@ enough to bound the final review:
 - level metadata includes border/clock/default-spawn/load-start/tick state, with weather conditional;
 - empty scoreboard/effect branches may produce no selected-profile traffic only when their default
   assumptions are explicitly bound;
-- inventory-menu initialization is client-visible only through delegated synchronization and remains
-  unclosed until that delegate path is reviewed;
+- inventory-menu initialization is client-visible through delegated synchronization and is now in the
+  exact final review frontier;
 - world/chunk/light streaming is not part of this gate.
 
 These observations are not themselves the final R2B admission records.
 
 ## Why the old 27/35-body frontier is not directly canonicalized
 
-Two evidence hazards remain:
+Two evidence hazards required hardening:
 
-1. `ServerPlayer::initInventoryMenu` delegates into menu synchronization. The actual synchronizer
-   implementation and initial-data packet path must be identified and reviewed before inventory
-   packet presence/payload can be frozen.
-2. several packet `STREAM_CODEC` declarations may delegate outbound wire law to packet constructors
-   or writers. R2A demonstrated that a codec root is not proof of a delegated `read`/`write` body.
+1. `ServerPlayer::initInventoryMenu` delegates into menu synchronization. The actual anonymous
+   synchronizer implementation must be fingerprinted, not inferred from an interface callback and a
+   packet class that merely looks compatible.
+2. several packet `STREAM_CODEC` declarations may delegate outbound wire law to packet constructors,
+   writers or subordinate codecs. R2A demonstrated that a codec root is not proof of a delegated
+   `read`/`write` body.
 
-The R2B closure probe therefore reports exact Atlas signatures for:
-
-- inventory synchronizer setup, initial-data and change callbacks;
-- mandatory selected-profile bootstrap packet classes and their available methods.
-
-The final source-rich review must use exact-signature selectors wherever overloads exist and must
-include every material outbound delegate needed to prove the selected wire law.
+The final source-rich review therefore uses exact-signature selectors wherever overloads exist and
+retains the earlier subordinate codec/writer closure work. Any still-material dependency discovered
+in this final review must be explicit; `DELEGATED_REVIEW_REQUIRED` is not an admissible final gate
+state.
 
 ## Gate profile boundary
 
