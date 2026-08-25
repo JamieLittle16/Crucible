@@ -209,10 +209,7 @@ fn validate_region(chunks: &[ChunkPos]) -> Result<(), String> {
     Ok(())
 }
 
-fn vertical_reference_one(
-    lattice: &VerticalSectionLattice,
-    y: i32,
-) -> Option<(usize, u8)> {
+fn vertical_reference_one(lattice: &VerticalSectionLattice, y: i32) -> Option<(usize, u8)> {
     let section_y = y.div_euclid(16);
     let offset = i64::from(section_y) - i64::from(lattice.min_section_y());
     let index = usize::try_from(offset).ok()?;
@@ -223,10 +220,7 @@ fn vertical_reference_one(
     Some((index, local))
 }
 
-fn vertical_candidate_one(
-    lattice: &VerticalSectionLattice,
-    y: i32,
-) -> Option<(usize, u8)> {
+fn vertical_candidate_one(lattice: &VerticalSectionLattice, y: i32) -> Option<(usize, u8)> {
     Some((
         lattice.section_index_for_block_y(y)?,
         lattice.local_y_for_block_y(y)?,
@@ -262,8 +256,8 @@ fn region_reference_one(chunk: ChunkPos) -> (i32, i32, u16, u16, u32) {
     let cell_z = chunk.z.div_euclid(side);
     let local_x = u16::try_from(chunk.x.rem_euclid(side)).expect("reference local x");
     let local_z = u16::try_from(chunk.z.rem_euclid(side)).expect("reference local z");
-    let slot = u32::from(local_z) * u32::try_from(side).expect("positive side")
-        + u32::from(local_x);
+    let slot =
+        u32::from(local_z) * u32::try_from(side).expect("positive side") + u32::from(local_x);
     (cell_x, cell_z, local_x, local_z, slot)
 }
 
