@@ -3,24 +3,16 @@
     {
       "method_name": "ClientboundUpdateEnabledFeaturesPacket",
       "param_count": 1,
-      "review_focus": [
-        "Bind the delegated enabled-feature collection decoder and identifier element law."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002"
-      ],
+      "review_focus": ["Bind the delegated enabled-feature collection decoder and identifier element law."],
+      "semantic_rules": ["SEM-NET-R1B-002"],
       "type_name": "net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket",
       "var_id": "VAR-NET-R1B-CLOSURE-ENABLED-FEATURES-READ-001"
     },
     {
       "method_name": "write",
       "param_count": 1,
-      "review_focus": [
-        "Bind the delegated enabled-feature collection encoder and element ordering."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002"
-      ],
+      "review_focus": ["Bind the delegated enabled-feature collection encoder and element ordering."],
+      "semantic_rules": ["SEM-NET-R1B-002"],
       "type_name": "net.minecraft.network.protocol.configuration.ClientboundUpdateEnabledFeaturesPacket",
       "var_id": "VAR-NET-R1B-CLOSURE-ENABLED-FEATURES-WRITE-001"
     },
@@ -28,510 +20,328 @@
       "exact_signature": "ClientboundUpdateTagsPacket(final FriendlyByteBuf input)",
       "method_name": "ClientboundUpdateTagsPacket",
       "param_count": 1,
-      "review_focus": [
-        "Bind the outer registry-key to NetworkPayload map decoder."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind the outer registry-key to NetworkPayload map decoder."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket",
       "var_id": "VAR-NET-R1B-CLOSURE-UPDATE-TAGS-READ-001"
     },
     {
       "method_name": "write",
       "param_count": 1,
-      "review_focus": [
-        "Bind the outer registry-key to NetworkPayload map encoder."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind the outer registry-key to NetworkPayload map encoder."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket",
       "var_id": "VAR-NET-R1B-CLOSURE-UPDATE-TAGS-WRITE-001"
     },
     {
       "method_name": "ServerboundClientInformationPacket",
       "param_count": 1,
-      "review_focus": [
-        "Bind the packet decoder to ClientInformation construction."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-004"
-      ],
+      "review_focus": ["Bind the packet decoder to ClientInformation construction."],
+      "semantic_rules": ["SEM-NET-R1B-004"],
       "type_name": "net.minecraft.network.protocol.common.ServerboundClientInformationPacket",
       "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-PACKET-READ-001"
     },
     {
       "method_name": "write",
       "param_count": 1,
-      "review_focus": [
-        "Bind the packet encoder to ClientInformation write order."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-004"
-      ],
+      "review_focus": ["Bind the packet encoder to ClientInformation write order."],
+      "semantic_rules": ["SEM-NET-R1B-004"],
       "type_name": "net.minecraft.network.protocol.common.ServerboundClientInformationPacket",
       "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-PACKET-WRITE-001"
     },
     {
       "method_name": "ClientInformation",
       "param_count": 1,
-      "review_focus": [
-        "Bind language/view/chat/model/main-hand/filtering/listing/particle decode order and language bound."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-004"
-      ],
+      "review_focus": ["Bind language/view/chat/model/main-hand/filtering/listing/particle decode order and language bound."],
+      "semantic_rules": ["SEM-NET-R1B-004"],
       "type_name": "net.minecraft.server.level.ClientInformation",
       "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-READ-001"
     },
     {
       "method_name": "write",
       "param_count": 1,
-      "review_focus": [
-        "Bind ClientInformation encode order for wire-law symmetry."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-004"
-      ],
+      "review_focus": ["Bind ClientInformation encode order for wire-law symmetry."],
+      "semantic_rules": ["SEM-NET-R1B-004"],
       "type_name": "net.minecraft.server.level.ClientInformation",
       "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-WRITE-001"
     },
     {
       "method_name": "createDefault",
       "param_count": 0,
-      "review_focus": [
-        "Bind the initial default ClientInformation values used before replacement."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-004"
-      ],
+      "review_focus": ["Bind the initial default ClientInformation values used before replacement."],
+      "semantic_rules": ["SEM-NET-R1B-004"],
       "type_name": "net.minecraft.server.level.ClientInformation",
       "var_id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-DEFAULT-001"
     },
     {
       "method_name": "BrandPayload",
       "param_count": 1,
-      "review_focus": [
-        "Bind brand payload string decoding behind STREAM_CODEC."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-003"
-      ],
+      "review_focus": ["Bind brand payload string decoding behind STREAM_CODEC."],
+      "semantic_rules": ["SEM-NET-R1B-003"],
       "type_name": "net.minecraft.network.protocol.common.custom.BrandPayload",
       "var_id": "VAR-NET-R1B-CLOSURE-BRAND-READ-001"
     },
     {
       "method_name": "write",
       "param_count": 1,
-      "review_focus": [
-        "Bind brand payload string encoding behind STREAM_CODEC."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002",
-        "SEM-NET-R1B-003"
-      ],
+      "review_focus": ["Bind brand payload string encoding behind STREAM_CODEC."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-003"],
       "type_name": "net.minecraft.network.protocol.common.custom.BrandPayload",
       "var_id": "VAR-NET-R1B-CLOSURE-BRAND-WRITE-001"
     },
     {
       "method_name": "addOptionalTasks",
       "param_count": 0,
-      "review_focus": [
-        "Bind optional code-of-conduct/resource-pack task insertion conditions."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002",
-        "SEM-NET-R1B-008"
-      ],
+      "review_focus": ["Bind optional code-of-conduct/resource-pack task insertion conditions."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-008"],
       "type_name": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl",
       "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-OPTIONAL-TASKS-001"
     },
     {
       "method_name": "returnToWorld",
       "param_count": 0,
-      "review_focus": [
-        "Bind initial-login PrepareSpawn/JoinWorld task enqueue order versus return-to-world path."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002",
-        "SEM-NET-R1B-009",
-        "SEM-NET-R1B-010"
-      ],
+      "review_focus": ["Bind initial-login PrepareSpawn/JoinWorld task enqueue order versus return-to-world path."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-009", "SEM-NET-R1B-010"],
       "type_name": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl",
       "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-RETURN-WORLD-001"
     },
     {
       "method_name": "startNextTask",
       "param_count": 0,
-      "review_focus": [
-        "Bind single-current-task queue progression and task start ordering."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002",
-        "SEM-NET-R1B-006",
-        "SEM-NET-R1B-010"
-      ],
+      "review_focus": ["Bind single-current-task queue progression and task start ordering."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-006", "SEM-NET-R1B-010"],
       "type_name": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl",
       "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-START-NEXT-001"
     },
     {
       "method_name": "finishCurrentTask",
       "param_count": 1,
-      "review_focus": [
-        "Bind wrong-task rejection and transition to the next Configuration task."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-006",
-        "SEM-NET-R1B-010",
-        "SEM-NET-R1B-011"
-      ],
+      "review_focus": ["Bind wrong-task rejection and transition to the next Configuration task."],
+      "semantic_rules": ["SEM-NET-R1B-006", "SEM-NET-R1B-010", "SEM-NET-R1B-011"],
       "type_name": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl",
       "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-FINISH-TASK-001"
     },
     {
       "method_name": "tick",
       "param_count": 0,
-      "review_focus": [
-        "Bind tick-driven task completion and prepared-spawn keep-alive coupling."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-009",
-        "SEM-NET-R1B-010"
-      ],
+      "review_focus": ["Bind tick-driven task completion and prepared-spawn keep-alive coupling."],
+      "semantic_rules": ["SEM-NET-R1B-009", "SEM-NET-R1B-010"],
       "type_name": "net.minecraft.server.network.ServerConfigurationPacketListenerImpl",
       "var_id": "VAR-NET-R1B-CLOSURE-CONFIG-TICK-001"
     },
     {
       "method_name": "packRegistries",
       "param_count": 4,
-      "review_focus": [
-        "Bind the synchronized-registry iteration that feeds registry_data publication."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-005",
-        "SEM-NET-R1B-006",
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind the synchronized-registry iteration that feeds registry_data publication."],
+      "semantic_rules": ["SEM-NET-R1B-005", "SEM-NET-R1B-006", "SEM-NET-R1B-007"],
       "type_name": "net.minecraft.core.RegistrySynchronization",
       "var_id": "VAR-NET-R1B-CLOSURE-REGISTRY-PACK-ALL-001"
     },
     {
       "method_name": "packRegistry",
       "param_count": 5,
-      "review_focus": [
-        "Bind known-pack content elision and packed registry entry construction."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-005",
-        "SEM-NET-R1B-006",
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind known-pack content elision and packed registry entry construction."],
+      "semantic_rules": ["SEM-NET-R1B-005", "SEM-NET-R1B-006", "SEM-NET-R1B-007"],
       "type_name": "net.minecraft.core.RegistrySynchronization",
       "var_id": "VAR-NET-R1B-CLOSURE-REGISTRY-PACK-ONE-001"
     },
     {
       "method_name": "<clinit>",
       "param_count": 0,
-      "review_focus": [
-        "Bind Identifier plus optional Tag packed-entry wire structure."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind Identifier plus optional Tag packed-entry wire structure."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.core.RegistrySynchronization$PackedRegistryEntry",
       "var_id": "VAR-NET-R1B-CLOSURE-PACKED-REGISTRY-CODEC-001"
     },
     {
       "method_name": "serializeTagsToNetwork",
       "param_count": 1,
-      "review_focus": [
-        "Bind registry-key to non-empty network-tag payload selection."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind registry-key to non-empty network-tag payload selection."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.tags.TagNetworkSerialization",
       "var_id": "VAR-NET-R1B-CLOSURE-TAGS-SERIALIZE-ALL-001"
     },
     {
       "method_name": "serializeToNetwork",
       "param_count": 1,
-      "review_focus": [
-        "Bind tag identifier to integer registry-id list construction and reference-holder requirement."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind tag identifier to integer registry-id list construction and reference-holder requirement."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.tags.TagNetworkSerialization",
       "var_id": "VAR-NET-R1B-CLOSURE-TAGS-SERIALIZE-ONE-001"
     },
     {
       "method_name": "write",
       "param_count": 1,
-      "review_focus": [
-        "Bind nested tag map encoding through identifier/int-id-list helpers."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind nested tag map encoding through identifier/int-id-list helpers."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.tags.TagNetworkSerialization$NetworkPayload",
       "var_id": "VAR-NET-R1B-CLOSURE-TAG-PAYLOAD-WRITE-001"
     },
     {
       "method_name": "read",
       "param_count": 1,
-      "review_focus": [
-        "Bind nested tag map decoding for exact external field law."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind nested tag map decoding for exact external field law."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.tags.TagNetworkSerialization$NetworkPayload",
       "var_id": "VAR-NET-R1B-CLOSURE-TAG-PAYLOAD-READ-001"
     },
     {
       "method_name": "spawnPlayer",
       "param_count": 2,
-      "review_focus": [
-        "Bind the hard Ready-state precondition before the Play handoff may spawn."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-009",
-        "SEM-NET-R1B-011"
-      ],
+      "review_focus": ["Bind the hard Ready-state precondition before the Play handoff may spawn."],
+      "semantic_rules": ["SEM-NET-R1B-009", "SEM-NET-R1B-011"],
       "type_name": "net.minecraft.server.network.config.PrepareSpawnTask",
       "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-SPAWN-PLAYER-001"
     },
     {
       "method_name": "keepAlive",
       "param_count": 0,
-      "review_focus": [
-        "Bind outer prepared-spawn keep-alive delegation."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-009"
-      ],
+      "review_focus": ["Bind outer prepared-spawn keep-alive delegation."],
+      "semantic_rules": ["SEM-NET-R1B-009"],
       "type_name": "net.minecraft.server.network.config.PrepareSpawnTask",
       "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-KEEPALIVE-001"
     },
     {
       "method_name": "tick",
       "param_count": 0,
-      "review_focus": [
-        "Bind radius-3 PLAYER_SPAWN ticket/load future and Ready transition."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-009"
-      ],
+      "review_focus": ["Bind radius-3 PLAYER_SPAWN ticket/load future and Ready transition."],
+      "semantic_rules": ["SEM-NET-R1B-009"],
       "type_name": "net.minecraft.server.network.config.PrepareSpawnTask$Preparing",
       "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-PREPARING-TICK-001"
     },
     {
       "method_name": "keepAlive",
       "param_count": 0,
-      "review_focus": [
-        "Bind radius-3 PLAYER_SPAWN ticket renewal while Configuration remains active."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-009"
-      ],
+      "review_focus": ["Bind radius-3 PLAYER_SPAWN ticket renewal while Configuration remains active."],
+      "semantic_rules": ["SEM-NET-R1B-009"],
       "type_name": "net.minecraft.server.network.config.PrepareSpawnTask$Ready",
       "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-READY-KEEPALIVE-001"
     },
     {
       "method_name": "spawn",
       "param_count": 2,
-      "review_focus": [
-        "Bind radius-3 entity readiness, player construction and placeNewPlayer handoff."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-009",
-        "SEM-NET-R1B-011"
-      ],
+      "review_focus": ["Bind radius-3 entity readiness, player construction and placeNewPlayer handoff."],
+      "semantic_rules": ["SEM-NET-R1B-009", "SEM-NET-R1B-011"],
       "type_name": "net.minecraft.server.network.config.PrepareSpawnTask$Ready",
       "var_id": "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-READY-SPAWN-001"
     },
     {
       "method_name": "collection",
       "param_count": 3,
-      "review_focus": [
-        "Bind VarInt collection count, max enforcement, bounded initial allocation and element loop."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-005",
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind VarInt collection count, max enforcement, bounded initial allocation and element loop."],
+      "semantic_rules": ["SEM-NET-R1B-005", "SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.codec.ByteBufCodecs",
       "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-001"
     },
     {
       "method_name": "list",
       "param_count": 0,
-      "review_focus": [
-        "Bind the default list codec to collection semantics with the default maximum."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-005",
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind the default list codec to collection semantics with the default maximum."],
+      "semantic_rules": ["SEM-NET-R1B-005", "SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.codec.ByteBufCodecs",
       "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-LIST-UNBOUNDED-001"
     },
     {
       "method_name": "list",
       "param_count": 1,
-      "review_focus": [
-        "Bind bounded list codec construction used by serverbound known-pack selection."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-005"
-      ],
+      "review_focus": ["Bind bounded list codec construction used by serverbound known-pack selection."],
+      "semantic_rules": ["SEM-NET-R1B-005"],
       "type_name": "net.minecraft.network.codec.ByteBufCodecs",
       "var_id": "VAR-NET-R1B-CLOSURE-BYTEBUF-LIST-BOUNDED-001"
     },
     {
       "method_name": "writeCollection",
       "param_count": 2,
-      "review_focus": [
-        "Bind enabled-feature VarInt count and identifier iteration on the clientbound encoder."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002"
-      ],
+      "review_focus": ["Bind enabled-feature VarInt count and identifier iteration on the clientbound encoder."],
+      "semantic_rules": ["SEM-NET-R1B-002"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-COLLECTION-001"
     },
     {
       "method_name": "readCollection",
       "param_count": 2,
-      "review_focus": [
-        "Bind collection count and element iteration for the packet decoder law."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002"
-      ],
+      "review_focus": ["Bind collection count and element iteration for the packet decoder law."],
+      "semantic_rules": ["SEM-NET-R1B-002"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-COLLECTION-001"
     },
     {
       "method_name": "writeMap",
       "param_count": 3,
-      "review_focus": [
-        "Bind update-tags map count and key/value iteration."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind update-tags map count and key/value iteration."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-MAP-001"
     },
     {
       "method_name": "readMap",
       "param_count": 2,
-      "review_focus": [
-        "Bind update-tags map decode count and key/value iteration."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind update-tags map decode count and key/value iteration."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-001"
     },
     {
       "method_name": "writeIntIdList",
       "param_count": 1,
-      "review_focus": [
-        "Bind tag integer-id list VarInt count and element encoding."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind tag integer-id list VarInt count and element encoding."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-INT-ID-LIST-001"
     },
     {
       "method_name": "readIntIdList",
       "param_count": 0,
-      "review_focus": [
-        "Bind tag integer-id list VarInt count and element decoding."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind tag integer-id list VarInt count and element decoding."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-INT-ID-LIST-001"
     },
     {
       "method_name": "writeIdentifier",
       "param_count": 1,
-      "review_focus": [
-        "Bind identifier serialization used by features and tags."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-002",
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind identifier serialization used by features and tags."],
+      "semantic_rules": ["SEM-NET-R1B-002", "SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-IDENTIFIER-001"
     },
     {
       "method_name": "readIdentifier",
       "param_count": 0,
-      "review_focus": [
-        "Bind identifier decoding used by tag payloads."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind identifier decoding used by tag payloads."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-IDENTIFIER-001"
     },
     {
       "method_name": "writeResourceKey",
       "param_count": 1,
-      "review_focus": [
-        "Bind registry resource-key encoding for update-tags outer keys."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind registry resource-key encoding for update-tags outer keys."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-RESOURCE-KEY-001"
     },
     {
       "method_name": "readRegistryKey",
       "param_count": 0,
-      "review_focus": [
-        "Bind registry resource-key decoding for update-tags outer keys."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-007"
-      ],
+      "review_focus": ["Bind registry resource-key decoding for update-tags outer keys."],
+      "semantic_rules": ["SEM-NET-R1B-007"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-REGISTRY-KEY-001"
     },
     {
       "method_name": "readUtf",
       "param_count": 1,
-      "review_focus": [
-        "Bind explicit maximum-length UTF decoding used by ClientInformation language."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-004"
-      ],
+      "review_focus": ["Bind explicit maximum-length UTF decoding used by ClientInformation language."],
+      "semantic_rules": ["SEM-NET-R1B-004"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-UTF-BOUNDED-001"
     },
     {
       "method_name": "readEnum",
       "param_count": 1,
-      "review_focus": [
-        "Bind enum ordinal decoding used by ClientInformation fields."
-      ],
-      "semantic_rules": [
-        "SEM-NET-R1B-004"
-      ],
+      "review_focus": ["Bind enum ordinal decoding used by ClientInformation fields."],
+      "semantic_rules": ["SEM-NET-R1B-004"],
       "type_name": "net.minecraft.network.FriendlyByteBuf",
       "var_id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-ENUM-001"
     }
