@@ -5,6 +5,13 @@
 
 #![forbid(unsafe_code)]
 
+mod liveness;
+
+pub use liveness::{
+    KeepAliveReply, LivenessDecision, LivenessError, LivenessPolicy, LivenessPolicyError,
+    LivenessState,
+};
+
 /// Target-version-agnostic connection phase.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum SessionPhase {
