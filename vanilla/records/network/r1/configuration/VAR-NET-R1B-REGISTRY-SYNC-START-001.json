@@ -1,0 +1,22 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-REGISTRY-SYNC-START-001",
+  "notes": [
+    "Registry synchronization start directly sends the requested known-pack list; current source has no empty-list shortcut here.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-005"
+  ],
+  "source": {
+    "body_sha256": "c2ec956c14ff3bda4c2ad8856fddd9514f78e2ffb2c6933fbd79ddce38b6bca2",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "4dfd36bc34fc5f34459d15664d64bc2fdfd429817e9368974c15ddc2679d17fd",
+    "signature": "start(final Consumer < Packet < ? >> connection)",
+    "type": "net.minecraft.server.network.config.SynchronizeRegistriesTask"
+  },
+  "status": "VAR_REVIEWED"
+}

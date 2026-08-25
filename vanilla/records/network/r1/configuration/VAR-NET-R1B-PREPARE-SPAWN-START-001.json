@@ -1,0 +1,26 @@
+{
+  "classifications": [
+    "SCHEDULING_CANDIDATE"
+  ],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CONCURRENCY"
+  ],
+  "id": "VAR-NET-R1B-PREPARE-SPAWN-START-001",
+  "notes": [
+    "Initial spawn setup selects saved/default spawn state and enters Preparing. Nested load/readiness behavior requires the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-009"
+  ],
+  "source": {
+    "body_sha256": "d86275cc12a701479f54840b827a13731825196e30fb028bfdd114f86e6485c5",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "73a219d31bce6dd8953ff432499f622e85b44eee0a8c7676eeeec11e9ced31d4",
+    "signature": "start(final Consumer < Packet < ? >> connection)",
+    "type": "net.minecraft.server.network.config.PrepareSpawnTask"
+  },
+  "status": "VAR_REVIEWED"
+}

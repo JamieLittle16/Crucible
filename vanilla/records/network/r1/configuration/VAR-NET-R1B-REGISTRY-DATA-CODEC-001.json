@@ -1,0 +1,26 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC",
+    "REGISTRY"
+  ],
+  "id": "VAR-NET-R1B-REGISTRY-DATA-CODEC-001",
+  "notes": [
+    "Direct registry-key plus packed-entry-list envelope reviewed. Packed-entry and list/container internals require the supplemental delegated-body closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "8a4ff8201f2a585f34170a288d123e87616dc8bf885bce94bd799124d613acf0",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "d2d8175eb64b0289814295815f20bb7449b5fb0c90f7a57547808037da0a7ecb",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.configuration.ClientboundRegistryDataPacket"
+  },
+  "status": "VAR_REVIEWED"
+}

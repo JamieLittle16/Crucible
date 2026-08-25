@@ -1,0 +1,24 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-KNOWN-PACK-CODEC-001",
+  "notes": [
+    "KnownPack codec directly binds three UTF-8 strings in namespace, id, version order.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-005"
+  ],
+  "source": {
+    "body_sha256": "6bf0cb35dd1ff63cdf1448498b8c589acf919f4651d2107effa5d729a0ff4868",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "2a54337d3ccc7421114bfc91bc883fa1e294e250be61be2427a7c62d0647d6dc",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.server.packs.repository.KnownPack"
+  },
+  "status": "VAR_REVIEWED"
+}

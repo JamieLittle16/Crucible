@@ -1,0 +1,26 @@
+{
+  "classifications": [
+    "PERSISTENCE"
+  ],
+  "evidence": [],
+  "hazards_reviewed": [
+    "PERSISTENCE"
+  ],
+  "id": "VAR-NET-R1B-REGISTRY-SYNC-SEND-001",
+  "notes": [
+    "Registry-data publication precedes exactly one update-tags publication in this body. Registry packing and tag construction internals require the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "37c0f1be0c2c9a78a4df337a41df98d4fab1da4ec100d1a379021e5bb87cef22",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "7c9d9b986339a03f11166046df815417f50a42f0c9d6c9535907eb79aa53c070",
+    "signature": "sendRegistries(final Consumer < Packet < ? >> connection , final Set < KnownPack > negotiatedPacks)",
+    "type": "net.minecraft.server.network.config.SynchronizeRegistriesTask"
+  },
+  "status": "VAR_REVIEWED"
+}

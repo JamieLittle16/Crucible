@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-CLIENT-INFO-PACKET-CODEC-001",
+  "notes": [
+    "Packet codec delegation to ClientInformation construction/write reviewed. Detailed ClientInformation field law requires the supplemental closure gate.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-004"
+  ],
+  "source": {
+    "body_sha256": "51e084cef326211fca7ac665f398059b18966e185473ee8d5a1f593e7b18fb65",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "54054ba15170fd3f08851a8f40343cabe2d857d14f3b87388ebb8fa0d24bde11",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.common.ServerboundClientInformationPacket"
+  },
+  "status": "VAR_REVIEWED"
+}

@@ -1,0 +1,22 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-REGISTRY-SYNC-RESPONSE-001",
+  "notes": [
+    "Exact response-list equality selects the requested known-pack set; any other accepted response uses the empty set.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-006"
+  ],
+  "source": {
+    "body_sha256": "4b2cef65c9d1b60f771c512f19509412f887401e4182c5f15f274c02a46ff2a7",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "04b2f9370f996499863c308aee783db9c831535bba56ff65f98a81a89605aa17",
+    "signature": "handleResponse(final List < KnownPack > acceptedPacks , final Consumer < Packet < ? >> connection)",
+    "type": "net.minecraft.server.network.config.SynchronizeRegistriesTask"
+  },
+  "status": "VAR_REVIEWED"
+}

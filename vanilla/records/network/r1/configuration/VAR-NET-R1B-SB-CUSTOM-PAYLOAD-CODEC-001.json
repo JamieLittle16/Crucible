@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [],
+  "hazards_reviewed": [
+    "CLIENT_OBSERVABLE",
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-SB-CUSTOM-PAYLOAD-CODEC-001",
+  "notes": [
+    "Configuration serverbound custom-payload codec directly admits BrandPayload and a discarded fallback capped at 32,767 bytes.",
+    "This direct VAR is accepted only for the exact body contribution described above; production Configuration remains blocked on GATE-NET-CONFIG-CLOSURE-26_2-001 and the minimum Play-entry closure where applicable."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-003"
+  ],
+  "source": {
+    "body_sha256": "b5ed9cde41810f9e04a4eb645f17eac5792077c9d7a324b272e7805839b84699",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "7ed9f1005d156d3adb3451b642d668bc98644bbc6acc0c7468fed8ffcf528f0b",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket"
+  },
+  "status": "VAR_REVIEWED"
+}
