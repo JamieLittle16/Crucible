@@ -46,6 +46,37 @@ The immediate Play bootstrap packet/codecs reached from `PlayerList.placeNewPlay
 R1B Play-entry closure. They must be source-admitted before the real-client R1 exit, but are not
 silently pulled into this Configuration dependency gate.
 
+## Second-order closure audit
+
+The first real closure preparation resolved and exposed **43 exact pinned bodies**. All 43 source
+excerpts matched their recorded hashes and manual inspection found no contradiction with the current
+R1B SEM contract. That review also found a smaller second-order invalidation gap: a few of those 43
+bodies were themselves wrappers around the body that actually implements the claimed wire law.
+
+Two examples are decisive:
+
+- `ByteBufCodecs.list()` delegates the default maximum to the two-argument `collection(...)`
+  overload, while the first closure only fingerprinted the three-argument bounded overload;
+- `FriendlyByteBuf.readMap(keyDecoder, valueDecoder)` delegates the actual count/allocation/entry
+  loop to the three-argument `readMap(ctor, keyDecoder, valueDecoder)` overload.
+
+The same audit followed the UTF/identifier/optional-Tag chain rather than stopping at the first helper.
+The hardened plan therefore contains **55 candidates**. The 12 added candidates bind only the missing
+second-order bodies:
+
+- two-argument default `ByteBufCodecs.collection`;
+- three-argument `FriendlyByteBuf.readMap`;
+- default and bounded `FriendlyByteBuf` UTF delegation;
+- `FriendlyByteBuf.writeEnum` for ClientInformation encode symmetry;
+- the underlying bounded `Utf8String` reader/writer;
+- optional-value codec construction used by packed registry entries;
+- `Identifier.STREAM_CODEC` and relevant static `ByteBufCodecs` declarations;
+- the network-safe registry subset used by tag serialization.
+
+This is intentionally a bounded closure, not recursive source crawling. Already-admitted R1A
+primitive evidence remains reused where it is exactly the same dependency; the plan does not create
+duplicate VARs merely to inflate a candidate count.
+
 ## Closure selector law
 
 `tools/r1b_configuration_source_closure.py` uses a two-level, fail-closed selector model.
@@ -118,13 +149,15 @@ It then emits `VAR_REVIEWED` records. Source admission still requires an indepen
 ## Generic codec reuse
 
 This closure does not duplicate already-admitted R1A generic evidence merely because R1B uses it.
-Existing UTF-8/count/composite evidence remains reusable. R1B adds the collection/list/map and
-FriendlyByteBuf helper bodies which are materially part of the Configuration field laws and were not
-covered by the earlier gate.
+The admitted Login wire gate already binds the generic `ByteBufCodecs.readCount`,
+`ByteBufCodecs.writeCount`, two-/three-field `StreamCodec.composite`, nullable helpers and UTF-8
+factory evidence used again by Configuration. R1B fingerprints the Configuration-specific helper
+chain and every new delegated body whose change could invalidate an R1B SEM claim.
 
 The source distinction between accepted wire count and initial Java collection capacity remains an
 important implementation boundary: Crucible must reproduce the wire law without reproducing
-vanilla's allocation strategy.
+vanilla's allocation strategy. In particular, vanilla's bounded initial capacity is not a requirement
+for Crucible's production representation.
 
 ## Prepared-spawn boundary
 
