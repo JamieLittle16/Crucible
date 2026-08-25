@@ -9,12 +9,8 @@ use std::num::NonZeroUsize;
 
 use crucible_connection_core::ConnectionLimits;
 use crucible_preplay_core::PrePlayConnection;
-use crucible_preplay_io::{
-    ActionBudget, PrePlayIo, PrePlayIoError, PublicationServiceStop,
-};
-use crucible_target_26_2::{
-    R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState,
-};
+use crucible_preplay_io::{ActionBudget, PrePlayIo, PrePlayIoError, PublicationServiceStop};
+use crucible_target_26_2::{R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState};
 
 use crate::ServerSessionEpoch;
 
@@ -54,8 +50,7 @@ where
     RW: Read + Write + ?Sized,
 {
     let target_state = Target26_2R1xState::with_login_session_uuid(session_epoch.into_bytes());
-    let connection =
-        PrePlayConnection::<Target26_2R1x>::with_target_state(limits(), target_state);
+    let connection = PrePlayConnection::<Target26_2R1x>::with_target_state(limits(), target_state);
     let mut io = PrePlayIo::from_connection(connection, read_scratch_bytes());
     let budget = action_budget();
 
@@ -92,9 +87,8 @@ mod tests {
     #[test]
     fn r1x_limits_are_finite_and_cover_one_maximal_body() {
         let limits = limits();
-        let _ = limits;
-        assert_eq!(FRAME_BODY_LIMIT, 65_536);
-        assert!(INGRESS_LIMIT >= FRAME_BODY_LIMIT);
-        assert!(EGRESS_LIMIT > FRAME_BODY_LIMIT);
+        assert_eq!(limits.max_frame_body_len(), FRAME_BODY_LIMIT);
+        assert_eq!(limits.max_ingress_buffered(), INGRESS_LIMIT);
+        assert_eq!(limits.max_egress_queued(), EGRESS_LIMIT);
     }
 }
