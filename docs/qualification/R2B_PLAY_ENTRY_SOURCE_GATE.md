@@ -126,9 +126,11 @@ The remaining local work is deliberately one bounded evidence operation rather t
 exact 117-body dossier
         -> final reusable dynamic-seam source dossier + worksheet
 
-pinned validated R1X capture
+pinned validated full R1X capture
         -> commands/update-recipes black-box oracle bodies
 ```
+
+The oracle input is the **full validated source-free capture JSON** (`2331` Play bodies / `6,135,522` Play body bytes), not the later 385-frame runtime prefix. The collector validates the complete capture commitment first and only then extracts the two source-qualified composition artifacts. This prevents a truncated runtime image from being mistaken for the black-box oracle source.
 
 The combined directory is `EPHEMERAL_DO_NOT_COMMIT` because it contains official source excerpts. The composition oracle is still explicitly `BLACK_BOX_CONFIRMATION_ONLY` and `production_admitted=false` even though it shares the same external bundle.
 
