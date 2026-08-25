@@ -170,7 +170,9 @@ mod tests {
         let mut too_small = PacketWriter::new(7).expect("non-zero bound");
         assert!(matches!(
             write_block_pos(&mut too_small, -12, 64, 345),
-            Err(R2bWireError::Codec(PacketCodecError::PacketLimitExceeded { .. }))
+            Err(R2bWireError::Codec(
+                PacketCodecError::PacketLimitExceeded { .. }
+            ))
         ));
         assert!(too_small.is_empty());
     }
