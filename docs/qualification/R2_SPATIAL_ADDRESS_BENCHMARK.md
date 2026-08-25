@@ -105,6 +105,11 @@ operation.
 
 ## CI
 
-`cargo check --workspace --all-targets` and Clippy compile the benchmark on every PR. A dedicated
-smoke execution should be added to the normal CI performance-smoke section once this first R2 slice
-is green; hosted timing will remain diagnostic and cannot freeze a production mechanism.
+Normal CI compiles the harness through `cargo check --workspace --all-targets` and strict Clippy,
+then runs `spatial_address_bench --smoke` in release mode. The smoke gate rejects any artifact that
+does not report exact semantic equivalence for both vertical and region addressing, the expected
+schema/mode/diagnostic marker, non-zero semantic checksums, and one positive raw timing sample per
+measured round for both reference and candidate paths.
+
+Hosted timing remains diagnostic and cannot freeze a production mechanism or select D1 region-cell
+granularity.
