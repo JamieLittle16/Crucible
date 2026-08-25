@@ -9,7 +9,9 @@ use core::mem::size_of;
 use crucible_connection_core::FrameView;
 use crucible_session_core::LivenessPolicy;
 
-use crate::generated::play_liveness_26_2;
+mod generated {
+    include!("generated/play_liveness_26_2.rs");
+}
 
 /// Exact Minecraft 26.2 keep-alive interval for the ordinary dedicated-server route.
 pub const PLAY_KEEP_ALIVE_INTERVAL_MS: u64 = 15_000;
@@ -38,7 +40,7 @@ pub enum PlayLivenessCodecError {
 #[must_use]
 pub fn encode_clientbound_keep_alive(id: i64) -> [u8; PLAY_KEEP_ALIVE_BODY_BYTES] {
     let mut body = [0_u8; PLAY_KEEP_ALIVE_BODY_BYTES];
-    body[0] = u8::try_from(play_liveness_26_2::play::clientbound::KEEP_ALIVE)
+    body[0] = u8::try_from(generated::play::clientbound::KEEP_ALIVE)
         .expect("source-admitted clientbound keep-alive id fits one-byte VarInt");
     body[1..].copy_from_slice(&id.to_be_bytes());
     body
@@ -56,7 +58,7 @@ pub fn encode_clientbound_keep_alive(id: i64) -> [u8; PLAY_KEEP_ALIVE_BODY_BYTES
 pub fn decode_serverbound_keep_alive(
     frame: FrameView<'_>,
 ) -> Result<Option<i64>, PlayLivenessCodecError> {
-    if frame.packet_id() != play_liveness_26_2::play::serverbound::KEEP_ALIVE {
+    if frame.packet_id() != generated::play::serverbound::KEEP_ALIVE {
         return Ok(None);
     }
     let payload = <&[u8; size_of::<i64>()]>::try_from(frame.payload()).map_err(|_| {
@@ -75,16 +77,15 @@ mod tests {
 
     use super::{
         PLAY_KEEP_ALIVE_BODY_BYTES, PLAY_LIVENESS_POLICY, PlayLivenessCodecError,
-        decode_serverbound_keep_alive, encode_clientbound_keep_alive,
+        decode_serverbound_keep_alive, encode_clientbound_keep_alive, generated,
     };
-    use crate::generated::play_liveness_26_2;
 
     #[test]
     fn generated_golden_clientbound_body_matches_stack_encoder() {
         let id = 0x0102_0304_0506_0708_i64;
         assert_eq!(
             encode_clientbound_keep_alive(id).as_slice(),
-            play_liveness_26_2::golden::PLAY_CLIENTBOUND_KEEP_ALIVE_BODY
+            generated::golden::PLAY_CLIENTBOUND_KEEP_ALIVE_BODY
         );
         assert_eq!(PLAY_KEEP_ALIVE_BODY_BYTES, 9);
     }
@@ -94,7 +95,7 @@ mod tests {
         let limits = ConnectionLimits::new(64, 128, 128).expect("test limits");
         let mut decoder = FrameDecoder::new(limits);
         decoder
-            .ingest::<()>(play_liveness_26_2::golden::PLAY_SERVERBOUND_KEEP_ALIVE_FRAME)
+            .ingest::<()>(generated::golden::PLAY_SERVERBOUND_KEEP_ALIVE_FRAME)
             .expect("golden frame fits");
         let frame = decoder.next_frame().expect("decode succeeds").expect("one frame");
         assert_eq!(
@@ -107,7 +108,7 @@ mod tests {
     fn malformed_keep_alive_payload_fails_closed() {
         let limits = ConnectionLimits::new(64, 128, 128).expect("test limits");
         let mut decoder = FrameDecoder::new(limits);
-        let packet_id = u8::try_from(play_liveness_26_2::play::serverbound::KEEP_ALIVE)
+        let packet_id = u8::try_from(generated::play::serverbound::KEEP_ALIVE)
             .expect("source-admitted id fits one byte");
         decoder.ingest::<()>(&[0x01, packet_id]).expect("frame fits");
         let frame = decoder.next_frame().expect("decode succeeds").expect("one frame");
