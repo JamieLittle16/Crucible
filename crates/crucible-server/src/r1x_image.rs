@@ -25,6 +25,9 @@ const MAX_IMAGE_BYTES: u64 = HEADER_BYTES
     + EXPECTED_CONFIGURATION_BYTES as u64
     + MAX_PLAY_BYTES as u64;
 
+type PacketBody = Box<[u8]>;
+type LoadedBodies = (Vec<PacketBody>, usize);
+
 const EXPECTED_SOURCE_SHA256: [u8; 32] = [
     0x1e, 0x9b, 0xca, 0x3d, 0xff, 0x83, 0xcd, 0x83, 0xe7, 0x90, 0x5f, 0x88, 0x10, 0xf1,
     0xec, 0x98, 0x99, 0x36, 0x1f, 0xa2, 0xdc, 0x83, 0xfe, 0x89, 0x3b, 0xb4, 0x8b, 0xee,
@@ -168,7 +171,7 @@ pub fn load_r1x_image(
     path: &Path,
     status_json: &str,
 ) -> Result<Target26_2R1xContext, R1xImageError> {
-    let metadata = fs::symlink_metadata(path).map_err(io_error)?;
+    let metadata = fs::symlink_metadata(path).map_err(|error| io_error(&error))?;
     if metadata.file_type().is_symlink() {
         return Err(R1xImageError::Symlink);
     }
@@ -182,7 +185,7 @@ pub fn load_r1x_image(
         });
     }
 
-    let file = File::open(path).map_err(io_error)?;
+    let file = File::open(path).map_err(|error| io_error(&error))?;
     let mut reader = BufReader::new(file);
     decode_image(&mut reader, status_json)
 }
@@ -244,8 +247,7 @@ fn decode_image<R: Read>(
         });
     }
 
-    let (play, observed_play_bytes) =
-        read_bodies(reader, R1xImageSection::Play, play_count)?;
+    let (play, observed_play_bytes) = read_bodies(reader, R1xImageSection::Play, play_count)?;
     if observed_play_bytes != play_bytes {
         return Err(R1xImageError::AggregateMismatch {
             section: R1xImageSection::Play,
@@ -255,7 +257,7 @@ fn decode_image<R: Read>(
     }
 
     let mut trailing = [0_u8; 1];
-    match reader.read(&mut trailing).map_err(io_error)? {
+    match reader.read(&mut trailing).map_err(|error| io_error(&error))? {
         0 => {}
         _ => return Err(R1xImageError::TrailingData),
     }
@@ -267,7 +269,7 @@ fn read_bodies<R: Read>(
     reader: &mut R,
     section: R1xImageSection,
     count: usize,
-) -> Result<(Vec<Box<[u8]>>, usize), R1xImageError> {
+) -> Result<LoadedBodies, R1xImageError> {
     let mut bodies = Vec::with_capacity(count);
     let mut total = 0_usize;
     for index in 0..count {
@@ -285,7 +287,9 @@ fn read_bodies<R: Read>(
             observed: usize::MAX,
         })?;
         let mut body = vec![0_u8; length].into_boxed_slice();
-        reader.read_exact(&mut body).map_err(io_error)?;
+        reader
+            .read_exact(&mut body)
+            .map_err(|error| io_error(&error))?;
         bodies.push(body);
     }
     Ok((bodies, total))
@@ -301,7 +305,9 @@ fn read_u64<R: Read>(reader: &mut R) -> Result<u64, R1xImageError> {
 
 fn read_array<const N: usize, R: Read>(reader: &mut R) -> Result<[u8; N], R1xImageError> {
     let mut bytes = [0_u8; N];
-    reader.read_exact(&mut bytes).map_err(io_error)?;
+    reader
+        .read_exact(&mut bytes)
+        .map_err(|error| io_error(&error))?;
     Ok(bytes)
 }
 
@@ -319,7 +325,7 @@ fn usize_from_u64(value: u64) -> Result<usize, R1xImageError> {
     })
 }
 
-fn io_error(error: io::Error) -> R1xImageError {
+fn io_error(error: &io::Error) -> R1xImageError {
     R1xImageError::Io {
         kind: error.kind(),
         message: error.to_string(),
