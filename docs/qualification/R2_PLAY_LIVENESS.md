@@ -1,9 +1,11 @@
 # R2 Play Liveness Semantics and Qualification
 
-**Status:** implementation/qualification contract for R2A session liveness  
-**Target semantic source:** official Minecraft Java 26.2 source archive pinned by Crucible  
+**Status:** source-admitted and qualified R2A session-liveness contract  
+**Target:** Minecraft Java 26.2 / protocol 776  
 **Source archive SHA-256:** `1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750`  
-**Implementation:** `crucible-session-core::LivenessState`  
+**Semantic mechanism:** `crucible-session-core::LivenessState`  
+**26.2 wire/policy binding:** `crucible-target-26-2::play_liveness`  
+**Finite protocol contract:** `PROTO-NET-PLAY-LIVENESS-26-2-001`  
 **Performance harness:** `liveness_deadline_bench`
 
 ## Purpose
@@ -24,223 +26,150 @@ scheduler-selected deadline frontier
 only due sessions are serviced
 ```
 
-`LivenessState` therefore owns no clock, socket, task, packet identifier or scheduler node. The
-caller supplies monotone milliseconds and target timing policy.
+`LivenessState` owns no clock, socket, task, packet identifier or scheduler node. The caller supplies
+monotone milliseconds and target timing policy. Minecraft-version-specific packet identity, wire
+encoding and timing constants are owned by the 26.2 target rather than product composition.
 
-## 26.2 source observations
+## Source-admitted 26.2 laws
 
-The relevant source frontier is
-`net.minecraft.server.network.ServerCommonPacketListenerImpl`.
+The final R2A source frontier contains twelve exact fingerprint-pinned bodies:
 
-The pinned 26.2 source establishes the following observable laws:
+- the Play registration order in `GameProtocols`;
+- each keep-alive packet's `STREAM_CODEC` root;
+- each direction's exact `FriendlyByteBuf` decoding constructor;
+- each direction's exact writer;
+- the common listener constructor, `close`, closed gate, liveness service and reply handler.
 
-1. listener construction anchors keep-alive time to the current millisecond time and carries
-   latency from the common-listener cookie;
-2. the keep-alive interval is exactly 15,000 ms;
-3. when the interval is due and a challenge is already pending, the dedicated-server route
-   disconnects for timeout;
-4. otherwise, if the listener is not closed, the challenge is the current millisecond timestamp,
-   that timestamp becomes the new anchor, pending becomes true, and one clientbound keep-alive is
-   sent;
-5. a response is accepted only when a challenge is pending and its ID is exactly equal to the
-   challenge;
-6. accepted latency is computed from elapsed milliseconds using Java `int` narrowing followed by
-   `(old * 3 + elapsed) / 4`, then pending is cleared;
-7. a wrong or unexpected response disconnects the non-singleplayer-owner route;
-8. `close()` records only the first close timestamp;
-9. the closed-listener timeout is exactly 15,000 ms;
-10. the pending-challenge timeout branch has priority over the closed-listener branch;
-11. a closed listener never publishes a new keep-alive challenge.
+The frontier was deliberately expanded from eight bodies after review showed that the two codec roots
+proved only delegation. Admission therefore also fingerprints the delegated read/write bodies; the
+finalizer rejects the old eight-body shape.
 
-The integrated-server owner exception is target/application policy, not a reason to weaken exact
-reply admission in the reusable state machine.
-
-## Crucible semantic rules
-
-### SEM-NET-R2-LIVE-001 — explicit monotone time
-
-Liveness state is deterministic for a sequence of caller-supplied monotone millisecond timestamps.
-It performs no hidden wall-clock reads.
-
-### SEM-NET-R2-LIVE-002 — exact challenge lifecycle
-
-At a live keep-alive deadline with no pending challenge:
+The reviewed registration order derives the exact Play identities:
 
 ```text
-challenge = now_ms as signed 64-bit
-anchor    = now_ms
-pending   = true
-result    = IssueChallenge(challenge)
+clientbound keep-alive = 0x2c
+serverbound keep-alive = 0x1c
 ```
 
-Before the deadline the result is `Idle`.
+The reviewed decoding constructors each consume exactly one `readLong()`, and the reviewed writers
+each emit exactly one `writeLong(id)`. There are no additional payload fields. The listener bodies
+establish the 15,000 ms interval/timeout, pending-timeout branch priority, challenge timestamp law,
+exact response admission, Java-compatible latency smoothing, first-close timestamp and ordinary
+dedicated-server invalid-response policy.
 
-### SEM-NET-R2-LIVE-003 — pending timeout priority
+No Mojang source text is committed. The source-rich dossier remains ephemeral; committed
+`VAR_REVIEWED` records contain only fingerprints, reviewed hazards, semantic links and review notes.
 
-At or after the next keep-alive deadline, a still-pending challenge yields
-`KeepAliveTimedOut`. This remains true if the listener has subsequently entered closed state.
+## Canonical semantic rules
 
-### SEM-NET-R2-LIVE-004 — exact response admission
+The normative rules live in `vanilla/semantics/network/R2_PLAY_LIVENESS_SEMANTICS.md`:
 
-A response is accepted iff:
+- `SEM-NET-R2-LIVE-001` — explicit caller-supplied monotone time;
+- `SEM-NET-R2-LIVE-002` — exact challenge lifecycle;
+- `SEM-NET-R2-LIVE-003` — pending timeout priority;
+- `SEM-NET-R2-LIVE-004` — exact response admission;
+- `SEM-NET-R2-LIVE-005` — Java-compatible latency smoothing;
+- `SEM-NET-R2-LIVE-006` — closed-listener lifecycle;
+- `SEM-NET-R2-LIVE-007` — target/product disconnect-policy boundary;
+- `SEM-NET-R2-LIVE-008` — exact 15,000 ms 26.2 intervals;
+- `SEM-NET-R2-LIVE-009` — clientbound `0x2c` + signed 64-bit payload;
+- `SEM-NET-R2-LIVE-010` — serverbound `0x1c` + signed 64-bit payload.
 
-```text
-pending && response_id == pending_challenge
-```
-
-A rejected response cannot partially mutate the liveness state.
-
-### SEM-NET-R2-LIVE-005 — latency smoothing
-
-For an accepted response:
-
-```text
-elapsed_i32 = Java-int-narrow(now_ms - challenge_issue_ms)
-latency     = Java-int-wrap(latency * 3 + elapsed_i32) / 4
-pending     = false
-```
-
-The response time does not replace the keep-alive anchor. The next challenge remains scheduled from
-the previous challenge issue time.
-
-### SEM-NET-R2-LIVE-006 — terminal listener
-
-The first close records `closed_since_ms`; repeated close requests are idempotent. No new challenge
-may be published after close. With no pending challenge, the next observable terminal action occurs
-only when the source keep-alive gate and closed-listener timeout permit the closed timeout branch.
-
-### SEM-NET-R2-LIVE-007 — target policy separation
-
-The generic state machine reports `Rejected`, `KeepAliveTimedOut` and `ClosedTimedOut`. The target
-or server layer decides the resulting disconnect behavior and any integrated-server-owner exception.
+The integrated-server-owner exception remains product/target policy and does not weaken exact reply
+admission in the reusable state machine.
 
 ## Implementation invariants
 
-`LivenessState` is currently asserted to occupy 32 bytes. It stores only the semantic state required
-for exact liveness decisions: keep-alive anchor, pending challenge, close timestamp, smoothed latency
-and compact flags.
+`LivenessState` is asserted to occupy 32 bytes. It stores only the semantic state required for exact
+liveness decisions: keep-alive anchor, pending challenge, close timestamp, smoothed latency and
+compact flags.
 
-The state exposes `next_deadline_ms(policy)`. This is an architectural contract: future production
-scheduling must be able to keep inactive sessions out of the simulation-tick scan.
+The state exposes `next_deadline_ms(policy)`. Future production scheduling must therefore be able to
+keep inactive sessions out of a simulation-tick scan.
 
-The generic crate does **not** hardcode Minecraft's 15,000 ms values. `LivenessPolicy` is supplied by
-the target binding; this keeps the session core target-neutral while still allowing the 26.2 target
-to bind exact source values.
+The generic session crate does not hardcode Minecraft's timing values. The 26.2 target exports the
+source-admitted `PLAY_LIVENESS_POLICY` and owns finite keep-alive encode/decode functions. Both packet
+bodies are stack-sized nine-byte values and require no packet allocation or runtime registry lookup.
+
+Product composition does not own the 26.2 packet IDs, byte order or timing constants. It asks the
+target to encode a challenge or decode a finite liveness reply, then applies the target-neutral
+semantic state transition.
+
+Challenge publication remains transactional:
+
+```text
+copy 32-byte liveness state
+        -> service candidate
+        -> encode 9-byte target body
+        -> bounded egress admission
+        -> commit candidate only on success
+```
+
+Backpressure therefore cannot create a phantom pending challenge.
+
+## Protocol contract and generated facts
+
+`vanilla/protocol/PROTO-NET-PLAY-LIVENESS-26-2-001.json` is a finite two-packet contract backed by the
+twelve reviewed VARs. It carries deterministic golden bodies/frames using challenge
+`0x0102030405060708`.
+
+`tools/protocol_codegen.py` generates
+`crates/network/crucible-target-26-2/src/generated/play_liveness_26_2.rs` from that contract. The
+committed generated file contains compile-time identities only; production builds do not need a
+runtime packet registry. Qualification-only golden bytes are behind `cfg(test)`.
+
+`tools/tests/test_target_26_2_generated.py` regenerates the file from the contract and committed VARs,
+requires byte-for-byte equality, and pins the generated file SHA-256. Editing packet constants or
+golden bytes independently of the admitted evidence therefore fails CI.
 
 ## Tests
 
-The permanent unit suite includes:
+The permanent semantic suite covers exact deadline boundaries, pending timeout, exact-ID reply,
+wrong/unexpected reply rejection without partial mutation, Java-compatible 3:1 latency smoothing,
+response timing not resetting the challenge anchor, close idempotence, challenge suppression after
+close, pending-timeout priority, invalid time/policy handling, and a deterministic 100,000-event
+differential trace against an independently written reference model.
 
-- exact before/at-deadline behavior;
-- pending challenge timeout;
-- exact-ID acknowledgement and wrong/unexpected reply rejection;
-- source-compatible 3:1 latency smoothing;
-- acknowledgement not resetting the challenge schedule;
-- close idempotence and challenge suppression;
-- pending timeout priority after close;
-- backwards/out-of-range time failure without mutation;
-- invalid policy rejection;
-- a deterministic 100,000-event differential trace against an independently written reference
-  model.
+The 26.2 target additionally tests generated golden bodies against its allocation-free stack encoders,
+exact serverbound golden-frame decoding, malformed-payload rejection and exact source-admitted timing
+policy.
 
-The differential model is intentionally structurally different from `LivenessState`; it exists to
-catch state packing or branch-order mistakes rather than simply invoking the production methods
-again.
+The R1X live integration keeps the existing bounded-driver regression tests, including deliberate
+egress backpressure proving candidate state is not committed when challenge publication cannot be
+admitted, fragmented replies, wrong/malformed replies and ten consecutive fake-time cycles through
+one live driver.
 
-## Performance hypothesis
+## Performance qualification
 
-A naive implementation scans every connected session every server tick:
+The `liveness_deadline_bench` compares a 50 ms resident-session scan against servicing only exact
+liveness deadlines over the same semantic state and deterministic acknowledgements. Externally
+visible semantic checksums must match before timing is considered.
 
-```text
-work ~= connected_sessions * tick_frequency
-```
+The benchmark records raw paired timings, scan/deadline service-call counts, acknowledgement work and
+hardware/toolchain metadata. Hosted CI asserts semantic equality and structural work reduction but has
+no timing threshold.
 
-For an idle connection whose liveness state can produce an action only every 15 seconds, almost all
-of those calls are known no-ops.
+This benchmark proves the opportunity created by `next_deadline_ms`; it does **not** select the final
+deadline container. Heap, timing wheel, bucketed frontier, intrusive queue or another mechanism still
+requires a separate whole-cost contest including memory, churn, synchronized bursts, worker topology,
+network wakeups and tail latency.
 
-The candidate architecture exposes the exact next deadline. A scheduler can therefore maintain an
-active deadline frontier and service only sessions whose liveness state can currently change.
-Incoming keep-alive acknowledgements remain necessary work in both designs.
+## Real-client evidence
 
-## Benchmark
-
-Run:
-
-```bash
-cargo run --release --locked \
-  --package crucible-client-spine-qualification \
-  --bin liveness_deadline_bench -- \
-  --full \
-  --output qualification-results/network/liveness-deadline.json
-```
-
-The harness compares two scheduling topologies over the same `LivenessState` semantics:
-
-- **scan reference:** every resident session is serviced every 50 ms;
-- **deadline candidate proxy:** session service is invoked only at exact liveness deadlines.
-
-Both receive the same deterministic acknowledgements. `Idle` polls are intentionally checksum
-neutral because their absence is the optimization under test. Every externally visible liveness
-decision and acknowledgement contributes to the semantic checksum, which must match before timing
-is accepted.
-
-The artifact records:
-
-- raw paired timing samples;
-- semantic checksum;
-- scan service-call count;
-- deadline service-call count;
-- acknowledgement call count;
-- hardware/toolchain metadata;
-- `scheduler_mechanism_selected=false`.
-
-## What this benchmark does not decide
-
-The deadline candidate is a scheduling-topology proxy. It intentionally excludes the concrete data
-structure used to maintain deadlines.
-
-Therefore this benchmark can demonstrate the opportunity created by `next_deadline_ms`, but it
-cannot select a production timer heap, timing wheel, intrusive queue, bucketed frontier or other
-scheduler mechanism.
-
-Before a deadline container is admitted, a separate whole-cost qualification must include:
-
-- insertion/removal/reschedule cost;
-- memory per connection;
-- cancellation/disconnect churn;
-- synchronized deadline bursts;
-- jitter and fairness;
-- 1/2/4+ worker ownership topology;
-- interaction with network wakeups;
-- tail latency under large idle and active populations.
-
-Hosted CI timings remain diagnostic only and cannot select the production scheduler.
-
-## Wire binding status
-
-Independent 26.2 protocol metadata currently corroborates:
+The R2A milestone was exercised with an unmodified Minecraft Java 26.2 client after the finite R1X
+visible-world bootstrap. Crucible then owned continuing Play liveness and accepted ten consecutive
+live keep-alive replies before normal peer EOF:
 
 ```text
-clientbound Play keep_alive: 0x2c
-serverbound Play keep_alive: 0x1c
-payload: one i64
+LivePeerEof { accepted_keep_alives: 10, latency_ms: 0 }
 ```
 
-These values are **not yet production-admitted by this document**. The production target binding
-requires the corresponding pinned official-source registration/codec evidence (or generated facts
-whose provenance closes that source chain). Until then the liveness state machine is intentionally
-usable without packet-number constants.
+The localhost `0 ms` value is millisecond-resolution measurement, not a claim of zero physical
+latency. No keep-alive timeout or invalid-response exit occurred.
 
-## Exit gate for R2A liveness substrate
+## R2A closure
 
-This substrate may merge when:
-
-1. workspace format/check/strict Clippy are green;
-2. all existing protocol/network/world tests remain green;
-3. the 100,000-event reference differential test is green;
-4. the deadline benchmark executes in release mode with semantic checksum equality;
-5. the benchmark becomes a permanent CI smoke with no hosted timing threshold;
-6. source/semantic/benchmark documentation remains synchronized with the implementation.
-
-Wire integration is a following gate and must not be smuggled into this merge without exact packet
-registration/codec evidence.
+R2A liveness is closed when the exact source-admission/codegen head passes workspace format/check,
+strict Clippy, all Rust/Python tests, protocol/network qualifications, benchmark smokes, rustdoc and
+the runnable server gate. The overall 26.2 target remains explicitly experimental beyond its admitted
+finite surfaces; this contract does not claim general Play or world simulation support.
