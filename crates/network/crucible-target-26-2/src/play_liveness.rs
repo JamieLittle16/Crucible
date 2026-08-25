@@ -93,13 +93,18 @@ const _: () = assert!(PLAY_KEEP_ALIVE_BODY_BYTES == 9);
 
 #[cfg(test)]
 mod tests {
-    use crucible_connection_core::{ConnectionLimits, FrameDecoder};
+    use crucible_connection_core::{ConnectionLimits, IngressBuffer};
 
     use super::{
         PLAY_KEEP_ALIVE_BODY_BYTES, PLAY_LIVENESS_POLICY, PlayLivenessCodecError,
         decode_serverbound_keep_alive, encode_clientbound_keep_alive,
         encode_serverbound_keep_alive, generated,
     };
+
+    fn test_ingress() -> IngressBuffer {
+        let limits = ConnectionLimits::new(64, 128, 128).expect("test limits");
+        IngressBuffer::new(limits)
+    }
 
     #[test]
     fn generated_golden_bodies_match_stack_encoders() {
@@ -117,13 +122,12 @@ mod tests {
 
     #[test]
     fn generated_golden_serverbound_frame_decodes_exactly() {
-        let limits = ConnectionLimits::new(64, 128, 128).expect("test limits");
-        let mut decoder = FrameDecoder::new(limits);
-        decoder
-            .ingest::<()>(generated::golden::PLAY_SERVERBOUND_KEEP_ALIVE_FRAME)
+        let mut ingress = test_ingress();
+        ingress
+            .push(generated::golden::PLAY_SERVERBOUND_KEEP_ALIVE_FRAME)
             .expect("golden frame fits");
-        let frame = decoder
-            .next_frame()
+        let frame = ingress
+            .peek_frame()
             .expect("decode succeeds")
             .expect("one frame");
         assert_eq!(
@@ -134,14 +138,13 @@ mod tests {
 
     #[test]
     fn malformed_keep_alive_payload_fails_closed() {
-        let limits = ConnectionLimits::new(64, 128, 128).expect("test limits");
-        let mut decoder = FrameDecoder::new(limits);
+        let mut ingress = test_ingress();
         let packet_id = encode_serverbound_keep_alive(0)[0];
-        decoder
-            .ingest::<()>(&[0x01, packet_id])
+        ingress
+            .push(&[0x01, packet_id])
             .expect("frame fits");
-        let frame = decoder
-            .next_frame()
+        let frame = ingress
+            .peek_frame()
             .expect("decode succeeds")
             .expect("one frame");
         assert_eq!(
