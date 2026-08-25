@@ -48,10 +48,10 @@ impl From<PacketCodecError> for R2bWireError {
 /// preserves the same low-bit truncation instead of imposing an invented coordinate-range policy.
 #[must_use]
 pub const fn pack_block_pos(x: i32, y: i32, z: i32) -> i64 {
-    let x_bits = (x as i64 as u64) & PACKED_XZ_MASK;
-    let y_bits = (y as i64 as u64) & PACKED_Y_MASK;
-    let z_bits = (z as i64 as u64) & PACKED_XZ_MASK;
-    ((x_bits << PACKED_X_SHIFT) | (z_bits << PACKED_Z_SHIFT) | y_bits) as i64
+    let x_bits = i64::from(x).cast_unsigned() & PACKED_XZ_MASK;
+    let y_bits = i64::from(y).cast_unsigned() & PACKED_Y_MASK;
+    let z_bits = i64::from(z).cast_unsigned() & PACKED_XZ_MASK;
+    ((x_bits << PACKED_X_SHIFT) | (z_bits << PACKED_Z_SHIFT) | y_bits).cast_signed()
 }
 
 /// Writes one packed `BlockPos` in network byte order.
@@ -145,11 +145,10 @@ mod tests {
         assert_eq!(pack_block_pos(0, 0, 1), 1_i64 << 12);
         assert_eq!(pack_block_pos(0, 1, 0), 1);
         assert_eq!(pack_block_pos(-1, -1, -1), -1);
-
-        let expected = (((12_345_i64 as u64) & 0x03ff_ffff) << 38)
-            | (((-54_321_i64 as u64) & 0x03ff_ffff) << 12)
-            | ((2_047_i64 as u64) & 0x0fff);
-        assert_eq!(pack_block_pos(12_345, 2_047, -54_321) as u64, expected);
+        assert_eq!(
+            pack_block_pos(12_345, 2_047, -54_321),
+            0x000c_0e7f_f2bc_f7ff_i64
+        );
     }
 
     #[test]
