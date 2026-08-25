@@ -6,7 +6,9 @@
 
 #![forbid(unsafe_code)]
 
+mod lattice;
 mod publication;
+mod region_cell;
 mod window;
 
 use core::marker::PhantomData;
@@ -14,7 +16,9 @@ use core::marker::PhantomData;
 use crucible_types::{BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp};
 use crucible_world_contract::{BlockSection, BlockStateFacts, SectionBlockPos, SectionSummary};
 
+pub use lattice::{VerticalSectionLattice, VerticalSectionLatticeError};
 pub use publication::PublishedChunk;
+pub use region_cell::{RegionCellAddress, RegionCellCoord, RegionCellLayout};
 pub use window::{ResolvedChunkWindow, ResolvedChunkWindowError};
 
 const BLOCKS_PER_CHUNK_AXIS: i32 = 16;
@@ -119,7 +123,7 @@ where
     position: ChunkPos,
     generation: ChunkGeneration,
     revision: ChunkRevision,
-    min_section_y: i32,
+    lattice: VerticalSectionLattice,
     sections: Box<[Section]>,
     masks: SectionMasks,
     state: PhantomData<fn() -> S>,
@@ -155,19 +159,15 @@ where
             });
         }
 
-        let count =
-            i32::try_from(sections.len()).map_err(|_| ChunkCoreError::SectionRangeOverflow)?;
-        min_section_y
-            .checked_add(count)
-            .ok_or(ChunkCoreError::SectionRangeOverflow)?;
-
+        let lattice = VerticalSectionLattice::new(min_section_y, sections.len())
+            .map_err(|_| ChunkCoreError::SectionRangeOverflow)?;
         let sections = sections.into_boxed_slice();
         let masks = masks_from_sections::<S, Section>(&sections);
         Ok(Self {
             position,
             generation,
             revision: ChunkRevision::default(),
-            min_section_y,
+            lattice,
             sections,
             masks,
             state: PhantomData,
@@ -204,7 +204,13 @@ where
     /// Lowest logical section Y represented by this chunk.
     #[must_use]
     pub const fn min_section_y(&self) -> i32 {
-        self.min_section_y
+        self.lattice.min_section_y()
+    }
+
+    /// Resolved vertical section lattice used by block access.
+    #[must_use]
+    pub const fn vertical_lattice(&self) -> VerticalSectionLattice {
+        self.lattice
     }
 
     /// Number of contiguous logical section slots.
@@ -335,21 +341,13 @@ where
         local_x: u8,
         local_z: u8,
     ) -> Result<(usize, SectionBlockPos), ChunkCoreError> {
-        let section_y = pos.y.div_euclid(BLOCKS_PER_CHUNK_AXIS);
-        let offset = i64::from(section_y) - i64::from(self.min_section_y);
-        let section_index = usize::try_from(offset)
-            .ok()
-            .filter(|&index| index < self.sections.len());
-        let Some(section_index) = section_index else {
+        let Some((section_index, local_y)) = self.lattice.resolve_block_y(pos.y) else {
             return Err(ChunkCoreError::PositionOutsideVerticalLattice {
                 pos,
-                min_section_y: self.min_section_y,
+                min_section_y: self.lattice.min_section_y(),
                 section_count: self.sections.len(),
             });
         };
-
-        let local_y = u8::try_from(pos.y.rem_euclid(BLOCKS_PER_CHUNK_AXIS))
-            .expect("Euclidean section-local y is in 0..16");
         let local = SectionBlockPos::new(local_x, local_y, local_z)
             .expect("resolved local coordinates are valid section coordinates");
         Ok((section_index, local))

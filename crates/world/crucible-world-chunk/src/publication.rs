@@ -134,7 +134,7 @@ where
         PublishedChunk {
             position: self.position,
             stamp: self.stamp(),
-            min_section_y: self.min_section_y,
+            min_section_y: self.min_section_y(),
             masks: self.masks,
             states: states.into_boxed_slice(),
         }
