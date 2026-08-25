@@ -10,7 +10,6 @@
 //! challenge state is committed only after the challenge body enters bounded egress successfully.
 //! Consequently backpressure cannot create a phantom pending challenge.
 
-use core::mem::size_of;
 use std::convert::Infallible;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
@@ -26,7 +25,12 @@ use crucible_preplay_io::{
 use crucible_session_core::{
     KeepAliveReply, LivenessDecision, LivenessPolicy, LivenessState, SessionPhase,
 };
-use crucible_target_26_2::{R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState};
+use crucible_target_26_2::{
+    R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState,
+    play_liveness::{
+        PLAY_LIVENESS_POLICY, decode_serverbound_keep_alive, encode_clientbound_keep_alive,
+    },
+};
 
 use crate::ServerSessionEpoch;
 
@@ -36,18 +40,6 @@ const EGRESS_LIMIT: usize = 128 * 1_024;
 const READ_SCRATCH_BYTES: usize = 16 * 1_024;
 const ACTIONS_PER_SERVICE: usize = 4;
 const _: () = assert!(ACTIONS_PER_SERVICE > 0);
-
-const KEEP_ALIVE_INTERVAL_MS: u64 = 15_000;
-const CLOSED_LISTENER_TIMEOUT_MS: u64 = 15_000;
-
-// R2A experimental wire binding. The exact IDs are independently corroborated against the reviewed
-// Minecraft 26.2 `GameProtocols` Play registration order and the real capture. Production target
-// admission remains gated on committing the dedicated source-derived Play-liveness contract; R1X is
-// still explicitly `production_admitted=false`.
-const CLIENTBOUND_KEEP_ALIVE_PACKET_ID: u8 = 0x2c;
-const SERVERBOUND_KEEP_ALIVE_PACKET_ID: i32 = 0x1c;
-const KEEP_ALIVE_BODY_BYTES: usize = 1 + size_of::<i64>();
-const _: () = assert!(CLIENTBOUND_KEEP_ALIVE_PACKET_ID < 0x80);
 
 /// Why one R1X development connection ended.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -172,7 +164,7 @@ fn ready_for_live_handoff(io: &PrePlayIo<Target26_2R1x>) -> bool {
 fn serve_live_play_liveness(
     transport: &mut TcpStream,
 ) -> Result<R1xConnectionExit, PrePlayIoError<R1xError>> {
-    let policy = liveness_policy();
+    let policy = PLAY_LIVENESS_POLICY;
     let origin = Instant::now();
     let mut liveness = LivenessState::new(0, 0)
         .expect("zero is inside the admitted signed-64-bit monotonic time domain");
@@ -307,20 +299,22 @@ fn decode_live_frame(
     now_ms: u64,
     frame: FrameView<'_>,
 ) -> LiveInboundAction {
-    if frame.packet_id() != SERVERBOUND_KEEP_ALIVE_PACKET_ID {
-        return LiveInboundAction {
-            next_liveness: current,
-            disposition: LiveDisposition::Ignored,
-        };
-    }
-
-    let Ok(payload) = <&[u8; size_of::<i64>()]>::try_from(frame.payload()) else {
-        return LiveInboundAction {
-            next_liveness: current,
-            disposition: LiveDisposition::InvalidKeepAlive,
-        };
+    let id = match decode_serverbound_keep_alive(frame) {
+        Ok(Some(id)) => id,
+        Ok(None) => {
+            return LiveInboundAction {
+                next_liveness: current,
+                disposition: LiveDisposition::Ignored,
+            };
+        }
+        Err(_) => {
+            return LiveInboundAction {
+                next_liveness: current,
+                disposition: LiveDisposition::InvalidKeepAlive,
+            };
+        }
     };
-    let id = i64::from_be_bytes(*payload);
+
     let mut candidate = current;
     let disposition = match candidate.receive_keep_alive(now_ms, id) {
         Ok(KeepAliveReply::Accepted { latency_ms }) => {
@@ -350,7 +344,7 @@ fn service_live_liveness(
     match candidate.service(now_ms, policy) {
         Ok(LivenessDecision::Idle) => Ok(LiveLivenessService::Idle),
         Ok(LivenessDecision::IssueChallenge { id }) => {
-            let body = keep_alive_body(id);
+            let body = encode_clientbound_keep_alive(id);
             driver
                 .queue_frame::<Infallible>(&body)
                 .map_err(|error| map_live_driver_error(&error))?;
@@ -363,20 +357,14 @@ fn service_live_liveness(
     }
 }
 
-fn keep_alive_body(id: i64) -> [u8; KEEP_ALIVE_BODY_BYTES] {
-    let mut body = [0_u8; KEEP_ALIVE_BODY_BYTES];
-    body[0] = CLIENTBOUND_KEEP_ALIVE_PACKET_ID;
-    body[1..].copy_from_slice(&id.to_be_bytes());
-    body
-}
-
 #[cfg(test)]
-fn serverbound_keep_alive_frame(id: i64) -> [u8; KEEP_ALIVE_BODY_BYTES + 1] {
-    let mut frame = [0_u8; KEEP_ALIVE_BODY_BYTES + 1];
-    frame[0] = u8::try_from(KEEP_ALIVE_BODY_BYTES).expect("keep-alive body length fits one byte");
-    frame[1] = u8::try_from(SERVERBOUND_KEEP_ALIVE_PACKET_ID)
-        .expect("serverbound keep-alive packet id fits one byte");
-    frame[2..].copy_from_slice(&id.to_be_bytes());
+fn serverbound_keep_alive_frame(
+    id: i64,
+) -> [u8; crucible_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1] {
+    let body = crucible_target_26_2::play_liveness::encode_serverbound_keep_alive(id);
+    let mut frame = [0_u8; crucible_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1];
+    frame[0] = u8::try_from(body.len()).expect("keep-alive body length fits one-byte VarInt");
+    frame[1..].copy_from_slice(&body);
     frame
 }
 
@@ -404,11 +392,6 @@ fn write_live_once(
 
 fn elapsed_millis(origin: Instant) -> Option<u64> {
     u64::try_from(origin.elapsed().as_millis()).ok()
-}
-
-fn liveness_policy() -> LivenessPolicy {
-    LivenessPolicy::new(KEEP_ALIVE_INTERVAL_MS, CLOSED_LISTENER_TIMEOUT_MS)
-        .expect("Minecraft 26.2 liveness intervals are positive and representable")
 }
 
 fn map_live_driver_error(error: &DriverError<Infallible>) -> PrePlayIoError<R1xError> {
@@ -450,19 +433,21 @@ fn action_budget() -> ActionBudget {
 #[cfg(test)]
 mod tests {
     use super::{
-        EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, KEEP_ALIVE_BODY_BYTES, LiveDisposition,
-        LiveLivenessService, SERVERBOUND_KEEP_ALIVE_PACKET_ID, keep_alive_body, limits,
-        liveness_policy, process_one_live_inbound, serverbound_keep_alive_frame,
-        service_live_liveness,
+        EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, LiveDisposition, LiveLivenessService,
+        limits, process_one_live_inbound, serverbound_keep_alive_frame, service_live_liveness,
     };
     use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
     use crucible_connection_driver::ConnectionDriver;
     use crucible_preplay_core::PrePlayError;
     use crucible_preplay_io::PrePlayIoError;
     use crucible_session_core::LivenessState;
+    use crucible_target_26_2::play_liveness::{
+        PLAY_KEEP_ALIVE_BODY_BYTES, PLAY_LIVENESS_POLICY, encode_clientbound_keep_alive,
+        encode_serverbound_keep_alive,
+    };
 
     fn test_limits(egress: usize) -> ConnectionLimits {
-        ConnectionLimits::new(KEEP_ALIVE_BODY_BYTES, 256, egress)
+        ConnectionLimits::new(PLAY_KEEP_ALIVE_BODY_BYTES, 256, egress)
             .expect("coherent live test limits")
     }
 
@@ -475,22 +460,8 @@ mod tests {
     }
 
     #[test]
-    fn keep_alive_body_and_frame_are_exact_big_endian_i64() {
-        let id = 0x0102_0304_0506_0708_i64;
-        assert_eq!(
-            keep_alive_body(id),
-            [0x2c, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]
-        );
-        assert_eq!(
-            serverbound_keep_alive_frame(id),
-            [0x09, 0x1c, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]
-        );
-        assert_eq!(SERVERBOUND_KEEP_ALIVE_PACKET_ID, 0x1c);
-    }
-
-    #[test]
     fn egress_backpressure_cannot_commit_a_phantom_challenge() {
-        let mut driver = ConnectionDriver::new(test_limits(KEEP_ALIVE_BODY_BYTES + 1));
+        let mut driver = ConnectionDriver::new(test_limits(PLAY_KEEP_ALIVE_BODY_BYTES + 1));
         driver
             .queue_frame::<()>(&[0x00])
             .expect("prefill frame fits coherent test egress");
@@ -499,7 +470,7 @@ mod tests {
         let before = liveness;
 
         assert!(matches!(
-            service_live_liveness(&mut driver, &mut liveness, 15_000, liveness_policy()),
+            service_live_liveness(&mut driver, &mut liveness, 15_000, PLAY_LIVENESS_POLICY),
             Err(PrePlayIoError::Connection(PrePlayError::Buffer(
                 ConnectionBufferError::EgressLimitExceeded { .. }
             )))
@@ -515,21 +486,23 @@ mod tests {
         let mut liveness = LivenessState::new(0, 0).expect("valid liveness start");
 
         assert_eq!(
-            service_live_liveness(&mut driver, &mut liveness, 15_000, liveness_policy()),
+            service_live_liveness(&mut driver, &mut liveness, 15_000, PLAY_LIVENESS_POLICY),
             Ok(LiveLivenessService::ChallengeQueued)
         );
         assert_eq!(liveness.pending_challenge(), Some(15_000));
-        assert_eq!(
-            driver.pending_egress(),
-            &[0x09, 0x2c, 0, 0, 0, 0, 0, 0, 0x3a, 0x98]
-        );
+
+        let body = encode_clientbound_keep_alive(15_000);
+        let mut expected = [0_u8; PLAY_KEEP_ALIVE_BODY_BYTES + 1];
+        expected[0] = u8::try_from(body.len()).expect("body length fits one-byte VarInt");
+        expected[1..].copy_from_slice(&body);
+        assert_eq!(driver.pending_egress(), expected);
     }
 
     #[test]
     fn exact_reply_is_transactional_and_updates_latency() {
         let mut driver = ConnectionDriver::new(test_limits(64));
         let mut liveness = LivenessState::new(0, 40).expect("valid liveness start");
-        service_live_liveness(&mut driver, &mut liveness, 15_000, liveness_policy())
+        service_live_liveness(&mut driver, &mut liveness, 15_000, PLAY_LIVENESS_POLICY)
             .expect("challenge queues");
         let queued = driver.queued_egress();
         driver
@@ -552,7 +525,7 @@ mod tests {
     fn malformed_or_wrong_keep_alive_is_consumed_as_rejection_without_state_change() {
         let mut driver = ConnectionDriver::new(test_limits(128));
         let mut liveness = LivenessState::new(0, 5).expect("valid liveness start");
-        service_live_liveness(&mut driver, &mut liveness, 15_000, liveness_policy())
+        service_live_liveness(&mut driver, &mut liveness, 15_000, PLAY_LIVENESS_POLICY)
             .expect("challenge queues");
         let queued = driver.queued_egress();
         driver
@@ -570,9 +543,9 @@ mod tests {
         assert_eq!(liveness, pending);
         assert_eq!(driver.buffered_ingress(), 0);
 
-        // Body length 1: packet id only, no required i64 payload.
+        let packet_id = encode_serverbound_keep_alive(0)[0];
         driver
-            .ingest::<()>(&[0x01, 0x1c])
+            .ingest::<()>(&[0x01, packet_id])
             .expect("malformed response framing fits");
         assert_eq!(
             process_one_live_inbound(&mut driver, &mut liveness, 15_020),
@@ -590,7 +563,7 @@ mod tests {
         for cycle in 1_u64..=10 {
             let issue_ms = cycle * 15_000;
             assert_eq!(
-                service_live_liveness(&mut driver, &mut liveness, issue_ms, liveness_policy()),
+                service_live_liveness(&mut driver, &mut liveness, issue_ms, PLAY_LIVENESS_POLICY),
                 Ok(LiveLivenessService::ChallengeQueued),
                 "cycle={cycle}"
             );
