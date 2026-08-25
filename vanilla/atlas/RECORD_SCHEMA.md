@@ -34,6 +34,18 @@ A `<clinit>()` row is **not a claim that Mojang wrote a method with that name**.
 
 This projection lets the existing VAR/source-gate machinery pin declarations that materially define protocol semantics without copying Mojang source into Git or laundering a declaration fact through an unrelated method.
 
+## Instance field initializer evidence
+
+Observable source law can also live in initialized instance fields, particularly anonymous callback implementations. `tools/vanilla_instance_field_index.py` projects each simple initialized instance-field declaration into one synthetic Atlas node with signature:
+
+```text
+<fieldinit:FIELD_NAME>()
+```
+
+A `<fieldinit:...>()` row is likewise **evidence tooling, not a Java method claim**. Its fingerprint covers the complete declaration from the field prefix through the terminating semicolon, including anonymous-class, lambda, array and object-initializer bodies. Static fields and interface fields are excluded because their initialization belongs to `<clinit>()`; uninitialized fields, method-local variables and multi-declarator declarations are excluded rather than guessed.
+
+This node exists specifically so source law hidden in an anonymous instance-field implementation can use the ordinary VAR/source-gate staleness machinery. The synthetic evidence node owns no runtime abstraction and implies no Crucible implementation shape.
+
 `sync-records` rejects duplicate record IDs and multiple records claiming the same exact source method/evidence node. It is idempotent: manual classifications and semantic/evidence edges are projected from the current record contents rather than appended forever.
 
 A fingerprint or fingerprint-algorithm mismatch marks the source record `STALE`.
