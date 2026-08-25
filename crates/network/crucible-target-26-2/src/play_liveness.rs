@@ -36,14 +36,27 @@ pub enum PlayLivenessCodecError {
     },
 }
 
+fn encode_keep_alive(packet_id: i32, id: i64) -> [u8; PLAY_KEEP_ALIVE_BODY_BYTES] {
+    let mut body = [0_u8; PLAY_KEEP_ALIVE_BODY_BYTES];
+    body[0] = u8::try_from(packet_id).expect("source-admitted keep-alive id fits one-byte VarInt");
+    body[1..].copy_from_slice(&id.to_be_bytes());
+    body
+}
+
 /// Encodes one clientbound 26.2 Play keep-alive body without allocation.
 #[must_use]
 pub fn encode_clientbound_keep_alive(id: i64) -> [u8; PLAY_KEEP_ALIVE_BODY_BYTES] {
-    let mut body = [0_u8; PLAY_KEEP_ALIVE_BODY_BYTES];
-    body[0] = u8::try_from(generated::play::clientbound::KEEP_ALIVE)
-        .expect("source-admitted clientbound keep-alive id fits one-byte VarInt");
-    body[1..].copy_from_slice(&id.to_be_bytes());
-    body
+    encode_keep_alive(generated::play::clientbound::KEEP_ALIVE, id)
+}
+
+/// Encodes one serverbound 26.2 Play keep-alive body without allocation.
+///
+/// Production server composition normally decodes this direction. The symmetric encoder is useful
+/// for qualification, replay construction, and differential tests without duplicating packet IDs or
+/// payload byte order outside the target crate.
+#[must_use]
+pub fn encode_serverbound_keep_alive(id: i64) -> [u8; PLAY_KEEP_ALIVE_BODY_BYTES] {
+    encode_keep_alive(generated::play::serverbound::KEEP_ALIVE, id)
 }
 
 /// Decodes the finite serverbound 26.2 Play keep-alive surface.
@@ -77,15 +90,20 @@ mod tests {
 
     use super::{
         PLAY_KEEP_ALIVE_BODY_BYTES, PLAY_LIVENESS_POLICY, PlayLivenessCodecError,
-        decode_serverbound_keep_alive, encode_clientbound_keep_alive, generated,
+        decode_serverbound_keep_alive, encode_clientbound_keep_alive, encode_serverbound_keep_alive,
+        generated,
     };
 
     #[test]
-    fn generated_golden_clientbound_body_matches_stack_encoder() {
+    fn generated_golden_bodies_match_stack_encoders() {
         let id = 0x0102_0304_0506_0708_i64;
         assert_eq!(
             encode_clientbound_keep_alive(id).as_slice(),
             generated::golden::PLAY_CLIENTBOUND_KEEP_ALIVE_BODY
+        );
+        assert_eq!(
+            encode_serverbound_keep_alive(id).as_slice(),
+            generated::golden::PLAY_SERVERBOUND_KEEP_ALIVE_BODY
         );
         assert_eq!(PLAY_KEEP_ALIVE_BODY_BYTES, 9);
     }
@@ -108,8 +126,7 @@ mod tests {
     fn malformed_keep_alive_payload_fails_closed() {
         let limits = ConnectionLimits::new(64, 128, 128).expect("test limits");
         let mut decoder = FrameDecoder::new(limits);
-        let packet_id = u8::try_from(generated::play::serverbound::KEEP_ALIVE)
-            .expect("source-admitted id fits one byte");
+        let packet_id = encode_serverbound_keep_alive(0)[0];
         decoder.ingest::<()>(&[0x01, packet_id]).expect("frame fits");
         let frame = decoder.next_frame().expect("decode succeeds").expect("one frame");
         assert_eq!(
