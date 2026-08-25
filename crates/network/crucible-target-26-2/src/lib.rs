@@ -21,9 +21,7 @@ mod login_profile;
 mod offline_uuid;
 mod r1x;
 
-pub use r1x::{
-    R1xContextError, R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState,
-};
+pub use r1x::{R1xContextError, R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState};
 
 use crucible_connection_core::FrameView;
 use crucible_connection_driver::OutboundBatch;
