@@ -2,7 +2,7 @@
 
 Status: **selected fresh/default route frozen; final reusable codec seam and production implementation pending**  
 Target: Minecraft **26.2**, protocol **776**, data version **4903**  
-Source archive SHA-256: `1e9bca3dff83cd83fe893bb48beeb04df750`  
+Source archive SHA-256: `1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750`  
 Fingerprint algorithm: `java-token-v2-literal-sensitive`
 
 > NOTE: the source SHA above is intentionally validated by the finalizer against
