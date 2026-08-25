@@ -1,18 +1,23 @@
 //! Product composition for Crucible's first runnable Minecraft Java server slices.
 //!
 //! R0 composes the source-admitted Status target. R1A additionally composes the admitted offline
-//! Login path up to the Configuration boundary without guessing any R1B semantics. Transport
-//! composition lives here; listener/runtime policy stays in the executable, while target packet
-//! semantics stay in `crucible-target-26-2`.
+//! Login path up to the Configuration boundary. R1X is an explicitly experimental continuation
+//! through the admitted Configuration route plus a source-free captured Play smoke prefix.
+//! Transport composition lives here; listener/runtime policy stays in the executable, while target
+//! packet semantics stay in `crucible-target-26-2`.
 
 #![forbid(unsafe_code)]
 
 mod login_server;
+mod r1x_image;
+mod r1x_server;
 
 pub use login_server::{
     R1AConnectionExit, ServerSessionEpoch, ServerSessionEpochParseError,
     serve_r1a_blocking_transport,
 };
+pub use r1x_image::{R1xImageError, R1xImageSection, load_r1x_image};
+pub use r1x_server::{R1xConnectionExit, serve_r1x_blocking_transport};
 
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;

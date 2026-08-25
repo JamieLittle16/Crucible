@@ -7,6 +7,10 @@
 //! - R0: Handshake -> Status -> Status response -> Ping/Pong;
 //! - R1A: Handshake(LOGIN) -> offline Hello -> `LoginFinished` -> `LoginAcknowledged` -> Configuration.
 //!
+//! An explicitly separate [`Target26_2R1x`] development target additionally exercises the admitted
+//! Configuration route plus a source-free captured Play prefix. R1X is a smoke fixture only and is
+//! intentionally unable to broaden the production [`Target26_2`] Play semantics.
+//!
 //! Packet identities are generated from admitted contracts. Runtime dispatch is direct static
 //! matching; there is no packet registry, target lookup, trait object, socket runtime or second
 //! framing/buffering layer here.
@@ -15,6 +19,9 @@
 
 mod login_profile;
 mod offline_uuid;
+mod r1x;
+
+pub use r1x::{R1xContextError, R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState};
 
 use crucible_connection_core::FrameView;
 use crucible_connection_driver::OutboundBatch;
