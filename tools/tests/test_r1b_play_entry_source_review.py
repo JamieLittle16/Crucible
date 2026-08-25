@@ -19,7 +19,7 @@ class R1BPlayEntrySourceReviewTests(unittest.TestCase):
     def test_plan_is_bounded_and_effective_selectors_are_unique(self) -> None:
         ids = [candidate.var_id for candidate in review.CANDIDATES]
         selectors = [review.selector_key(candidate) for candidate in review.CANDIDATES]
-        self.assertEqual(len(ids), 28)
+        self.assertEqual(len(ids), 27)
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(selectors), len(set(selectors)))
         self.assertEqual(
@@ -49,6 +49,7 @@ class R1BPlayEntrySourceReviewTests(unittest.TestCase):
             "DISC-NET-R1B-PLAY-POSITION-CODEC-001",
         }
         self.assertTrue(required <= ids)
+        self.assertNotIn("DISC-NET-R1B-PLAY-POSITION-WRITE-001", ids)
 
     def test_exact_signature_is_explicit_for_same_arity_abilities_constructors(self) -> None:
         candidate = next(
