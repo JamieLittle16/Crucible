@@ -58,6 +58,8 @@ The selected `InventoryMenu(Inventory, boolean, Player)` constructor installs no
 
 The selected empty scoreboard emits no scoreboard packets. The no-active-effect profile emits no mob-effect packets. Weather remains conditional on `level.isRaining()`. Server-data remains conditional on `status != null && !cookie.transferred()`. `broadcastAll(...)` is self-visible after the joining player is inserted into the player list.
 
+The source-free machine companion `vanilla/reviews/network/r2b-play-entry-final-67-review-result.json` binds the exact dossier SHA and records that every exact body and Atlas-observed hazard was reviewed. Canonical VAR generation must use the dossier fingerprints; the machine result does not contain or replace source evidence.
+
 ## 117-body wire result
 
 `REVIEW-NET-R2B-PLAY-WIRE-CLOSURE-26_2-001` contains 117 exact bodies across seven deliberately bounded families. Every body was inspected. See `R2B_PLAY_ENTRY_WIRE_117_REVIEW.md`.
@@ -101,6 +103,8 @@ non-empty -> count + Item holder + DataComponentPatch
 
 The first R2B profile is therefore stated as an explicit empty initial inventory/crafting-menu state. Only the empty branch is admitted. Persisted/non-empty inventory bootstrap is a later profile expansion and must admit Item/DataComponentPatch encoding before use.
 
+The source-free machine companion `vanilla/reviews/network/r2b-play-entry-wire-117-review-result.json` binds the exact dossier SHA, family counts, mechanism disposition and reviewed-hazard status. It remains blocked on the named final dynamic seam until that review closes.
+
 ## Final reusable dynamic seam
 
 Only reusable generic wire law remains:
@@ -111,6 +115,36 @@ Only reusable generic wire law remains:
 `vanilla/reviews/network/r2b-play-entry-final-seams-plan.json` freezes this boundary. It hard-pins the SHA-256 of the exact 117-body source-rich dossier and forbids commands, recipes, non-empty ItemStack, world/chunk/light/movement and gameplay helpers.
 
 `tools/r2b_play_entry_final_seams_source_review.py` preflights only those named reusable types/methods and emits source-rich evidence outside Git.
+
+## Final evidence execution path
+
+The remaining local work is deliberately one bounded evidence operation rather than another exploration pass.
+
+`tools/r2b_play_entry_collect_evidence.py` runs both required collectors in one fail-closed external directory:
+
+```text
+exact 117-body dossier
+        -> final reusable dynamic-seam source dossier + worksheet
+
+pinned validated R1X capture
+        -> commands/update-recipes black-box oracle bodies
+```
+
+The combined directory is `EPHEMERAL_DO_NOT_COMMIT` because it contains official source excerpts. The composition oracle is still explicitly `BLACK_BOX_CONFIRMATION_ONLY` and `production_admitted=false` even though it shares the same external bundle.
+
+After every final-seam body is inspected and the source-free worksheet is completed, `tools/r2b_play_entry_finalize.py` validates the exact 67/117 dossier commitments, every final-seam decision/hazard, the complete 15-rule semantic contract and both oracle bodies. Its successful output is only:
+
+```text
+ADMISSION_INPUTS_VERIFIED
+gate_emission_ready=true
+production_admitted=false
+```
+
+`tools/r2b_play_entry_gate_materialize.py` then canonicalizes the exact reviewed dossier fingerprints into source-free `VAR-NET-R2B-PLAY-*` records, a candidate `GATE-NET-PLAY-ENTRY-26_2-001.json`, and the selected composition-artifact contract. It has explicit SEM mappings for the complete historical 67-body plan and all seven 117-body families; unknown candidates/families fail closed.
+
+The materializer is still not admission. The generated gate must be installed into the repository evidence tree and run through the ordinary `tools/vanilla_source_gate.py` against the pinned Atlas database. Only that independent pass may report `admitted=true`.
+
+This pipeline intentionally allows the source-rich dossiers to be discarded after successful source-free canonicalization; no later implementation step should require reopening official source text merely to recover reviewed fingerprints.
 
 ## Architectural admission rules
 
