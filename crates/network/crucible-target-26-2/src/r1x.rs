@@ -816,8 +816,10 @@ mod tests {
 
     #[test]
     fn empty_selected_play_prefix_completes_without_a_synthetic_frame() {
-        let mut state = Target26_2R1xState::default();
-        state.configuration = ConfigurationStage::Complete;
+        let mut state = Target26_2R1xState {
+            configuration: ConfigurationStage::Complete,
+            ..Target26_2R1xState::default()
+        };
         <Target26_2R1x as PrePlayPublisher>::commit_publication(
             &mut state,
             R1xPublicationCommit::PlayReplay,
