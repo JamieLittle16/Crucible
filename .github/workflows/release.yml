@@ -33,6 +33,19 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          tag="$GITHUB_REF_NAME"
+          if [[ ! "$tag" =~ ^milestone-[a-z0-9][a-z0-9-]*$ ]]; then
+            echo "unsupported milestone tag syntax: $tag" >&2
+            exit 2
+          fi
+
+          notes="docs/milestones/releases/${tag}.md"
+          if [[ ! -f "$notes" || -L "$notes" ]]; then
+            echo "missing or unsafe milestone release notes: $notes" >&2
+            exit 2
+          fi
+
           python3 tools/ci_policy.py
           cargo xtask guard
 
@@ -64,20 +77,13 @@ jobs:
           tag="$GITHUB_REF_NAME"
           package="crucible-server-${tag}-x86_64-unknown-linux-gnu"
           archive="target/${package}.tar.gz"
-
-          cat > target/release-notes.md <<'EOF'
-          Experimental Crucible milestone snapshot. This is not a production or playable server release.
-
-          The R1X milestone demonstrated that an unmodified Minecraft: Java Edition 26.2 client can complete Handshake -> Login -> Configuration -> Play through Crucible and render world data. The demonstrated Play bootstrap is an explicitly experimental finite replay fixture; captured replay data is not included in this release and is not production-admitted.
-
-          This release asset contains the `crucible-server` executable, MPL-2.0 licence, and repository README for the tagged source revision.
-          EOF
+          notes="docs/milestones/releases/${tag}.md"
 
           gh release create "$tag" \
             --verify-tag \
             --prerelease \
             --title "Crucible ${tag}" \
-            --notes-file target/release-notes.md
+            --notes-file "$notes"
 
           gh release upload "$tag" \
             "$archive" \
