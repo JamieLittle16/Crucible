@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R1B-PLAY-ENTRY-26_2-001",
+  "candidates": [
+    {
+      "type_name": "net.minecraft.network.protocol.game.GameProtocols",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the clientbound Play registration surface needed to derive exact wire identities for the minimum fresh-player bootstrap."],
+      "var_id": "DISC-NET-R1B-PLAY-GAME-PROTOCOLS-001"
+    },
+    {
+      "type_name": "net.minecraft.server.players.PlayerList",
+      "method_name": "placeNewPlayer",
+      "param_count": 3,
+      "review_focus": ["Classify every immediate fresh-player publication and helper call after Configuration finish as mandatory, conditional/default-empty, or server-internal."],
+      "var_id": "DISC-NET-R1B-PLAY-PLACE-NEW-PLAYER-001"
+    },
+    {
+      "type_name": "net.minecraft.server.players.PlayerList",
+      "method_name": "sendPlayerPermissionLevel",
+      "param_count": 1,
+      "review_focus": ["Resolve the selected fresh-player permission publication path and its delegated overload."],
+      "var_id": "DISC-NET-R1B-PLAY-PERMISSION-ENTRY-001"
+    },
+    {
+      "type_name": "net.minecraft.server.players.PlayerList",
+      "method_name": "sendPlayerPermissionLevel",
+      "param_count": 2,
+      "review_focus": ["Determine the exact client-observable permission packets/events emitted for the selected initial permission set."],
+      "var_id": "DISC-NET-R1B-PLAY-PERMISSION-SEND-001"
+    },
+    {
+      "type_name": "net.minecraft.stats.ServerRecipeBook",
+      "method_name": "sendInitialRecipeBook",
+      "param_count": 1,
+      "review_focus": ["Determine whether initial recipe-book publication is unconditional and enumerate its direct packet dependencies."],
+      "var_id": "DISC-NET-R1B-PLAY-RECIPE-BOOK-001"
+    },
+    {
+      "type_name": "net.minecraft.server.players.PlayerList",
+      "method_name": "updateEntireScoreboard",
+      "param_count": 2,
+      "review_focus": ["Separate unconditional scoreboard bootstrap from objective/team-dependent default-empty publication."],
+      "var_id": "DISC-NET-R1B-PLAY-SCOREBOARD-001"
+    },
+    {
+      "type_name": "net.minecraft.server.players.PlayerList",
+      "method_name": "sendLevelInfo",
+      "param_count": 2,
+      "review_focus": ["Enumerate the level/world-state packets sent to every newly placed player and identify any conditional branches."],
+      "var_id": "DISC-NET-R1B-PLAY-LEVEL-INFO-001"
+    },
+    {
+      "type_name": "net.minecraft.server.players.PlayerList",
+      "method_name": "sendActivePlayerEffects",
+      "param_count": 1,
+      "review_focus": ["Determine whether the selected default player emits effect packets or this helper is default-empty."],
+      "var_id": "DISC-NET-R1B-PLAY-ACTIVE-EFFECTS-001"
+    },
+    {
+      "type_name": "net.minecraft.server.network.ServerGamePacketListenerImpl",
+      "method_name": "teleport",
+      "param_count": 5,
+      "review_focus": ["Bind the placeNewPlayer teleport overload and its delegation into the protocol-visible teleport transaction."],
+      "var_id": "DISC-NET-R1B-PLAY-TELEPORT-ENTRY-001"
+    },
+    {
+      "type_name": "net.minecraft.server.network.ServerGamePacketListenerImpl",
+      "method_name": "teleport",
+      "param_count": 2,
+      "review_focus": ["Bind the actual teleport sequence/packet publication reached during fresh-player placement."],
+      "var_id": "DISC-NET-R1B-PLAY-TELEPORT-SEND-001"
+    },
+    {
+      "type_name": "net.minecraft.server.level.ServerPlayer",
+      "method_name": "sendServerStatus",
+      "param_count": 1,
+      "review_focus": ["Classify server-status publication under the explicit status-non-null and not-transferred condition."],
+      "var_id": "DISC-NET-R1B-PLAY-SERVER-STATUS-001"
+    },
+    {
+      "type_name": "net.minecraft.server.level.ServerPlayer",
+      "method_name": "initInventoryMenu",
+      "param_count": 0,
+      "review_focus": ["Determine whether fresh-player inventory/menu initialization publishes mandatory client-visible state and enumerate direct packet dependencies."],
+      "var_id": "DISC-NET-R1B-PLAY-INVENTORY-MENU-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundLoginPacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the ClientboundLoginPacket stream-codec declaration used by the unconditional first Play packet."],
+      "var_id": "DISC-NET-R1B-PLAY-LOGIN-CODEC-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundLoginPacket",
+      "method_name": "ClientboundLoginPacket",
+      "param_count": 1,
+      "review_focus": ["Bind ClientboundLoginPacket decode field order and subordinate codec dependencies."],
+      "var_id": "DISC-NET-R1B-PLAY-LOGIN-READ-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundLoginPacket",
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": ["Bind ClientboundLoginPacket encode field order and subordinate codec dependencies."],
+      "var_id": "DISC-NET-R1B-PLAY-LOGIN-WRITE-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundChangeDifficultyPacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the unconditional difficulty packet codec and delegated field law."],
+      "var_id": "DISC-NET-R1B-PLAY-DIFFICULTY-CODEC-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the unconditional abilities packet stream-codec declaration."],
+      "var_id": "DISC-NET-R1B-PLAY-ABILITIES-CODEC-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket",
+      "method_name": "ClientboundPlayerAbilitiesPacket",
+      "param_count": 1,
+      "exact_signature": "ClientboundPlayerAbilitiesPacket(final Abilities abilities)",
+      "review_focus": ["Bind server-side ability state to the exact flags/speeds placed on the wire."],
+      "var_id": "DISC-NET-R1B-PLAY-ABILITIES-FROM-STATE-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket",
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": ["Bind abilities packet wire encoding and flags."],
+      "var_id": "DISC-NET-R1B-PLAY-ABILITIES-WRITE-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the unconditional selected-slot packet codec and range/wire law."],
+      "var_id": "DISC-NET-R1B-PLAY-HELD-SLOT-CODEC-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundUpdateRecipesPacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the unconditional synchronized-recipe packet codec and identify subordinate collection/registry dependencies."],
+      "var_id": "DISC-NET-R1B-PLAY-RECIPES-CODEC-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the player-info update packet codec and action serialization table used during fresh-player initialization."],
+      "var_id": "DISC-NET-R1B-PLAY-PLAYER-INFO-CODEC-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket",
+      "method_name": "createPlayerInitializing",
+      "param_count": 1,
+      "review_focus": ["Bind exactly which player-info actions/entries are selected for initial publication to the joining player and existing players."],
+      "var_id": "DISC-NET-R1B-PLAY-PLAYER-INFO-INITIAL-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket",
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": ["Bind player-info action/entry wire ordering and subordinate codec dependencies."],
+      "var_id": "DISC-NET-R1B-PLAY-PLAYER-INFO-WRITE-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Entry",
+      "method_name": "Entry",
+      "param_count": 1,
+      "review_focus": ["Bind the initial player-info entry snapshot derived from ServerPlayer state."],
+      "var_id": "DISC-NET-R1B-PLAY-PLAYER-INFO-ENTRY-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket",
+      "method_name": "<clinit>",
+      "param_count": 0,
+      "review_focus": ["Bind the teleport/player-position packet codec reached by fresh-player placement."],
+      "var_id": "DISC-NET-R1B-PLAY-POSITION-CODEC-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket",
+      "method_name": "of",
+      "param_count": 3,
+      "review_focus": ["Bind the teleport id, position/rotation and relative-coordinate set used to construct the fresh-player position packet."],
+      "var_id": "DISC-NET-R1B-PLAY-POSITION-OF-001"
+    },
+    {
+      "type_name": "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket",
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": ["Bind the player-position packet wire order and subordinate codec dependencies."],
+      "var_id": "DISC-NET-R1B-PLAY-POSITION-WRITE-001"
+    }
+  ]
+}
