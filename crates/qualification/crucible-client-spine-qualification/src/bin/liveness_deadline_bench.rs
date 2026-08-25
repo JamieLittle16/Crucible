@@ -10,6 +10,7 @@ use crucible_session_core::{KeepAliveReply, LivenessDecision, LivenessPolicy, Li
 
 const SCHEMA: u32 = 1;
 const TICK_MS: u64 = 50;
+const TICK_MS_USIZE: usize = 50;
 const KEEP_ALIVE_MS: u64 = 15_000;
 const HORIZON_MS: u64 = 60_000;
 const ACK_DELAY_MS: u64 = 100;
@@ -166,7 +167,7 @@ fn run_scan_reference(
     let mut service_calls = 0_u64;
     let mut reply_calls = 0_u64;
 
-    for now in (0..=HORIZON_MS).step_by(TICK_MS as usize) {
+    for now in (0..=HORIZON_MS).step_by(TICK_MS_USIZE) {
         let is_reply_tick = now >= KEEP_ALIVE_MS + ACK_DELAY_MS
             && (now - ACK_DELAY_MS).is_multiple_of(KEEP_ALIVE_MS);
         if is_reply_tick {
@@ -191,7 +192,7 @@ fn run_scan_reference(
         }
     }
 
-    black_box(Ok((checksum, service_calls, reply_calls)))
+    Ok(black_box((checksum, service_calls, reply_calls)))
 }
 
 fn run_deadline_candidate(
@@ -232,12 +233,15 @@ fn run_deadline_candidate(
         deadline += KEEP_ALIVE_MS;
     }
 
-    black_box(Ok((checksum, service_calls, reply_calls)))
+    Ok(black_box((checksum, service_calls, reply_calls)))
 }
 
 fn mix_decision(checksum: u64, index: usize, decision: LivenessDecision) -> u64 {
+    if decision == LivenessDecision::Idle {
+        return checksum;
+    }
     let encoded = match decision {
-        LivenessDecision::Idle => 0_u64,
+        LivenessDecision::Idle => unreachable!("idle returned above"),
         LivenessDecision::IssueChallenge { id } => {
             1_u64 ^ u64::from_ne_bytes(id.to_ne_bytes()).rotate_left(7)
         }
