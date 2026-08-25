@@ -47,7 +47,7 @@ impl From<PacketCodecError> for R2bWireError {
 /// implementation masks each signed coordinate before combining it, so this function intentionally
 /// preserves the same low-bit truncation instead of imposing an invented coordinate-range policy.
 #[must_use]
-pub const fn pack_block_pos(x: i32, y: i32, z: i32) -> i64 {
+pub fn pack_block_pos(x: i32, y: i32, z: i32) -> i64 {
     let x_bits = i64::from(x).cast_unsigned() & PACKED_XZ_MASK;
     let y_bits = i64::from(y).cast_unsigned() & PACKED_Y_MASK;
     let z_bits = i64::from(z).cast_unsigned() & PACKED_XZ_MASK;
