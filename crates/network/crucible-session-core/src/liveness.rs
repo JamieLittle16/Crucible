@@ -8,7 +8,7 @@ use core::mem::size_of;
 
 const FLAG_KEEP_ALIVE_PENDING: u8 = 1 << 0;
 const FLAG_CLOSED: u8 = 1 << 1;
-const MAX_MONOTONE_MILLIS: u64 = i64::MAX as u64;
+const MAX_MONOTONE_MILLIS: u64 = i64::MAX.unsigned_abs();
 
 /// Target-selected liveness timing policy.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -39,9 +39,7 @@ impl LivenessPolicy {
         if keep_alive_interval_ms == 0 || closed_timeout_ms == 0 {
             return Err(LivenessPolicyError::ZeroInterval);
         }
-        if keep_alive_interval_ms > MAX_MONOTONE_MILLIS
-            || closed_timeout_ms > MAX_MONOTONE_MILLIS
-        {
+        if keep_alive_interval_ms > MAX_MONOTONE_MILLIS || closed_timeout_ms > MAX_MONOTONE_MILLIS {
             return Err(LivenessPolicyError::IntervalTooLarge);
         }
         Ok(Self {
@@ -68,7 +66,7 @@ impl LivenessPolicy {
 pub enum LivenessError {
     /// Supplied monotone milliseconds exceed the signed 64-bit challenge domain.
     TimeOutOfRange { now_ms: u64 },
-    /// A caller supplied time older than state already observed.
+    /// A caller supplied time older than the latest timestamp retained by this state.
     TimeWentBackwards { previous_ms: u64, now_ms: u64 },
 }
 
@@ -158,26 +156,33 @@ impl LivenessState {
 
     /// Exact next time at which servicing this state can produce an action.
     ///
-    /// The value remains valid after a successful keep-alive reply because vanilla schedules the
-    /// next challenge from the previous challenge issue time, not from response receipt time.
+    /// A pending keep-alive retains timeout priority even after the listener closes, matching the
+    /// source branch order. A closed listener with no pending challenge becomes actionable only
+    /// after both the keep-alive gate and the closed-listener timeout are due.
     #[must_use]
     pub const fn next_deadline_ms(self, policy: LivenessPolicy) -> u64 {
-        if self.is_closed() {
-            self.closed_since_ms + policy.closed_timeout_ms
+        let keep_alive_deadline = self.keep_alive_anchor_ms + policy.keep_alive_interval_ms;
+        if self.keep_alive_pending() || !self.is_closed() {
+            keep_alive_deadline
         } else {
-            self.keep_alive_anchor_ms + policy.keep_alive_interval_ms
+            let closed_deadline = self.closed_since_ms + policy.closed_timeout_ms;
+            if closed_deadline > keep_alive_deadline {
+                closed_deadline
+            } else {
+                keep_alive_deadline
+            }
         }
     }
 
     /// Services the state at one caller-supplied monotone time.
     ///
-    /// At a keep-alive deadline, an outstanding challenge times out; otherwise a new challenge is
-    /// issued and the next deadline moves by one target interval. Closed state suppresses challenge
-    /// issuance and instead observes only the terminal-listener timeout.
+    /// At a keep-alive deadline, an outstanding challenge times out first. Otherwise a closed
+    /// listener suppresses challenge publication and observes its terminal linger timeout. A live
+    /// listener issues a challenge and advances the keep-alive anchor to the issue time.
     ///
     /// # Errors
     ///
-    /// Fails without mutation for out-of-range or backwards time.
+    /// Fails without mutation for out-of-range or backwards time relative to retained state.
     pub fn service(
         &mut self,
         now_ms: u64,
@@ -185,6 +190,12 @@ impl LivenessState {
     ) -> Result<LivenessDecision, LivenessError> {
         self.validate_now(now_ms)?;
 
+        if now_ms - self.keep_alive_anchor_ms < policy.keep_alive_interval_ms {
+            return Ok(LivenessDecision::Idle);
+        }
+        if self.keep_alive_pending() {
+            return Ok(LivenessDecision::KeepAliveTimedOut);
+        }
         if self.is_closed() {
             if now_ms - self.closed_since_ms >= policy.closed_timeout_ms {
                 return Ok(LivenessDecision::ClosedTimedOut);
@@ -192,14 +203,7 @@ impl LivenessState {
             return Ok(LivenessDecision::Idle);
         }
 
-        if now_ms - self.keep_alive_anchor_ms < policy.keep_alive_interval_ms {
-            return Ok(LivenessDecision::Idle);
-        }
-        if self.keep_alive_pending() {
-            return Ok(LivenessDecision::KeepAliveTimedOut);
-        }
-
-        let id = now_ms as i64;
+        let id = i64::try_from(now_ms).map_err(|_| LivenessError::TimeOutOfRange { now_ms })?;
         self.keep_alive_anchor_ms = now_ms;
         self.pending_challenge = id;
         self.flags |= FLAG_KEEP_ALIVE_PENDING;
@@ -216,7 +220,7 @@ impl LivenessState {
     ///
     /// # Errors
     ///
-    /// Fails without mutation for out-of-range or backwards time.
+    /// Fails without mutation for out-of-range or backwards time relative to retained state.
     pub fn receive_keep_alive(
         &mut self,
         now_ms: u64,
@@ -227,12 +231,8 @@ impl LivenessState {
             return Ok(KeepAliveReply::Rejected);
         }
 
-        let elapsed_ms = (now_ms - self.keep_alive_anchor_ms) as i32;
-        self.latency_ms = self
-            .latency_ms
-            .wrapping_mul(3)
-            .wrapping_add(elapsed_ms)
-            / 4;
+        let elapsed_ms = java_i32_narrow(now_ms - self.keep_alive_anchor_ms);
+        self.latency_ms = self.latency_ms.wrapping_mul(3).wrapping_add(elapsed_ms) / 4;
         self.flags &= !FLAG_KEEP_ALIVE_PENDING;
         Ok(KeepAliveReply::Accepted {
             latency_ms: self.latency_ms,
@@ -242,11 +242,12 @@ impl LivenessState {
     /// Enters terminal listener linger state once.
     ///
     /// Returns `true` when this call recorded the close edge and `false` when already closed. The
-    /// first close timestamp is retained exactly.
+    /// first close timestamp is retained exactly. Closing does not erase a pending keep-alive;
+    /// pending timeout retains the source-defined branch priority.
     ///
     /// # Errors
     ///
-    /// Fails without mutation for out-of-range or backwards time.
+    /// Fails without mutation for out-of-range or backwards time relative to retained state.
     pub fn close(&mut self, now_ms: u64) -> Result<bool, LivenessError> {
         self.validate_now(now_ms)?;
         if self.is_closed() {
@@ -276,6 +277,15 @@ impl LivenessState {
     }
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "Minecraft 26.2 explicitly narrows elapsed long milliseconds to Java int before latency smoothing"
+)]
+const fn java_i32_narrow(value: u64) -> i32 {
+    value as i32
+}
+
 const _: () = assert!(size_of::<LivenessState>() == 32);
 
 #[cfg(test)]
@@ -301,7 +311,7 @@ mod tests {
             Err(LivenessPolicyError::ZeroInterval)
         );
         assert_eq!(
-            LivenessPolicy::new(i64::MAX as u64 + 1, 1),
+            LivenessPolicy::new(i64::MAX.unsigned_abs() + 1, 1),
             Err(LivenessPolicyError::IntervalTooLarge)
         );
     }
@@ -376,17 +386,28 @@ mod tests {
     }
 
     #[test]
-    fn close_suppresses_keep_alive_and_times_out_from_first_close() {
+    fn close_without_pending_suppresses_challenge_and_uses_linger_deadline() {
+        let mut state = LivenessState::new(0, 0).expect("valid start");
+        assert_eq!(state.close(1_000), Ok(true));
+        assert_eq!(state.close(2_000), Ok(false));
+        assert!(state.is_closed());
+        assert_eq!(state.next_deadline_ms(POLICY), 16_000);
+        assert_eq!(state.service(15_000, POLICY), Ok(LivenessDecision::Idle));
+        assert_eq!(
+            state.service(16_000, POLICY),
+            Ok(LivenessDecision::ClosedTimedOut)
+        );
+    }
+
+    #[test]
+    fn pending_timeout_retains_priority_after_close() {
         let mut state = LivenessState::new(0, 0).expect("valid start");
         state.service(15_000, POLICY).expect("challenge");
         assert_eq!(state.close(16_000), Ok(true));
-        assert_eq!(state.close(17_000), Ok(false));
-        assert!(state.is_closed());
-        assert_eq!(state.next_deadline_ms(POLICY), 31_000);
-        assert_eq!(state.service(30_999, POLICY), Ok(LivenessDecision::Idle));
+        assert_eq!(state.next_deadline_ms(POLICY), 30_000);
         assert_eq!(
-            state.service(31_000, POLICY),
-            Ok(LivenessDecision::ClosedTimedOut)
+            state.service(30_000, POLICY),
+            Ok(LivenessDecision::KeepAliveTimedOut)
         );
     }
 
@@ -402,7 +423,7 @@ mod tests {
             })
         );
         assert_eq!(state, before);
-        let too_large = i64::MAX as u64 + 1;
+        let too_large = i64::MAX.unsigned_abs() + 1;
         assert_eq!(
             state.receive_keep_alive(too_large, 0),
             Err(LivenessError::TimeOutOfRange { now_ms: too_large })
@@ -429,6 +450,12 @@ mod tests {
         }
 
         fn service(&mut self, now: u64) -> LivenessDecision {
+            if now - self.anchor < 15_000 {
+                return LivenessDecision::Idle;
+            }
+            if self.pending.is_some() {
+                return LivenessDecision::KeepAliveTimedOut;
+            }
             if let Some(closed) = self.closed_since {
                 return if now - closed >= 15_000 {
                     LivenessDecision::ClosedTimedOut
@@ -436,22 +463,18 @@ mod tests {
                     LivenessDecision::Idle
                 };
             }
-            if now - self.anchor < 15_000 {
-                return LivenessDecision::Idle;
-            }
-            if self.pending.is_some() {
-                return LivenessDecision::KeepAliveTimedOut;
-            }
             self.anchor = now;
-            self.pending = Some(now as i64);
-            LivenessDecision::IssueChallenge { id: now as i64 }
+            self.pending = Some(i64::try_from(now).expect("reference time fits i64"));
+            LivenessDecision::IssueChallenge {
+                id: i64::try_from(now).expect("reference time fits i64"),
+            }
         }
 
         fn reply(&mut self, now: u64, id: i64) -> KeepAliveReply {
             if self.pending != Some(id) {
                 return KeepAliveReply::Rejected;
             }
-            let elapsed = (now - self.anchor) as i32;
+            let elapsed = super::java_i32_narrow(now - self.anchor);
             self.latency = self.latency.wrapping_mul(3).wrapping_add(elapsed) / 4;
             self.pending = None;
             KeepAliveReply::Accepted {
@@ -485,7 +508,9 @@ mod tests {
             if event != 0 && event.is_multiple_of(5_003) {
                 assert_eq!(candidate.close(now), Ok(reference.close(now)));
             } else if rng & 3 == 0 {
-                let expected_id = reference.pending.unwrap_or_else(|| (rng as i64) ^ 0x55AA);
+                let expected_id = reference.pending.unwrap_or_else(|| {
+                    i64::from_ne_bytes(rng.to_ne_bytes()) ^ 0x55AA
+                });
                 let id = if rng & 0x10 == 0 {
                     expected_id
                 } else {
