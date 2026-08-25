@@ -31,6 +31,17 @@ EXPECTED_LOGIN_GENERATED_SHA256 = (
     "c20ee1905265502380af13bb5396acc16144ca42923dd3dc54d640dd391afd29"
 )
 
+PLAY_LIVENESS_CONTRACT = (
+    REPO_ROOT / "vanilla/protocol/PROTO-NET-PLAY-LIVENESS-26-2-001.json"
+)
+PLAY_LIVENESS_COMMITTED = (
+    REPO_ROOT
+    / "crates/network/crucible-target-26-2/src/generated/play_liveness_26_2.rs"
+)
+EXPECTED_PLAY_LIVENESS_GENERATED_SHA256 = (
+    "4db12fd5a859539eb019033a21efdb4ca8f3b2e39f61175fda65ace43935d6b0"
+)
+
 
 class Target26_2GeneratedTests(unittest.TestCase):
     def test_committed_status_packet_facts_are_exact_admitted_codegen(self) -> None:
@@ -74,6 +85,25 @@ class Target26_2GeneratedTests(unittest.TestCase):
         self.assertEqual(
             hashlib.sha256(committed).hexdigest(),
             EXPECTED_LOGIN_GENERATED_SHA256,
+        )
+
+    def test_committed_play_liveness_facts_are_exact_admitted_codegen(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "play_liveness_26_2.rs"
+            generate(
+                PLAY_LIVENESS_CONTRACT,
+                lock_path=LOCK,
+                records_root=RECORDS,
+                output_path=output,
+                check=False,
+            )
+            expected = output.read_bytes()
+
+        committed = PLAY_LIVENESS_COMMITTED.read_bytes()
+        self.assertEqual(committed, expected)
+        self.assertEqual(
+            hashlib.sha256(committed).hexdigest(),
+            EXPECTED_PLAY_LIVENESS_GENERATED_SHA256,
         )
 
 
