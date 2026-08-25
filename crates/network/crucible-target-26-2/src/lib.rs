@@ -19,6 +19,7 @@
 
 mod login_profile;
 mod offline_uuid;
+pub mod play_liveness;
 mod r1x;
 
 pub use r1x::{R1xContextError, R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState};
