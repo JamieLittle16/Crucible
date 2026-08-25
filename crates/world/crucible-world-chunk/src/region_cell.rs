@@ -143,8 +143,7 @@ mod tests {
             address.local_z(),
             u16::try_from(chunk.z.rem_euclid(side)).expect("reference local z")
         );
-        let expected_slot = u32::from(address.local_z())
-            * RegionCellLayout::<SHIFT>::side_chunks()
+        let expected_slot = u32::from(address.local_z()) * RegionCellLayout::<SHIFT>::side_chunks()
             + u32::from(address.local_x());
         assert_eq!(address.slot(), expected_slot);
         assert_eq!(
@@ -220,13 +219,7 @@ mod tests {
             None
         );
         assert_eq!(
-            RegionCellLayout::<15>::chunk_for_slot(
-                RegionCellCoord {
-                    x: i32::MAX,
-                    z: 0,
-                },
-                0,
-            ),
+            RegionCellLayout::<15>::chunk_for_slot(RegionCellCoord { x: i32::MAX, z: 0 }, 0,),
             None
         );
     }
