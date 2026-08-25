@@ -29,7 +29,7 @@ The Crucible rule is therefore:
 
 ## Evidence split
 
-R1B now uses two narrow gates rather than one oversized gate:
+R1B uses two narrow Configuration gates rather than one oversized gate:
 
 ```text
 GATE-NET-CONFIG-26_2-001
@@ -48,7 +48,9 @@ silently pulled into this Configuration dependency gate.
 
 ## Closure selector law
 
-`tools/r1b_configuration_source_closure.py` identifies each required source body by:
+`tools/r1b_configuration_source_closure.py` uses a two-level, fail-closed selector model.
+
+The normal selector is:
 
 ```text
 exact qualified Atlas type
@@ -56,9 +58,28 @@ exact qualified Atlas type
 + exact parameter count
 ```
 
-The local preparation step requires that tuple to resolve **exactly once**. It then freezes the
-resolved full `qualified_name#signature` into the generated gate. Ambiguous or missing selectors fail
-before a review artifact is created.
+That compact selector is accepted only when it resolves **exactly once**. It is intentionally not an
+"arbitrary first overload" rule.
+
+When the pinned source genuinely contains same-arity overloads, a plan candidate may additionally pin
+an `exact_signature`. In that case discovery requires:
+
+```text
+exact qualified Atlas type
++ exact Atlas signature
+```
+
+and the resolved method name/parameter count must still agree with the candidate declaration. This
+keeps overload refinement explicit and reviewable instead of encoding positional or source-line
+assumptions.
+
+Before opening the source archive for review excerpts, `prepare` preflights **every** candidate. All
+missing or ambiguous selectors are reported together and no source-rich review artifact survives a
+failed preflight. This avoids iterative first-error discovery and guarantees that a generated dossier
+starts from a complete uniquely bound selector set.
+
+After resolution, the generated gate always freezes the full resolved `qualified_name#signature`.
+Thus exact-signature refinement improves discovery precision without weakening final admission.
 
 Nested Java types use Atlas's canonical `$` qualified form, for example:
 
@@ -66,8 +87,6 @@ Nested Java types use Atlas's canonical `$` qualified form, for example:
 PrepareSpawnTask$Preparing#tick
 PrepareSpawnTask$Ready#spawn
 ```
-
-This avoids brittle hand-written generic signatures while keeping the final source gate exact.
 
 ## Source-text firewall
 
@@ -88,6 +107,10 @@ manifest.json            session identity
 - non-empty reviewer and review note;
 - every Atlas hazard explicitly listed in `hazards_reviewed`;
 - at least one SEM link from the candidate's declared allowed set.
+
+Finalization is transactional: the complete worksheet, INDEXED record set and gate boundary are
+validated before final output exists; reviewed artifacts are written through a sibling staging
+directory and atomically renamed only after success. A rejected review leaves no partial final set.
 
 It then emits `VAR_REVIEWED` records. Source admission still requires an independent
 `tools/vanilla_source_gate.py` run against the pinned Atlas database.
