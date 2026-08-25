@@ -140,9 +140,7 @@ mod tests {
     fn malformed_keep_alive_payload_fails_closed() {
         let mut ingress = test_ingress();
         let packet_id = encode_serverbound_keep_alive(0)[0];
-        ingress
-            .push(&[0x01, packet_id])
-            .expect("frame fits");
+        ingress.push(&[0x01, packet_id]).expect("frame fits");
         let frame = ingress
             .peek_frame()
             .expect("decode succeeds")
