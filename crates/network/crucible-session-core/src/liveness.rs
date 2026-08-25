@@ -508,9 +508,8 @@ mod tests {
             if event != 0 && event.is_multiple_of(5_003) {
                 assert_eq!(candidate.close(now), Ok(reference.close(now)));
             } else if rng & 3 == 0 {
-                let expected_id = reference.pending.unwrap_or_else(|| {
-                    i64::from_ne_bytes(rng.to_ne_bytes()) ^ 0x55AA
-                });
+                let fallback_id = i64::from_ne_bytes(rng.to_ne_bytes()) ^ 0x55AA;
+                let expected_id = reference.pending.unwrap_or(fallback_id);
                 let id = if rng & 0x10 == 0 {
                     expected_id
                 } else {
