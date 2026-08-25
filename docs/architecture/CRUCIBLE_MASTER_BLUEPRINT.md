@@ -54,6 +54,12 @@ eliminate work
 → SIMD/unsafe only when earned
 ```
 
+For the current R2/R3 frontier this doctrine is expanded by:
+
+- [`R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — permanent live-server ownership/locality/projection laws;
+- [`R2_R3_PERFORMANCE_SEARCH_PLAN.md`](R2_R3_PERFORMANCE_SEARCH_PLAN.md) — whole-engine work-elimination and optimization search;
+- [`R2_R3_PERFORMANCE_DECISION_REGISTER.md`](R2_R3_PERFORMANCE_DECISION_REGISTER.md) — high-risk mechanism choices that require representative evidence before they freeze.
+
 ## Vanilla reconstruction
 
 ```text
@@ -77,6 +83,10 @@ Official profile families include strict `balanced`, `performance`, and `memory`
 
 ## Current frontier
 
-M0 qualifies the world substrate before broad gameplay. After M0, protocol/client integration moves early so an unmodified target client becomes an integration oracle. P0 loads pregenerated vanilla worlds, avoiding world generation as an early blocker.
+The foundational world/section and protocol/client work has now crossed the first stock-client visible-world boundary (`milestone-r1x-first-visible-world`). The current frontier is R2/R3: replace the finite R1X Play replay with a persistent, replay-free, regionized live engine and then a qualified walkable server.
 
-This summary is intentionally concise. The full architecture bundle is the source for detailed subsystem policies during bootstrap.
+R2/R3 must use the permanent performance shape rather than a disposable single-thread implementation: explicit dimension/runtime identities, region-compatible chunk ownership, dense/local world access, generated HOT facts, incremental derived/client state, revision-keyed shared projections, bounded asynchronous work and schedule-invariant multi-worker semantics.
+
+World generation remains deliberately outside the R2 critical path; pregenerated vanilla worlds let the client/world/simulation architecture mature before generation breadth is required.
+
+This summary is intentionally concise. The full architecture bundle is the source for detailed subsystem policies during implementation.
