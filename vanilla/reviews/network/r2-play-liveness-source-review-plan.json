@@ -17,7 +17,25 @@
       "method_name": "<clinit>",
       "param_count": 0,
       "review_focus": [
-        "Bind the exact clientbound keep-alive STREAM_CODEC and the complete wire payload law."
+        "Bind the exact clientbound keep-alive STREAM_CODEC wiring to the packet writer and decoding constructor."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-KEEPALIVE-CB-READ-001",
+      "type_name": "net.minecraft.network.protocol.common.ClientboundKeepAlivePacket",
+      "method_name": "ClientboundKeepAlivePacket",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the clientbound keep-alive decoding constructor and prove it consumes exactly one signed 64-bit value with no additional payload fields."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-KEEPALIVE-CB-WRITE-001",
+      "type_name": "net.minecraft.network.protocol.common.ClientboundKeepAlivePacket",
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the clientbound keep-alive writer and prove it emits exactly one signed 64-bit value with no additional payload fields."
       ]
     },
     {
@@ -26,7 +44,25 @@
       "method_name": "<clinit>",
       "param_count": 0,
       "review_focus": [
-        "Bind the exact serverbound keep-alive STREAM_CODEC and the complete wire payload law."
+        "Bind the exact serverbound keep-alive STREAM_CODEC wiring to the packet writer and decoding constructor."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-KEEPALIVE-SB-READ-001",
+      "type_name": "net.minecraft.network.protocol.common.ServerboundKeepAlivePacket",
+      "method_name": "ServerboundKeepAlivePacket",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the serverbound keep-alive decoding constructor and prove it consumes exactly one signed 64-bit value with no additional payload fields."
+      ]
+    },
+    {
+      "var_id": "VAR-NET-R2-KEEPALIVE-SB-WRITE-001",
+      "type_name": "net.minecraft.network.protocol.common.ServerboundKeepAlivePacket",
+      "method_name": "write",
+      "param_count": 1,
+      "review_focus": [
+        "Bind the serverbound keep-alive writer and prove it emits exactly one signed 64-bit value with no additional payload fields."
       ]
     },
     {
