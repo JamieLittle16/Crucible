@@ -141,10 +141,7 @@ mod tests {
 
     #[test]
     fn cursor_is_exactly_two_machine_words() {
-        assert_eq!(
-            size_of::<StagedPublicationCursor>(),
-            2 * size_of::<usize>()
-        );
+        assert_eq!(size_of::<StagedPublicationCursor>(), 2 * size_of::<usize>());
         let cursor = StagedPublicationCursor::new();
         assert_eq!(cursor.stage_index(), 0);
         assert_eq!(cursor.body_index(), 0);
@@ -276,8 +273,10 @@ mod tests {
                                     .collect()
                             })
                             .collect();
-                        let expected: Vec<Vec<u8>> =
-                            stages.iter().flat_map(|stage| stage.iter().cloned()).collect();
+                        let expected: Vec<Vec<u8>> = stages
+                            .iter()
+                            .flat_map(|stage| stage.iter().cloned())
+                            .collect();
 
                         let mut cursor = StagedPublicationCursor::new();
                         let mut driver = ConnectionDriver::new(limits(8, 16));
