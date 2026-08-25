@@ -33,19 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-
-          tag="$GITHUB_REF_NAME"
-          if [[ ! "$tag" =~ ^milestone-[a-z0-9][a-z0-9-]*$ ]]; then
-            echo "unsupported milestone tag syntax: $tag" >&2
-            exit 2
-          fi
-
-          notes="docs/milestones/releases/${tag}.md"
-          if [[ ! -f "$notes" || -L "$notes" ]]; then
-            echo "missing or unsafe milestone release notes: $notes" >&2
-            exit 2
-          fi
-
+          python3 tools/milestone_release_notes.py "$GITHUB_REF_NAME" >/dev/null
           python3 tools/ci_policy.py
           cargo xtask guard
 
@@ -77,7 +65,7 @@ jobs:
           tag="$GITHUB_REF_NAME"
           package="crucible-server-${tag}-x86_64-unknown-linux-gnu"
           archive="target/${package}.tar.gz"
-          notes="docs/milestones/releases/${tag}.md"
+          notes="$(python3 tools/milestone_release_notes.py "$tag")"
 
           gh release create "$tag" \
             --verify-tag \
