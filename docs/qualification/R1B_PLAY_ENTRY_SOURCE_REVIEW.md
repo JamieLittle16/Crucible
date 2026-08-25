@@ -49,7 +49,7 @@ fresh default player, so their source bodies must be inspected before admission.
 
 ## Bounded review plan
 
-`vanilla/reviews/network/r1b-play-entry-source-review-plan.json` selects 28 exact source bodies for the
+`vanilla/reviews/network/r1b-play-entry-source-review-plan.json` selects 27 exact source bodies for the
 first source-rich pass. The set contains:
 
 - the Play protocol registration surface needed to derive packet identity;
@@ -60,6 +60,12 @@ first source-rich pass. The set contains:
 - codec/construction bodies for the five direct packets;
 - initial player-info publication;
 - the player-position packet reached by teleport.
+
+The first pinned selector preflight established that 26.2 `ClientboundPlayerPositionPacket` is a
+record-backed packet whose wire law is declared by its static `STREAM_CODEC`; it has no packet-local
+`write(FriendlyByteBuf)` body. The discovery plan therefore binds the packet `<clinit>()` and `of(...)`
+construction helper and deliberately does not invent a nonexistent writer fingerprint. Review of the
+static codec must enumerate any real subordinate codec bodies that remain material.
 
 The plan is not a final gate. If a reviewed helper delegates to another body whose change could alter
 the selected observable bootstrap, that dependency must be added before final Play-entry admission.
@@ -108,7 +114,7 @@ gate. Discovery review must first determine the minimum selected-route surface.
 
 After exact-body review:
 
-1. classify the 28 discovery bodies and enumerate only material delegated dependencies;
+1. classify the 27 discovery bodies and enumerate only material delegated dependencies;
 2. write explicit Play-entry SEM rules for mandatory and conditional selected-route behavior;
 3. create the minimum fingerprint-pinned VAR set and `GATE-NET-PLAY-ENTRY-26_2-001`;
 4. bind exact clientbound Play packet identities from reviewed registration evidence rather than
