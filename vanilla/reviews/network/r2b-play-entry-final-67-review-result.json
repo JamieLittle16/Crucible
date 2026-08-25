@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R2B-PLAY-ENTRY-FINAL-26_2-001",
+  "status": "REVIEWED_WIRE_CLOSURE_REQUIRED",
+  "contains_official_source_text": false,
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "dossier_sha256": "aecd49dd79962a905b5edb8f586c109ce731c304afe4f0f7c3ad3275c906b8b9",
+  "candidate_count": 67,
+  "all_candidates_source_inspected": true,
+  "atlas_observed_hazards_reviewed": true,
+  "control_flow_frontier_closed": true,
+  "remaining_review_id": "REVIEW-NET-R2B-PLAY-WIRE-CLOSURE-26_2-001",
+  "canonicalization_policy": "The exact dossier identity is the source of per-body fingerprints. Canonical VAR generation may carry each candidate's Atlas-observed hazard set into hazards_reviewed because every exact body and its scoped hazards were inspected during this review. Unresolved outbound wire delegates remain blocked until the named wire-closure/final-seam reviews are independently closed.",
+  "note": "Machine-readable companion to docs/qualification/R2B_PLAY_ENTRY_FINAL_67_REVIEW.md; no official source text is committed."
+}
