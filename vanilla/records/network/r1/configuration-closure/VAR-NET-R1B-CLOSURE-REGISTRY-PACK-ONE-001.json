@@ -1,0 +1,30 @@
+{
+  "classifications": [
+    "PERSISTENCE"
+  ],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [
+    "PERSISTENCE"
+  ],
+  "id": "VAR-NET-R1B-CLOSURE-REGISTRY-PACK-ONE-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned source body inspected and consistent with the stated review focus and selected SEM links. Carry forward only; full closure remains blocked on newly identified second-order delegate fingerprints and an independent green source gate."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-005",
+    "SEM-NET-R1B-006",
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "b8a68454c84050cbe2478be773d8af1f6996f4b2234ffba1a450da4bf15e8d66",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "bc13dc8f09ce7e061ac418625d42dfb57a61d6264cec17d1cfa25890132aeeea",
+    "signature": "packRegistry(final DynamicOps < Tag > ops , final RegistryDataLoader . RegistryData < T > registryData , final RegistryAccess registries , final Set < KnownPack > clientKnownPacks , final BiConsumer < ResourceKey < ? extends Registry < ? >> , List < RegistrySynchronization . PackedRegistryEntry >> output)",
+    "type": "net.minecraft.core.RegistrySynchronization"
+  },
+  "status": "VAR_REVIEWED"
+}

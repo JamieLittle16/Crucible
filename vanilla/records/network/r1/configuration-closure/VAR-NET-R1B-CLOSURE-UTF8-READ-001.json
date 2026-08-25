@@ -1,0 +1,26 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLOSURE-UTF8-READ-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. The decoder enforces encoded-byte and Java String-length bounds around the already-qualified Minecraft VarInt prefix. Netty conversion mechanics are implementation-only; Crucible preserves the admitted valid-stream law and its documented fail-closed malformed-UTF hardening."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-003",
+    "SEM-NET-R1B-004",
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "880709ab20d843051d3ca2699f6415324b9a3ea8f61d98f1e2fc0ec4ffbd34ba",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "324719076695290fb644f9ef95d2d97b23359e24e1239700b601000a35e57e8a",
+    "signature": "read(final ByteBuf input , final int maxLength)",
+    "type": "net.minecraft.network.Utf8String"
+  },
+  "status": "VAR_REVIEWED"
+}

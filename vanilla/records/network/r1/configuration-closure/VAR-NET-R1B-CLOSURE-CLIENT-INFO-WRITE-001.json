@@ -1,0 +1,26 @@
+{
+  "classifications": [
+    "SERVER_SIMULATION_CANDIDATE"
+  ],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLOSURE-CLIENT-INFO-WRITE-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned source body inspected and consistent with the stated review focus and selected SEM links. Carry forward only; full closure remains blocked on newly identified second-order delegate fingerprints and an independent green source gate."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-004"
+  ],
+  "source": {
+    "body_sha256": "18ffc900623f505d3513d8ae4ecff3924837d49dc9ce189e4efe64fa832f4919",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "4fd3241c16a62604f6877202e2889b1b2d3738b2b4a0a140a1dcb85a5219a31c",
+    "signature": "write(final FriendlyByteBuf output)",
+    "type": "net.minecraft.server.level.ClientInformation"
+  },
+  "status": "VAR_REVIEWED"
+}

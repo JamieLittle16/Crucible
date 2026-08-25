@@ -1,0 +1,27 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLOSURE-UTF8-WRITE-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. The encoder enforces Java CharSequence length and encoded-byte bounds, prefixes the encoded byte count with the already-qualified Minecraft VarInt law, then emits UTF-8 bytes. Vanilla's temporary Netty buffer allocation is not a Crucible requirement."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-002",
+    "SEM-NET-R1B-003",
+    "SEM-NET-R1B-004",
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "618db0aba05d82edbd781be9a1a7de4b39e3d89170668f93ba4ea299a60a263a",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "26e1915e9b3310f118374c573e1c593620878a0256742b0a8f2693168f1b9b4c",
+    "signature": "write(final ByteBuf output , final CharSequence value , final int maxLength)",
+    "type": "net.minecraft.network.Utf8String"
+  },
+  "status": "VAR_REVIEWED"
+}

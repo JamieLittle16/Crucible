@@ -1,0 +1,27 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-CLOSURE-BYTEBUF-STATIC-CODECS-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned static codec declarations reviewed. STRING_UTF8 is the 32767-bounded string codec and TAG is constructed from the bounded NBT tag codec. R1B does not admit a generic runtime NBT materializer here: selected registry/tag payload bodies must be supplied by a provenance-bound immutable publication image and byte-equivalence qualification. A future dynamic registry materializer requires its own NBT codec closure."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-005",
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "d12c1eba77b916250a336e6d3619ada1350f9ee1272503933c6e1b30aa974589",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "c03c8e0eec4883c34b9173481b24d8ad752f1ba2d17bb45feeb6f373f44bbe2b",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.network.codec.ByteBufCodecs"
+  },
+  "status": "VAR_REVIEWED"
+}

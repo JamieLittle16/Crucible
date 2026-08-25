@@ -1,0 +1,29 @@
+{
+  "classifications": [
+    "CODEC_SERIALIZATION"
+  ],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned source body inspected and consistent with the stated review focus and selected SEM links. Carry forward only; full closure remains blocked on newly identified second-order delegate fingerprints and an independent green source gate."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-005",
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "db93a7f1bf45c7f3f54c832339a350f14d57d3c073338d7d29a9bbae64315dba",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "a60589ac65fb738359e90935c54e2d24ac5f593c30b644dde842d3ce792b50fa",
+    "signature": "collection(final IntFunction < C > constructor , final StreamCodec < ? super B , V > elementCodec , final int maxSize)",
+    "type": "net.minecraft.network.codec.ByteBufCodecs"
+  },
+  "status": "VAR_REVIEWED"
+}

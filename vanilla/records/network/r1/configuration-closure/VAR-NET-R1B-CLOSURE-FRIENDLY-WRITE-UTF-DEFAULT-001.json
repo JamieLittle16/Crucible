@@ -1,0 +1,27 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-DEFAULT-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. Default FriendlyByteBuf UTF encoding delegates to the bounded UTF path with maximum 32767."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-002",
+    "SEM-NET-R1B-003",
+    "SEM-NET-R1B-004",
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "cb4aaee9f782ca6efb0ec9f4cf953d565bf2293d434cbe43813235bd57f5afa6",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "16427ef181fd81292b01a72145176c8882665dee075f123fda15d037ee00c98c",
+    "signature": "writeUtf(final String value)",
+    "type": "net.minecraft.network.FriendlyByteBuf"
+  },
+  "status": "VAR_REVIEWED"
+}

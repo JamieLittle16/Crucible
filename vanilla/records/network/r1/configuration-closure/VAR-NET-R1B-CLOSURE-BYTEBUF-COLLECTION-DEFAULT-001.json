@@ -1,0 +1,25 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. The two-argument collection codec delegates to the already-reviewed bounded collection implementation with Integer.MAX_VALUE. This binds the default list/collection maximum selection without requiring Crucible to copy vanilla's allocation strategy."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-005",
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "59c5984f68e3e7c00127e1fcc0950c4bbb4aebcd8f6cc569eb8fe227b2b58b81",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "03a983ca8a8b4a0320aeeb0d1f1744d58c2e6b17ba3858b5f8e64c4d3b5d8609",
+    "signature": "collection(final IntFunction < C > constructor , final StreamCodec < ? super B , V > elementCodec)",
+    "type": "net.minecraft.network.codec.ByteBufCodecs"
+  },
+  "status": "VAR_REVIEWED"
+}

@@ -1,0 +1,126 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import unittest
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RECORD_DIR = REPO_ROOT / "vanilla/records/network/r1/configuration-closure"
+GATE = REPO_ROOT / "vanilla/gates/network/GATE-NET-CONFIG-CLOSURE-26_2-001.json"
+CHECKPOINT = REPO_ROOT / "vanilla/reports/r1b-configuration-closure-source-admission-26.2.json"
+
+EXPECTED_GATE_SHA256 = "2152b4cd7070a1d5f68aedeccaf3f5e355ed4c2bbf20daff48d0d5a66ff0b74e"
+EXPECTED_RECORD_SHA256 = {
+    "VAR-NET-R1B-CLOSURE-BRAND-READ-001.json": "08e659680cca0b6f33ef984d3776c632ea1c4b9ed9b54bd39de03d90a793aaa4",
+    "VAR-NET-R1B-CLOSURE-BRAND-WRITE-001.json": "41ee1c4d7b7ed74ce5f9b2285f4bcdaab57bdda2cabc858d84f3e2d34dbff417",
+    "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-001.json": "f60b4a3a9e98ccefa40d5d2230cc0d2c40687fd990f07009986888556748ffb1",
+    "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001.json": "9f435fa638c74487f09dc6aa106ff7a2234c78b3fc614a514955929ce831fc1d",
+    "VAR-NET-R1B-CLOSURE-BYTEBUF-LIST-BOUNDED-001.json": "94b33849ece6b91a422b6fb5de6fa8d60568937f5b21c33fb4137c489880bf55",
+    "VAR-NET-R1B-CLOSURE-BYTEBUF-LIST-UNBOUNDED-001.json": "ccd71915690dcfbebc57fb4a2901bd33a217641ca4b555b837618954ddd789cd",
+    "VAR-NET-R1B-CLOSURE-BYTEBUF-OPTIONAL-001.json": "520db2581c209f879a5e9feef2262a7d1606d7329a9f07ac756aaf957e39b820",
+    "VAR-NET-R1B-CLOSURE-BYTEBUF-STATIC-CODECS-001.json": "0363178bdfac3ea7aa71b84577805c07b345b220d62a7e3cde0da9f5996cc26d",
+    "VAR-NET-R1B-CLOSURE-CLIENT-INFO-DEFAULT-001.json": "acf7b2ff5f802b30500b2efd61438908507bf7878ddb58e2a6d9a3747a368442",
+    "VAR-NET-R1B-CLOSURE-CLIENT-INFO-PACKET-READ-001.json": "8101faac9bd8a1e43d3dfc116b08b74bf5e7e023b295ce761af24b3761dde2ca",
+    "VAR-NET-R1B-CLOSURE-CLIENT-INFO-PACKET-WRITE-001.json": "608371703064b59bf0b9285cef5c44b8183cfb021d9b87e0b864bf33bde9c61f",
+    "VAR-NET-R1B-CLOSURE-CLIENT-INFO-READ-001.json": "d6a264681d93f967daf26c12bb00ad55f3b38e1284e7c370234388fd6d8e839a",
+    "VAR-NET-R1B-CLOSURE-CLIENT-INFO-WRITE-001.json": "24c78f020b0f6a213f0d164da7affd4e0b7656e5efe3d455dabe64fa42910233",
+    "VAR-NET-R1B-CLOSURE-CONFIG-FINISH-TASK-001.json": "0e8af01d3e9db0bcd0c40105860bf70a59742bc2bde4029f4967af2d164f2e0c",
+    "VAR-NET-R1B-CLOSURE-CONFIG-OPTIONAL-TASKS-001.json": "aae74df073d2b49a9378f610e929e8ac0def992cc326e11cf2ce9c18173751b7",
+    "VAR-NET-R1B-CLOSURE-CONFIG-RETURN-WORLD-001.json": "5174716e31733a6d5e6276cd42d6a640b4c4973a226934d823da54fdd9f8eae3",
+    "VAR-NET-R1B-CLOSURE-CONFIG-START-NEXT-001.json": "04989786eae9d049fc757a5381a9a972fbb7cc5b4459cc72e60e17c3de95b026",
+    "VAR-NET-R1B-CLOSURE-CONFIG-TICK-001.json": "1323aaef40aef07191bdcdf9e0a65bd8ac66b58b559479524f785000045907a8",
+    "VAR-NET-R1B-CLOSURE-ENABLED-FEATURES-READ-001.json": "e3331eec067f6dbc001666df0de02d5273c307567996df77b616ba97c3decabe",
+    "VAR-NET-R1B-CLOSURE-ENABLED-FEATURES-WRITE-001.json": "8e691d225856b336a67f40d2df2fab8644a85838c97d2717798a643b1108fb03",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-COLLECTION-001.json": "ffcef87354565ca0c7295b7626b600d9ef945d4ec23cf71aa438f27dca8fec0f",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-ENUM-001.json": "26e35a9775af6ec6cdbd52c94ac8eb06d6ee0139fbb29e8c8b12a032bb36eb4d",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-IDENTIFIER-001.json": "fe63912b71ed150f0b5449967a2d677dbb2bd94490198f5268d6d8366999586f",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-INT-ID-LIST-001.json": "049be71401dcb4b9950b9b8637740c722054d3af882089a8e886b0975d8f64c0",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-001.json": "18965753a6264070bbb845c7681ca839617c10d3faed0e45e449041d827d16eb",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-INTO-001.json": "14a701035a27115c708dc1be691e4f65cd39604ff297b2808f3c86bdaa1cfddc",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-REGISTRY-KEY-001.json": "38f556188c6a6bae9fc1b4ce602c354562723213b5d967c64fa5a8fb946d0115",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-UTF-BOUNDED-001.json": "917a28be64c9d90aeab5b4e7a7069e8ecbcae483c230d12f74bf4caeaefae998",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-UTF-DEFAULT-001.json": "6fb5b4d7ea446cf7a1d5c5e952c570f5a3aacea15fcb255996bbc887b710d30e",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-COLLECTION-001.json": "1c662a1a6f6b0a15ffe3f2959542a0745da55623fa5f95995126d94873163cdd",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-ENUM-001.json": "4a90003aedfa43486a53740ada4bac6be9adf8f029892a9f83b6ea5e010c5254",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-IDENTIFIER-001.json": "bfce1215bbc2c5161f4b78d07c17ffc0ad121a841073835b119901ca50bdcbfa",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-INT-ID-LIST-001.json": "0634d56e061c2cc12de693dda1dba8114f51e0fbbe792e59d4178a323106f289",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-MAP-001.json": "d216d7c4064a5f9dcbe0fb0147cbdc9898598915ebf2ab05f906601b7cbdf7a9",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-RESOURCE-KEY-001.json": "3507c0be8b14ba7100fd206e203ea2eb3092cc3ea0d56973b727305e3217e86a",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-BOUNDED-001.json": "e415fec9e969e25c8d70c1c187d9fb3b40581d018d4826dc6250695ee76b4dba",
+    "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-DEFAULT-001.json": "ba1e44e0f0f853910b84e045d52b2182e60457dee4becc3ad73f15c8625696c0",
+    "VAR-NET-R1B-CLOSURE-IDENTIFIER-STREAM-CODEC-001.json": "2586b0a986a08a0bd7bedb6b18f265d693f0a731787b008bb23e33bab07d56e9",
+    "VAR-NET-R1B-CLOSURE-NETWORK-SAFE-REGISTRIES-001.json": "c9202da5cf12cd58e03c8c900f2d0db0ccdf7f7e193eeb5ef0f861278b3ec894",
+    "VAR-NET-R1B-CLOSURE-PACKED-REGISTRY-CODEC-001.json": "1d34fa4974dc9c06af3410eba4e30518fc95eadf04a9bdebc3e19985d04e77fb",
+    "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-KEEPALIVE-001.json": "2120c31d5fd8baf24902814e2a277e9648799454718e7c9cbeed28cfb3ca4412",
+    "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-PREPARING-TICK-001.json": "c3183dcb4d14f4d71efda7e08435cb601040b6adf3a66ed4813b1072b9b0c969",
+    "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-READY-KEEPALIVE-001.json": "cdf8bbcfd058a925f3337c0d65a83602f1b5a4355d5f46cee850ed31b0c73cb2",
+    "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-READY-SPAWN-001.json": "7481fc06cf511fd267823766eb92a6c66048f74cc8321f1510960b34cfff40c5",
+    "VAR-NET-R1B-CLOSURE-PREPARE-SPAWN-SPAWN-PLAYER-001.json": "77fb14d2f6ba36a15d3c66ffdddb7598c75f2838636b25174d3ffff7fef26a17",
+    "VAR-NET-R1B-CLOSURE-REGISTRY-PACK-ALL-001.json": "3d9d9158d53e831827c7a3488b214c97af0c2896d4f99a6cd84893cfc7edbed7",
+    "VAR-NET-R1B-CLOSURE-REGISTRY-PACK-ONE-001.json": "6d60119a2453bc811dea071bf70b4447c8968d738b6e2bb5b7cca2aeb348c37a",
+    "VAR-NET-R1B-CLOSURE-TAG-PAYLOAD-READ-001.json": "d927b003b501d5ba94c11d044c905b6ecb843c41f4213cc01f6ca8da9e00d0e7",
+    "VAR-NET-R1B-CLOSURE-TAG-PAYLOAD-WRITE-001.json": "440e98d4e7056854c4290c610ee23a2e64fe77079fd610bb2783114ab8bf65fd",
+    "VAR-NET-R1B-CLOSURE-TAGS-SERIALIZE-ALL-001.json": "1a01b9b2ca4cb85fd18e0e9bfc51b340a64ec09c47184d8e1d0e17502137708c",
+    "VAR-NET-R1B-CLOSURE-TAGS-SERIALIZE-ONE-001.json": "767eddf407073aacc3253e60c5ec9932b3935140d9b840605d4da85b0318c00d",
+    "VAR-NET-R1B-CLOSURE-UPDATE-TAGS-READ-001.json": "f18f3e6541efc552554e6d9c5825cba93936b930cd7435e387c3016e888472a7",
+    "VAR-NET-R1B-CLOSURE-UPDATE-TAGS-WRITE-001.json": "a54fa4754fa7d13c9717f63eb74985325f1dde84fb1c73c63408b8ea436cdf4e",
+    "VAR-NET-R1B-CLOSURE-UTF8-READ-001.json": "56987589ad7e54bbc834873aba853f7095b0265f1afe5dc348c66e2db27fa885",
+    "VAR-NET-R1B-CLOSURE-UTF8-WRITE-001.json": "5e03b6b2d77e59a2d9216eba707aaadf1db3f2f04a283f59e1e389a17d1bbc40",
+}
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+class R1BConfigurationClosureAdmissionTests(unittest.TestCase):
+    def test_exact_admitted_record_and_gate_bytes_are_preserved(self) -> None:
+        self.assertEqual(sha256(GATE), EXPECTED_GATE_SHA256)
+        actual = {path.name: sha256(path) for path in RECORD_DIR.glob("*.json")}
+        self.assertEqual(actual, EXPECTED_RECORD_SHA256)
+
+    def test_all_committed_records_are_reviewed_and_source_free(self) -> None:
+        for name in EXPECTED_RECORD_SHA256:
+            raw = (RECORD_DIR / name).read_text(encoding="utf-8")
+            self.assertNotIn("source_excerpt", raw)
+            record = json.loads(raw)
+            self.assertEqual(record["status"], "VAR_REVIEWED")
+            self.assertTrue(record["semantic_rules"])
+            reviewed = record.get("hazards_reviewed", [])
+            self.assertEqual(len(reviewed), len(set(reviewed)))
+
+    def test_checkpoint_matches_pinned_26_2_admission(self) -> None:
+        checkpoint = json.loads(CHECKPOINT.read_text(encoding="utf-8"))
+        self.assertEqual(checkpoint["status"], "configuration-closure-gate-admitted")
+        self.assertTrue(checkpoint["gate"]["admitted"])
+        self.assertEqual(checkpoint["gate"]["failures"], [])
+        self.assertEqual(checkpoint["gate"]["required_methods"], 55)
+        self.assertEqual(checkpoint["gate"]["sha256"], EXPECTED_GATE_SHA256)
+        self.assertEqual(checkpoint["source"]["minecraft"], "26.2")
+        self.assertEqual(checkpoint["source"]["protocol"], 776)
+        self.assertEqual(checkpoint["source"]["data_version"], 4903)
+        self.assertEqual(
+            checkpoint["source"]["archive_sha256"],
+            "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+        )
+
+    def test_closure_admission_leaves_only_play_entry_source_gate(self) -> None:
+        checkpoint = json.loads(CHECKPOINT.read_text(encoding="utf-8"))
+        self.assertEqual(
+            checkpoint["remaining_required_gates"],
+            ["GATE-NET-PLAY-ENTRY-26_2-001"],
+        )
+
+    def test_checkpoint_does_not_claim_generic_nbt_runtime_materializer(self) -> None:
+        static_codec = json.loads(
+            (RECORD_DIR / "VAR-NET-R1B-CLOSURE-BYTEBUF-STATIC-CODECS-001.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        note = " ".join(static_codec["notes"])
+        self.assertIn("does not admit a generic runtime NBT materializer", note)
+
+
+if __name__ == "__main__":
+    unittest.main()

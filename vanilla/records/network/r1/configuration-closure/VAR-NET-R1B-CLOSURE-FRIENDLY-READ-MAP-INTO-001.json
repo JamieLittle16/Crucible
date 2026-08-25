@@ -1,0 +1,24 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-INTO-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. Map decoding reads a VarInt count, constructs the result container, then decodes exactly count key/value pairs in order. Generic VarInt law is already owned by the protocol-wire qualification."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "cc04ccf13d9a58d8ec90e391b92ce331b2725d9b9b8017c1ca42a179d802dd34",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "5e24005183fb5abac44d731064f9bd02e5b7ce5d718902780ba725a6ea722f4d",
+    "signature": "readMap(final IntFunction < M > ctor , final StreamDecoder < ? super FriendlyByteBuf , K > keyDecoder , final StreamDecoder < ? super FriendlyByteBuf , V > valueDecoder)",
+    "type": "net.minecraft.network.FriendlyByteBuf"
+  },
+  "status": "VAR_REVIEWED"
+}

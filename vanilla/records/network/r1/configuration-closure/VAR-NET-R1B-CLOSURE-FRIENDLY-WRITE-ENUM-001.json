@@ -1,0 +1,24 @@
+{
+  "classifications": [],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-ENUM-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. Enum encoding writes the ordinal as a Minecraft VarInt; generic VarInt law is already independently qualified."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-004"
+  ],
+  "source": {
+    "body_sha256": "827917c4b062cbe12f98c619ff3da7c8eeedf8a92b41c90fb312d39451cc6900",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "b13ce78c1e3529a1d5db1a05d98ae1fac5a717999b1fbbb6cd0edbb0a6ff4f6c",
+    "signature": "writeEnum(final Enum < ? > value)",
+    "type": "net.minecraft.network.FriendlyByteBuf"
+  },
+  "status": "VAR_REVIEWED"
+}

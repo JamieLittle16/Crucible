@@ -1,0 +1,28 @@
+{
+  "classifications": [
+    "CODEC_SERIALIZATION"
+  ],
+  "evidence": [
+    "R1B supplemental source-closure review"
+  ],
+  "hazards_reviewed": [
+    "CODEC"
+  ],
+  "id": "VAR-NET-R1B-CLOSURE-BYTEBUF-OPTIONAL-001",
+  "notes": [
+    "Reviewer: ChatGPT source-review pass",
+    "Exact pinned body reviewed. Optional values use one boolean presence marker followed by the delegated value codec only when present."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R1B-007"
+  ],
+  "source": {
+    "body_sha256": "e05cd2303cefce983cc24c5ff84ae682def3d97c1cf37c8e64bb617f4f654140",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "cc7be01824a4bbaa1bdd8a60ee995aec32d339ca6c7caf18edc8fb9e50739deb",
+    "signature": "optional(final StreamCodec < ? super B , V > original)",
+    "type": "net.minecraft.network.codec.ByteBufCodecs"
+  },
+  "status": "VAR_REVIEWED"
+}
