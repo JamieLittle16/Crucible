@@ -19,7 +19,7 @@ class R2PlayLivenessSourceReviewTests(unittest.TestCase):
     def test_plan_is_exactly_the_bounded_liveness_frontier(self) -> None:
         ids = [candidate.var_id for candidate in review.CANDIDATES]
         selectors = [review.review_support.selector_key(candidate) for candidate in review.CANDIDATES]
-        self.assertEqual(len(ids), 8)
+        self.assertEqual(len(ids), 12)
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(selectors), len(set(selectors)))
         self.assertEqual(
@@ -27,7 +27,11 @@ class R2PlayLivenessSourceReviewTests(unittest.TestCase):
             {
                 "VAR-NET-R2-PLAY-REGISTRATION-001",
                 "VAR-NET-R2-KEEPALIVE-CB-CODEC-001",
+                "VAR-NET-R2-KEEPALIVE-CB-READ-001",
+                "VAR-NET-R2-KEEPALIVE-CB-WRITE-001",
                 "VAR-NET-R2-KEEPALIVE-SB-CODEC-001",
+                "VAR-NET-R2-KEEPALIVE-SB-READ-001",
+                "VAR-NET-R2-KEEPALIVE-SB-WRITE-001",
                 "VAR-NET-R2-LIVENESS-CONSTRUCT-001",
                 "VAR-NET-R2-LIVENESS-CLOSE-001",
                 "VAR-NET-R2-LIVENESS-CLOSED-GATE-001",
@@ -36,20 +40,33 @@ class R2PlayLivenessSourceReviewTests(unittest.TestCase):
             },
         )
 
-    def test_plan_contains_both_play_registration_and_both_wire_codecs(self) -> None:
+    def test_plan_closes_codec_roots_and_payload_delegates(self) -> None:
         by_id = {candidate.var_id: candidate for candidate in review.CANDIDATES}
         self.assertEqual(
             by_id["VAR-NET-R2-PLAY-REGISTRATION-001"].type_name,
             "net.minecraft.network.protocol.game.GameProtocols",
         )
-        self.assertEqual(
-            by_id["VAR-NET-R2-KEEPALIVE-CB-CODEC-001"].type_name,
-            "net.minecraft.network.protocol.common.ClientboundKeepAlivePacket",
-        )
-        self.assertEqual(
-            by_id["VAR-NET-R2-KEEPALIVE-SB-CODEC-001"].type_name,
-            "net.minecraft.network.protocol.common.ServerboundKeepAlivePacket",
-        )
+        expected = {
+            "VAR-NET-R2-KEEPALIVE-CB-CODEC-001": ("ClientboundKeepAlivePacket", "<clinit>", 0),
+            "VAR-NET-R2-KEEPALIVE-CB-READ-001": (
+                "ClientboundKeepAlivePacket",
+                "ClientboundKeepAlivePacket",
+                1,
+            ),
+            "VAR-NET-R2-KEEPALIVE-CB-WRITE-001": ("ClientboundKeepAlivePacket", "write", 1),
+            "VAR-NET-R2-KEEPALIVE-SB-CODEC-001": ("ServerboundKeepAlivePacket", "<clinit>", 0),
+            "VAR-NET-R2-KEEPALIVE-SB-READ-001": (
+                "ServerboundKeepAlivePacket",
+                "ServerboundKeepAlivePacket",
+                1,
+            ),
+            "VAR-NET-R2-KEEPALIVE-SB-WRITE-001": ("ServerboundKeepAlivePacket", "write", 1),
+        }
+        for candidate_id, (type_suffix, method_name, param_count) in expected.items():
+            candidate = by_id[candidate_id]
+            self.assertTrue(candidate.type_name.endswith(type_suffix))
+            self.assertEqual(candidate.method_name, method_name)
+            self.assertEqual(candidate.param_count, param_count)
 
     def test_source_rich_output_is_rejected_inside_repository(self) -> None:
         with tempfile.TemporaryDirectory(dir=review.REPO_ROOT) as temporary:
