@@ -68,6 +68,23 @@ class R2PlayLivenessSourceReviewTests(unittest.TestCase):
             self.assertEqual(candidate.method_name, method_name)
             self.assertEqual(candidate.param_count, param_count)
 
+        self.assertEqual(
+            by_id["VAR-NET-R2-KEEPALIVE-CB-READ-001"].exact_signature,
+            "ClientboundKeepAlivePacket(final FriendlyByteBuf input)",
+        )
+        self.assertEqual(
+            by_id["VAR-NET-R2-KEEPALIVE-SB-READ-001"].exact_signature,
+            "ServerboundKeepAlivePacket(final FriendlyByteBuf input)",
+        )
+        self.assertEqual(
+            review.review_support.selector_key(by_id["VAR-NET-R2-KEEPALIVE-CB-READ-001"])[0],
+            "exact",
+        )
+        self.assertEqual(
+            review.review_support.selector_key(by_id["VAR-NET-R2-KEEPALIVE-SB-READ-001"])[0],
+            "exact",
+        )
+
     def test_source_rich_output_is_rejected_inside_repository(self) -> None:
         with tempfile.TemporaryDirectory(dir=review.REPO_ROOT) as temporary:
             with self.assertRaises(review.PlayLivenessReviewError):
