@@ -40,8 +40,12 @@ fn run() -> Result<(), String> {
         .r1x_replay_image
         .as_deref()
         .map(|path| {
-            load_r1x_image(path, R0_ORACLE_STATUS_JSON)
-                .map_err(|error| format!("could not load R1X replay image {}: {error}", path.display()))
+            load_r1x_image(path, R0_ORACLE_STATUS_JSON).map_err(|error| {
+                format!(
+                    "could not load R1X replay image {}: {error}",
+                    path.display()
+                )
+            })
         })
         .transpose()?;
 
