@@ -90,8 +90,8 @@ mod tests {
 
     use super::{
         PLAY_KEEP_ALIVE_BODY_BYTES, PLAY_LIVENESS_POLICY, PlayLivenessCodecError,
-        decode_serverbound_keep_alive, encode_clientbound_keep_alive, encode_serverbound_keep_alive,
-        generated,
+        decode_serverbound_keep_alive, encode_clientbound_keep_alive,
+        encode_serverbound_keep_alive, generated,
     };
 
     #[test]
@@ -115,7 +115,10 @@ mod tests {
         decoder
             .ingest::<()>(generated::golden::PLAY_SERVERBOUND_KEEP_ALIVE_FRAME)
             .expect("golden frame fits");
-        let frame = decoder.next_frame().expect("decode succeeds").expect("one frame");
+        let frame = decoder
+            .next_frame()
+            .expect("decode succeeds")
+            .expect("one frame");
         assert_eq!(
             decode_serverbound_keep_alive(frame),
             Ok(Some(0x0102_0304_0506_0708_i64))
@@ -127,8 +130,13 @@ mod tests {
         let limits = ConnectionLimits::new(64, 128, 128).expect("test limits");
         let mut decoder = FrameDecoder::new(limits);
         let packet_id = encode_serverbound_keep_alive(0)[0];
-        decoder.ingest::<()>(&[0x01, packet_id]).expect("frame fits");
-        let frame = decoder.next_frame().expect("decode succeeds").expect("one frame");
+        decoder
+            .ingest::<()>(&[0x01, packet_id])
+            .expect("frame fits");
+        let frame = decoder
+            .next_frame()
+            .expect("decode succeeds")
+            .expect("one frame");
         assert_eq!(
             decode_serverbound_keep_alive(frame),
             Err(PlayLivenessCodecError::InvalidPayloadLength { actual: 0 })
