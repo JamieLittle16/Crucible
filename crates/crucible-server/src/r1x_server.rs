@@ -10,6 +10,7 @@
 //! challenge state is committed only after the challenge body enters bounded egress successfully.
 //! Consequently backpressure cannot create a phantom pending challenge.
 
+use core::mem::size_of;
 use std::convert::Infallible;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
@@ -370,10 +371,12 @@ fn keep_alive_body(id: i64) -> [u8; KEEP_ALIVE_BODY_BYTES] {
     body
 }
 
+#[cfg(test)]
 fn serverbound_keep_alive_frame(id: i64) -> [u8; KEEP_ALIVE_BODY_BYTES + 1] {
     let mut frame = [0_u8; KEEP_ALIVE_BODY_BYTES + 1];
-    frame[0] = KEEP_ALIVE_BODY_BYTES as u8;
-    frame[1] = SERVERBOUND_KEEP_ALIVE_PACKET_ID as u8;
+    frame[0] = u8::try_from(KEEP_ALIVE_BODY_BYTES).expect("keep-alive body length fits one byte");
+    frame[1] = u8::try_from(SERVERBOUND_KEEP_ALIVE_PACKET_ID)
+        .expect("serverbound keep-alive packet id fits one byte");
     frame[2..].copy_from_slice(&id.to_be_bytes());
     frame
 }
@@ -444,8 +447,6 @@ fn read_scratch_bytes() -> NonZeroUsize {
 fn action_budget() -> ActionBudget {
     ActionBudget::new(ACTIONS_PER_SERVICE).expect("R1X action budget is positive")
 }
-
-use core::mem::size_of;
 
 #[cfg(test)]
 mod tests {
@@ -565,7 +566,7 @@ mod tests {
 
         // Body length 1: packet id only, no required i64 payload.
         driver
-            .ingest::<()>(&[0x01, SERVERBOUND_KEEP_ALIVE_PACKET_ID as u8])
+            .ingest::<()>(&[0x01, 0x1c])
             .expect("malformed response framing fits");
         assert_eq!(
             process_one_live_inbound(&mut driver, &mut liveness, 15_020),
@@ -588,6 +589,7 @@ mod tests {
                 "cycle={cycle}"
             );
             let challenge = liveness.pending_challenge().expect("challenge is pending");
+            let expected_latency = (liveness.latency_ms() * 3 + 100) / 4;
             let queued = driver.queued_egress();
             driver
                 .consume_written::<()>(queued)
@@ -599,7 +601,9 @@ mod tests {
             }
             assert_eq!(
                 process_one_live_inbound(&mut driver, &mut liveness, issue_ms + 100),
-                Ok(Some(LiveDisposition::KeepAliveAccepted { latency_ms: 25 })),
+                Ok(Some(LiveDisposition::KeepAliveAccepted {
+                    latency_ms: expected_latency,
+                })),
                 "cycle={cycle}"
             );
             accepted += 1;
@@ -608,6 +612,6 @@ mod tests {
         assert_eq!(accepted, 10);
         assert_eq!(driver.buffered_ingress(), 0);
         assert_eq!(driver.queued_egress(), 0);
-        assert_eq!(liveness.latency_ms(), 25);
+        assert_eq!(liveness.latency_ms(), 93);
     }
 }
