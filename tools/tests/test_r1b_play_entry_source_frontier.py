@@ -59,14 +59,15 @@ class R1BPlayEntrySourceFrontierTests(unittest.TestCase):
         self.assertIn("semantic", description)
 
     def test_frontier_does_not_expand_into_general_gameplay_or_chunk_work(self) -> None:
-        roots = "\n".join(self.play_entry["root_queries"])
+        roots = self.play_entry["root_queries"]
+        joined = "\n".join(roots)
         for forbidden in (
             "ClientboundLevelChunkWithLightPacket",
             "ServerboundMovePlayerPacket",
             "ClientboundAddEntityPacket",
-            "net.minecraft.network.protocol.game\"",
         ):
-            self.assertNotIn(forbidden, roots)
+            self.assertNotIn(forbidden, joined)
+        self.assertNotIn("net.minecraft.network.protocol.game", roots)
 
         excluded = self.play_entry["exclude_package_prefixes"]
         for required in (
