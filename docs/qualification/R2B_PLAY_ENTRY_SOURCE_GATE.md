@@ -1,194 +1,118 @@
 # R2B Play-Entry Source Gate
 
-Status: **final exact-body review prepared; admission pending source inspection**  
+Status: **67-body selected-route review complete; final wire-only closure in qualification**  
 Target: Minecraft Java Edition 26.2, protocol 776  
 Gate: `GATE-NET-PLAY-ENTRY-26_2-001` (reserved; not yet admitted)
 
 ## Purpose
 
-R2B replaces the non-world portion of the finite R1X Play replay with Crucible-owned semantic
-bootstrap state and target projection. The source gate exists to ensure that this replacement follows
-observable vanilla semantics without inheriting Mojang's runtime object graph, packet registry,
-flushing architecture, or world representation.
+R2B replaces the non-world portion of the finite R1X Play replay with Crucible-owned semantic bootstrap state and target projection. The gate exists to reproduce observable vanilla semantics without inheriting Mojang's object graph, runtime packet registry, flushing architecture or world representation.
 
-The gate is intentionally finite. It covers only the selected fresh/default player entry profile.
-Chunk/light publication and ongoing world tracking belong to R2C/R2D.
+The first gate is intentionally narrow: fresh player, ordinary non-transfer entry, offline/no remote chat session, empty scoreboard, no active effects, fresh/default inventory, and no chunk/light/world streaming.
 
-## Required evidence chain
+## Current evidence chain
 
 ```text
 pinned Minecraft 26.2 source
         |
-existing fresh-player placement review
+Play-entry discovery/frontier hardening        COMPLETE
         |
-hardened delegate/codec closure probe       COMPLETE
+instance-field evidence projection             COMPLETE
         |
-instance-field evidence projection           COMPLETE
+final 67 exact-body selected-route review      COMPLETE
         |
-one bounded exact-body source review         PREPARED
+selected route/control-flow frontier           CLOSED
         |
-VAR_REVIEWED records
+seven-family wire/serializer closure           IN QUALIFICATION
         |
-SEM-NET-R2B-PLAY-* rules
+VAR-NET-R2B-PLAY-* + SEM-NET-R2B-PLAY-*
         |
 GATE-NET-PLAY-ENTRY-26_2-001
         |
-target-owned semantic stage plan + codecs
+Target26_2 replay-free semantic bootstrap
 ```
 
-No packet identity, field order, default branch or mandatory stage may be admitted from replay
-position alone.
+No packet identity, field order, default branch or mandatory stage may be admitted from replay position alone.
 
-## Hardened closure-probe result
+## Final 67-body result
 
-The source-free 26.2 Atlas probe is now resolved. It confirms the inventory path is structurally:
+`REVIEW-NET-R2B-PLAY-ENTRY-FINAL-26_2-001` contains 67 exact pinned bodies: the historical 27-body pass, 35-body follow-up, four inventory/synchronizer closure nodes, and the one actual `InventoryMenu` constructor reported by the pinned Atlas.
+
+Every body has now been inspected. The selected-route control-flow frontier is closed. See `R2B_PLAY_ENTRY_FINAL_67_REVIEW.md` for the source-free result, exact selected packet identities and branch dispositions.
+
+The important former ambiguity—initial inventory/menu synchronization—is closed directly from source:
 
 ```text
-ServerPlayer.initMenu(AbstractContainerMenu)
-    -> AbstractContainerMenu.setSynchronizer(ContainerSynchronizer)
+ServerPlayer.initInventoryMenu()
+    -> ServerPlayer.initMenu(inventoryMenu)
+    -> AbstractContainerMenu.setSynchronizer(...)
     -> AbstractContainerMenu.sendAllDataToRemote()
-    -> ContainerSynchronizer.sendInitialData(...)
+    -> ServerPlayer#<fieldinit:containerSynchronizer>()
+       .sendInitialData(...)
+    -> ClientboundContainerSetContentPacket
 ```
 
-The probe also enumerates the available methods for every selected bootstrap packet class, allowing
-the final review to distinguish packet classes with explicit `write(...)` bodies from record/static
-`STREAM_CODEC` surfaces rather than assuming one codec shape for all packets.
+The selected `InventoryMenu(Inventory, boolean, Player)` constructor installs no `DataSlot`. Therefore the initial data-slot array is empty and no `ClientboundContainerSetDataPacket` is emitted for this profile.
 
-One important gap was exposed by the probe itself: the concrete `ContainerSynchronizer` is an
-anonymous implementation stored in `ServerPlayer.containerSynchronizer`. Atlas method discovery sees
-the interface callback but cannot name that anonymous implementation as an ordinary method. Reviewing
-only `sendInitialData(...)` plus `ClientboundContainerSetContentPacket` would therefore leave the
-observable bridge inferred.
-
-Crucible now solves this generally with synthetic instance-field evidence. The local generated Atlas
-projects the full initialized field declaration as:
+The anonymous synchronizer is fingerprinted through the general synthetic Atlas evidence node:
 
 ```text
 net.minecraft.server.level.ServerPlayer#<fieldinit:containerSynchronizer>()
 ```
 
-The fingerprint includes the entire anonymous implementation and uses the same literal-sensitive
-source fingerprint/staleness machinery as ordinary methods and `<clinit>()` declarations. This is an
-evidence-only node and creates no runtime abstraction.
+This is evidence tooling only; it creates no runtime abstraction.
 
-## Final review frontier
+## Branches now closed
 
-`tools/r2b_play_entry_source_review.py` is the final source-rich packer. It unifies:
+The selected empty scoreboard emits no scoreboard packets. The selected no-active-effect profile emits no mob-effect packets. Weather game events remain conditional on `level.isRaining()`.
 
-- the original **27** exact Play-entry review bodies;
-- the **35** exact follow-up bodies;
-- four fixed inventory-closure nodes:
-  - `AbstractContainerMenu#setSynchronizer(...)`;
-  - `AbstractContainerMenu#sendAllDataToRemote()`;
-  - `ServerPlayer#<fieldinit:containerSynchronizer>()`;
-  - `ContainerSynchronizer#sendInitialData(...)`;
-- every actual `InventoryMenu` constructor reported by the pinned Atlas, selected dynamically by exact
-  signature rather than guessed from memory.
+Server-data publication remains conditional on `status != null && !cookie.transferred()` and must not be promoted to a universal stage without separately binding status presence.
 
-The base frontier is therefore `66 + InventoryMenu constructor count`. All selectors are preflighted
-before any official source excerpt is materialized. Duplicate IDs/selectors fail closed. The source
-review also regenerates/checks the local instance-field evidence from the exact pinned archive before
-resolving the field node.
+`broadcastAll(...)` is self-visible even for the first player because `placeNewPlayer` inserts the joining player into `this.players` before the post-add player-info broadcast.
 
-## Existing reviewed facts carried forward as evidence leads
+## Final wire-only frontier
 
-The historical first-pass and follow-up reviews already establish the selected-profile shape strongly
-enough to bound the final review:
+The 67-body review leaves seven custom subordinate wire families. These are not new gameplay semantics:
 
-- fresh placement has a mandatory Play-entry control-flow spine;
-- login/entry state, difficulty, abilities, selected slot and synchronized recipe state are emitted;
-- permission/command state and initial recipe-book state are part of fresh-player publication;
-- initial player-info state and an initial teleport/player-position transaction are client-visible;
-- level metadata includes border/clock/default-spawn/load-start/tick state, with weather conditional;
-- empty scoreboard/effect branches may produce no selected-profile traffic only when their default
-  assumptions are explicitly bound;
-- inventory-menu initialization is client-visible through delegated synchronization and is now in the
-  exact final review frontier;
-- world/chunk/light streaming is not part of this gate.
+1. command-tree permission filtering/node entry serialization;
+2. `RecipeBookSettings.STREAM_CODEC`;
+3. synchronized recipe-property/stonecutter codecs;
+4. `ClientboundSetTimePacket` and clock network-state packing;
+5. `LevelData.RespawnData.STREAM_CODEC`;
+6. `DimensionType.STREAM_CODEC`;
+7. `ItemStack` optional/list stream codecs used by the initial container snapshot.
 
-These observations are not themselves the final R2B admission records.
+`vanilla/reviews/network/r2b-play-entry-wire-closure-plan.json` freezes that boundary. `tools/r2b_play_entry_wire_closure_source_review.py` validates the exact prior 67-body dossier, excludes already-reviewed identities, resolves only the committed wire families, preflights required names/types before source extraction, and emits source-rich output outside Git.
 
-## Why the old 27/35-body frontier is not directly canonicalized
-
-Two evidence hazards required hardening:
-
-1. `ServerPlayer::initInventoryMenu` delegates into menu synchronization. The actual anonymous
-   synchronizer implementation must be fingerprinted, not inferred from an interface callback and a
-   packet class that merely looks compatible.
-2. several packet `STREAM_CODEC` declarations may delegate outbound wire law to packet constructors,
-   writers or subordinate codecs. R2A demonstrated that a codec root is not proof of a delegated
-   `read`/`write` body.
-
-The final source-rich review therefore uses exact-signature selectors wherever overloads exist and
-retains the earlier subordinate codec/writer closure work. Any still-material dependency discovered
-in this final review must be explicit; `DELEGATED_REVIEW_REQUIRED` is not an admissible final gate
-state.
-
-## Gate profile boundary
-
-The first admitted profile is deliberately narrow:
-
-- fresh player;
-- ordinary non-transfer entry;
-- offline/no remote chat-session branch unless later evidence/profile changes require otherwise;
-- empty scoreboard;
-- no active effects at entry;
-- default/fresh inventory state as established by source;
-- no world/chunk/light publication inside this gate.
-
-Any richer persisted player, scoreboard, effect, transfer, online-chat or custom composition behavior
-requires an explicit later SEM/profile expansion. It must not be smuggled into R2B through a generic
-Mojang-shaped bootstrap object.
+The command and clock selectors are deliberately bounded at their named serializer/type-family boundary rather than one guessed private helper. That prevents another iterative missing-helper loop while still forbidding world/chunk/movement/general gameplay expansion.
 
 ## Architectural admission rules
 
-The final target implementation must preserve all of the following:
+The resulting target implementation must preserve:
 
-- semantic stage labels are not packet names and are not a runtime packet registry;
-- `crucible-target-26-2` owns version-specific packet identities and wire codecs;
-- `crucible-publication-core` remains target-neutral and owns only bounded progression;
-- per-connection bootstrap progress remains compact and allocation-free in the ordinary path;
-- immutable composition-stable bodies may be shared/precomputed when source semantics permit;
-- player-specific bodies are projected from compact semantic state rather than reconstructed from a
-  Mojang object graph;
-- one service opportunity remains bounded; egress rejection cannot advance bootstrap progress;
-- no second outbound queue is introduced;
-- world/chunk/light state crosses an explicit later `WorldProjection` seam supplied by R2C.
+- semantic stage labels rather than a runtime packet registry;
+- target-owned 26.2 packet identities/codecs in `crucible-target-26-2`;
+- target-neutral bounded progression in `crucible-publication-core`;
+- compact per-connection bootstrap progress;
+- one bounded transactional egress path and no second outbound queue;
+- shared/precomputed immutable composition-stable bodies where semantics permit;
+- player-specific projection from compact semantic state rather than Mojang-shaped object graphs;
+- explicit later `WorldProjection` ownership for chunk/light data.
 
-## Required final review outputs
+Composition-stable command/recipe bodies are excellent candidates for process/composition-level precomputation after their source law is admitted. Replay bytes may remain differential/golden evidence; they are not the semantic authority.
 
-Before `GATE-NET-PLAY-ENTRY-26_2-001` may be marked admitted, the repository must contain only
-source-free artifacts proving:
+## Gate admission requirements
 
-1. exact source fingerprints for every material selected-profile control-flow and outbound-codec
-   body;
-2. explicit hazard dispositions;
-3. no unresolved delegate dependencies;
-4. semantic rules for mandatory order, conditional/default-empty branches, teleport transaction and
-   inventory bootstrap;
-5. a finite target packet/codec contract or equivalent generated facts with codegen drift checks;
-6. exact selected-profile stage ordering derived from those SEMs rather than from the capture.
+Before `GATE-NET-PLAY-ENTRY-26_2-001` can report `admitted=true`, source-free repository artifacts must establish:
 
-Source-rich dossiers remain external and `EPHEMERAL_DO_NOT_COMMIT`.
+1. exact fingerprints for all material selected-route control-flow and outbound wire bodies;
+2. reviewed hazards and no unresolved material delegates;
+3. SEM rules for mandatory order, conditional/default-empty branches, teleport transaction and inventory bootstrap;
+4. target packet identities and wire contracts/generated facts with drift checks;
+5. selected stage ordering derived from SEM rather than capture order.
 
-## Test and performance requirements after gate closure
-
-The first target implementation must carry:
-
-- golden codec tests for every newly admitted packet surface;
-- differential/reference tests for stage selection and conditional/default-empty branches;
-- exhaustive/stress progression tests through `StagedPublicationCursor` under small egress limits;
-- transactional tests proving backpressure does not skip/duplicate stages;
-- teleport-ack state-machine tests once the initial teleport becomes live;
-- real stock-client comparison against the R1X oracle while replay is progressively removed.
-
-Timing benchmarks are required only where there is an actual mechanism choice. Likely first R2B
-contests are shared immutable bootstrap images versus per-connection materialization and one-body
-publication versus qualified bounded batching/vectored output. Whole-cost evidence must include
-allocations, copied bytes, retained memory, tails and join latency.
+The first production implementation then requires golden codec tests, stage-selection differential tests, exhaustive bounded-cursor/backpressure tests, teleport transaction tests and an independent stock 26.2 client probe while R1X replay is removed.
 
 ## Exit
 
-This source-gate phase exits only when the finite selected-profile source frontier has no unresolved
-material delegate and the target stage plan can be generated or implemented without relying on
-capture ordering or server-owned 26.2 packet constants.
+This source-gate phase exits only when the seven-family wire review is inspected, all material outbound delegates are closed, the independent Atlas source gate reports `admitted=true`, and the target stage plan can be implemented without replay-derived semantics.
