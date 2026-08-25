@@ -521,7 +521,7 @@ mod tests {
         assert_eq!(liveness.pending_challenge(), Some(15_000));
         assert_eq!(
             driver.pending_egress(),
-            &[0x09, 0x2c, 0, 0, 0, 0, 0, 0x3a, 0x98]
+            &[0x09, 0x2c, 0, 0, 0, 0, 0, 0, 0x3a, 0x98]
         );
     }
 
