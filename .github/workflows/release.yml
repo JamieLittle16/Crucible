@@ -1,0 +1,84 @@
+name: Milestone Release
+
+on:
+  push:
+    tags:
+      - "milestone-*"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux-x86_64:
+    name: Linux x86_64 release binary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Verify release source and repository policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 tools/ci_policy.py
+          cargo xtask guard
+
+      - name: Build crucible-server
+        run: cargo build --release --locked --package crucible-server
+
+      - name: Package binary and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          package="crucible-server-${tag}-x86_64-unknown-linux-gnu"
+          stage="target/release-package/${package}"
+          archive="target/${package}.tar.gz"
+
+          mkdir -p "$stage"
+          cp target/release/crucible-server "$stage/crucible-server"
+          cp LICENSE "$stage/LICENSE"
+          cp README.md "$stage/README.md"
+          tar -C target/release-package -czf "$archive" "$package"
+          sha256sum "$archive" > "${archive}.sha256"
+
+      - name: Publish experimental milestone release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          package="crucible-server-${tag}-x86_64-unknown-linux-gnu"
+          archive="target/${package}.tar.gz"
+
+          cat > target/release-notes.md <<'EOF'
+          Experimental Crucible milestone snapshot. This is not a production or playable server release.
+
+          The R1X milestone demonstrated that an unmodified Minecraft: Java Edition 26.2 client can complete Handshake -> Login -> Configuration -> Play through Crucible and render world data. The demonstrated Play bootstrap is an explicitly experimental finite replay fixture; captured replay data is not included in this release and is not production-admitted.
+
+          This release asset contains the `crucible-server` executable, MPL-2.0 licence, and repository README for the tagged source revision.
+          EOF
+
+          gh release create "$tag" \
+            --verify-tag \
+            --prerelease \
+            --title "Crucible ${tag}" \
+            --notes-file target/release-notes.md
+
+          gh release upload "$tag" \
+            "$archive" \
+            "${archive}.sha256"
