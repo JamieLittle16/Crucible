@@ -10,23 +10,25 @@ If you are new to the project, do not try to read everything in repository order
 
 1. [`architecture/CRUCIBLE_MASTER_BLUEPRINT.md`](architecture/CRUCIBLE_MASTER_BLUEPRINT.md) — the concise architectural narrative: semantic fidelity, efficiency, concurrency, replaceability and the reference/production split.
 2. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — the first stock-client Handshake → Play → visible-world black-box milestone and its exact claim limits.
-3. [`execution/EXECUTION_MASTER_PLAN.md`](execution/EXECUTION_MASTER_PLAN.md) — how the project advances by qualified vertical slices rather than feature accumulation.
-4. [`../README.md`](../README.md) — public project status, contributor quick-start and current milestone.
+3. [`architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — the persistent live-server architecture: regionized ownership, dimension/chunk/section locality, generated HOT data, shared client projection, interest deltas and R2/R3 gates.
+4. [`execution/EXECUTION_MASTER_PLAN.md`](execution/EXECUTION_MASTER_PLAN.md) — how the project advances by qualified vertical slices rather than feature accumulation.
+5. [`../README.md`](../README.md) — public project status, contributor quick-start and current milestone.
 
 ### I want to work on the current milestone
 
-1. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — the established client-join boundary and next persistent-live-Play gate.
-2. [`architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md`](architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) — the M0 foundation boundary and acceptance model.
-3. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — the current world/section implementation slice.
-4. [`qualification/SECTION_EQUIVALENCE_LAB.md`](qualification/SECTION_EQUIVALENCE_LAB.md) — how section implementations are checked against their reference semantics.
-5. [`qualification/SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) — representation candidates and the performance questions they must answer.
+1. [`architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — architectural law and implementation order for R2 persistent world and R3 walkability.
+2. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — the established client-join boundary and replay-scaffold claim limits.
+3. [`architecture/OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) — authority, migration, staged effects and schedule-invariance law used by the regionized engine.
+4. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — world/section implementation and HOT-path constraints.
+5. [`qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md`](qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md) — resolve-once dense chunk-window access versus repeated world routing.
+6. [`qualification/SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) — section representation candidates and the performance questions they must answer.
 
 ### I want to understand how claims become evidence
 
 1. [`qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md`](qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md) — durable evidence and experiment records.
 2. [`qualification/PERFORMANCE_QUALIFICATION_STANDARD.md`](qualification/PERFORMANCE_QUALIFICATION_STANDARD.md) — project-wide rules for warm-up, machine state, cache/topology effects, counters, statistical discipline and low-level optimization admission.
 3. [`execution/CI_QUALIFICATION_ROADMAP.md`](execution/CI_QUALIFICATION_ROADMAP.md) — how qualification becomes enforceable CI/repository policy.
-4. [`qualification/SECTION_BENCHMARK_HARNESS.md`](qualification/SECTION_BENCHMARK_HARNESS.md) — benchmark methodology for the current foundational subsystem.
+4. [`qualification/SECTION_BENCHMARK_HARNESS.md`](qualification/SECTION_BENCHMARK_HARNESS.md) — benchmark methodology for the foundational section subsystem.
 5. [`qualification/SECTION_SEMANTIC_FIXTURES.md`](qualification/SECTION_SEMANTIC_FIXTURES.md) — source-backed semantic fixtures.
 
 ## Milestones
@@ -42,8 +44,13 @@ Milestone records are durable black-box/product evidence. They do not silently p
 | Document | Purpose |
 | --- | --- |
 | [`CRUCIBLE_MASTER_BLUEPRINT.md`](architecture/CRUCIBLE_MASTER_BLUEPRINT.md) | End-to-end architectural narrative and project identity. |
+| [`R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) | Persistent live-server design: R2/R3 gates, region cells, dimensions, chunk/section locality, generated lookup policy, revision-keyed projection/fan-out and client-work minimization. |
+| [`OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) | Singular authority, migration generations, staged effects and schedule invariance. |
+| [`PROTOCOL_CLIENT_SPINE.md`](architecture/PROTOCOL_CLIENT_SPINE.md) | Version-pinned client route and protocol layering. |
+| [`PREPLAY_TARGET_BINDING.md`](architecture/PREPLAY_TARGET_BINDING.md) | Static target binding across the pre-Play connection spine. |
+| [`COMPONENT_RESOLUTION.md`](architecture/COMPONENT_RESOLUTION.md) | Installation-time package choice with statically specialized HOT wiring. |
 | [`M0_FOUNDATION_IMPLEMENTATION_SPEC.md`](architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) | Foundation milestone contract and implementation boundary. |
-| [`WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) | Current world/section slice and its dependency/evidence shape. |
+| [`WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) | World/section slice and its dependency/evidence shape. |
 
 Architecture documents should separate **semantic laws** from **replaceable mechanisms**. A useful design can still be experimental; a convenient implementation detail does not become product semantics merely because it exists in code.
 
@@ -53,13 +60,14 @@ Architecture documents should separate **semantic laws** from **replaceable mech
 | --- | --- |
 | [`EVIDENCE_AND_EXPERIMENT_RECORDS.md`](qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md) | Evidence identity, experiment records and decision provenance. |
 | [`PERFORMANCE_QUALIFICATION_STANDARD.md`](qualification/PERFORMANCE_QUALIFICATION_STANDARD.md) | Normative machine-state, warm-up, topology, cache/counter, tail and whole-cost rules for performance claims. |
+| [`WORLD_ACCESS_BENCHMARK_HARNESS.md`](qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md) | Whole-cost qualification for resolved local chunk windows versus repeated general world lookup. |
 | [`SECTION_EQUIVALENCE_LAB.md`](qualification/SECTION_EQUIVALENCE_LAB.md) | Differential/equivalence qualification for section mechanisms. |
 | [`SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) | Section representation experiments and selection criteria. |
 | [`SECTION_BENCHMARK_HARNESS.md`](qualification/SECTION_BENCHMARK_HARNESS.md) | Controlled benchmark harness and measurement rules. |
 | [`SECTION_SEMANTIC_FIXTURES.md`](qualification/SECTION_SEMANTIC_FIXTURES.md) | Source-backed semantic fixture contract. |
 | [`SECTION_VANILLA_CORPUS.md`](qualification/SECTION_VANILLA_CORPUS.md) | Vanilla-derived section population/corpus evidence. |
 | [`SECTION_VANILLA_EXTRACTOR.md`](qualification/SECTION_VANILLA_EXTRACTOR.md) | Extraction boundary for admitted vanilla evidence. |
-| [`qualification/section/`](qualification/section/) | More focused M0.3 section qualification records/runbooks. |
+| [`qualification/section/`](qualification/section/) | More focused section qualification records/runbooks. |
 
 The qualification tree is intentionally detailed. Correctness and performance evidence should remain reviewable after the implementation that produced it changes.
 
