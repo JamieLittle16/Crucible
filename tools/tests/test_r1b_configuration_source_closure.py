@@ -14,9 +14,30 @@ class R1BConfigurationSourceClosureTests(unittest.TestCase):
     def test_candidate_ids_and_effective_selectors_are_unique(self) -> None:
         ids = [candidate.var_id for candidate in closure.CANDIDATES]
         selectors = [closure._selector_key(candidate) for candidate in closure.CANDIDATES]
+        self.assertEqual(len(ids), 55)
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(selectors), len(set(selectors)))
-        self.assertGreater(len(ids), 25)
+
+    def test_second_order_delegate_surface_is_explicit(self) -> None:
+        candidates = {candidate.var_id: candidate for candidate in closure.CANDIDATES}
+        expected = {
+            "VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001",
+            "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-INTO-001",
+            "VAR-NET-R1B-CLOSURE-FRIENDLY-READ-UTF-DEFAULT-001",
+            "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-DEFAULT-001",
+            "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-UTF-BOUNDED-001",
+            "VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-ENUM-001",
+            "VAR-NET-R1B-CLOSURE-UTF8-READ-001",
+            "VAR-NET-R1B-CLOSURE-UTF8-WRITE-001",
+            "VAR-NET-R1B-CLOSURE-BYTEBUF-OPTIONAL-001",
+            "VAR-NET-R1B-CLOSURE-IDENTIFIER-STREAM-CODEC-001",
+            "VAR-NET-R1B-CLOSURE-BYTEBUF-STATIC-CODECS-001",
+            "VAR-NET-R1B-CLOSURE-NETWORK-SAFE-REGISTRIES-001",
+        }
+        self.assertTrue(expected <= set(candidates))
+        self.assertEqual(candidates["VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001"].param_count, 2)
+        self.assertEqual(candidates["VAR-NET-R1B-CLOSURE-FRIENDLY-READ-MAP-INTO-001"].param_count, 3)
+        self.assertEqual(candidates["VAR-NET-R1B-CLOSURE-UTF8-WRITE-001"].param_count, 3)
 
     def _connection(self) -> sqlite3.Connection:
         connection = sqlite3.connect(":memory:")
