@@ -1,0 +1,78 @@
+{
+  "composition_oracle": {
+    "artifacts": [
+      {
+        "body_bytes": 266,
+        "body_sha256": "b2ce52dc558d3991b656de3d68f2f4e1b63567326705cb5709c8e94af616aa42",
+        "name": "commands",
+        "packet_id": 16,
+        "semantic_group": "COMMAND_TREE"
+      },
+      {
+        "body_bytes": 3362,
+        "body_sha256": "f5bb4c653e84101d2501dbd4f6bf7593bfdbd539f5d2066c375f8a58823ade95",
+        "name": "update-recipes",
+        "packet_id": 133,
+        "semantic_group": "SYNCHRONIZED_RECIPES"
+      }
+    ],
+    "sha256": "c304994ff4cbd761bd716656ff22680436e45acb80dc89e84f6b6644e3c3f735"
+  },
+  "contains_official_source_text": false,
+  "gate": {
+    "admitted": true,
+    "closure_diagnostics": {
+      "note": "Closure diagnostics are review leads. Admission applies only to explicitly required methods.",
+      "review_status": {},
+      "unresolved_call_sites": null
+    },
+    "failures": [],
+    "id": "GATE-NET-PLAY-ENTRY-26_2-001",
+    "minimum_status": "VAR_REVIEWED",
+    "required_methods": 203,
+    "sha256": "0d033d11db699417f368ee2bfdc3d559da3c4e744c143bb7838534e75eadf00f"
+  },
+  "independent_report_sha256": "bedde60baf29fa63f0a4f6ac045ada402740609599c269e033c4439175a5b46f",
+  "kind": "r2b-play-entry-source-admission-checkpoint",
+  "note": "Independent pinned-Atlas admission for the selected fresh/default R2B Play-entry source boundary. Source admission is complete; runtime production qualification remains separate.",
+  "remaining_required_gates": [],
+  "runtime_qualification_pending": [
+    "target-owned dynamic Play bootstrap codec golden tests",
+    "stage-selection/default-empty reference-model tests",
+    "small-capacity staged publication and backpressure rollback tests",
+    "teleport acknowledgement transaction tests",
+    "stock 26.2 client probe with non-world R1X replay removed",
+    "shared-artifact whole-cost benchmark"
+  ],
+  "schema": 1,
+  "source_reviews": {
+    "final_seams": {
+      "candidate_count": 19,
+      "dossier_sha256": "9761eebf5d263384807001e20fe266519b9ed7f59e343613889fdad585a9df34",
+      "group_ids": [
+        "GENERIC_REGISTRY_WIRE",
+        "GLOBAL_POS_WIRE"
+      ],
+      "id": "REVIEW-NET-R2B-PLAY-FINAL-SEAMS-26_2-001",
+      "worksheet_sha256": "f48db81f6375eed22feeb1463a505f36ccf48c14c85deba6dc1f22c0f6a0fffc"
+    },
+    "play_entry_67": {
+      "candidate_count": 67,
+      "dossier_sha256": "aecd49dd79962a905b5edb8f586c109ce731c304afe4f0f7c3ad3275c906b8b9",
+      "id": "REVIEW-NET-R2B-PLAY-ENTRY-FINAL-26_2-001"
+    },
+    "wire_117": {
+      "candidate_count": 117,
+      "dossier_sha256": "93999fca0a4c69eda607e729af61c74e7ce40c96bf4201516904fabf79bc2e3a",
+      "id": "REVIEW-NET-R2B-PLAY-WIRE-CLOSURE-26_2-001"
+    }
+  },
+  "target": {
+    "data_version": 4903,
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "minecraft": "26.2",
+    "protocol": 776,
+    "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750"
+  },
+  "verified_input_sha256": "9e1e1f19a165136089346860395248544217dea3ea40607a541265bf884104d8"
+}
