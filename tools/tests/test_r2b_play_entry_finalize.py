@@ -195,7 +195,8 @@ class R2BPlayEntryFinalizeTests(unittest.TestCase):
 
     def test_final_seams_reject_tampered_source_record(self) -> None:
         dossier, worksheet = _final_seam_pair()
-        worksheet["candidates"][0]["source"]["body_sha256"] = "0" * 64
+        original = worksheet["candidates"][0]["source"]
+        worksheet["candidates"][0]["source"] = {**original, "body_sha256": "0" * 64}
         with tempfile.TemporaryDirectory() as tmp:
             dossier_path = Path(tmp) / "dossier.json"
             worksheet_path = Path(tmp) / "worksheet.json"
