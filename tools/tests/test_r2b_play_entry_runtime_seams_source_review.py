@@ -89,7 +89,13 @@ class R2BPlayEntryRuntimeSeamsTests(unittest.TestCase):
         self.assertEqual(by_type["net.minecraft.network.codec.ByteBufCodecs"], ("<clinit>",))
         self.assertEqual(
             by_type["net.minecraft.network.FriendlyByteBuf"],
-            ("writeEnumSet", "writeNullable", "writeUUID"),
+            (
+                "writeEnumSet",
+                "writeFixedBitSet",
+                "writeNullable",
+                "writeUUID",
+                "writeContainerId",
+            ),
         )
 
     def test_base_report_requires_exact_admitted_gate(self) -> None:
