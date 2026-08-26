@@ -17,6 +17,8 @@ pub mod r2b_clock;
 pub mod r2b_difficulty;
 #[path = "../src/r2b_dynamic.rs"]
 pub mod r2b_dynamic;
+#[path = "../src/r2b_inventory.rs"]
+pub mod r2b_inventory;
 #[path = "../src/r2b_login.rs"]
 pub mod r2b_login;
 #[path = "../src/r2b_player_info.rs"]
