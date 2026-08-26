@@ -118,8 +118,9 @@ fn player_name_wire_len(value: &str) -> Result<usize, PlayerInfoEncodeError> {
 }
 
 fn checked_add(left: usize, right: usize) -> Result<usize, PlayerInfoEncodeError> {
-    left.checked_add(right)
-        .ok_or(PlayerInfoEncodeError::Codec(PacketCodecError::LengthOverflow))
+    left.checked_add(right).ok_or(PlayerInfoEncodeError::Codec(
+        PacketCodecError::LengthOverflow,
+    ))
 }
 
 fn preflight(writer: &PacketWriter, additional: usize) -> Result<(), PlayerInfoEncodeError> {
@@ -156,8 +157,8 @@ mod tests {
 
     const SELF: InitialPlayerInfoEntry<'static> = InitialPlayerInfoEntry {
         profile_id: [
-            0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99,
-            0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9, 0x5b, 0x45,
+            0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9,
+            0x5b, 0x45,
         ],
         name: "Stato16",
         game_mode: BootstrapGameMode::Survival,
@@ -177,11 +178,9 @@ mod tests {
     #[test]
     fn selected_self_initialization_matches_exact_r1x_golden_payload() {
         let expected: &[u8] = &[
-            0xff, 0x01, 0x68, 0x20, 0x14, 0xfe, 0xad, 0x63,
-            0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9,
-            0x5b, 0x45, 0x07, 0x53, 0x74, 0x61, 0x74, 0x6f,
-            0x31, 0x36, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
-            0x00, 0x01,
+            0xff, 0x01, 0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa,
+            0x08, 0xd9, 0x5b, 0x45, 0x07, 0x53, 0x74, 0x61, 0x74, 0x6f, 0x31, 0x36, 0x00, 0x00,
+            0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
         ];
         let mut writer = PacketWriter::new(expected.len()).expect("exact player-info body");
         encode_initial_player_info(&[SELF], &mut writer).expect("self initialization fits");
@@ -201,10 +200,12 @@ mod tests {
         writer.write_u8(0x46).expect("player-info packet id");
         assert_eq!(
             encode_initial_player_info(&[SELF], &mut writer),
-            Err(PlayerInfoEncodeError::Codec(PacketCodecError::PacketLimitExceeded {
-                attempted: 35,
-                maximum: 34,
-            }))
+            Err(PlayerInfoEncodeError::Codec(
+                PacketCodecError::PacketLimitExceeded {
+                    attempted: 35,
+                    maximum: 34,
+                }
+            ))
         );
         assert_eq!(writer.as_slice(), &[0x46]);
     }
@@ -212,7 +213,10 @@ mod tests {
     #[test]
     fn overlong_name_fails_before_mutation() {
         let name = "x".repeat(17);
-        let entry = InitialPlayerInfoEntry { name: &name, ..SELF };
+        let entry = InitialPlayerInfoEntry {
+            name: &name,
+            ..SELF
+        };
         let mut writer = PacketWriter::new(128).expect("writer");
         writer.write_u8(0x46).expect("packet id");
         assert!(matches!(
