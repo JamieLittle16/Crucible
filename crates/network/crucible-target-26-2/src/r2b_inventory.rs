@@ -7,7 +7,7 @@
 //!
 //! Menu layout policy stays outside networking: the inventory/menu owner supplies `slot_count`.
 //! Non-empty or persisted stacks are rejected by architecture rather than silently entering this
-//! fresh-only encoder; those profiles require their own admitted general ItemStack projection.
+//! fresh-only encoder; those profiles require their own admitted general `ItemStack` projection.
 
 use crucible_packet_core::{PacketCodecError, PacketWriter};
 
@@ -29,7 +29,7 @@ pub struct FreshEmptyInventoryPayload {
 pub enum InventoryEncodeError {
     /// Bounded packet writer failure.
     Codec(PacketCodecError),
-    /// Menu slot count cannot fit Minecraft's signed VarInt list count.
+    /// Menu slot count cannot fit Minecraft's signed `VarInt` list count.
     SlotCountDoesNotFitVarInt(usize),
 }
 
@@ -95,7 +95,7 @@ fn preflight(writer: &PacketWriter, additional: usize) -> Result<(), InventoryEn
 }
 
 const fn var_int_len(value: i32) -> usize {
-    let mut remaining = value as u32;
+    let mut remaining = value.cast_unsigned();
     let mut length = 1_usize;
     while remaining & !0x7f != 0 {
         remaining >>= 7;
