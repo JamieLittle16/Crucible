@@ -4,6 +4,8 @@
 //! bodies. Its only per-connection metadata is a fixed inline locator array plus ten compact stage
 //! spans. It owns no packet semantics, queue or socket state.
 
+use crucible_publication_core::{StagedPublicationLookup, StagedPublicationPlan};
+
 use crate::r2b_arena::DynamicBootstrapArena;
 
 /// Number of network-owned semantic stages before the explicit R2C world handoff.
@@ -124,6 +126,16 @@ impl PreparedR2bPlan<'_> {
     }
 }
 
+impl StagedPublicationPlan for PreparedR2bPlan<'_> {
+    fn lookup(&self, stage: usize, body: usize) -> StagedPublicationLookup<'_> {
+        match PreparedR2bPlan::lookup(self, stage, body) {
+            PreparedLookup::Complete => StagedPublicationLookup::Complete,
+            PreparedLookup::StageComplete => StagedPublicationLookup::StageComplete,
+            PreparedLookup::Body(body) => StagedPublicationLookup::Body(body),
+        }
+    }
+}
+
 /// Internal builder used only while preparing one immutable plan.
 pub(crate) struct PreparedR2bPlanBuilder<'a> {
     arena: DynamicBootstrapArena<MAX_DYNAMIC_BODIES>,
@@ -216,6 +228,9 @@ impl<'a> PreparedR2bPlanBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crucible_packet_core::PacketWriter;
+    use crucible_publication_core::{
+        StagedPublicationLookup, StagedPublicationPlan,
+    };
 
     use super::{
         MAX_DYNAMIC_BODIES, MAX_PUBLICATION_BODIES, NETWORK_STAGE_COUNT, PreparedLookup,
@@ -281,6 +296,15 @@ mod tests {
             _ => panic!("commands body"),
         };
         assert_eq!(first.as_ptr(), commands.as_ptr());
+
+        assert_eq!(
+            StagedPublicationPlan::lookup(&plan, 1, 1),
+            StagedPublicationLookup::Body(&commands)
+        );
+        assert_eq!(
+            StagedPublicationPlan::lookup(&plan, NETWORK_STAGE_COUNT, 0),
+            StagedPublicationLookup::Complete
+        );
     }
 
     #[test]

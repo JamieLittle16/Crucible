@@ -1,6 +1,11 @@
 //! Qualification coverage for transactional replay-free R2B preparation.
 
+use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
+use crucible_connection_driver::{ConnectionDriver, DriverError};
 use crucible_packet_core::PacketWriter;
+use crucible_publication_core::{
+    StagedPublicationCursor, StagedPublicationStep, publish_staged_plan_one,
+};
 
 use crate::r2b::{
     CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2, ProjectionArtifactError,
@@ -200,6 +205,11 @@ fn body_id(body: &[u8]) -> i32 {
         }
     }
     panic!("packet ID must be a bounded VarInt");
+}
+
+fn limits(max_body: usize, egress: usize) -> ConnectionLimits {
+    ConnectionLimits::new(max_body, max_body + 5, egress)
+        .expect("coherent prepared-publication limits")
 }
 
 #[test]
@@ -415,4 +425,89 @@ fn negative_static_packet_identity_is_rejected_before_dynamic_work() {
     );
     assert!(scratch.is_empty());
     assert_eq!(teleport.awaiting(), None);
+}
+
+#[test]
+fn prepared_plan_runs_through_target_neutral_staged_publication() {
+    let image = image();
+    let mut scratch = PacketWriter::new(4096).expect("scratch");
+    let mut teleport = TeleportTransaction::new();
+    let plan = PreparedR2bPlan::prepare(
+        snapshot(None, BootstrapWeather::Clear),
+        &image,
+        IDS,
+        &mut scratch,
+        &mut teleport,
+        SELECTED_DYNAMIC_ARENA_CAPACITY,
+    )
+    .expect("bootstrap");
+    let mut cursor = StagedPublicationCursor::new();
+    let mut driver = ConnectionDriver::new(limits(4096, 32_768));
+    let mut queued = 0_usize;
+    let mut stage_boundaries = 0_usize;
+
+    for _ in 0..40 {
+        match publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver)
+            .expect("bounded publication")
+        {
+            StagedPublicationStep::Queued { .. } => queued += 1,
+            StagedPublicationStep::StageComplete { .. } => stage_boundaries += 1,
+            StagedPublicationStep::Complete => break,
+        }
+    }
+
+    assert_eq!(queued, plan.body_count());
+    assert_eq!(stage_boundaries, 10);
+    assert_eq!(cursor.stage_index(), 10);
+    assert_eq!(cursor.body_index(), 0);
+    assert_eq!(
+        publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+        Ok(StagedPublicationStep::Complete)
+    );
+    assert!(driver.queued_egress() > plan.dynamic_body_bytes());
+}
+
+#[test]
+fn prepared_plan_backpressure_preserves_cursor_and_existing_egress() {
+    let image = image();
+    let mut scratch = PacketWriter::new(4096).expect("scratch");
+    let mut teleport = TeleportTransaction::new();
+    let plan = PreparedR2bPlan::prepare(
+        snapshot(None, BootstrapWeather::Clear),
+        &image,
+        IDS,
+        &mut scratch,
+        &mut teleport,
+        SELECTED_DYNAMIC_ARENA_CAPACITY,
+    )
+    .expect("bootstrap");
+
+    let mut probe_cursor = StagedPublicationCursor::new();
+    let mut probe = ConnectionDriver::new(limits(4096, 8192));
+    publish_staged_plan_one::<(), _>(&plan, &mut probe_cursor, &mut probe)
+        .expect("first body queues in probe");
+    let first_frame_bytes = probe.queued_egress();
+    assert!(first_frame_bytes > 0);
+
+    let mut cursor = StagedPublicationCursor::new();
+    let mut driver = ConnectionDriver::new(limits(4096, first_frame_bytes));
+    assert!(matches!(
+        publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+        Ok(StagedPublicationStep::Queued { stage: 0, index: 0, .. })
+    ));
+    assert_eq!(
+        publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+        Ok(StagedPublicationStep::StageComplete { stage: 0 })
+    );
+
+    let cursor_before = cursor;
+    let egress_before = driver.pending_egress().to_vec();
+    let error = publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver)
+        .expect_err("next body must observe bounded backpressure");
+    assert!(matches!(
+        error,
+        DriverError::Buffer(ConnectionBufferError::EgressLimitExceeded { .. })
+    ));
+    assert_eq!(cursor, cursor_before);
+    assert_eq!(driver.pending_egress(), egress_before);
 }

@@ -142,6 +142,7 @@ dependencies = [
  "crucible-connection-driver",
  "crucible-packet-core",
  "crucible-preplay-core",
+ "crucible-publication-core",
  "crucible-session-core",
 ]
 
