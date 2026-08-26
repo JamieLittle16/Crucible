@@ -74,6 +74,32 @@ pub enum StagedPublicationStep {
     },
 }
 
+/// Exact lookup result for one immutable staged-publication cursor position.
+///
+/// This interface exists for publication images whose bodies do not naturally live in a nested
+/// slice, for example a target plan mixing process-shared immutable bodies with ranges into one
+/// compact per-connection byte arena. The plan remains immutable and caller-owned; this enum merely
+/// exposes the body at the current `(stage, body)` cursor without building a temporary body list.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StagedPublicationLookup<'a> {
+    /// The entire publication plan is complete.
+    Complete,
+    /// The current stage exists but has no body at the supplied body index.
+    StageComplete,
+    /// Exact packet body at the supplied cursor position.
+    Body(&'a [u8]),
+}
+
+/// Zero-allocation indexed view over one immutable staged publication plan.
+///
+/// Implementations should perform bounded O(1) lookup for the supplied cursor. The same immutable
+/// plan and cursor must always return the same result. `StageComplete` is an explicit stage boundary,
+/// not permission to skip to a later stage within the same service opportunity.
+pub trait StagedPublicationPlan {
+    /// Resolves exactly one cursor position without mutating the plan.
+    fn lookup(&self, stage: usize, body: usize) -> StagedPublicationLookup<'_>;
+}
+
 /// Services at most one body or one stage boundary through the existing bounded egress.
 ///
 /// Each element in `stages` must expose an immutable slice of packet bodies. The semantic meaning
@@ -119,6 +145,56 @@ where
     }
 }
 
+/// Services one immutable indexed publication plan without materializing nested body slices.
+///
+/// This is semantically identical to [`publish_staged_one`]: one call may queue exactly one body,
+/// commit exactly one stage boundary, or report complete. The only difference is representation.
+/// A target can therefore combine shared artifacts and compact arena-backed dynamic bodies without
+/// constructing a temporary `Vec<Vec<u8>>`, `Vec<&[u8]>`, or second outbound queue.
+///
+/// Queue admission is transactional. The cursor advances only after
+/// [`ConnectionDriver::queue_frame`] succeeds, so wire rejection or egress backpressure changes
+/// neither cursor nor existing queued bytes.
+///
+/// # Errors
+///
+/// Returns the underlying driver error for the resolved body without advancing the cursor.
+pub fn publish_staged_plan_one<E, P>(
+    plan: &P,
+    cursor: &mut StagedPublicationCursor,
+    driver: &mut ConnectionDriver,
+) -> Result<StagedPublicationStep, DriverError<E>>
+where
+    P: StagedPublicationPlan + ?Sized,
+{
+    let stage = cursor.stage;
+    let index = cursor.body.next_index();
+
+    match plan.lookup(stage, index) {
+        StagedPublicationLookup::Complete => Ok(StagedPublicationStep::Complete),
+        StagedPublicationLookup::StageComplete => {
+            // A valid current stage cannot have index `usize::MAX` after a successful body admission:
+            // every increment below follows a successful finite lookup. Advancing the stage itself
+            // is safe for the same reason as the nested-slice primitive: a plan can only expose a
+            // real stage before it reports `Complete`.
+            cursor.stage = stage + 1;
+            cursor.body = PublicationCursor::new();
+            Ok(StagedPublicationStep::StageComplete { stage })
+        }
+        StagedPublicationLookup::Body(body) => {
+            driver.queue_frame::<E>(body)?;
+            // The successful lookup proves this is a finite body position. As with `publish_one`,
+            // the cursor advances only after bounded egress has committed the frame.
+            cursor.body.next = index + 1;
+            Ok(StagedPublicationStep::Queued {
+                stage,
+                index,
+                body_bytes: body.len(),
+            })
+        }
+    }
+}
+
 const _: () = assert!(size_of::<StagedPublicationCursor>() == 2 * size_of::<usize>());
 
 #[cfg(test)]
@@ -128,7 +204,10 @@ mod tests {
     use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
     use crucible_connection_driver::{ConnectionDriver, DriverError};
 
-    use super::{StagedPublicationCursor, StagedPublicationStep, publish_staged_one};
+    use super::{
+        StagedPublicationCursor, StagedPublicationLookup, StagedPublicationPlan,
+        StagedPublicationStep, publish_staged_one, publish_staged_plan_one,
+    };
 
     fn limits(max_body: usize, egress: usize) -> ConnectionLimits {
         ConnectionLimits::new(max_body, max_body + 5, egress)
@@ -137,6 +216,22 @@ mod tests {
 
     fn body(value: u8) -> Vec<u8> {
         vec![value]
+    }
+
+    struct IndexedPlan<'a> {
+        stages: &'a [&'a [&'a [u8]]],
+    }
+
+    impl StagedPublicationPlan for IndexedPlan<'_> {
+        fn lookup(&self, stage: usize, body: usize) -> StagedPublicationLookup<'_> {
+            let Some(stage) = self.stages.get(stage) else {
+                return StagedPublicationLookup::Complete;
+            };
+            match stage.get(body) {
+                Some(body) => StagedPublicationLookup::Body(body),
+                None => StagedPublicationLookup::StageComplete,
+            }
+        }
     }
 
     #[test]
@@ -195,6 +290,52 @@ mod tests {
     }
 
     #[test]
+    fn indexed_plan_matches_explicit_stage_boundary_law() {
+        let first = [0x11_u8];
+        let second = [0x21_u8, 0x22];
+        let stage0: [&[u8]; 1] = [&first];
+        let stage1: [&[u8]; 0] = [];
+        let stage2: [&[u8]; 1] = [&second];
+        let stages: [&[&[u8]]; 3] = [&stage0, &stage1, &stage2];
+        let plan = IndexedPlan { stages: &stages };
+        let mut cursor = StagedPublicationCursor::new();
+        let mut driver = ConnectionDriver::new(limits(8, 32));
+
+        assert_eq!(
+            publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+            Ok(StagedPublicationStep::Queued {
+                stage: 0,
+                index: 0,
+                body_bytes: 1,
+            })
+        );
+        assert_eq!(
+            publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+            Ok(StagedPublicationStep::StageComplete { stage: 0 })
+        );
+        assert_eq!(
+            publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+            Ok(StagedPublicationStep::StageComplete { stage: 1 })
+        );
+        assert_eq!(
+            publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+            Ok(StagedPublicationStep::Queued {
+                stage: 2,
+                index: 0,
+                body_bytes: 2,
+            })
+        );
+        assert_eq!(
+            publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+            Ok(StagedPublicationStep::StageComplete { stage: 2 })
+        );
+        assert_eq!(
+            publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
+            Ok(StagedPublicationStep::Complete)
+        );
+    }
+
+    #[test]
     fn stage_completion_resets_body_progress_before_next_stage() {
         let stages = [vec![body(0x11), body(0x12)], vec![body(0x21)]];
         let mut cursor = StagedPublicationCursor::new();
@@ -241,6 +382,31 @@ mod tests {
         let egress_before = driver.pending_egress().to_vec();
 
         let error = publish_staged_one::<(), Vec<u8>, _>(&stages, &mut cursor, &mut driver)
+            .expect_err("second frame must observe bounded backpressure");
+        assert!(matches!(
+            error,
+            DriverError::Buffer(ConnectionBufferError::EgressLimitExceeded { .. })
+        ));
+        assert_eq!(cursor, cursor_before);
+        assert_eq!(driver.pending_egress(), egress_before);
+    }
+
+    #[test]
+    fn indexed_plan_backpressure_is_transactional() {
+        let first = [0x31_u8; 8];
+        let second = [0x32_u8; 8];
+        let stage0: [&[u8]; 2] = [&first, &second];
+        let stages: [&[&[u8]]; 1] = [&stage0];
+        let plan = IndexedPlan { stages: &stages };
+        let mut cursor = StagedPublicationCursor::new();
+        let mut driver = ConnectionDriver::new(limits(8, 9));
+
+        publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver)
+            .expect("first exact-fit frame queues");
+        let cursor_before = cursor;
+        let egress_before = driver.pending_egress().to_vec();
+
+        let error = publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver)
             .expect_err("second frame must observe bounded backpressure");
         assert!(matches!(
             error,
