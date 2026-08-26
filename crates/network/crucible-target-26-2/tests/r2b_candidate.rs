@@ -1,10 +1,9 @@
 //! Qualification-only compiler/test harness for the R2B target model.
 //!
-//! `src/r2b.rs`, the compact dynamic-body arena, scalar/recipe/border/difficulty/default-spawn/clock
-//! payload codecs and reusable final-seam wire primitives are deliberately compiled here without
-//! making the live `Target26_2` route depend on them yet. The hardened source boundary is
-//! independently admitted; production routing remains isolated until the replay-free runtime
-//! qualification suite passes.
+//! `src/r2b.rs`, the compact dynamic-body arena and target-owned selected-profile payload codecs are
+//! deliberately compiled here without making the live `Target26_2` route depend on them yet. The
+//! hardened source boundary is independently admitted; production routing remains isolated until the
+//! replay-free runtime qualification suite passes.
 
 #[path = "../src/r2b.rs"]
 pub mod r2b;
@@ -24,5 +23,7 @@ pub mod r2b_login;
 pub mod r2b_recipe;
 #[path = "../src/r2b_spawn.rs"]
 pub mod r2b_spawn;
+#[path = "../src/r2b_teleport.rs"]
+pub mod r2b_teleport;
 #[path = "../src/r2b_wire.rs"]
 pub mod r2b_wire;
