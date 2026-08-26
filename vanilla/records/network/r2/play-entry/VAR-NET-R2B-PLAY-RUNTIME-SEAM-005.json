@@ -1,0 +1,27 @@
+{
+  "classifications": [
+    "PROTOCOL"
+  ],
+  "evidence": [
+    "REVIEW-NET-R2B-PLAY-RUNTIME-SEAMS-26_2-001"
+  ],
+  "hazards_reviewed": [],
+  "id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-005",
+  "notes": [
+    "Canonicalized from the exact accepted R2B runtime-seam worksheet; selected-profile specializations and reachability constraints are documented in that review."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R2B-PLAY-008",
+    "SEM-NET-R2B-PLAY-010",
+    "SEM-NET-R2B-PLAY-012"
+  ],
+  "source": {
+    "body_sha256": "b9baebfd27c8ae70d4c5fddb64b22ac6c09fc8f517d690e2bd670acf2456a1b7",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "cbdaa51b29df6a096852c352c21e6e513421e13f0c958594aaa7f1525c87e952",
+    "signature": "writeUUID(final ByteBuf output , final UUID uuid)",
+    "type": "net.minecraft.network.FriendlyByteBuf"
+  },
+  "status": "VAR_REVIEWED"
+}

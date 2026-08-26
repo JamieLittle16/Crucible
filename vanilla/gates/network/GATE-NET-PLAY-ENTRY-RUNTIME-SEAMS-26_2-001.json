@@ -1,0 +1,70 @@
+{
+  "frontier": "r2b-play-entry-runtime-seams",
+  "id": "GATE-NET-PLAY-ENTRY-RUNTIME-SEAMS-26_2-001",
+  "methods": [
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeEnumSet(final EnumSet < E > set , final Class < E > clazz)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-001"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeNullable(final @ Nullable T value , final StreamEncoder < ? super FriendlyByteBuf , T > valueEncoder)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-002"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeNullable(final B output , final @ Nullable T value , final StreamEncoder < ? super B , T > valueEncoder)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-003"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeUUID(final UUID uuid)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-004"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeUUID(final ByteBuf output , final UUID uuid)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-005"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeFixedBitSet(final BitSet bitSet , final int size)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-006"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeContainerId(final ByteBuf output , final int id)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-007"
+    },
+    {
+      "query": "net.minecraft.network.FriendlyByteBuf#writeContainerId(final int id)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-008"
+    },
+    {
+      "query": "net.minecraft.network.codec.ByteBufCodecs#<clinit>()",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-009"
+    },
+    {
+      "query": "net.minecraft.world.entity.Relative#pack(final Set < Relative > set)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-010"
+    },
+    {
+      "query": "net.minecraft.world.level.GameType#<clinit>()",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-011"
+    },
+    {
+      "query": "net.minecraft.world.level.GameType#GameType(final int id , final String name)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-012"
+    },
+    {
+      "query": "net.minecraft.world.level.GameType#getId()",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-013"
+    },
+    {
+      "query": "net.minecraft.world.level.GameType#getNullableId(final @ Nullable GameType gameType)",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-014"
+    },
+    {
+      "query": "net.minecraft.world.phys.Vec3#<clinit>()",
+      "var_id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-015"
+    }
+  ],
+  "minimum_status": "VAR_REVIEWED",
+  "require_hazards_reviewed": true,
+  "require_semantic_rules": true,
+  "schema": 1
+}
