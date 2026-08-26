@@ -296,8 +296,10 @@ mod tests {
         let stage0: [&[u8]; 1] = [&first];
         let stage1: [&[u8]; 0] = [];
         let stage2: [&[u8]; 1] = [&second];
-        let stages: [&[&[u8]]; 3] = [&stage0, &stage1, &stage2];
-        let plan = IndexedPlan { stages: &stages };
+        let plan_stages: [&[&[u8]]; 3] = [&stage0, &stage1, &stage2];
+        let plan = IndexedPlan {
+            stages: &plan_stages,
+        };
         let mut cursor = StagedPublicationCursor::new();
         let mut driver = ConnectionDriver::new(limits(8, 32));
 
@@ -396,8 +398,10 @@ mod tests {
         let first = [0x31_u8; 8];
         let second = [0x32_u8; 8];
         let stage0: [&[u8]; 2] = [&first, &second];
-        let stages: [&[&[u8]]; 1] = [&stage0];
-        let plan = IndexedPlan { stages: &stages };
+        let plan_stages: [&[&[u8]]; 1] = [&stage0];
+        let plan = IndexedPlan {
+            stages: &plan_stages,
+        };
         let mut cursor = StagedPublicationCursor::new();
         let mut driver = ConnectionDriver::new(limits(8, 9));
 
