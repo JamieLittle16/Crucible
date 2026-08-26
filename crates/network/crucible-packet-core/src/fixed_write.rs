@@ -72,13 +72,7 @@ mod tests {
 
     #[test]
     fn floating_point_payloads_preserve_exact_bits() {
-        for bits in [
-            0_u32,
-            0x8000_0000,
-            0x7f80_0000,
-            0xff80_0000,
-            0x7fc0_1234,
-        ] {
+        for bits in [0_u32, 0x8000_0000, 0x7f80_0000, 0xff80_0000, 0x7fc0_1234] {
             let mut writer = PacketWriter::new(4).expect("f32 body");
             writer
                 .write_f32(f32::from_bits(bits))
