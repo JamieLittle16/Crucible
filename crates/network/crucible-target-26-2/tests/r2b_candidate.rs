@@ -19,6 +19,8 @@ pub mod r2b_difficulty;
 pub mod r2b_dynamic;
 #[path = "../src/r2b_login.rs"]
 pub mod r2b_login;
+#[path = "../src/r2b_player_info.rs"]
+pub mod r2b_player_info;
 #[path = "../src/r2b_recipe.rs"]
 pub mod r2b_recipe;
 #[path = "../src/r2b_spawn.rs"]
