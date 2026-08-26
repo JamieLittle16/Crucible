@@ -61,7 +61,7 @@ impl FreshLoginFlags {
     }
 
     const fn wire_bool(self, flag: Self) -> u8 {
-        u8::from(self.0 & flag.0 != 0)
+        if self.0 & flag.0 == 0 { 0 } else { 1 }
     }
 }
 
