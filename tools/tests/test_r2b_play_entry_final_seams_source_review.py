@@ -91,8 +91,8 @@ class R2BPlayEntryFinalSeamsTests(unittest.TestCase):
             if selector.type_name == "net.minecraft.world.Difficulty"
         ]
         self.assertEqual(len(difficulty), 1)
-        self.assertEqual(difficulty[0].mode, "type_name_regex")
-        self.assertEqual(difficulty[0].name_regex, "^(<clinit>|Difficulty|getId)$")
+        self.assertEqual(difficulty[0].mode, "type_names")
+        self.assertEqual(difficulty[0].names, ("<clinit>", "Difficulty", "getId"))
 
         block_pos_writer = [
             selector
