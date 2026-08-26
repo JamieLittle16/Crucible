@@ -8,6 +8,15 @@
 use super::{PacketCodecError, PacketWriter};
 
 impl PacketWriter {
+    /// Clears the current packet body while retaining the writer's allocation for reuse.
+    ///
+    /// This is intended for bounded batch construction where one scratch writer serializes several
+    /// independent packet bodies into caller-owned storage. It changes no configured byte limit and
+    /// performs no allocation itself.
+    pub fn reset(&mut self) {
+        self.bytes.clear();
+    }
+
     /// Appends one unsigned byte.
     ///
     /// # Errors
@@ -53,6 +62,19 @@ impl PacketWriter {
 mod tests {
     use super::PacketWriter;
     use crate::PacketCodecError;
+
+    #[test]
+    fn reset_reuses_writer_without_changing_its_bound() {
+        let mut writer = PacketWriter::new(4).expect("writer");
+        writer.write_i32(0x1234_5678).expect("four bytes fit");
+        assert_eq!(writer.remaining_capacity(), 0);
+
+        writer.reset();
+        assert!(writer.is_empty());
+        assert_eq!(writer.remaining_capacity(), 4);
+        writer.write_i32(-1).expect("same four-byte bound remains");
+        assert_eq!(writer.as_slice(), [0xff; 4]);
+    }
 
     #[test]
     fn fixed_width_writes_are_exact_network_order_bits() {
