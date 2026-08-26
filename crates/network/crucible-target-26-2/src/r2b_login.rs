@@ -30,10 +30,45 @@ pub enum BootstrapGameMode {
     Spectator = 3,
 }
 
+/// Compact semantic flags projected by the selected Login packet.
+///
+/// Vanilla places these values at separate positions on the wire, but they are independent boolean
+/// state in the semantic snapshot. Keeping one typed mask avoids a bool-heavy resident structure and
+/// makes every emitted boolean a canonical branch-free `0`/`1` byte.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct FreshLoginFlags(u8);
+
+impl FreshLoginFlags {
+    /// No optional Login flags enabled.
+    pub const NONE: Self = Self(0);
+    /// Hardcore-world mode.
+    pub const HARDCORE: Self = Self(1 << 0);
+    /// Reduced-debug-info game rule.
+    pub const REDUCED_DEBUG_INFO: Self = Self(1 << 1);
+    /// Client should show its death screen.
+    pub const SHOW_DEATH_SCREEN: Self = Self(1 << 2);
+    /// Limited-crafting game rule.
+    pub const LIMITED_CRAFTING: Self = Self(1 << 3);
+    /// Server is using online authentication.
+    pub const ONLINE_MODE: Self = Self(1 << 4);
+    /// Server enforces secure chat.
+    pub const ENFORCES_SECURE_CHAT: Self = Self(1 << 5);
+
+    /// Combines two source-valid semantic flag sets.
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+
+    const fn wire_bool(self, flag: Self) -> u8 {
+        u8::from(self.0 & flag.0 != 0)
+    }
+}
+
 /// Fresh selected-profile `CommonPlayerSpawnInfo` projection.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FreshCommonSpawnInfo<'a> {
-    /// Resolved ID in the dimension-type registry. `holderRegistry` emits this raw ID as VarInt.
+    /// Resolved ID in the dimension-type registry. `holderRegistry` emits this raw ID as `VarInt`.
     pub dimension_type_registry_id: i32,
     /// Canonical dimension resource identifier.
     pub dimension: &'a str,
@@ -58,8 +93,8 @@ pub struct FreshCommonSpawnInfo<'a> {
 pub struct FreshLoginPayload<'a> {
     /// Runtime entity ID assigned to the joining player.
     pub player_id: i32,
-    /// Hardcore-world flag.
-    pub hardcore: bool,
+    /// Compact Login-level boolean state.
+    pub flags: FreshLoginFlags,
     /// Ordered dimension identifiers visible to the joining client.
     pub levels: &'a [&'a str],
     /// Server maximum-player display value.
@@ -68,18 +103,8 @@ pub struct FreshLoginPayload<'a> {
     pub chunk_radius: i32,
     /// Simulation distance.
     pub simulation_distance: i32,
-    /// Reduced-debug-info game rule projection.
-    pub reduced_debug_info: bool,
-    /// Whether the death screen is shown.
-    pub show_death_screen: bool,
-    /// Limited-crafting game rule projection.
-    pub do_limited_crafting: bool,
     /// Fresh common spawn information.
     pub spawn: FreshCommonSpawnInfo<'a>,
-    /// Whether the server is in online-authentication mode.
-    pub online_mode: bool,
-    /// Whether secure chat is enforced.
-    pub enforces_secure_chat: bool,
 }
 
 /// Fail-closed Login projection error.
@@ -89,7 +114,7 @@ pub enum LoginEncodeError {
     Codec(PacketCodecError),
     /// A reusable registry wire constraint failed.
     Wire(R2bWireError),
-    /// The level collection cannot be represented by Minecraft's signed VarInt count.
+    /// The level collection cannot be represented by Minecraft's signed `VarInt` count.
     LevelCountDoesNotFitVarInt(usize),
     /// A resource identifier exceeds the admitted Java UTF-16-unit string limit.
     IdentifierUtf16TooLong { units: usize },
@@ -149,7 +174,7 @@ impl FreshLoginPayload<'_> {
         preflight(writer, payload_len)?;
 
         writer.write_i32(self.player_id)?;
-        writer.write_bool(self.hardcore)?;
+        writer.write_u8(self.flags.wire_bool(FreshLoginFlags::HARDCORE))?;
         writer.write_var_int(level_count)?;
         for level in self.levels {
             writer.write_string(level, IDENTIFIER_MAX_UTF16_UNITS)?;
@@ -157,9 +182,9 @@ impl FreshLoginPayload<'_> {
         writer.write_var_int(self.max_players)?;
         writer.write_var_int(self.chunk_radius)?;
         writer.write_var_int(self.simulation_distance)?;
-        writer.write_bool(self.reduced_debug_info)?;
-        writer.write_bool(self.show_death_screen)?;
-        writer.write_bool(self.do_limited_crafting)?;
+        writer.write_u8(self.flags.wire_bool(FreshLoginFlags::REDUCED_DEBUG_INFO))?;
+        writer.write_u8(self.flags.wire_bool(FreshLoginFlags::SHOW_DEATH_SCREEN))?;
+        writer.write_u8(self.flags.wire_bool(FreshLoginFlags::LIMITED_CRAFTING))?;
 
         write_registry_id(writer, self.spawn.dimension_type_registry_id)?;
         writer.write_string(self.spawn.dimension, IDENTIFIER_MAX_UTF16_UNITS)?;
@@ -172,11 +197,11 @@ impl FreshLoginPayload<'_> {
         )?;
         writer.write_bool(self.spawn.is_debug)?;
         writer.write_bool(self.spawn.is_flat)?;
-        writer.write_bool(false)?; // selected fresh profile: no last-death GlobalPos.
+        writer.write_u8(0)?; // selected fresh profile: no last-death GlobalPos.
         writer.write_var_int(self.spawn.portal_cooldown)?;
         writer.write_var_int(self.spawn.sea_level)?;
-        writer.write_bool(self.online_mode)?;
-        writer.write_bool(self.enforces_secure_chat)?;
+        writer.write_u8(self.flags.wire_bool(FreshLoginFlags::ONLINE_MODE))?;
+        writer.write_u8(self.flags.wire_bool(FreshLoginFlags::ENFORCES_SECURE_CHAT))?;
         Ok(())
     }
 }
@@ -215,7 +240,7 @@ fn preflight(writer: &PacketWriter, additional: usize) -> Result<(), LoginEncode
 }
 
 const fn var_int_len(value: i32) -> usize {
-    let mut remaining = value as u32;
+    let mut remaining = value.cast_unsigned();
     let mut length = 1_usize;
     while remaining & !0x7f != 0 {
         remaining >>= 7;
@@ -228,7 +253,10 @@ const fn var_int_len(value: i32) -> usize {
 mod tests {
     use crucible_packet_core::PacketWriter;
 
-    use super::{BootstrapGameMode, FreshCommonSpawnInfo, FreshLoginPayload, LoginEncodeError};
+    use super::{
+        BootstrapGameMode, FreshCommonSpawnInfo, FreshLoginFlags, FreshLoginPayload,
+        LoginEncodeError,
+    };
 
     const LEVELS: [&str; 3] = [
         "minecraft:overworld",
@@ -238,14 +266,11 @@ mod tests {
 
     const SELECTED: FreshLoginPayload<'static> = FreshLoginPayload {
         player_id: 270,
-        hardcore: false,
+        flags: FreshLoginFlags::SHOW_DEATH_SCREEN,
         levels: &LEVELS,
         max_players: 20,
         chunk_radius: 10,
         simulation_distance: 10,
-        reduced_debug_info: false,
-        show_death_screen: true,
-        do_limited_crafting: false,
         spawn: FreshCommonSpawnInfo {
             dimension_type_registry_id: 0,
             dimension: "minecraft:overworld",
@@ -257,8 +282,6 @@ mod tests {
             portal_cooldown: 0,
             sea_level: 63,
         },
-        online_mode: false,
-        enforces_secure_chat: false,
     };
 
     #[test]
@@ -328,6 +351,17 @@ mod tests {
             Err(LoginEncodeError::IdentifierUtf16TooLong { .. })
         ));
         assert_eq!(writer.as_slice(), &[0x31]);
+    }
+
+    #[test]
+    fn login_flags_compact_independent_boolean_state() {
+        let all = FreshLoginFlags::HARDCORE
+            .union(FreshLoginFlags::REDUCED_DEBUG_INFO)
+            .union(FreshLoginFlags::SHOW_DEATH_SCREEN)
+            .union(FreshLoginFlags::LIMITED_CRAFTING)
+            .union(FreshLoginFlags::ONLINE_MODE)
+            .union(FreshLoginFlags::ENFORCES_SECURE_CHAT);
+        assert_ne!(all, FreshLoginFlags::NONE);
     }
 
     #[test]
