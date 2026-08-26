@@ -17,7 +17,7 @@ struct BodySpan {
 /// Fail-closed construction error for one compact dynamic bootstrap arena.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DynamicBootstrapArenaError {
-    /// Packet bodies always contain at least their packet-id VarInt.
+    /// Packet bodies always contain at least their packet-id `VarInt`.
     EmptyBody,
     /// More bodies were supplied than the statically selected profile admits.
     TooManyBodies {
