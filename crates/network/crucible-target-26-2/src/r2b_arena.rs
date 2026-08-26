@@ -90,8 +90,8 @@ impl<const N: usize> DynamicBootstrapArena<N> {
 
         let start = u32::try_from(self.bytes.len())
             .map_err(|_| DynamicBootstrapArenaError::ArenaTooLarge)?;
-        let body_len = u32::try_from(body.len())
-            .map_err(|_| DynamicBootstrapArenaError::BodyTooLarge)?;
+        let body_len =
+            u32::try_from(body.len()).map_err(|_| DynamicBootstrapArenaError::BodyTooLarge)?;
         self.bytes
             .len()
             .checked_add(body.len())
