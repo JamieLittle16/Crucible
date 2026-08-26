@@ -112,7 +112,9 @@ mod tests {
         writer.write_i32(0x1234_5678).expect("four bytes fit");
         assert_eq!(writer.remaining_capacity(), 0);
         writer.reset();
-        writer.write_i32(-1).expect("retained capacity remains usable");
+        writer
+            .write_i32(-1)
+            .expect("retained capacity remains usable");
         assert_eq!(writer.as_slice(), [0xff; 4]);
     }
 
