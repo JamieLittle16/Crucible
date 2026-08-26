@@ -12,17 +12,42 @@
 
 use crucible_packet_core::{PacketCodecError, PacketWriter};
 
+/// Compact source-admitted player-ability flags.
+///
+/// The four independently observable abilities are already a one-byte bitset on the 26.2 wire.
+/// Carrying the resolved mask in the target snapshot avoids four booleans plus four branches on
+/// every join while keeping invalid high bits unconstructable through the public API.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct PlayerAbilityFlags(u8);
+
+impl PlayerAbilityFlags {
+    /// No ability flags enabled; the selected fresh survival-player profile.
+    pub const NONE: Self = Self(0);
+    /// Damage immunity enabled.
+    pub const INVULNERABLE: Self = Self(1);
+    /// Player currently flying.
+    pub const FLYING: Self = Self(2);
+    /// Player may start flying.
+    pub const CAN_FLY: Self = Self(4);
+    /// Instant-build semantics enabled.
+    pub const INSTABUILD: Self = Self(8);
+
+    /// Combines two source-valid flag sets without exposing raw-bit construction.
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+
+    const fn bits(self) -> u8 {
+        self.0
+    }
+}
+
 /// Source-admitted player-abilities state projected during fresh-player bootstrap.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PlayerAbilitiesPayload {
-    /// Whether damage immunity is enabled.
-    pub invulnerable: bool,
-    /// Whether the player is currently flying.
-    pub is_flying: bool,
-    /// Whether the player may start flying.
-    pub can_fly: bool,
-    /// Whether instant-build semantics are enabled.
-    pub instabuild: bool,
+    /// Already-resolved compact ability flags.
+    pub flags: PlayerAbilityFlags,
     /// Vanilla flying-speed scalar.
     pub flying_speed: f32,
     /// Vanilla walking-speed scalar.
@@ -37,24 +62,17 @@ impl PlayerAbilitiesPayload {
     /// Returns the bounded writer error before mutation when the complete nine-byte payload does
     /// not fit.
     pub fn encode(self, writer: &mut PacketWriter) -> Result<(), PacketCodecError> {
-        let mut flags = 0_u8;
-        if self.invulnerable {
-            flags |= 1;
-        }
-        if self.is_flying {
-            flags |= 2;
-        }
-        if self.can_fly {
-            flags |= 4;
-        }
-        if self.instabuild {
-            flags |= 8;
-        }
-
         let flying = self.flying_speed.to_bits().to_be_bytes();
         let walking = self.walking_speed.to_bits().to_be_bytes();
         let payload = [
-            flags, flying[0], flying[1], flying[2], flying[3], walking[0], walking[1], walking[2],
+            self.flags.bits(),
+            flying[0],
+            flying[1],
+            flying[2],
+            flying[3],
+            walking[0],
+            walking[1],
+            walking[2],
             walking[3],
         ];
         writer.write_bytes(&payload)
@@ -218,17 +236,15 @@ mod tests {
 
     use super::{
         BootstrapGameEvent, GameEventPayload, HeldSlotPayload, PermissionEntityEventPayload,
-        PermissionLevelEvent, PlayerAbilitiesPayload, TickingStatePayload, TickingStepPayload,
+        PermissionLevelEvent, PlayerAbilitiesPayload, PlayerAbilityFlags, TickingStatePayload,
+        TickingStepPayload,
     };
 
     #[test]
     fn selected_profile_abilities_payload_matches_vanilla_golden_bytes() {
         let mut writer = PacketWriter::new(9).expect("exact abilities payload bound");
         PlayerAbilitiesPayload {
-            invulnerable: false,
-            is_flying: false,
-            can_fly: false,
-            instabuild: false,
+            flags: PlayerAbilityFlags::NONE,
             flying_speed: 0.05,
             walking_speed: 0.1,
         }
@@ -243,12 +259,13 @@ mod tests {
 
     #[test]
     fn all_abilities_flags_use_the_source_bit_assignments() {
+        let all = PlayerAbilityFlags::INVULNERABLE
+            .union(PlayerAbilityFlags::FLYING)
+            .union(PlayerAbilityFlags::CAN_FLY)
+            .union(PlayerAbilityFlags::INSTABUILD);
         let mut writer = PacketWriter::new(9).expect("abilities payload");
         PlayerAbilitiesPayload {
-            invulnerable: true,
-            is_flying: true,
-            can_fly: true,
-            instabuild: true,
+            flags: all,
             flying_speed: f32::from_bits(0x8000_0000),
             walking_speed: f32::from_bits(0x7fc0_1234),
         }
@@ -328,10 +345,7 @@ mod tests {
     fn fixed_size_payloads_fail_as_one_transaction() {
         let mut abilities = PacketWriter::new(8).expect("one byte too small");
         let error = PlayerAbilitiesPayload {
-            invulnerable: false,
-            is_flying: false,
-            can_fly: false,
-            instabuild: false,
+            flags: PlayerAbilityFlags::NONE,
             flying_speed: 0.05,
             walking_speed: 0.1,
         }
