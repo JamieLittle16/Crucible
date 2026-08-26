@@ -228,9 +228,7 @@ impl<'a> PreparedR2bPlanBuilder<'a> {
 #[cfg(test)]
 mod tests {
     use crucible_packet_core::PacketWriter;
-    use crucible_publication_core::{
-        StagedPublicationLookup, StagedPublicationPlan,
-    };
+    use crucible_publication_core::{StagedPublicationLookup, StagedPublicationPlan};
 
     use super::{
         MAX_DYNAMIC_BODIES, MAX_PUBLICATION_BODIES, NETWORK_STAGE_COUNT, PreparedLookup,
