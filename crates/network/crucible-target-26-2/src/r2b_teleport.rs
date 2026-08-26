@@ -85,19 +85,10 @@ pub enum TeleportAckResult {
 }
 
 /// Minimal connection-owned teleport sequence and pending-ack state.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct TeleportTransaction {
     last_id: i32,
     awaiting: Option<AwaitingTeleport>,
-}
-
-impl Default for TeleportTransaction {
-    fn default() -> Self {
-        Self {
-            last_id: 0,
-            awaiting: None,
-        }
-    }
 }
 
 impl TeleportTransaction {
@@ -181,7 +172,7 @@ fn preflight(writer: &PacketWriter, additional: usize) -> Result<(), PacketCodec
 }
 
 const fn var_int_len(value: i32) -> usize {
-    let mut remaining = value as u32;
+    let mut remaining = value.cast_unsigned();
     let mut length = 1_usize;
     while remaining & !0x7f != 0 {
         remaining >>= 7;
@@ -201,8 +192,8 @@ mod tests {
         x: 10.390_952_126_751_907,
         y: 84.0,
         z: -5.815_159_807_324_014,
-        yaw: -119.100_013_732_910_16,
-        pitch: 18.000_001_907_348_633,
+        yaw: f32::from_bits(0xc2ee_3335),
+        pitch: f32::from_bits(0x4190_0001),
     };
 
     #[test]
