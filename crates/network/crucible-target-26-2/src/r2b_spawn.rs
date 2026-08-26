@@ -154,9 +154,11 @@ mod tests {
         let mut writer = PacketWriter::new(40_000).expect("large bounded writer");
         writer.write_u8(0x55).expect("existing prefix");
 
-        assert!(DEFAULT
-            .encode(&mut PacketWriter::new(36).expect("control writer"))
-            .is_ok());
+        assert!(
+            DEFAULT
+                .encode(&mut PacketWriter::new(36).expect("control writer"))
+                .is_ok()
+        );
         let error = DefaultSpawnPayload {
             dimension: &dimension,
             ..DEFAULT
