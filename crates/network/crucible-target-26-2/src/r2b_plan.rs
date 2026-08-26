@@ -218,8 +218,8 @@ mod tests {
     use crucible_packet_core::PacketWriter;
 
     use super::{
-        PreparedLookup, PreparedR2bPlanBuilder, SharedBody, MAX_DYNAMIC_BODIES,
-        MAX_PUBLICATION_BODIES, NETWORK_STAGE_COUNT,
+        MAX_DYNAMIC_BODIES, MAX_PUBLICATION_BODIES, NETWORK_STAGE_COUNT, PreparedLookup,
+        PreparedR2bPlanBuilder, SharedBody,
     };
     use crate::r2b_arena::DynamicBootstrapArena;
 
@@ -271,7 +271,10 @@ mod tests {
         assert_eq!(plan.lookup(1, 1), PreparedLookup::Body(&commands));
         assert_eq!(plan.lookup(2, 0), PreparedLookup::Body(&status));
         assert_eq!(plan.lookup(3, 0), PreparedLookup::StageComplete);
-        assert_eq!(plan.lookup(NETWORK_STAGE_COUNT, 0), PreparedLookup::Complete);
+        assert_eq!(
+            plan.lookup(NETWORK_STAGE_COUNT, 0),
+            PreparedLookup::Complete
+        );
 
         let first = match plan.lookup(1, 1) {
             PreparedLookup::Body(body) => body,
