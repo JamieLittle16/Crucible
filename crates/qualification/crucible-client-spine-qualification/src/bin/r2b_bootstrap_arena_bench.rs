@@ -267,8 +267,7 @@ fn workloads(mode: Mode) -> Vec<Workload> {
         Workload {
             name: "wide-metadata",
             lengths: [
-                512, 5, 64, 8, 128, 96, 256, 48, 1_024, 384, 96, 160, 768, 80, 320, 192,
-                32, 2_048,
+                512, 5, 64, 8, 128, 96, 256, 48, 1_024, 384, 96, 160, 768, 80, 320, 192, 32, 2_048,
             ],
             fanout,
         },
@@ -410,10 +409,7 @@ fn semantic_arena(arena: &DynamicBootstrapArena<DYNAMIC_BODIES>) -> Result<Seman
     Ok(stats)
 }
 
-fn semantic_flat(
-    lengths: &[usize; DYNAMIC_BODIES],
-    bytes: &[u8],
-) -> Result<SemanticStats, String> {
+fn semantic_flat(lengths: &[usize; DYNAMIC_BODIES], bytes: &[u8]) -> Result<SemanticStats, String> {
     let mut stats = SemanticStats::empty();
     let mut start = 0usize;
     for length in lengths {
@@ -481,7 +477,11 @@ fn median(values: &[u128]) -> Result<u128, String> {
     Ok(sorted[sorted.len() / 2])
 }
 
-fn render_json(config: &Config, hardware: &str, results: &[WorkloadResult]) -> Result<String, String> {
+fn render_json(
+    config: &Config,
+    hardware: &str,
+    results: &[WorkloadResult],
+) -> Result<String, String> {
     let mut out = String::from("{");
     out.push_str("\"schema\":");
     out.push_str(&SCHEMA.to_string());
