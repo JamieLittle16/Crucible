@@ -92,7 +92,7 @@ class R2BPlayEntryFinalSeamsTests(unittest.TestCase):
         ]
         self.assertEqual(len(difficulty), 1)
         self.assertEqual(difficulty[0].mode, "type_name_regex")
-        self.assertEqual(difficulty[0].name_regex, "^(<clinit>|getId)$")
+        self.assertEqual(difficulty[0].name_regex, "^(<clinit>|Difficulty|getId)$")
 
         block_pos_writer = [
             selector
