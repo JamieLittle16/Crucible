@@ -270,7 +270,10 @@ mod tests {
         }
         .encode(&mut abilities)
         .expect_err("nine-byte payload must not fit");
-        assert!(matches!(error, PacketCodecError::PacketLimitExceeded { .. }));
+        assert!(matches!(
+            error,
+            PacketCodecError::PacketLimitExceeded { .. }
+        ));
         assert!(abilities.is_empty());
 
         let mut event = PacketWriter::new(4).expect("one byte too small");
