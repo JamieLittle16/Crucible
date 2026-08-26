@@ -17,10 +17,10 @@
           "name_regex": "^(map|holderRegistry|holder|registry|registryKey|idMapper)$"
         },
         {
-          "mode": "type_name_regex",
+          "mode": "type_names",
           "required": true,
           "type_name": "net.minecraft.world.Difficulty",
-          "name_regex": "^(<clinit>|Difficulty|getId)$"
+          "names": ["<clinit>", "Difficulty", "getId"]
         }
       ]
     },
