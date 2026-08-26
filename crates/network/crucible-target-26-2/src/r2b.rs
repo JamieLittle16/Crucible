@@ -1,24 +1,27 @@
 //! Replay-free R2B Play-bootstrap target model for Minecraft Java 26.2.
 //!
-//! This module is intentionally not exported by the production target yet. The R2B source gate is
-//! still pending its final reusable-codec seam, so this file is compiled through the qualification
-//! test target only. It may define architecture already frozen by `R2B_PLAY_ENTRY_SEMANTICS.md`, but
-//! it must not smuggle unadmitted packet IDs, codec bytes or captured replay into production.
+//! This module is intentionally not exported by the production target yet. The base and bounded
+//! runtime source gates are independently admitted, and the selected dynamic codecs plus prepared
+//! staged plan are compiled through the qualification target. Production routing remains isolated
+//! until the replay-free runtime suite and generated finite Play-entry contract are green.
 //!
 //! The permanent shape is deliberately small:
 //!
 //! ```text
 //! source-frozen semantic stage order
 //!          +
-//! qualified shared command/recipe artifacts
+//! qualified shared command/recipe/status artifacts
+//!          +
+//! one contiguous per-join dynamic-body arena
 //!          +
 //! target-neutral StagedPublicationCursor (owned elsewhere)
 //!          +
 //! explicit WorldProjection seam
 //! ```
 //!
-//! Dynamic player/world packet bodies are intentionally absent from this first slice. They belong
-//! to the target-owned codecs after `GATE-NET-PLAY-ENTRY-26_2-001` is independently admitted.
+//! Dynamic player/world packet bodies are target-owned compact projections prepared once into the
+//! contiguous arena. Packet identities remain generated/static target facts; captured replay is
+//! qualification evidence only and never becomes the production publication mechanism.
 
 use core::fmt;
 
