@@ -80,6 +80,52 @@ impl HeldSlotPayload {
     }
 }
 
+/// Permission-level entity-event values emitted by vanilla's initial permission publication.
+///
+/// These are wire event bytes, not a permission-policy abstraction. The product/command owner
+/// resolves the semantic permission set; this target layer only projects the reviewed 26.2 event.
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PermissionLevelEvent {
+    /// Vanilla `LevelBasedPermissionSet.ALL`.
+    All = 24,
+    /// Vanilla `LevelBasedPermissionSet.MODERATORS`.
+    Moderators = 25,
+    /// Vanilla `LevelBasedPermissionSet.GAMEMASTERS`.
+    Gamemasters = 26,
+    /// Vanilla `LevelBasedPermissionSet.ADMINS`.
+    Admins = 27,
+    /// Vanilla `LevelBasedPermissionSet.OWNERS`.
+    Owners = 28,
+}
+
+/// Permission entity-event payload: player entity ID followed by the permission event byte.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PermissionEntityEventPayload {
+    /// Runtime entity ID already resolved by the player owner.
+    pub entity_id: i32,
+    /// Source-admitted permission event identity.
+    pub event: PermissionLevelEvent,
+}
+
+impl PermissionEntityEventPayload {
+    /// Encodes the exact five-byte 26.2 permission entity-event payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns the bounded writer error before mutation when all five bytes do not fit.
+    pub fn encode(self, writer: &mut PacketWriter) -> Result<(), PacketCodecError> {
+        let entity_id = self.entity_id.to_be_bytes();
+        writer.write_bytes(&[
+            entity_id[0],
+            entity_id[1],
+            entity_id[2],
+            entity_id[3],
+            self.event as u8,
+        ])
+    }
+}
+
 /// The R2B-selected game events reachable during initial level publication.
 ///
 /// Restricting this enum to the reviewed bootstrap route prevents an unrelated gameplay event from
@@ -171,8 +217,8 @@ mod tests {
     use crucible_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{
-        BootstrapGameEvent, GameEventPayload, HeldSlotPayload, PlayerAbilitiesPayload,
-        TickingStatePayload, TickingStepPayload,
+        BootstrapGameEvent, GameEventPayload, HeldSlotPayload, PermissionEntityEventPayload,
+        PermissionLevelEvent, PlayerAbilitiesPayload, TickingStatePayload, TickingStepPayload,
     };
 
     #[test]
@@ -226,6 +272,27 @@ mod tests {
     }
 
     #[test]
+    fn selected_permission_entity_event_matches_vanilla_golden_payload() {
+        let mut writer = PacketWriter::new(5).expect("entity-event payload");
+        PermissionEntityEventPayload {
+            entity_id: 270,
+            event: PermissionLevelEvent::All,
+        }
+        .encode(&mut writer)
+        .expect("permission event fits");
+        assert_eq!(writer.as_slice(), &[0x00, 0x00, 0x01, 0x0e, 0x18]);
+    }
+
+    #[test]
+    fn permission_event_values_are_exact_source_constants() {
+        assert_eq!(PermissionLevelEvent::All as u8, 24);
+        assert_eq!(PermissionLevelEvent::Moderators as u8, 25);
+        assert_eq!(PermissionLevelEvent::Gamemasters as u8, 26);
+        assert_eq!(PermissionLevelEvent::Admins as u8, 27);
+        assert_eq!(PermissionLevelEvent::Owners as u8, 28);
+    }
+
+    #[test]
     fn mandatory_load_start_event_matches_vanilla_golden_payload() {
         let mut writer = PacketWriter::new(5).expect("game-event payload");
         GameEventPayload {
@@ -275,6 +342,17 @@ mod tests {
             PacketCodecError::PacketLimitExceeded { .. }
         ));
         assert!(abilities.is_empty());
+
+        let mut permission = PacketWriter::new(4).expect("one byte too small");
+        assert!(matches!(
+            PermissionEntityEventPayload {
+                entity_id: 270,
+                event: PermissionLevelEvent::All,
+            }
+            .encode(&mut permission),
+            Err(PacketCodecError::PacketLimitExceeded { .. })
+        ));
+        assert!(permission.is_empty());
 
         let mut event = PacketWriter::new(4).expect("one byte too small");
         assert!(matches!(
