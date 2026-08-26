@@ -156,7 +156,8 @@ fn var_long_len(value: i64) -> usize {
 
 fn unsigned_var_len(value: u64) -> usize {
     let significant_bits = u64::BITS - value.leading_zeros();
-    usize::try_from(significant_bits.max(1).div_ceil(7)).expect("variable integer length fits usize")
+    usize::try_from(significant_bits.max(1).div_ceil(7))
+        .expect("variable integer length fits usize")
 }
 
 #[cfg(test)]
@@ -265,7 +266,9 @@ mod tests {
                 updates: &update,
             }
             .encode(&mut writer),
-            Err(ClockProjectionError::Wire(R2bWireError::NegativeRegistryId(-1)))
+            Err(ClockProjectionError::Wire(
+                R2bWireError::NegativeRegistryId(-1)
+            ))
         );
         assert!(writer.is_empty());
     }
