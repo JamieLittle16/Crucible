@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "description": "Exact depth-zero frontier for the final implementation-discovered R2B Play-entry runtime terminals. The independently admitted 206-method Play-entry gate remains immutable; this supplement covers only the 15 explicitly reviewed selected-profile terminal bodies for teleport, GameType ids, player-info helpers and the fresh empty-inventory envelope.",
+  "max_depth": 0,
+  "include_package_prefixes": [
+    "net.minecraft.network",
+    "net.minecraft.world"
+  ],
+  "exclude_package_prefixes": [
+    "net.minecraft.data",
+    "net.minecraft.gametest",
+    "net.minecraft.network.protocol.configuration",
+    "net.minecraft.network.protocol.status"
+  ],
+  "root_queries": [
+    "net.minecraft.network.FriendlyByteBuf#writeEnumSet(final EnumSet < E > set , final Class < E > clazz)",
+    "net.minecraft.network.FriendlyByteBuf#writeNullable(final @ Nullable T value , final StreamEncoder < ? super FriendlyByteBuf , T > valueEncoder)",
+    "net.minecraft.network.FriendlyByteBuf#writeNullable(final B output , final @ Nullable T value , final StreamEncoder < ? super B , T > valueEncoder)",
+    "net.minecraft.network.FriendlyByteBuf#writeUUID(final UUID uuid)",
+    "net.minecraft.network.FriendlyByteBuf#writeUUID(final ByteBuf output , final UUID uuid)",
+    "net.minecraft.network.FriendlyByteBuf#writeFixedBitSet(final BitSet bitSet , final int size)",
+    "net.minecraft.network.FriendlyByteBuf#writeContainerId(final ByteBuf output , final int id)",
+    "net.minecraft.network.FriendlyByteBuf#writeContainerId(final int id)",
+    "net.minecraft.network.codec.ByteBufCodecs#<clinit>()",
+    "net.minecraft.world.entity.Relative#pack(final Set < Relative > set)",
+    "net.minecraft.world.level.GameType#<clinit>()",
+    "net.minecraft.world.level.GameType#GameType(final int id , final String name)",
+    "net.minecraft.world.level.GameType#getId()",
+    "net.minecraft.world.level.GameType#getNullableId(final @ Nullable GameType gameType)",
+    "net.minecraft.world.phys.Vec3#<clinit>()"
+  ]
+}
