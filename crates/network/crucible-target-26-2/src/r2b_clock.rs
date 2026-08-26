@@ -187,7 +187,7 @@ mod tests {
             game_time: 42,
             updates: &UPDATES,
         };
-        let mut writer = PacketWriter::new(31).expect("exact synthetic clock payload bound");
+        let mut writer = PacketWriter::new(30).expect("exact synthetic clock payload bound");
         payload.encode(&mut writer).expect("synthetic payload fits");
 
         assert_eq!(
@@ -217,7 +217,10 @@ mod tests {
         .encode(&mut writer)
         .expect("empty map is wire-valid");
 
-        assert_eq!(writer.as_slice(), &[0xff; 8].into_iter().chain([0x00]).collect::<Vec<_>>());
+        assert_eq!(
+            writer.as_slice(),
+            &[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00]
+        );
     }
 
     #[test]
@@ -269,7 +272,7 @@ mod tests {
 
     #[test]
     fn whole_payload_bound_rejection_preserves_existing_prefix() {
-        let mut writer = PacketWriter::new(31).expect("one byte short after prefix");
+        let mut writer = PacketWriter::new(30).expect("one byte short after prefix");
         writer.write_u8(0x55).expect("existing prefix");
 
         let error = ClockFullSyncPayload {
@@ -277,14 +280,14 @@ mod tests {
             updates: &UPDATES,
         }
         .encode(&mut writer)
-        .expect_err("31-byte payload cannot fit in remaining 30 bytes");
+        .expect_err("30-byte payload cannot fit in remaining 29 bytes");
 
         assert_eq!(
             error,
             ClockProjectionError::Wire(R2bWireError::Codec(
                 PacketCodecError::PacketLimitExceeded {
-                    attempted: 32,
-                    maximum: 31,
+                    attempted: 31,
+                    maximum: 30,
                 }
             ))
         );
