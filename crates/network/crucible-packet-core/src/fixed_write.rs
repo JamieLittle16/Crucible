@@ -8,6 +8,37 @@
 use super::{PacketCodecError, PacketWriter};
 
 impl PacketWriter {
+    /// Creates an empty writer with an explicit retained-capacity hint.
+    ///
+    /// The semantic packet-byte bound remains `maximum`; `initial_capacity` only controls the
+    /// allocation retained by the writer. This is useful for finite batch construction where a
+    /// scratch writer is reused across multiple packet bodies and the caller already knows a tight
+    /// maximum useful scratch size.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PacketCodecError::ZeroWriteLimit`] for a zero packet bound. An initial capacity
+    /// larger than that bound is rejected with [`PacketCodecError::PacketLimitExceeded`] rather than
+    /// silently reserving memory that can never hold a valid packet body.
+    pub fn with_capacity(
+        maximum: usize,
+        initial_capacity: usize,
+    ) -> Result<Self, PacketCodecError> {
+        if maximum == 0 {
+            return Err(PacketCodecError::ZeroWriteLimit);
+        }
+        if initial_capacity > maximum {
+            return Err(PacketCodecError::PacketLimitExceeded {
+                attempted: initial_capacity,
+                maximum,
+            });
+        }
+        Ok(Self {
+            bytes: Vec::with_capacity(initial_capacity),
+            maximum,
+        })
+    }
+
     /// Clears the current packet body while retaining the writer's allocation for reuse.
     ///
     /// This is intended for bounded batch construction where one scratch writer serializes several
@@ -62,6 +93,28 @@ impl PacketWriter {
 mod tests {
     use super::PacketWriter;
     use crate::PacketCodecError;
+
+    #[test]
+    fn explicit_capacity_is_bounded_and_retained_for_reuse() {
+        assert!(matches!(
+            PacketWriter::with_capacity(0, 0),
+            Err(PacketCodecError::ZeroWriteLimit)
+        ));
+        assert_eq!(
+            PacketWriter::with_capacity(4, 5).expect_err("capacity beyond bound must fail"),
+            PacketCodecError::PacketLimitExceeded {
+                attempted: 5,
+                maximum: 4,
+            }
+        );
+
+        let mut writer = PacketWriter::with_capacity(4, 4).expect("bounded pre-sized writer");
+        writer.write_i32(0x1234_5678).expect("four bytes fit");
+        assert_eq!(writer.remaining_capacity(), 0);
+        writer.reset();
+        writer.write_i32(-1).expect("retained capacity remains usable");
+        assert_eq!(writer.as_slice(), [0xff; 4]);
+    }
 
     #[test]
     fn reset_reuses_writer_without_changing_its_bound() {
