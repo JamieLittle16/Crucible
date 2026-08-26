@@ -1,9 +1,9 @@
 //! Qualification-only compiler/test harness for the R2B target model.
 //!
-//! `src/r2b.rs`, the compact dynamic-body arena and target-owned selected-profile payload codecs are
-//! deliberately compiled here without making the live `Target26_2` route depend on them yet. The
-//! hardened source boundary is independently admitted; production routing remains isolated until the
-//! replay-free runtime qualification suite passes.
+//! `src/r2b.rs`, the compact dynamic-body arena, prepared staged plan and target-owned
+//! selected-profile payload codecs are deliberately compiled here without making the live
+//! `Target26_2` route depend on them yet. The hardened source boundary is independently admitted;
+//! production routing remains isolated until the replay-free runtime qualification suite passes.
 
 #[path = "../src/r2b.rs"]
 pub mod r2b;
@@ -21,8 +21,12 @@ pub mod r2b_dynamic;
 pub mod r2b_inventory;
 #[path = "../src/r2b_login.rs"]
 pub mod r2b_login;
+#[path = "../src/r2b_plan.rs"]
+pub mod r2b_plan;
 #[path = "../src/r2b_player_info.rs"]
 pub mod r2b_player_info;
+#[path = "../src/r2b_prepare.rs"]
+pub mod r2b_prepare;
 #[path = "../src/r2b_recipe.rs"]
 pub mod r2b_recipe;
 #[path = "../src/r2b_recipe_add.rs"]
