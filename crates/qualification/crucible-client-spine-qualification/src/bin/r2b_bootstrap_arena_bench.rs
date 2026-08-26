@@ -10,7 +10,7 @@ use crucible_packet_core::PacketWriter;
 use crucible_protocol_core::encode_var_int;
 
 #[path = "../../../../network/crucible-target-26-2/src/r2b_arena.rs"]
-mod r2b_arena;
+pub mod r2b_arena;
 
 use r2b_arena::DynamicBootstrapArena;
 
@@ -323,6 +323,9 @@ fn run_arena(workload: &Workload, fanout: usize) -> Result<SemanticStats, String
             if sealed != index {
                 return Err("arena insertion index drifted".to_owned());
             }
+        }
+        if arena.body_bytes() != body_bytes {
+            return Err("arena retained byte count drifted".to_owned());
         }
         let semantic = semantic_arena(&arena)?;
         black_box(&arena);
