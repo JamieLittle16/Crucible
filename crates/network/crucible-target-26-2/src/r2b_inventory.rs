@@ -119,7 +119,9 @@ mod tests {
     #[test]
     fn selected_fresh_inventory_matches_exact_r1x_golden_payload() {
         let mut writer = PacketWriter::new(50).expect("exact container-content payload bound");
-        SELECTED.encode(&mut writer).expect("fresh empty inventory fits");
+        SELECTED
+            .encode(&mut writer)
+            .expect("fresh empty inventory fits");
 
         let mut expected = Vec::with_capacity(50);
         expected.extend_from_slice(&[0x00, 0x01, 0x2e]);
@@ -137,7 +139,10 @@ mod tests {
         }
         .encode(&mut writer)
         .expect("three-slot menu fits");
-        assert_eq!(writer.as_slice(), &[0x07, 0x09, 0x03, 0x00, 0x00, 0x00, 0x00]);
+        assert_eq!(
+            writer.as_slice(),
+            &[0x07, 0x09, 0x03, 0x00, 0x00, 0x00, 0x00]
+        );
     }
 
     #[test]
@@ -146,10 +151,12 @@ mod tests {
         writer.write_u8(0x12).expect("container-content packet id");
         assert_eq!(
             SELECTED.encode(&mut writer),
-            Err(InventoryEncodeError::Codec(PacketCodecError::PacketLimitExceeded {
-                attempted: 51,
-                maximum: 50,
-            }))
+            Err(InventoryEncodeError::Codec(
+                PacketCodecError::PacketLimitExceeded {
+                    attempted: 51,
+                    maximum: 50,
+                }
+            ))
         );
         assert_eq!(writer.as_slice(), &[0x12]);
     }
