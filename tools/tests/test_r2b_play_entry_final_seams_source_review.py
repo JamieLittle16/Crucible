@@ -76,11 +76,33 @@ class R2BPlayEntryFinalSeamsTests(unittest.TestCase):
             allowed_types,
             {
                 "net.minecraft.network.codec.ByteBufCodecs",
+                "net.minecraft.world.Difficulty",
                 "net.minecraft.core.GlobalPos",
                 "net.minecraft.resources.ResourceKey",
                 "net.minecraft.core.BlockPos",
+                "net.minecraft.network.FriendlyByteBuf",
             },
         )
+
+        difficulty = [
+            selector
+            for group in groups
+            for selector in group.selectors
+            if selector.type_name == "net.minecraft.world.Difficulty"
+        ]
+        self.assertEqual(len(difficulty), 1)
+        self.assertEqual(difficulty[0].mode, "type_name_regex")
+        self.assertEqual(difficulty[0].name_regex, "^(<clinit>|getId)$")
+
+        block_pos_writer = [
+            selector
+            for group in groups
+            for selector in group.selectors
+            if selector.type_name == "net.minecraft.network.FriendlyByteBuf"
+        ]
+        self.assertEqual(len(block_pos_writer), 1)
+        self.assertEqual(block_pos_writer[0].mode, "type_names")
+        self.assertEqual(block_pos_writer[0].names, ("writeBlockPos",))
 
     def test_regex_selector_is_bounded_to_method_name(self) -> None:
         conn = _db()
