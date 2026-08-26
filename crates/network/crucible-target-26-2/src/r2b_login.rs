@@ -124,7 +124,9 @@ impl FreshLoginPayload<'_> {
             .map_err(|_| LoginEncodeError::LevelCountDoesNotFitVarInt(self.levels.len()))?;
 
         if self.spawn.dimension_type_registry_id < 0 {
-            return Err(R2bWireError::NegativeRegistryId(self.spawn.dimension_type_registry_id).into());
+            return Err(
+                R2bWireError::NegativeRegistryId(self.spawn.dimension_type_registry_id).into(),
+            );
         }
 
         let mut payload_len = 4_usize + 1 + var_int_len(level_count);
@@ -135,7 +137,10 @@ impl FreshLoginPayload<'_> {
         payload_len = checked_add(payload_len, var_int_len(self.chunk_radius))?;
         payload_len = checked_add(payload_len, var_int_len(self.simulation_distance))?;
         payload_len = checked_add(payload_len, 3)?; // reduced debug, death screen, limited crafting.
-        payload_len = checked_add(payload_len, var_int_len(self.spawn.dimension_type_registry_id))?;
+        payload_len = checked_add(
+            payload_len,
+            var_int_len(self.spawn.dimension_type_registry_id),
+        )?;
         payload_len = checked_add(payload_len, identifier_wire_len(self.spawn.dimension)?)?;
         payload_len = checked_add(payload_len, 8 + 2 + 3)?; // seed, game modes, debug/flat/last-death marker.
         payload_len = checked_add(payload_len, var_int_len(self.spawn.portal_cooldown))?;
@@ -160,7 +165,11 @@ impl FreshLoginPayload<'_> {
         writer.write_string(self.spawn.dimension, IDENTIFIER_MAX_UTF16_UNITS)?;
         writer.write_i64(self.spawn.seed)?;
         writer.write_u8(self.spawn.game_mode as u8)?;
-        writer.write_u8(self.spawn.previous_game_mode.map_or(0xff, |mode| mode as u8))?;
+        writer.write_u8(
+            self.spawn
+                .previous_game_mode
+                .map_or(0xff, |mode| mode as u8),
+        )?;
         writer.write_bool(self.spawn.is_debug)?;
         writer.write_bool(self.spawn.is_flat)?;
         writer.write_bool(false)?; // selected fresh profile: no last-death GlobalPos.
@@ -255,13 +264,14 @@ mod tests {
     #[test]
     fn selected_login_matches_exact_r1x_golden_payload() {
         let expected: &[u8] = &[
-            0x00, 0x00, 0x01, 0x0e, 0x00, 0x03, 0x13, 0x6d, 0x69, 0x6e, 0x65, 0x63, 0x72, 0x61, 0x66, 0x74,
-            0x3a, 0x6f, 0x76, 0x65, 0x72, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x14, 0x6d, 0x69, 0x6e, 0x65, 0x63,
-            0x72, 0x61, 0x66, 0x74, 0x3a, 0x74, 0x68, 0x65, 0x5f, 0x6e, 0x65, 0x74, 0x68, 0x65, 0x72, 0x11,
-            0x6d, 0x69, 0x6e, 0x65, 0x63, 0x72, 0x61, 0x66, 0x74, 0x3a, 0x74, 0x68, 0x65, 0x5f, 0x65, 0x6e,
-            0x64, 0x14, 0x0a, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x13, 0x6d, 0x69, 0x6e, 0x65, 0x63, 0x72, 0x61,
-            0x66, 0x74, 0x3a, 0x6f, 0x76, 0x65, 0x72, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x14, 0x39, 0x77, 0xa8,
-            0xee, 0x42, 0xe0, 0x4a, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x3f, 0x00, 0x00,
+            0x00, 0x00, 0x01, 0x0e, 0x00, 0x03, 0x13, 0x6d, 0x69, 0x6e, 0x65, 0x63, 0x72, 0x61,
+            0x66, 0x74, 0x3a, 0x6f, 0x76, 0x65, 0x72, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x14, 0x6d,
+            0x69, 0x6e, 0x65, 0x63, 0x72, 0x61, 0x66, 0x74, 0x3a, 0x74, 0x68, 0x65, 0x5f, 0x6e,
+            0x65, 0x74, 0x68, 0x65, 0x72, 0x11, 0x6d, 0x69, 0x6e, 0x65, 0x63, 0x72, 0x61, 0x66,
+            0x74, 0x3a, 0x74, 0x68, 0x65, 0x5f, 0x65, 0x6e, 0x64, 0x14, 0x0a, 0x0a, 0x00, 0x01,
+            0x00, 0x00, 0x13, 0x6d, 0x69, 0x6e, 0x65, 0x63, 0x72, 0x61, 0x66, 0x74, 0x3a, 0x6f,
+            0x76, 0x65, 0x72, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x14, 0x39, 0x77, 0xa8, 0xee, 0x42,
+            0xe0, 0x4a, 0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x3f, 0x00, 0x00,
         ];
         let mut writer = PacketWriter::new(expected.len()).expect("exact Login payload bound");
         SELECTED.encode(&mut writer).expect("selected Login fits");
@@ -277,10 +287,12 @@ mod tests {
             .expect_err("109-byte payload cannot fit after one prefix byte");
         assert_eq!(
             error,
-            LoginEncodeError::Codec(crucible_packet_core::PacketCodecError::PacketLimitExceeded {
-                attempted: 110,
-                maximum: 109,
-            })
+            LoginEncodeError::Codec(
+                crucible_packet_core::PacketCodecError::PacketLimitExceeded {
+                    attempted: 110,
+                    maximum: 109,
+                }
+            )
         );
         assert_eq!(writer.as_slice(), &[0x31]);
     }
@@ -297,7 +309,10 @@ mod tests {
             },
             ..SELECTED
         };
-        assert!(matches!(negative_dimension.encode(&mut writer), Err(LoginEncodeError::Wire(_))));
+        assert!(matches!(
+            negative_dimension.encode(&mut writer),
+            Err(LoginEncodeError::Wire(_))
+        ));
         assert_eq!(writer.as_slice(), &[0x31]);
 
         let long_dimension = "x".repeat(32_768);
