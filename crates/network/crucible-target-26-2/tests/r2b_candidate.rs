@@ -25,6 +25,8 @@ pub mod r2b_login;
 pub mod r2b_player_info;
 #[path = "../src/r2b_recipe.rs"]
 pub mod r2b_recipe;
+#[path = "../src/r2b_recipe_add.rs"]
+pub mod r2b_recipe_add;
 #[path = "../src/r2b_spawn.rs"]
 pub mod r2b_spawn;
 #[path = "../src/r2b_teleport.rs"]
