@@ -40,7 +40,7 @@ pub struct InitialPlayerInfoEntry<'a> {
 pub enum PlayerInfoEncodeError {
     /// Bounded packet writer failure.
     Codec(PacketCodecError),
-    /// Entry count cannot fit the signed Minecraft VarInt collection prefix.
+    /// Entry count cannot fit the signed Minecraft `VarInt` collection prefix.
     EntryCountDoesNotFitVarInt(usize),
     /// Profile name exceeds the admitted UTF-16-unit bound.
     NameUtf16TooLong { units: usize },
@@ -139,7 +139,7 @@ fn preflight(writer: &PacketWriter, additional: usize) -> Result<(), PlayerInfoE
 }
 
 const fn var_int_len(value: i32) -> usize {
-    let mut remaining = value as u32;
+    let mut remaining = value.cast_unsigned();
     let mut length = 1_usize;
     while remaining & !0x7f != 0 {
         remaining >>= 7;
