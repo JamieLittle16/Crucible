@@ -47,7 +47,7 @@
     },
     {
       "group_id": "SELECTED_PROFILE_BYTEBUF_HELPERS",
-      "review_focus": "Pin the static PLAYER_NAME/GAME_PROFILE_PROPERTIES/CONTAINER_ID codec declarations and the exact UUID/enum-set/nullable outbound helpers needed by selected offline player-info and fresh empty inventory.",
+      "review_focus": "Pin the static PLAYER_NAME/GAME_PROFILE_PROPERTIES/CONTAINER_ID codec declarations and the exact UUID/enum-set/fixed-bitset/nullable/container-id outbound helpers needed by selected offline player-info and fresh empty inventory.",
       "selectors": [
         {
           "mode": "type_names",
@@ -59,7 +59,7 @@
           "mode": "type_names",
           "required": true,
           "type_name": "net.minecraft.network.FriendlyByteBuf",
-          "names": ["writeEnumSet", "writeNullable", "writeUUID"]
+          "names": ["writeEnumSet", "writeFixedBitSet", "writeNullable", "writeUUID", "writeContainerId"]
         }
       ]
     }
