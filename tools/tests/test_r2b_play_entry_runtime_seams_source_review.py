@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parents[1]
+REPO = TOOLS.parent
 
 
 def _load(name: str, path: Path):  # type: ignore[no-untyped-def]
@@ -96,6 +97,34 @@ class R2BPlayEntryRuntimeSeamsTests(unittest.TestCase):
                 "writeUUID",
                 "writeContainerId",
             ),
+        )
+
+    def test_runtime_supplement_frontier_is_exact_depth_zero(self) -> None:
+        frontier_path = REPO / "vanilla/frontiers/r2b-play-entry-runtime-seams.json"
+        frontier = json.loads(frontier_path.read_text(encoding="utf-8"))
+        self.assertEqual(frontier["schema"], 1)
+        self.assertEqual(frontier["max_depth"], 0)
+        self.assertEqual(
+            frontier["include_package_prefixes"],
+            ["net.minecraft.network", "net.minecraft.world"],
+        )
+        self.assertEqual(len(frontier["root_queries"]), 15)
+        self.assertEqual(len(set(frontier["root_queries"])), 15)
+        self.assertIn(
+            "net.minecraft.network.FriendlyByteBuf#writeFixedBitSet(final BitSet bitSet , final int size)",
+            frontier["root_queries"],
+        )
+        self.assertIn(
+            "net.minecraft.network.FriendlyByteBuf#writeContainerId(final ByteBuf output , final int id)",
+            frontier["root_queries"],
+        )
+        self.assertIn(
+            "net.minecraft.world.entity.Relative#pack(final Set < Relative > set)",
+            frontier["root_queries"],
+        )
+        self.assertIn(
+            "net.minecraft.world.phys.Vec3#<clinit>()",
+            frontier["root_queries"],
         )
 
     def test_base_report_requires_exact_admitted_gate(self) -> None:
