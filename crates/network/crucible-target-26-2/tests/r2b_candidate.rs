@@ -2,8 +2,10 @@
 //!
 //! `src/r2b.rs`, the compact dynamic-body arena, prepared staged plan and target-owned
 //! selected-profile payload codecs are deliberately compiled here without making the live
-//! `Target26_2` route depend on them yet. The hardened source boundary is independently admitted;
-//! production routing remains isolated until the replay-free runtime qualification suite passes.
+//! `Target26_2` route depend on them yet. The prepared plan is exercised through the target-neutral
+//! `StagedPublicationPlan` path, including real bounded-egress rollback. The hardened source boundary
+//! is independently admitted; production routing remains isolated until the replay-free runtime
+//! qualification suite passes.
 
 #[path = "../src/r2b.rs"]
 pub mod r2b;
