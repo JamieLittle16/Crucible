@@ -12,7 +12,7 @@
 
 use crucible_packet_core::{PacketCodecError, PacketWriter};
 
-const FIXED_PREFIX_BYTES: usize = 4 * size_of::<f64>();
+const FIXED_PREFIX_BYTES: usize = 4 * std::mem::size_of::<f64>();
 
 /// Client-visible border state projected during initial Play bootstrap.
 #[derive(Clone, Copy, Debug, PartialEq)]
