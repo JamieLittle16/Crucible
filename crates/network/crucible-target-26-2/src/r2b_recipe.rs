@@ -41,7 +41,7 @@ impl RecipeBookSettingFlags {
     }
 
     const fn wire_bool(self, bit: u32) -> u8 {
-        ((self.0 >> bit) & 1) as u8
+        (self.0 >> bit) & 1
     }
 }
 
