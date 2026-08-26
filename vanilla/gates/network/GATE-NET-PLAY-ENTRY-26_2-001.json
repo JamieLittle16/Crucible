@@ -1,0 +1,1 @@
+{"id":"GATE-NET-PLAY-ENTRY-26_2-001","methods":[{"query":"net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket#<clinit>()","var_id":"VAR-NET-R2B-PLAY-ABILITIES-CODEC-001"}],"minimum_status":"VAR_REVIEWED","require_hazards_reviewed":true,"require_semantic_rules":true,"schema":1}
