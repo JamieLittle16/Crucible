@@ -8,8 +8,8 @@ use crucible_publication_core::{
 };
 
 use crate::r2b::{
-    CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2, ProjectionArtifactError,
-    ProjectionRevision, QualifiedProjectionArtifact, RecipeProjectionKey,
+    CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2,
+    ProjectionArtifactError, ProjectionRevision, QualifiedProjectionArtifact, RecipeProjectionKey,
 };
 use crate::r2b_border::WorldBorderPayload;
 use crate::r2b_clock::{ClockFullSyncPayload, ClockUpdate};
@@ -57,8 +57,8 @@ const CLOCKS: [ClockUpdate; 2] = [
 ];
 const SELF: InitialPlayerInfoEntry<'static> = InitialPlayerInfoEntry {
     profile_id: [
-        0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9,
-        0x5b, 0x45,
+        0x68, 0x20, 0x14, 0xfe, 0xad, 0x63, 0x36, 0x99, 0xaa, 0xda, 0x79, 0xaa, 0x08, 0xd9, 0x5b,
+        0x45,
     ],
     name: "Stato16",
     game_mode: BootstrapGameMode::Survival,
@@ -94,11 +94,8 @@ fn image() -> PlayBootstrapImage26_2 {
     PlayBootstrapImage26_2::new(
         QualifiedProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
             .expect("commands"),
-        QualifiedProjectionArtifact::new(
-            recipe_key(),
-            vec![0x85, 0x01, 0xbb].into_boxed_slice(),
-        )
-        .expect("recipes"),
+        QualifiedProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
+            .expect("recipes"),
     )
 }
 
@@ -263,10 +260,7 @@ fn clear_status_route_has_exact_source_stage_order() {
             };
             assert_eq!(body_id(bytes), expected_id);
         }
-        assert_eq!(
-            plan.lookup(stage, ids.len()),
-            PreparedLookup::StageComplete
-        );
+        assert_eq!(plan.lookup(stage, ids.len()), PreparedLookup::StageComplete);
     }
     assert_eq!(plan.lookup(10, 0), PreparedLookup::Complete);
     assert_eq!(teleport.awaiting().expect("teleport committed").id, 1);
@@ -350,11 +344,8 @@ fn shared_packet_identity_and_status_revision_fail_closed_before_dynamic_work() 
     let bad_image = PlayBootstrapImage26_2::new(
         QualifiedProjectionArtifact::new(command_key(), vec![17, 0xaa].into_boxed_slice())
             .expect("commands"),
-        QualifiedProjectionArtifact::new(
-            recipe_key(),
-            vec![0x85, 0x01, 0xbb].into_boxed_slice(),
-        )
-        .expect("recipes"),
+        QualifiedProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
+            .expect("recipes"),
     );
     let mut scratch = PacketWriter::new(4096).expect("scratch");
     let mut teleport = TeleportTransaction::new();
@@ -493,7 +484,11 @@ fn prepared_plan_backpressure_preserves_cursor_and_existing_egress() {
     let mut driver = ConnectionDriver::new(limits(4096, first_frame_bytes));
     assert!(matches!(
         publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
-        Ok(StagedPublicationStep::Queued { stage: 0, index: 0, .. })
+        Ok(StagedPublicationStep::Queued {
+            stage: 0,
+            index: 0,
+            ..
+        })
     ));
     assert_eq!(
         publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
