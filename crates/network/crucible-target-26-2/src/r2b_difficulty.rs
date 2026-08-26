@@ -100,7 +100,9 @@ mod tests {
     #[test]
     fn rejection_preserves_an_existing_packet_prefix() {
         let mut writer = PacketWriter::new(2).expect("prefix plus one remaining byte");
-        writer.write_bytes(&[0x7f]).expect("existing packet prefix fits");
+        writer
+            .write_bytes(&[0x7f])
+            .expect("existing packet prefix fits");
 
         let error = ChangeDifficultyPayload {
             difficulty: Difficulty26_2::Hard,
