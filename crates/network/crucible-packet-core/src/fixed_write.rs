@@ -1,9 +1,9 @@
-//! Network-order fixed-width packet writes.
+//! Network-order fixed-width and bounded scalar packet writes.
 //!
 //! These are target-neutral byte primitives only. Packet identity, field meaning, validation policy
-//! and Minecraft-version semantics stay with the target codec using them. Every method delegates to
-//! `PacketWriter::write_bytes`, so the existing single byte-budget check remains the transactional
-//! mutation boundary.
+//! and Minecraft-version semantics stay with the target codec using them. Fixed-width methods and
+//! `VarLong` both commit through `PacketWriter::write_bytes`, so one byte-budget check remains the
+//! transactional mutation boundary.
 
 use super::{PacketCodecError, PacketWriter};
 
@@ -86,6 +86,36 @@ impl PacketWriter {
     /// Returns the existing packet-limit error before mutation when eight bytes would not fit.
     pub fn write_f64(&mut self, value: f64) -> Result<(), PacketCodecError> {
         self.write_bytes(&value.to_bits().to_be_bytes())
+    }
+
+    /// Appends one signed Minecraft `VarLong` without allocating.
+    ///
+    /// The encoded value is assembled in a ten-byte stack buffer first, then committed with one
+    /// `write_bytes` call. This gives the variable-width field the same fail-before-mutation
+    /// semantics as fixed-width packet primitives.
+    ///
+    /// # Errors
+    ///
+    /// Returns the existing packet-limit error before mutation when the complete encoded value
+    /// would not fit.
+    pub fn write_var_long(&mut self, value: i64) -> Result<(), PacketCodecError> {
+        let mut remaining = value.cast_unsigned();
+        let mut encoded = [0_u8; 10];
+        let mut length = 0_usize;
+
+        loop {
+            let low = (remaining & 0x7f).to_le_bytes()[0];
+            remaining >>= 7;
+            if remaining == 0 {
+                encoded[length] = low;
+                length += 1;
+                break;
+            }
+            encoded[length] = low | 0x80;
+            length += 1;
+        }
+
+        self.write_bytes(&encoded[..length])
     }
 }
 
@@ -170,6 +200,48 @@ mod tests {
                 .expect("eight bytes fit");
             assert_eq!(writer.as_slice(), bits.to_be_bytes());
         }
+    }
+
+    #[test]
+    fn canonical_var_long_vectors_match_minecraft_encoding() {
+        let vectors: &[(i64, &[u8])] = &[
+            (0, &[0x00]),
+            (1, &[0x01]),
+            (127, &[0x7f]),
+            (128, &[0x80, 0x01]),
+            (255, &[0xff, 0x01]),
+            (
+                i64::MAX,
+                &[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f],
+            ),
+            (
+                -1,
+                &[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01],
+            ),
+            (
+                i64::MIN,
+                &[0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01],
+            ),
+        ];
+
+        for &(value, expected) in vectors {
+            let mut writer = PacketWriter::new(10).expect("maximum VarLong width");
+            writer.write_var_long(value).expect("canonical VarLong");
+            assert_eq!(writer.as_slice(), expected, "value={value}");
+        }
+    }
+
+    #[test]
+    fn var_long_rejection_is_transactional() {
+        let mut writer = PacketWriter::new(1).expect("one-byte writer");
+        writer.write_u8(0x7a).expect("first byte fits");
+        let before = writer.as_slice().to_vec();
+
+        assert!(matches!(
+            writer.write_var_long(-1),
+            Err(PacketCodecError::PacketLimitExceeded { .. })
+        ));
+        assert_eq!(writer.as_slice(), before);
     }
 
     #[test]
