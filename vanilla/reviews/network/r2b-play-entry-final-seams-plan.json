@@ -20,7 +20,7 @@
           "mode": "type_name_regex",
           "required": true,
           "type_name": "net.minecraft.world.Difficulty",
-          "name_regex": "^(<clinit>|getId)$"
+          "name_regex": "^(<clinit>|Difficulty|getId)$"
         }
       ]
     },
