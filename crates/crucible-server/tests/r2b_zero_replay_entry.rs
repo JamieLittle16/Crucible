@@ -10,13 +10,13 @@ use crucible_target_26_2::{
     play_liveness::{encode_clientbound_keep_alive, encode_serverbound_keep_alive},
     r2b::{
         BootstrapGameMode, BootstrapWeather, ChangeDifficultyPayload, ClockFullSyncPayload,
-        ClockUpdate, CommandPermissionProfile, CommandProjectionKey, DefaultSpawnPayload,
-        Difficulty26_2, FreshCommonSpawnInfo, FreshEmptyInventoryPayload, FreshLoginFlags,
-        FreshLoginPayload, FreshR2bBootstrapSnapshot, HeldSlotPayload, InitialPlayerInfoEntry,
-        PermissionEntityEventPayload, PermissionLevelEvent, PlayBootstrapImage26_2,
-        PlayerAbilitiesPayload, PlayerAbilityFlags, PreparedLookup, PreparedR2bPlan,
-        ProjectionRevision, QualifiedProjectionArtifact, RecipeBookSettingFlags,
-        RecipeBookSettingsPayload, RecipeProjectionKey, SELECTED_DYNAMIC_ARENA_CAPACITY,
+        ClockUpdate, CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
+        DefaultSpawnPayload, Difficulty26_2, FreshCommonSpawnInfo, FreshEmptyInventoryPayload,
+        FreshLoginFlags, FreshLoginPayload, FreshR2bBootstrapSnapshot, HeldSlotPayload,
+        InitialPlayerInfoEntry, PermissionEntityEventPayload, PermissionLevelEvent,
+        PlayBootstrapImage26_2, PlayerAbilitiesPayload, PlayerAbilityFlags, PreparedLookup,
+        PreparedR2bPlan, ProjectionRevision, RecipeBookSettingFlags, RecipeBookSettingsPayload,
+        RecipeProjectionArtifact, RecipeProjectionKey, SELECTED_DYNAMIC_ARENA_CAPACITY,
         TeleportAckResult, TeleportDestination, TeleportTransaction, TickingStatePayload,
         TickingStepPayload, WorldBorderPayload,
     },
@@ -124,9 +124,9 @@ const fn recipe_key() -> RecipeProjectionKey {
 
 fn image() -> PlayBootstrapImage26_2 {
     PlayBootstrapImage26_2::new(
-        QualifiedProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
+        CommandProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
             .expect("command projection"),
-        QualifiedProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
+        RecipeProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
             .expect("recipe projection"),
     )
 }
