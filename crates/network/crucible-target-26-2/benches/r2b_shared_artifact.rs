@@ -10,12 +10,13 @@ use crucible_target_26_2::r2b::{
     RecipeProjectionKey, ServerDataProjectionArtifact, ServerDataProjectionKey,
 };
 
-const SCHEMA: u32 = 1;
+const SCHEMA: u32 = 2;
 const COMMAND_PACKET_ID: i32 = 16;
 const SERVER_DATA_PACKET_ID: i32 = 86;
 const UPDATE_RECIPES_PACKET_ID: i32 = 133;
 const CHECKSUM_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const CHECKSUM_PRIME: u64 = 0x0000_0100_0000_01b3;
+const RATIO_SCALE_PPM: u128 = 1_000_000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Mode {
@@ -36,29 +37,52 @@ impl Mode {
 struct Config {
     mode: Mode,
     output: Option<PathBuf>,
-    warmup_rounds: usize,
-    measured_rounds: usize,
-    joins_per_round: usize,
+    warmup_blocks: usize,
+    measured_blocks: usize,
+    joins_per_sample: usize,
+    blocks_per_epoch: usize,
 }
 
 impl Config {
     const fn defaults(mode: Mode) -> Self {
         match mode {
-            Mode::Smoke => Self {
+            Self::Smoke => Self {
                 mode,
                 output: None,
-                warmup_rounds: 2,
-                measured_rounds: 7,
-                joins_per_round: 500_000,
+                warmup_blocks: 256,
+                measured_blocks: 4_096,
+                joins_per_sample: 1_024,
+                blocks_per_epoch: 256,
             },
-            Mode::Full => Self {
+            Self::Full => Self {
                 mode,
                 output: None,
-                warmup_rounds: 8,
-                measured_rounds: 31,
-                joins_per_round: 5_000_000,
+                warmup_blocks: 2_048,
+                measured_blocks: 32_768,
+                joins_per_sample: 1_024,
+                blocks_per_epoch: 512,
             },
         }
+    }
+
+    fn samples_per_candidate(&self) -> Result<usize, String> {
+        self.measured_blocks
+            .checked_mul(2)
+            .ok_or_else(|| "sample count overflow".to_owned())
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        if self.joins_per_sample == 0 {
+            return Err("joins per sample must be positive".to_owned());
+        }
+        if self.measured_blocks == 0 {
+            return Err("measured block count must be positive".to_owned());
+        }
+        if self.blocks_per_epoch == 0 || !self.measured_blocks.is_multiple_of(self.blocks_per_epoch)
+        {
+            return Err("measured blocks must be divisible by blocks per epoch".to_owned());
+        }
+        Ok(())
     }
 }
 
@@ -102,7 +126,154 @@ impl Fixture {
 struct Samples {
     reference_ns: Vec<u128>,
     certified_ns: Vec<u128>,
+    reference_block_ns: Vec<u128>,
+    certified_block_ns: Vec<u128>,
+    block_ratio_ppm: Vec<u128>,
     semantic_checksum: u64,
+}
+
+impl Samples {
+    fn with_capacity(config: &Config, semantic_checksum: u64) -> Result<Self, String> {
+        let sample_capacity = config.samples_per_candidate()?;
+        Ok(Self {
+            reference_ns: Vec::with_capacity(sample_capacity),
+            certified_ns: Vec::with_capacity(sample_capacity),
+            reference_block_ns: Vec::with_capacity(config.measured_blocks),
+            certified_block_ns: Vec::with_capacity(config.measured_blocks),
+            block_ratio_ppm: Vec::with_capacity(config.measured_blocks),
+            semantic_checksum,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct DistributionStats {
+    count: usize,
+    min: u128,
+    p50: u128,
+    p90: u128,
+    p95: u128,
+    p99: u128,
+    p999: u128,
+    max: u128,
+    mean: u128,
+    mad: u128,
+    iqr: u128,
+    top_1pct_mean: u128,
+    top_0_1pct_mean: u128,
+    relative_mad_ppm: u128,
+    p99_to_p50_ppm: u128,
+    p999_to_p50_ppm: u128,
+    max_to_p50_ppm: u128,
+}
+
+impl DistributionStats {
+    fn from_samples(values: &[u128]) -> Result<Self, String> {
+        if values.is_empty() {
+            return Err("cannot summarize an empty sample set".to_owned());
+        }
+
+        let mut sorted = values.to_vec();
+        sorted.sort_unstable();
+        let p25 = quantile_permille_sorted(&sorted, 250)?;
+        let p50 = quantile_permille_sorted(&sorted, 500)?;
+        let p75 = quantile_permille_sorted(&sorted, 750)?;
+        let p90 = quantile_permille_sorted(&sorted, 900)?;
+        let p95 = quantile_permille_sorted(&sorted, 950)?;
+        let p99 = quantile_permille_sorted(&sorted, 990)?;
+        let p999 = quantile_permille_sorted(&sorted, 999)?;
+        let sum = checked_sum(&sorted)?;
+        let count = u128::try_from(sorted.len())
+            .map_err(|_| "sample count does not fit u128".to_owned())?;
+        let mean = sum
+            .checked_div(count)
+            .ok_or_else(|| "sample count must be positive".to_owned())?;
+
+        let mut deviations = Vec::with_capacity(sorted.len());
+        deviations.extend(sorted.iter().map(|value| value.abs_diff(p50)));
+        deviations.sort_unstable();
+        let mad = quantile_permille_sorted(&deviations, 500)?;
+
+        Ok(Self {
+            count: sorted.len(),
+            min: sorted[0],
+            p50,
+            p90,
+            p95,
+            p99,
+            p999,
+            max: sorted[sorted.len() - 1],
+            mean,
+            mad,
+            iqr: p75.saturating_sub(p25),
+            top_1pct_mean: upper_tail_mean(&sorted, 10)?,
+            top_0_1pct_mean: upper_tail_mean(&sorted, 1)?,
+            relative_mad_ppm: ratio_ppm(mad, p50)?,
+            p99_to_p50_ppm: ratio_ppm(p99, p50)?,
+            p999_to_p50_ppm: ratio_ppm(p999, p50)?,
+            max_to_p50_ppm: ratio_ppm(sorted[sorted.len() - 1], p50)?,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct Evidence {
+    reference: DistributionStats,
+    certified: DistributionStats,
+    block_ratio: DistributionStats,
+    epoch_ratio: DistributionStats,
+    epoch_ratio_ppm: Vec<u128>,
+    certified_faster_blocks: usize,
+    certified_faster_block_rate_ppm: u128,
+    certified_faster_epochs: usize,
+    certified_faster_epoch_rate_ppm: u128,
+}
+
+impl Evidence {
+    fn from_samples(config: &Config, samples: &Samples) -> Result<Self, String> {
+        let expected_samples = config.samples_per_candidate()?;
+        if samples.reference_ns.len() != expected_samples
+            || samples.certified_ns.len() != expected_samples
+            || samples.reference_block_ns.len() != config.measured_blocks
+            || samples.certified_block_ns.len() != config.measured_blocks
+            || samples.block_ratio_ppm.len() != config.measured_blocks
+        {
+            return Err("measured sample cardinality drifted".to_owned());
+        }
+
+        let epoch_ratio_ppm = epoch_ratios(
+            &samples.reference_block_ns,
+            &samples.certified_block_ns,
+            config.blocks_per_epoch,
+        )?;
+        let certified_faster_blocks = samples
+            .block_ratio_ppm
+            .iter()
+            .filter(|ratio| **ratio < RATIO_SCALE_PPM)
+            .count();
+        let certified_faster_epochs = epoch_ratio_ppm
+            .iter()
+            .filter(|ratio| **ratio < RATIO_SCALE_PPM)
+            .count();
+
+        Ok(Self {
+            reference: DistributionStats::from_samples(&samples.reference_ns)?,
+            certified: DistributionStats::from_samples(&samples.certified_ns)?,
+            block_ratio: DistributionStats::from_samples(&samples.block_ratio_ppm)?,
+            epoch_ratio: DistributionStats::from_samples(&epoch_ratio_ppm)?,
+            certified_faster_blocks,
+            certified_faster_block_rate_ppm: rate_ppm(
+                certified_faster_blocks,
+                samples.block_ratio_ppm.len(),
+            )?,
+            certified_faster_epochs,
+            certified_faster_epoch_rate_ppm: rate_ppm(
+                certified_faster_epochs,
+                epoch_ratio_ppm.len(),
+            )?,
+            epoch_ratio_ppm,
+        })
+    }
 }
 
 fn main() {
@@ -114,6 +285,7 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let config = parse_args()?;
+    config.validate()?;
     let fixture = Fixture::new()?;
 
     let reference_gate = run_reference(&fixture, 1)?;
@@ -124,98 +296,121 @@ fn run() -> Result<(), String> {
         ));
     }
 
-    for round in 0..config.warmup_rounds {
-        run_pair(round, &fixture, config.joins_per_round, false, None)?;
+    for block in 0..config.warmup_blocks {
+        run_balanced_block(block, &fixture, config.joins_per_sample, None)?;
     }
 
-    let mut samples = Samples {
-        reference_ns: Vec::with_capacity(config.measured_rounds),
-        certified_ns: Vec::with_capacity(config.measured_rounds),
-        semantic_checksum: reference_gate,
-    };
-    for round in 0..config.measured_rounds {
-        run_pair(
-            round,
+    let mut samples = Samples::with_capacity(&config, reference_gate)?;
+    for block in 0..config.measured_blocks {
+        run_balanced_block(
+            block,
             &fixture,
-            config.joins_per_round,
-            true,
+            config.joins_per_sample,
             Some(&mut samples),
         )?;
     }
 
-    let reference_p50 = median(&samples.reference_ns)?;
-    let certified_p50 = median(&samples.certified_ns)?;
-    let ratio_ppm = certified_p50
-        .saturating_mul(1_000_000)
-        .checked_div(reference_p50)
-        .ok_or_else(|| "reference median must be positive".to_owned())?;
-    let artifact = render_json(&config, &samples, reference_p50, certified_p50, ratio_ppm);
+    let evidence = Evidence::from_samples(&config, &samples)?;
+    let artifact = render_json(&config, &samples, &evidence);
 
-    if let Some(path) = config.output {
+    if let Some(path) = config.output.as_ref() {
         if let Some(parent) = path.parent()
             && !parent.as_os_str().is_empty()
         {
             fs::create_dir_all(parent)
                 .map_err(|error| format!("could not create output directory: {error}"))?;
         }
-        fs::write(&path, artifact.as_bytes())
+        fs::write(path, artifact.as_bytes())
             .map_err(|error| format!("could not write {}: {error}", path.display()))?;
     } else {
         println!("{artifact}");
     }
 
     println!(
-        "R2B shared artifact p50: reference={reference_p50}ns certified={certified_p50}ns ratio_ppm={ratio_ppm} faster={}",
-        certified_p50 < reference_p50
+        "R2B shared artifact: paired_p50={}ppm paired_mad={}ppm epoch_p50={}ppm epoch_win_rate={}ppm reference_p99={}ns certified_p99={}ns reference_p999={}ns certified_p999={}ns",
+        evidence.block_ratio.p50,
+        evidence.block_ratio.mad,
+        evidence.epoch_ratio.p50,
+        evidence.certified_faster_epoch_rate_ppm,
+        evidence.reference.p99,
+        evidence.certified.p99,
+        evidence.reference.p999,
+        evidence.certified.p999,
     );
     Ok(())
 }
 
-fn run_pair(
-    round: usize,
+fn run_balanced_block(
+    block: usize,
     fixture: &Fixture,
     joins: usize,
-    measured: bool,
     mut samples: Option<&mut Samples>,
 ) -> Result<(), String> {
-    let reference_first = round.is_multiple_of(2);
-    let first = if reference_first {
-        Candidate::Reference
+    let order = if block.is_multiple_of(2) {
+        [
+            Candidate::Reference,
+            Candidate::Certified,
+            Candidate::Certified,
+            Candidate::Reference,
+        ]
     } else {
-        Candidate::Certified
-    };
-    let second = if reference_first {
-        Candidate::Certified
-    } else {
-        Candidate::Reference
+        [
+            Candidate::Certified,
+            Candidate::Reference,
+            Candidate::Reference,
+            Candidate::Certified,
+        ]
     };
 
-    let mut expected = None;
-    for candidate in [first, second] {
+    let mut expected_checksum = None;
+    let mut reference_total = 0_u128;
+    let mut certified_total = 0_u128;
+
+    for candidate in order {
         let (elapsed, checksum) = timed(|| match candidate {
             Candidate::Reference => run_reference(fixture, joins),
             Candidate::Certified => run_certified(fixture, joins),
         })?;
-        if let Some(expected_checksum) = expected {
-            if checksum != expected_checksum {
+
+        if let Some(expected) = expected_checksum {
+            if checksum != expected {
                 return Err(format!(
-                    "paired semantic mismatch: expected={expected_checksum} actual={checksum}"
+                    "balanced semantic mismatch: expected={expected} actual={checksum}"
                 ));
             }
         } else {
-            expected = Some(checksum);
+            expected_checksum = Some(checksum);
         }
 
-        if measured {
-            let output = samples
-                .as_deref_mut()
-                .ok_or_else(|| "measured round requires sample storage".to_owned())?;
-            match candidate {
-                Candidate::Reference => output.reference_ns.push(elapsed),
-                Candidate::Certified => output.certified_ns.push(elapsed),
+        match candidate {
+            Candidate::Reference => {
+                reference_total = reference_total
+                    .checked_add(elapsed)
+                    .ok_or_else(|| "reference block timing overflow".to_owned())?;
+                if let Some(output) = samples.as_deref_mut() {
+                    output.reference_ns.push(elapsed);
+                }
             }
-            output.semantic_checksum = checksum;
+            Candidate::Certified => {
+                certified_total = certified_total
+                    .checked_add(elapsed)
+                    .ok_or_else(|| "certified block timing overflow".to_owned())?;
+                if let Some(output) = samples.as_deref_mut() {
+                    output.certified_ns.push(elapsed);
+                }
+            }
         }
+    }
+
+    if let Some(output) = samples {
+        let checksum = expected_checksum
+            .ok_or_else(|| "balanced block did not produce a checksum".to_owned())?;
+        output.semantic_checksum = checksum;
+        output.reference_block_ns.push(reference_total);
+        output.certified_block_ns.push(certified_total);
+        output
+            .block_ratio_ppm
+            .push(ratio_ppm(certified_total, reference_total)?);
     }
     Ok(())
 }
@@ -335,22 +530,92 @@ fn timed<T>(operation: impl FnOnce() -> Result<T, String>) -> Result<(u128, T), 
     Ok((start.elapsed().as_nanos(), value))
 }
 
-fn median(values: &[u128]) -> Result<u128, String> {
-    if values.is_empty() {
-        return Err("cannot compute median of empty sample set".to_owned());
-    }
-    let mut sorted = values.to_vec();
-    sorted.sort_unstable();
-    Ok(sorted[sorted.len() / 2])
+fn checked_sum(values: &[u128]) -> Result<u128, String> {
+    values.iter().try_fold(0_u128, |sum, value| {
+        sum.checked_add(*value)
+            .ok_or_else(|| "sample sum overflow".to_owned())
+    })
 }
 
-fn render_json(
-    config: &Config,
-    samples: &Samples,
-    reference_p50: u128,
-    certified_p50: u128,
-    ratio_ppm: u128,
-) -> String {
+fn quantile_permille_sorted(sorted: &[u128], permille: usize) -> Result<u128, String> {
+    if sorted.is_empty() {
+        return Err("cannot compute a quantile of an empty sample set".to_owned());
+    }
+    if permille == 0 || permille > 1_000 {
+        return Err("quantile permille must be in 1..=1000".to_owned());
+    }
+    let numerator = sorted
+        .len()
+        .checked_mul(permille)
+        .ok_or_else(|| "quantile rank overflow".to_owned())?;
+    let rank = numerator
+        .checked_add(999)
+        .ok_or_else(|| "quantile rank overflow".to_owned())?
+        / 1_000;
+    Ok(sorted[rank.saturating_sub(1).min(sorted.len() - 1)])
+}
+
+fn upper_tail_mean(sorted: &[u128], tail_permille: usize) -> Result<u128, String> {
+    if sorted.is_empty() {
+        return Err("cannot summarize an empty tail".to_owned());
+    }
+    if tail_permille == 0 || tail_permille > 1_000 {
+        return Err("tail permille must be in 1..=1000".to_owned());
+    }
+    let numerator = sorted
+        .len()
+        .checked_mul(tail_permille)
+        .ok_or_else(|| "tail rank overflow".to_owned())?;
+    let count = numerator
+        .checked_add(999)
+        .ok_or_else(|| "tail rank overflow".to_owned())?
+        / 1_000;
+    let tail = &sorted[sorted.len() - count.max(1)..];
+    let divisor = u128::try_from(tail.len())
+        .map_err(|_| "tail sample count does not fit u128".to_owned())?;
+    checked_sum(tail)?
+        .checked_div(divisor)
+        .ok_or_else(|| "tail sample count must be positive".to_owned())
+}
+
+fn ratio_ppm(numerator: u128, denominator: u128) -> Result<u128, String> {
+    numerator
+        .checked_mul(RATIO_SCALE_PPM)
+        .ok_or_else(|| "ratio numerator overflow".to_owned())?
+        .checked_div(denominator)
+        .ok_or_else(|| "ratio denominator must be positive".to_owned())
+}
+
+fn rate_ppm(successes: usize, total: usize) -> Result<u128, String> {
+    let successes = u128::try_from(successes)
+        .map_err(|_| "success count does not fit u128".to_owned())?;
+    let total = u128::try_from(total).map_err(|_| "total count does not fit u128".to_owned())?;
+    ratio_ppm(successes, total)
+}
+
+fn epoch_ratios(
+    reference_blocks: &[u128],
+    certified_blocks: &[u128],
+    blocks_per_epoch: usize,
+) -> Result<Vec<u128>, String> {
+    if reference_blocks.len() != certified_blocks.len() {
+        return Err("paired block cardinality mismatch".to_owned());
+    }
+    if blocks_per_epoch == 0 || !reference_blocks.len().is_multiple_of(blocks_per_epoch) {
+        return Err("block count must be divisible by blocks per epoch".to_owned());
+    }
+
+    let mut ratios = Vec::with_capacity(reference_blocks.len() / blocks_per_epoch);
+    for (reference, certified) in reference_blocks
+        .chunks_exact(blocks_per_epoch)
+        .zip(certified_blocks.chunks_exact(blocks_per_epoch))
+    {
+        ratios.push(ratio_ppm(checked_sum(certified)?, checked_sum(reference)?)?);
+    }
+    Ok(ratios)
+}
+
+fn render_json(config: &Config, samples: &Samples, evidence: &Evidence) -> String {
     let parallelism = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
     let mut out = String::from("{");
     out.push_str("\"schema\":");
@@ -361,38 +626,143 @@ fn render_json(
     out.push('"');
     out.push_str(",\"hosted_ci_is_diagnostic_only\":true");
     out.push_str(",\"production_path_is_construction_certified\":true");
-    out.push_str(",\"joins_per_round\":");
-    out.push_str(&config.joins_per_round.to_string());
-    out.push_str(",\"measured_rounds\":");
-    out.push_str(&config.measured_rounds.to_string());
+    out.push_str(",\"sampling\":{");
+    out.push_str("\"pattern\":\"balanced-abba-baab\"");
+    push_usize_field(&mut out, "warmup_blocks", config.warmup_blocks);
+    push_usize_field(&mut out, "measured_blocks", config.measured_blocks);
+    push_usize_field(&mut out, "joins_per_sample", config.joins_per_sample);
+    push_usize_field(&mut out, "samples_per_candidate", evidence.reference.count);
+    push_usize_field(&mut out, "blocks_per_epoch", config.blocks_per_epoch);
+    push_usize_field(&mut out, "epoch_count", evidence.epoch_ratio.count);
+    out.push('}');
     out.push_str(",\"host\":{\"os\":\"");
     out.push_str(env::consts::OS);
     out.push_str("\",\"arch\":\"");
     out.push_str(env::consts::ARCH);
     out.push_str("\",\"available_parallelism\":");
     out.push_str(&parallelism.to_string());
+    if let Ok(cpu) = env::var("CRUCIBLE_BENCH_CPU") {
+        out.push_str(",\"pinned_cpu\":\"");
+        out.push_str(&cpu);
+        out.push('"');
+    }
     out.push('}');
     out.push_str(",\"structural\":{\"reference_packet_id_decodes_per_join\":3");
     out.push_str(",\"certified_packet_id_decodes_per_join\":0");
     out.push_str(",\"additional_allocations_per_join\":0}");
     out.push_str(",\"semantic_checksum\":");
     out.push_str(&samples.semantic_checksum.to_string());
-    push_samples(&mut out, "reference_ns", &samples.reference_ns);
-    push_samples(&mut out, "certified_ns", &samples.certified_ns);
-    out.push_str(",\"reference_p50_ns\":");
-    out.push_str(&reference_p50.to_string());
-    out.push_str(",\"certified_p50_ns\":");
-    out.push_str(&certified_p50.to_string());
-    out.push_str(",\"certified_to_reference_ppm\":");
-    out.push_str(&ratio_ppm.to_string());
-    out.push_str(",\"certified_faster_p50\":");
-    out.push_str(if certified_p50 < reference_p50 {
+
+    push_samples(&mut out, "reference_sample_ns", &samples.reference_ns);
+    push_samples(&mut out, "certified_sample_ns", &samples.certified_ns);
+    push_samples(&mut out, "paired_block_ratio_ppm", &samples.block_ratio_ppm);
+    push_samples(&mut out, "epoch_ratio_ppm", &evidence.epoch_ratio_ppm);
+
+    push_distribution(&mut out, "reference_service_ns", &evidence.reference);
+    push_distribution(&mut out, "certified_service_ns", &evidence.certified);
+    push_distribution(&mut out, "paired_block_ratio", &evidence.block_ratio);
+    push_distribution(&mut out, "epoch_ratio", &evidence.epoch_ratio);
+
+    out.push_str(",\"direction\":{");
+    out.push_str("\"certified_faster_paired_p50\":");
+    out.push_str(if evidence.block_ratio.p50 < RATIO_SCALE_PPM {
         "true"
     } else {
         "false"
     });
+    push_usize_field(
+        &mut out,
+        "certified_faster_blocks",
+        evidence.certified_faster_blocks,
+    );
+    push_u128_field(
+        &mut out,
+        "certified_faster_block_rate_ppm",
+        evidence.certified_faster_block_rate_ppm,
+    );
+    push_usize_field(
+        &mut out,
+        "certified_faster_epochs",
+        evidence.certified_faster_epochs,
+    );
+    push_u128_field(
+        &mut out,
+        "certified_faster_epoch_rate_ppm",
+        evidence.certified_faster_epoch_rate_ppm,
+    );
+    out.push('}');
+
+    out.push_str(",\"tail\":{");
+    out.push_str("\"p99_not_worse\":");
+    out.push_str(if evidence.certified.p99 <= evidence.reference.p99 {
+        "true"
+    } else {
+        "false"
+    });
+    out.push_str(",\"p999_not_worse\":");
+    out.push_str(if evidence.certified.p999 <= evidence.reference.p999 {
+        "true"
+    } else {
+        "false"
+    });
+    out.push_str(",\"top_1pct_mean_not_worse\":");
+    out.push_str(
+        if evidence.certified.top_1pct_mean <= evidence.reference.top_1pct_mean {
+            "true"
+        } else {
+            "false"
+        },
+    );
+    out.push_str(",\"relative_mad_not_worse\":");
+    out.push_str(
+        if evidence.certified.relative_mad_ppm <= evidence.reference.relative_mad_ppm {
+            "true"
+        } else {
+            "false"
+        },
+    );
+    out.push('}');
     out.push('}');
     out
+}
+
+fn push_distribution(out: &mut String, name: &str, stats: &DistributionStats) {
+    out.push_str(",\"");
+    out.push_str(name);
+    out.push_str("\":{");
+    out.push_str("\"count\":");
+    out.push_str(&stats.count.to_string());
+    push_u128_field(out, "min", stats.min);
+    push_u128_field(out, "p50", stats.p50);
+    push_u128_field(out, "p90", stats.p90);
+    push_u128_field(out, "p95", stats.p95);
+    push_u128_field(out, "p99", stats.p99);
+    push_u128_field(out, "p999", stats.p999);
+    push_u128_field(out, "max", stats.max);
+    push_u128_field(out, "mean", stats.mean);
+    push_u128_field(out, "mad", stats.mad);
+    push_u128_field(out, "iqr", stats.iqr);
+    push_u128_field(out, "top_1pct_mean", stats.top_1pct_mean);
+    push_u128_field(out, "top_0_1pct_mean", stats.top_0_1pct_mean);
+    push_u128_field(out, "relative_mad_ppm", stats.relative_mad_ppm);
+    push_u128_field(out, "p99_to_p50_ppm", stats.p99_to_p50_ppm);
+    push_u128_field(out, "p999_to_p50_ppm", stats.p999_to_p50_ppm);
+    push_u128_field(out, "max_to_p50_ppm", stats.max_to_p50_ppm);
+    out.push('}');
+}
+
+fn push_u128_field(out: &mut String, name: &str, value: u128) {
+    out.push_str(",\"");
+    out.push_str(name);
+    out.push_str("\":");
+    out.push_str(&value.to_string());
+}
+
+fn push_usize_field(out: &mut String, name: &str, value: usize) {
+    out.push_str(",\"");
+    out.push_str(name);
+    out.push_str("\":");
+    out.push_str(&value.to_string());
 }
 
 fn push_samples(out: &mut String, name: &str, values: &[u128]) {
