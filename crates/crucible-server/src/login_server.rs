@@ -1,4 +1,4 @@
-//! Product-level R1A Login composition for the development server.
+//! Product-level R1A Login composition for the Helve development server.
 //!
 //! Minecraft 26.2 source admission shows the `LoginFinished` session UUID belongs to the server
 //! connection population, not to an individual accepted socket. This module therefore owns an
@@ -173,7 +173,7 @@ where
     let budget = action_budget();
 
     loop {
-        let report = io.service_once(transport, crate::R0_ORACLE_STATUS_JSON, budget)?;
+        let report = io.service_once(transport, crate::HELVE_STATUS_JSON, budget)?;
 
         if io.connection().phase() == SessionPhase::Configuration {
             debug_assert_eq!(io.connection().queued_egress(), 0);

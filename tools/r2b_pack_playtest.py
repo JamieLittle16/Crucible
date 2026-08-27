@@ -2,9 +2,10 @@
 """Pack the source-admitted Configuration plus R2B shared artifacts for stock-client playtest.
 
 The input is the already-qualified full R1X source-free JSON. The existing R1B validator is run over
-that entire artifact first. This packer then writes only Configuration plus the three immutable R2B
-shared projection bodies required by the selected profile: update-recipes, commands and server-data.
-There is deliberately no captured-Play publication section in the output format.
+that entire artifact first. This packer then composes the current Helve server brand and writes only
+Configuration plus the three immutable R2B shared projection bodies required by the selected profile:
+update-recipes, commands and server-data. There is deliberately no captured-Play publication section
+in the output format.
 """
 from __future__ import annotations
 
@@ -42,9 +43,10 @@ def _write_u64(output: BinaryIO, value: int) -> None:
 def pack(input_path: Path, output_path: Path) -> tuple[int, int]:
     # The R1B validator checks schema, protocol/source/capture commitments, selected profile,
     # Configuration aggregate/hash and the complete 2,331-body captured Play aggregate/hash before
-    # we select any bytes for this smaller development format.
+    # we select or recompose any bytes for this smaller development format.
     value = r1b._read_json(input_path)  # noqa: SLF001 - same-directory qualification tool boundary
-    configuration, full_play = r1b._validate(value)  # noqa: SLF001
+    captured_configuration, full_play = r1b._validate(value)  # noqa: SLF001
+    configuration = r1b._runtime_configuration(captured_configuration)  # noqa: SLF001
 
     indexes = (UPDATE_RECIPES_PLAY_INDEX, COMMANDS_PLAY_INDEX, SERVER_DATA_PLAY_INDEX)
     try:
@@ -57,8 +59,8 @@ def pack(input_path: Path, output_path: Path) -> tuple[int, int]:
             raise PackError(f"captured Play body {index} no longer has the selected R2B packet identity")
 
     configuration_bytes = sum(map(len, configuration))
-    if configuration_bytes != r1b.EXPECTED_CONFIG_BYTES:
-        raise PackError("validated Configuration byte count drifted unexpectedly")
+    if configuration_bytes != r1b.RUNTIME_CONFIG_BYTES:
+        raise PackError("runtime Configuration byte count drifted unexpectedly")
 
     if output_path.is_symlink():
         raise PackError(f"output must not be a symlink: {output_path}")
@@ -103,7 +105,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     print(f"r2b_playtest_image={args.output}")
     print(f"configuration_frames={configuration_frames}")
-    print(f"configuration_bytes={r1b.EXPECTED_CONFIG_BYTES}")
+    print(f"configuration_bytes={r1b.RUNTIME_CONFIG_BYTES}")
+    print(f"server_brand={r1b.PRODUCT_BRAND}")
     print("captured_play_frames_written=0")
     print("shared_r2b_projection_frames=3")
     print(f"shared_r2b_projection_bytes={shared_bytes}")

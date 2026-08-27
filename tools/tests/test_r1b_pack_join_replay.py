@@ -59,6 +59,9 @@ class R1BPackJoinReplayTests(unittest.TestCase):
     def _patched_constants(self, config: list[bytes], play: list[bytes]):
         config_concat = b"".join(config)
         play_concat = b"".join(play)
+        runtime_config_bytes = (
+            len(config_concat) - len(config[0]) + len(packer.PRODUCT_BRAND_BODY)
+        )
         return (
             mock.patch.object(packer, "EXPECTED_CONFIG_COUNT", len(config)),
             mock.patch.object(packer, "EXPECTED_CONFIG_BYTES", len(config_concat)),
@@ -74,16 +77,40 @@ class R1BPackJoinReplayTests(unittest.TestCase):
                 "EXPECTED_PLAY_BODY_SHA256",
                 hashlib.sha256(play_concat).hexdigest(),
             ),
+            mock.patch.object(packer, "RUNTIME_CONFIG_BYTES", runtime_config_bytes),
         )
+
+    def test_runtime_configuration_replaces_only_product_brand(self) -> None:
+        _, config, _ = _fixture()
+        runtime_bytes = len(config[1]) + len(packer.PRODUCT_BRAND_BODY)
+        with (
+            mock.patch.object(packer, "EXPECTED_CONFIG_COUNT", len(config)),
+            mock.patch.object(packer, "RUNTIME_CONFIG_BYTES", runtime_bytes),
+        ):
+            runtime = packer._runtime_configuration(config)  # noqa: SLF001
+
+        self.assertEqual(runtime[0], b"\x01\x0fminecraft:brand\x05Helve")
+        self.assertEqual(runtime[0], packer.PRODUCT_BRAND_BODY)
+        self.assertEqual(runtime[1:], config[1:])
+        self.assertEqual(config[0], b"\x01config-a")
 
     def test_pack_validates_full_source_then_emits_selected_prefix(self) -> None:
         value, config, play = _fixture()
         patches = self._patched_constants(config, play)
+        runtime_config_bytes = len(config[1]) + len(packer.PRODUCT_BRAND_BODY)
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "replay.json"
             output = Path(tmp) / "replay.r1x"
             source.write_text(json.dumps(value), encoding="utf-8")
-            with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+            with (
+                patches[0],
+                patches[1],
+                patches[2],
+                patches[3],
+                patches[4],
+                patches[5],
+                patches[6],
+            ):
                 selected_count, selected_bytes = packer.pack(source, output, 2)
 
             raw = output.read_bytes()
@@ -94,8 +121,19 @@ class R1BPackJoinReplayTests(unittest.TestCase):
         self.assertEqual(struct.unpack_from("<I", raw, 8)[0], packer.EXPECTED_PROTOCOL)
         self.assertEqual(struct.unpack_from("<I", raw, 76)[0], len(config))
         self.assertEqual(struct.unpack_from("<I", raw, 80)[0], 2)
-        self.assertEqual(struct.unpack_from("<Q", raw, 84)[0], sum(map(len, config)))
+        self.assertEqual(struct.unpack_from("<Q", raw, 84)[0], runtime_config_bytes)
         self.assertEqual(struct.unpack_from("<Q", raw, 92)[0], sum(map(len, play[:2])))
+
+        cursor = 100
+        first_length = struct.unpack_from("<I", raw, cursor)[0]
+        cursor += 4
+        self.assertEqual(first_length, len(packer.PRODUCT_BRAND_BODY))
+        self.assertEqual(raw[cursor : cursor + first_length], packer.PRODUCT_BRAND_BODY)
+        cursor += first_length
+        second_length = struct.unpack_from("<I", raw, cursor)[0]
+        cursor += 4
+        self.assertEqual(second_length, len(config[1]))
+        self.assertEqual(raw[cursor : cursor + second_length], config[1])
 
     def test_tampered_body_hash_fails_before_output_creation(self) -> None:
         value, config, play = _fixture()
@@ -105,7 +143,15 @@ class R1BPackJoinReplayTests(unittest.TestCase):
             source = Path(tmp) / "replay.json"
             output = Path(tmp) / "replay.r1x"
             source.write_text(json.dumps(value), encoding="utf-8")
-            with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+            with (
+                patches[0],
+                patches[1],
+                patches[2],
+                patches[3],
+                patches[4],
+                patches[5],
+                patches[6],
+            ):
                 with self.assertRaisesRegex(packer.PackError, "body_sha256 mismatch"):
                     packer.pack(source, output, 1)
             self.assertFalse(output.exists())
@@ -117,7 +163,15 @@ class R1BPackJoinReplayTests(unittest.TestCase):
             source = Path(tmp) / "replay.json"
             output = Path(tmp) / "replay.r1x"
             source.write_text(json.dumps(value), encoding="utf-8")
-            with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+            with (
+                patches[0],
+                patches[1],
+                patches[2],
+                patches[3],
+                patches[4],
+                patches[5],
+                patches[6],
+            ):
                 with self.assertRaisesRegex(packer.PackError, "play-frame-limit"):
                     packer.pack(source, output, len(play) + 1)
 

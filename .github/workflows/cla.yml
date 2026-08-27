@@ -21,7 +21,6 @@ jobs:
           python3 - <<'PY'
           import os
           import re
-          import sys
 
           author = os.environ.get("PR_AUTHOR", "")
           body = os.environ.get("PR_BODY", "")
@@ -34,7 +33,7 @@ jobs:
               raise SystemExit(0)
 
           pattern = re.compile(
-              r"^-\s*\[[xX]\]\s*\*\*I have read and agree to the Crucible "
+              r"^-\s*\[[xX]\]\s*\*\*I have read and agree to the Helve "
               r"Contributor Licence Agreement\.\*\*",
               re.MULTILINE,
           )

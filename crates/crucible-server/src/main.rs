@@ -5,9 +5,9 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use crucible_server::{
-    DEFAULT_R0_BIND_ADDRESS, R0_ADMISSION_SESSION_SHA256, R0_ORACLE_STATUS_JSON, R2bPlaytestImage,
-    ServerSessionEpoch, load_r1x_image, load_r2b_playtest_image, serve_r0_blocking_transport,
-    serve_r1a_blocking_transport, serve_r1x_blocking_transport,
+    DEFAULT_R0_BIND_ADDRESS, HELVE_STATUS_JSON, PRODUCT_NAME, R0_ADMISSION_SESSION_SHA256,
+    R2bPlaytestImage, ServerSessionEpoch, load_r1x_image, load_r2b_playtest_image,
+    serve_r0_blocking_transport, serve_r1a_blocking_transport, serve_r1x_blocking_transport,
     serve_r2b_playtest_blocking_transport,
 };
 use crucible_target_26_2::{Target26_2R1xContext, generated};
@@ -31,7 +31,7 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("crucible-server: {error}");
+            eprintln!("helve: {error}");
             ExitCode::FAILURE
         }
     }
@@ -76,7 +76,7 @@ fn load_selected_r1x(options: &Options) -> Result<Option<Target26_2R1xContext>, 
         .r1x_replay_image
         .as_deref()
         .map(|path| {
-            load_r1x_image(path, R0_ORACLE_STATUS_JSON).map_err(|error| {
+            load_r1x_image(path, HELVE_STATUS_JSON).map_err(|error| {
                 format!(
                     "could not load R1X replay image {}: {error}",
                     path.display()
@@ -91,7 +91,7 @@ fn load_selected_r2b(options: &Options) -> Result<Option<R2bPlaytestImage>, Stri
         .r2b_playtest_image
         .as_deref()
         .map(|path| {
-            load_r2b_playtest_image(path, R0_ORACLE_STATUS_JSON).map_err(|error| {
+            load_r2b_playtest_image(path, HELVE_STATUS_JSON).map_err(|error| {
                 format!(
                     "could not load R2B playtest image {}: {error}",
                     path.display()
@@ -109,13 +109,13 @@ fn announce(
 ) {
     if r2b_playtest.is_some() {
         println!(
-            "Crucible R2B playtest listening on {local_address} | Minecraft {} protocol {} | real Configuration | replay-free Play bootstrap | captured Play publication 0 | R2C world projection pending | production_admitted=false",
+            "{PRODUCT_NAME} R2B playtest listening on {local_address} | Minecraft {} protocol {} | server brand {PRODUCT_NAME} | real Configuration | replay-free Play bootstrap | captured Play publication 0 | R2C world projection pending | production_admitted=false",
             generated::login_26_2::MINECRAFT_VERSION,
             generated::login_26_2::PROTOCOL_VERSION,
         );
     } else if let Some(context) = r1x_context {
         println!(
-            "Crucible R1X listening on {local_address} | Minecraft {} protocol {} | Configuration admitted | experimental Play frames {} ({} body bytes) | production_admitted=false",
+            "{PRODUCT_NAME} R1X listening on {local_address} | Minecraft {} protocol {} | server brand {PRODUCT_NAME} | Configuration admitted | experimental Play frames {} ({} body bytes) | production_admitted=false",
             generated::login_26_2::MINECRAFT_VERSION,
             generated::login_26_2::PROTOCOL_VERSION,
             context.play_frame_count(),
@@ -123,14 +123,14 @@ fn announce(
         );
     } else if options.login_session_epoch.is_some() {
         println!(
-            "Crucible R1A listening on {local_address} | Minecraft {} protocol {} | login contract {} | Configuration intentionally not yet admitted",
+            "{PRODUCT_NAME} R1A listening on {local_address} | Minecraft {} protocol {} | login contract {} | Configuration intentionally not yet admitted",
             generated::login_26_2::MINECRAFT_VERSION,
             generated::login_26_2::PROTOCOL_VERSION,
             generated::login_26_2::CONTRACT_ID,
         );
     } else {
         println!(
-            "Crucible R0 listening on {local_address} | Minecraft {} protocol {} | contract {} | session {}",
+            "{PRODUCT_NAME} R0 listening on {local_address} | Minecraft {} protocol {} | contract {} | session {}",
             generated::MINECRAFT_VERSION,
             generated::PROTOCOL_VERSION,
             generated::CONTRACT_ID,
@@ -291,13 +291,18 @@ fn options() -> Result<Options, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        DEFAULT_R0_BIND_ADDRESS, LOGIN_SESSION_EPOCH_PREFIX, R1X_CAPTURE_SESSION_EPOCH_HEX,
-        R1X_REPLAY_IMAGE_PREFIX, R2B_PLAYTEST_IMAGE_PREFIX, options,
+        DEFAULT_R0_BIND_ADDRESS, LOGIN_SESSION_EPOCH_PREFIX, PRODUCT_NAME,
+        R1X_CAPTURE_SESSION_EPOCH_HEX, R1X_REPLAY_IMAGE_PREFIX, R2B_PLAYTEST_IMAGE_PREFIX, options,
     };
 
     #[test]
     fn default_bind_address_remains_localhost() {
         assert_eq!(DEFAULT_R0_BIND_ADDRESS, "127.0.0.1:25565");
+    }
+
+    #[test]
+    fn executable_product_name_is_helve() {
+        assert_eq!(PRODUCT_NAME, "Helve");
     }
 
     #[test]

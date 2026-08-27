@@ -33,15 +33,20 @@ use crucible_session_core::{SessionPhase, SessionState, SessionStateError};
 use crate::{LoginState, Target26_2, Target26_2Action, Target26_2Error, Target26_2State};
 
 const CONFIGURATION_BODY_COUNT: usize = 34;
-const CONFIGURATION_BODY_BYTES: usize = 44_432;
+const CONFIGURATION_BODY_BYTES: usize = 44_430;
 const CONFIGURATION_ENTRY_END: usize = 3;
 const CONFIGURATION_REGISTRY_END: usize = 33;
 const PLAY_BODY_LIMIT: usize = 65_536;
 const PLAY_FULL_FRAME_COUNT: usize = 2_331;
 const PLAY_FULL_BODY_BYTES: usize = 6_135_522;
 
+// The sealed capture records the reference brand `vanilla`, but current product composition replaces
+// only that first source-backed custom-payload body after capture validation. Keeping the exact body
+// here makes the runtime target reject stale/captured product identity before publication.
+const PRODUCT_BRAND_BODY: &[u8] = b"\x01\x0fminecraft:brand\x05Helve";
+
 const CONFIGURATION_BODY_SIZES: [usize; CONFIGURATION_BODY_COUNT] = [
-    25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980, 282,
+    23, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980, 282,
     116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
 ];
 
@@ -67,7 +72,7 @@ const PARTICLE_STATUS_VARIANTS: i32 = 3;
 pub enum R1xContextError {
     /// Configuration image has the wrong body count.
     ConfigurationBodyCount { observed: usize },
-    /// One Configuration body length differs from the sealed capture image.
+    /// One Configuration body length differs from the selected runtime image.
     ConfigurationBodyLength {
         index: usize,
         observed: usize,
@@ -79,7 +84,9 @@ pub enum R1xContextError {
         observed: Option<u8>,
         expected: u8,
     },
-    /// Aggregate Configuration body bytes differ from the sealed image.
+    /// The first Configuration custom payload is not the canonical Helve brand body.
+    ConfigurationBrandMismatch,
+    /// Aggregate Configuration body bytes differ from the selected runtime image.
     ConfigurationBodyBytes { observed: usize },
     /// The selected Play prefix contains more bodies than the pinned full capture.
     PlayBodyCount { observed: usize },
@@ -101,8 +108,8 @@ impl Target26_2R1xContext {
     /// Builds a validated immutable R1X context.
     ///
     /// Cryptographic source/capture commitments are checked by the cold packer and runtime image
-    /// loader. This constructor additionally seals the exact Configuration body layout and explicit
-    /// Play bounds at the target boundary.
+    /// loader. This constructor additionally seals the exact runtime Configuration body layout,
+    /// product brand and explicit Play bounds at the target boundary.
     ///
     /// # Errors
     ///
@@ -172,6 +179,9 @@ fn validate_configuration(configuration: &[Box<[u8]>]) -> Result<(), R1xContextE
         return Err(R1xContextError::ConfigurationBodyCount {
             observed: configuration.len(),
         });
+    }
+    if configuration[0].as_ref() != PRODUCT_BRAND_BODY {
+        return Err(R1xContextError::ConfigurationBrandMismatch);
     }
 
     let mut total = 0_usize;
@@ -729,8 +739,8 @@ mod tests {
 
     use super::{
         CONFIGURATION_BODY_SIZES, CONFIGURATION_ENTRY_END, CONFIGURATION_REGISTRY_END,
-        ConfigurationStage, R1xContextError, R1xPublicationCommit, Target26_2R1x,
-        Target26_2R1xContext, Target26_2R1xState,
+        ConfigurationStage, PRODUCT_BRAND_BODY, R1xContextError, R1xPublicationCommit,
+        Target26_2R1x, Target26_2R1xContext, Target26_2R1xState,
     };
 
     fn dummy_context(play_frames: usize) -> Target26_2R1xContext {
@@ -745,7 +755,11 @@ mod tests {
                 33 => 3,
                 _ => unreachable!(),
             };
-            let mut body = vec![0_u8; size];
+            let mut body = if index == 0 {
+                PRODUCT_BRAND_BODY.to_vec()
+            } else {
+                vec![0_u8; size]
+            };
             body[0] = packet_id;
             configuration.push(body.into_boxed_slice());
         }
@@ -756,7 +770,7 @@ mod tests {
     }
 
     #[test]
-    fn context_seals_configuration_layout_and_play_bounds() {
+    fn context_seals_configuration_layout_brand_and_play_bounds() {
         let context = dummy_context(2);
         assert_eq!(context.play_frame_count(), 2);
         assert_eq!(context.play_body_bytes(), 2);
@@ -772,6 +786,13 @@ mod tests {
                 ..
             }
         ));
+
+        let mut context = dummy_context(0);
+        context.configuration[0][22] ^= 1;
+        let error =
+            Target26_2R1xContext::new("{}".into(), context.configuration.into_vec(), Vec::new())
+                .expect_err("wrong product brand");
+        assert_eq!(error, R1xContextError::ConfigurationBrandMismatch);
 
         let context = dummy_context(0);
         assert_eq!(

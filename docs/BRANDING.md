@@ -1,12 +1,12 @@
-# Crucible branding and public presentation
+# Helve branding and public presentation
 
-This document defines the canonical public-facing language for Crucible and the rules for using project branding in repository and community surfaces.
+This document defines the canonical public-facing language for Helve and the rules for using project branding in repository and community surfaces.
 
 It is intentionally narrow. Architecture belongs in `docs/architecture/`; this file exists to stop the project name, motto, status and claims from drifting across README files, social previews and future websites.
 
 ## Canonical identity
 
-**Project name:** Crucible
+**Project name:** Helve
 
 **Motto:**
 
@@ -24,7 +24,7 @@ The short description is suitable for repository metadata and compact project li
 
 ## What the brand should communicate
 
-Crucible should feel:
+Helve should feel:
 
 - technically serious rather than hype-driven;
 - performance-focused without making unqualified benchmark claims;
@@ -42,11 +42,11 @@ independently designed engine mechanisms
 
 ## Current-status language
 
-Until a playable release exists, public surfaces MUST make the foundational status clear.
+Until a playable release exists, public surfaces MUST make the development status clear.
 
-Preferred language:
+Preferred language at the current boundary:
 
-> Crucible is in **M0 — Foundation and World Kernel Qualification** and does not yet provide a playable server release.
+> Helve has reached replay-free stock-client Play entry on Minecraft Java 26.2; R2C world/chunk/light projection is the next product boundary. Helve does not yet provide a playable production server release.
 
 Do not use language such as `production-ready`, `drop-in replacement`, `fully vanilla compatible`, `faster than Paper/Folia/Pumpkin`, or a headline player-count/performance claim until the relevant qualification and release evidence exists.
 
@@ -63,7 +63,7 @@ A public performance statement should identify enough context to be meaningful. 
 - workload/semantic coverage;
 - target hardware and configuration.
 
-A benchmark chosen because it makes Crucible look good is not, by itself, a brand asset.
+A benchmark chosen because it makes Helve look good is not, by itself, a brand asset.
 
 ## Vanilla/parity language
 
@@ -75,36 +75,45 @@ Preferred terms:
 - `reference implementation`;
 - `equivalence evidence`.
 
-Avoid implying that Mojang source is copied, vendored, translated or redistributed. The official implementation is an oracle for semantic reconstruction and qualification; Crucible's repository contains Crucible-owned code, models, records, fixtures and derived evidence.
+Avoid implying that Mojang source is copied, vendored, translated or redistributed. The official implementation is an oracle for semantic reconstruction and qualification; Helve's repository contains project-owned code, models, records, fixtures and derived evidence.
 
-## Visual assets
+## Minecraft server brand
 
-Canonical visual assets should live under:
+For supported clients, Helve SHOULD identify itself through the protocol-defined server-brand mechanism rather than impersonating the vanilla server.
 
-```text
-docs/assets/branding/
-```
-
-Recommended exports are:
+For Minecraft Java 26.2 the canonical product brand string is exactly:
 
 ```text
-crucible-icon.*
-crucible-wordmark.*
-crucible-lockup.*
-crucible-social-preview.*
+Helve
 ```
 
-If the design has distinct light/dark variants, suffix the filename explicitly rather than relying on a viewer to recolour it.
+Historical vanilla capture material may still contain `vanilla`; that is evidence and MUST NOT be rewritten. Product composition may replace the captured brand only after the source/capture artifact has been independently validated, and the resulting runtime packet must remain source-backed and fail closed on malformed identity or encoding.
 
-Keep a high-quality source/master outside derived raster exports where practical. Do not repeatedly recompress a social-preview or README raster and treat the result as a new master.
+## Visual identity
 
-The existing approved visual design is authoritative. Do not invent a new colour palette, icon geometry or wordmark treatment merely to fit one repository surface; adapt layout/export dimensions while preserving the identity.
+The **pixel-art family is canonical**. Do not smooth, vector-trace, repaint or replace it with the more rendered/non-pixel variants merely for convenience. Resizing raster exports should use nearest-neighbour sampling so the pixel geometry remains crisp.
+
+Canonical repository exports live under `docs/assets/branding/`:
+
+| Asset | Role |
+| --- | --- |
+| `helve-mark.png` | Primary standalone mark. Use for avatars, icons, compact square surfaces and places where the name is already visible. |
+| `helve-lockup.png` | Primary horizontal identity. Use for the README/header and other wide project surfaces. |
+| `helve-wordmark.png` | HELVE wordmark without the standalone mark. Use where a type-only treatment is required. |
+| `helve-stacked.png` | Vertical mark + wordmark composition for square/tall layouts. |
+| `helve-badge.png` | Secondary decorative badge. Use for social/community artwork or larger showcase surfaces; it is not the default everyday logo. |
+
+The simpler hammer/anvil silhouette is the primary identity. The framed badge is intentionally secondary so the brand remains recognisable at small sizes and does not become visually overworked.
+
+The committed PNGs are repository/web exports of the approved artwork. They are palette-optimised and resized with nearest-neighbour sampling to keep Git history and web delivery lightweight without changing the composition. Preserve higher-resolution masters outside derived raster exports where practical.
+
+Do not repeatedly recompress an existing raster and treat it as a new master. New exports should be derived from the best available approved source artwork.
 
 ## GitHub presentation
 
 The repository front page should prioritize, in order:
 
-1. Crucible identity and motto;
+1. Helve horizontal pixel-art lockup and motto;
 2. one-sentence product definition;
 3. current development status;
 4. why the architecture is different;
@@ -129,16 +138,24 @@ networking
 open-source
 ```
 
+## Internal compatibility namespace
+
+The public product name is Helve. Existing internal Cargo packages, crate imports and stable technical paths using the `crucible-*` namespace may remain during the first rebrand phase when renaming them would create dependency-graph churn without user-facing benefit.
+
+That compatibility namespace must not leak into new public product copy. A later explicit migration may rename it if the engineering benefit justifies the churn.
+
+Historical evidence identifiers, hashes, captures and durable technical records are provenance, not branding, and should not be mechanically rewritten merely to eliminate the old word from search results.
+
 ## Independence notice
 
-Where legal/project identity context is appropriate, use the existing repository language:
+Where legal/project identity context is appropriate, use:
 
-> Crucible is an independent project and is not affiliated with, sponsored by, or endorsed by Mojang Studios or Microsoft. Minecraft is a trademark of Microsoft Corporation.
+> Helve is an independent project and is not affiliated with, sponsored by, or endorsed by Mojang Studios or Microsoft. Minecraft is a trademark of Microsoft Corporation.
 
 Do not place this disclaimer above the product identity on every surface; it belongs in README/legal/footer contexts where it is useful and visible.
 
 ## Change discipline
 
-Changes to the project name, motto, canonical short description, or visual identity should be deliberate project decisions rather than incidental edits bundled into unrelated implementation PRs.
+Changes to the project name, motto, canonical short description, server-brand string or visual identity should be deliberate project decisions rather than incidental edits bundled into unrelated implementation PRs.
 
 Presentation may evolve. Claims still require evidence.
