@@ -7,10 +7,37 @@
 //!
 //! Teleport acknowledgement is connection state rather than publication state. The transaction
 //! retains the source sequence law and does not clear pending state for wrong/stale acknowledgements.
+//! Serverbound packet identity is a target-owned static fact from the reviewed 26.2 `GameProtocols`
+//! insertion order; callers consume the semantic decoder and never perform a runtime packet lookup.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use crucible_connection_core::FrameView;
+use crucible_packet_core::{PacketCodecError, PacketReader, PacketWriter};
 
 const ABSOLUTE_FIXED_BYTES: usize = 24 + 24 + 8 + 4;
+// VAR-NET-R2B-PLAY-GAME-PROTOCOLS-001: protocol 776 serverbound teleport confirmation.
+const SERVERBOUND_TELEPORT_ACK_PACKET_ID: i32 = 0;
+
+/// Decodes the selected 26.2 serverbound teleport acknowledgement surface.
+///
+/// Returns `Ok(None)` for every other Play packet so continuing Play composition can directly route
+/// independent semantic slices without a packet registry. A matching packet contains exactly one
+/// signed Minecraft `VarInt` teleport sequence ID.
+///
+/// # Errors
+///
+/// Returns the packet codec error for a truncated/overlong acknowledgement ID or trailing payload
+/// bytes. The borrowed frame is never mutated by decoding.
+pub fn decode_serverbound_teleport_ack(
+    frame: FrameView<'_>,
+) -> Result<Option<i32>, PacketCodecError> {
+    if frame.packet_id() != SERVERBOUND_TELEPORT_ACK_PACKET_ID {
+        return Ok(None);
+    }
+    let mut reader = PacketReader::new(frame.payload());
+    let id = reader.read_var_int()?;
+    reader.finish()?;
+    Ok(Some(id))
+}
 
 /// One absolute fresh-player teleport payload without packet identity.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -183,9 +210,13 @@ const fn var_int_len(value: i32) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use crucible_connection_core::{ConnectionLimits, IngressBuffer};
     use crucible_packet_core::{PacketCodecError, PacketWriter};
 
-    use super::{AbsoluteTeleportPayload, TeleportAckResult, TeleportTransaction};
+    use super::{
+        AbsoluteTeleportPayload, TeleportAckResult, TeleportTransaction,
+        decode_serverbound_teleport_ack,
+    };
 
     const CAPTURED: AbsoluteTeleportPayload = AbsoluteTeleportPayload {
         id: 1,
@@ -195,6 +226,52 @@ mod tests {
         yaw: f32::from_bits(0xc2ee_3335),
         pitch: f32::from_bits(0x4190_0001),
     };
+
+    fn ingress() -> IngressBuffer {
+        IngressBuffer::new(ConnectionLimits::new(64, 128, 128).expect("test limits"))
+    }
+
+    #[test]
+    fn serverbound_teleport_ack_decodes_source_admitted_identity() {
+        let mut ingress = ingress();
+        ingress
+            .push(&[0x02, 0x00, 0x01])
+            .expect("teleport ack frame fits");
+        let frame = ingress
+            .peek_frame()
+            .expect("frame decode")
+            .expect("one complete frame");
+        assert_eq!(decode_serverbound_teleport_ack(frame), Ok(Some(1)));
+    }
+
+    #[test]
+    fn teleport_ack_decoder_ignores_other_play_packets() {
+        let mut ingress = ingress();
+        ingress
+            .push(&[0x02, 0x1c, 0x01])
+            .expect("different packet frame fits");
+        let frame = ingress
+            .peek_frame()
+            .expect("frame decode")
+            .expect("one complete frame");
+        assert_eq!(decode_serverbound_teleport_ack(frame), Ok(None));
+    }
+
+    #[test]
+    fn teleport_ack_requires_exact_payload_consumption() {
+        let mut ingress = ingress();
+        ingress
+            .push(&[0x03, 0x00, 0x01, 0x00])
+            .expect("trailing-byte frame fits");
+        let frame = ingress
+            .peek_frame()
+            .expect("frame decode")
+            .expect("one complete frame");
+        assert_eq!(
+            decode_serverbound_teleport_ack(frame),
+            Err(PacketCodecError::TrailingBytes { remaining: 1 })
+        );
+    }
 
     #[test]
     fn first_selected_teleport_matches_exact_r1x_golden_payload() {
