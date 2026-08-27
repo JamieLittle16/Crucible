@@ -1,9 +1,10 @@
 //! Strict cold-path loader for the compact experimental R1X replay image.
 //!
-//! The Python packer performs the cryptographic verification against the pinned source-free JSON.
-//! This loader independently rejects wrong format/version/source/capture commitments, incoherent
-//! counts/byte totals, oversized bodies and trailing data before constructing the process-owned
-//! immutable R1X context. No JSON parser or dynamic packet registry exists in the server runtime.
+//! The Python packer performs the cryptographic verification against the pinned source-free JSON
+//! before composing the current Helve server-brand body. This loader independently rejects wrong
+//! format/version/source/capture commitments, incoherent counts/byte totals, oversized bodies and
+//! trailing data before constructing the process-owned immutable R1X context. No JSON parser or
+//! dynamic packet registry exists in the server runtime.
 
 use std::fmt;
 use std::fs::{self, File};
@@ -15,7 +16,7 @@ use crucible_target_26_2::{R1xContextError, Target26_2R1xContext};
 const MAGIC: [u8; 8] = *b"CRR1X001";
 const EXPECTED_PROTOCOL: u32 = 776;
 const EXPECTED_CONFIGURATION_COUNT: usize = 34;
-const EXPECTED_CONFIGURATION_BYTES: usize = 44_432;
+const EXPECTED_CONFIGURATION_BYTES: usize = 44_430;
 const MAX_PLAY_COUNT: usize = 2_331;
 const MAX_PLAY_BYTES: usize = 6_135_522;
 const MAX_BODY_BYTES: usize = 65_536;
@@ -63,7 +64,7 @@ pub enum R1xImageError {
     CaptureCommitment,
     /// Configuration count differed from the sealed selected route.
     ConfigurationCount { observed: usize },
-    /// Configuration aggregate body bytes differed from the sealed selected route.
+    /// Configuration aggregate body bytes differed from the selected runtime route.
     ConfigurationBytes { observed: usize },
     /// Selected Play prefix exceeded the pinned full capture count.
     PlayCount { observed: usize },
@@ -346,8 +347,9 @@ mod tests {
         EXPECTED_SOURCE_SHA256, MAGIC, R1xImageError, decode_image,
     };
 
+    const PRODUCT_BRAND_BODY: &[u8] = b"\x01\x0fminecraft:brand\x05Helve";
     const SIZES: [usize; 34] = [
-        25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980,
+        23, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980,
         282, 116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
     ];
 
@@ -385,7 +387,11 @@ mod tests {
                 _ => unreachable!(),
             };
             output.extend_from_slice(&u32::try_from(size).expect("size fits").to_le_bytes());
-            let mut body = vec![0_u8; size];
+            let mut body = if index == 0 {
+                PRODUCT_BRAND_BODY.to_vec()
+            } else {
+                vec![0_u8; size]
+            };
             body[0] = packet_id;
             output.extend_from_slice(&body);
         }
