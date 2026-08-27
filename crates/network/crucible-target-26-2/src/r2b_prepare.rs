@@ -3,6 +3,8 @@
 //! Dynamic bodies are encoded through one reused bounded `PacketWriter`, copied once into the
 //! contiguous arena owned by [`PreparedR2bPlan`], and indexed in source-backed semantic stage order.
 //! Commands, synchronized recipes and optional server data remain borrowed immutable artifacts.
+//! Every Minecraft 26.2 packet identity used here is a private compile-time target fact: callers
+//! cannot supply, validate, or vary packet IDs on the join path.
 
 use crucible_packet_core::{PacketCodecError, PacketWriter};
 
@@ -37,12 +39,13 @@ use crate::r2b_teleport::{AbsoluteTeleportPayload, TeleportTransaction};
 /// same single arena owner.
 pub const SELECTED_DYNAMIC_ARENA_CAPACITY: usize = 512;
 
-/// Exact finite 26.2 Play packet identities consumed by the assembler.
+/// Exact finite Minecraft Java 26.2 Play packet identities frozen by the admitted R2B source law.
 ///
-/// Production construction belongs to generated protocol-contract code. Named fields make semantic
-/// assembly independent of runtime packet-name lookup and prevent index arithmetic on the hot path.
+/// This type and value are private to the target implementation. They exist only to keep semantic
+/// names beside the encoder calls; there is no runtime packet registry, caller-supplied ID bundle,
+/// validation branch chain, or packet-name lookup on the join path.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct PlayPacketIds {
+struct PlayPacketIds {
     change_difficulty: i32,
     commands: i32,
     container_set_content: i32,
@@ -64,55 +67,27 @@ pub struct PlayPacketIds {
     update_recipes: i32,
 }
 
-impl PlayPacketIds {
-    /// Builds IDs in the frozen Play-entry contract order.
-    #[must_use]
-    pub const fn from_source_order(values: [i32; 19]) -> Self {
-        Self {
-            change_difficulty: values[0],
-            commands: values[1],
-            container_set_content: values[2],
-            entity_event: values[3],
-            game_event: values[4],
-            initialize_border: values[5],
-            login: values[6],
-            player_abilities: values[7],
-            player_info_update: values[8],
-            player_position: values[9],
-            recipe_book_add: values[10],
-            recipe_book_settings: values[11],
-            server_data: values[12],
-            set_default_spawn_position: values[13],
-            set_held_slot: values[14],
-            set_time: values[15],
-            ticking_state: values[16],
-            ticking_step: values[17],
-            update_recipes: values[18],
-        }
-    }
-
-    const fn all_nonnegative(self) -> bool {
-        self.change_difficulty >= 0
-            && self.commands >= 0
-            && self.container_set_content >= 0
-            && self.entity_event >= 0
-            && self.game_event >= 0
-            && self.initialize_border >= 0
-            && self.login >= 0
-            && self.player_abilities >= 0
-            && self.player_info_update >= 0
-            && self.player_position >= 0
-            && self.recipe_book_add >= 0
-            && self.recipe_book_settings >= 0
-            && self.server_data >= 0
-            && self.set_default_spawn_position >= 0
-            && self.set_held_slot >= 0
-            && self.set_time >= 0
-            && self.ticking_state >= 0
-            && self.ticking_step >= 0
-            && self.update_recipes >= 0
-    }
-}
+const PLAY_PACKET_IDS: PlayPacketIds = PlayPacketIds {
+    change_difficulty: 10,
+    commands: 16,
+    container_set_content: 18,
+    entity_event: 34,
+    game_event: 38,
+    initialize_border: 43,
+    login: 49,
+    player_abilities: 64,
+    player_info_update: 70,
+    player_position: 72,
+    recipe_book_add: 74,
+    recipe_book_settings: 76,
+    server_data: 86,
+    set_default_spawn_position: 97,
+    set_held_slot: 105,
+    set_time: 113,
+    ticking_state: 127,
+    ticking_step: 128,
+    update_recipes: 133,
+};
 
 /// Initial absolute teleport destination before assigning the connection-owned sequence ID.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -236,8 +211,6 @@ pub enum PrepareR2bError {
     PlayerInfo(PlayerInfoEncodeError),
     /// Inventory projection failure.
     Inventory(InventoryEncodeError),
-    /// A packet ID supplied by the static contract was negative.
-    InvalidPacketIds,
     /// A borrowed/shared full body carries the wrong packet identity.
     PacketIdMismatch {
         /// Expected packet ID.
@@ -294,35 +267,32 @@ impl<'a> PreparedR2bPlan<'a> {
     /// Prepares the complete finite network-owned bootstrap transactionally.
     ///
     /// `scratch` is reused across all dynamic packets. Teleport sequence/awaiting state is advanced
-    /// on a local copy and committed only after the entire plan succeeds.
+    /// on a local copy and committed only after the entire plan succeeds. Packet identities are
+    /// compile-time target facts and therefore are not part of this runtime API.
     ///
     /// # Errors
     ///
-    /// Fails closed on invalid/static packet IDs, projection-key mismatch, invalid shared body
-    /// identity, semantic codec failure, arena overflow or inline plan overflow. The caller's
-    /// teleport state remains unchanged and `scratch` is reset on every error path.
+    /// Fails closed on projection-key mismatch, invalid shared body identity, semantic codec failure,
+    /// arena overflow or inline plan overflow. The caller's teleport state remains unchanged and
+    /// `scratch` is reset on every error path.
     pub fn prepare(
         snapshot: FreshR2bBootstrapSnapshot<'a>,
         image: &'a PlayBootstrapImage26_2,
-        ids: PlayPacketIds,
         scratch: &mut PacketWriter,
         teleport_state: &mut TeleportTransaction,
         arena_capacity: usize,
     ) -> Result<Self, PrepareR2bError> {
         scratch.reset();
-        if !ids.all_nonnegative() {
-            return Err(PrepareR2bError::InvalidPacketIds);
-        }
 
         let commands = image.commands(&snapshot.command_key)?;
         let update_recipes = image.update_recipes(&snapshot.recipe_key)?;
-        validate_packet_id(commands, ids.commands)?;
-        validate_packet_id(update_recipes, ids.update_recipes)?;
+        validate_packet_id(commands, PLAY_PACKET_IDS.commands)?;
+        validate_packet_id(update_recipes, PLAY_PACKET_IDS.update_recipes)?;
 
         let server_data = match snapshot.server_data {
             Some(projection) => {
                 let body = projection.artifact.body_for(&projection.requested)?;
-                validate_packet_id(body, ids.server_data)?;
+                validate_packet_id(body, PLAY_PACKET_IDS.server_data)?;
                 Some(body)
             }
             None => None,
@@ -344,9 +314,7 @@ impl<'a> PreparedR2bPlan<'a> {
             server_data,
         );
 
-        if let Err(error) =
-            prepare_stages(&mut plan, &snapshot, ids, teleport, server_data, scratch)
-        {
+        if let Err(error) = prepare_stages(&mut plan, &snapshot, teleport, server_data, scratch) {
             scratch.reset();
             return Err(error);
         }
@@ -361,25 +329,24 @@ impl<'a> PreparedR2bPlan<'a> {
 fn prepare_stages(
     plan: &mut PreparedR2bPlanBuilder<'_>,
     snapshot: &FreshR2bBootstrapSnapshot<'_>,
-    ids: PlayPacketIds,
     teleport: AbsoluteTeleportPayload,
     server_data: Option<&[u8]>,
     scratch: &mut PacketWriter,
 ) -> Result<(), PrepareR2bError> {
     let start = plan.len();
-    dynamic(plan, ids.login, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.login, scratch, |writer| {
         snapshot.login.encode(writer).map_err(Into::into)
     })?;
     plan.finish_stage(0, start)?;
 
     let start = plan.len();
-    dynamic(plan, ids.change_difficulty, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.change_difficulty, scratch, |writer| {
         snapshot.difficulty.encode(writer).map_err(Into::into)
     })?;
-    dynamic(plan, ids.player_abilities, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.player_abilities, scratch, |writer| {
         snapshot.abilities.encode(writer).map_err(Into::into)
     })?;
-    dynamic(plan, ids.set_held_slot, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.set_held_slot, scratch, |writer| {
         snapshot.held_slot.encode(writer).map_err(Into::into)
     })?;
     plan.finish_stage(1, start)?;
@@ -389,23 +356,26 @@ fn prepare_stages(
     plan.finish_stage(2, start)?;
 
     let start = plan.len();
-    dynamic(plan, ids.entity_event, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.entity_event, scratch, |writer| {
         snapshot.permission_event.encode(writer).map_err(Into::into)
     })?;
     plan.push_shared(SharedBody::Commands)?;
     plan.finish_stage(3, start)?;
 
     let start = plan.len();
-    dynamic(plan, ids.recipe_book_settings, scratch, |writer| {
-        snapshot.recipe_settings.encode(writer).map_err(Into::into)
-    })?;
-    dynamic(plan, ids.recipe_book_add, scratch, |writer| {
+    dynamic(
+        plan,
+        PLAY_PACKET_IDS.recipe_book_settings,
+        scratch,
+        |writer| snapshot.recipe_settings.encode(writer).map_err(Into::into),
+    )?;
+    dynamic(plan, PLAY_PACKET_IDS.recipe_book_add, scratch, |writer| {
         encode_fresh_recipe_book_add(writer).map_err(Into::into)
     })?;
     plan.finish_stage(4, start)?;
 
     let start = plan.len();
-    dynamic(plan, ids.player_position, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.player_position, scratch, |writer| {
         teleport.encode(writer).map_err(Into::into)
     })?;
     plan.finish_stage(5, start)?;
@@ -417,21 +387,32 @@ fn prepare_stages(
     plan.finish_stage(6, start)?;
 
     let start = plan.len();
-    dynamic(plan, ids.player_info_update, scratch, |writer| {
-        encode_initial_player_info(snapshot.existing_players, writer).map_err(Into::into)
-    })?;
-    dynamic(plan, ids.player_info_update, scratch, |writer| {
-        encode_initial_player_info(core::slice::from_ref(&snapshot.joining_player), writer)
-            .map_err(Into::into)
-    })?;
+    dynamic(
+        plan,
+        PLAY_PACKET_IDS.player_info_update,
+        scratch,
+        |writer| encode_initial_player_info(snapshot.existing_players, writer).map_err(Into::into),
+    )?;
+    dynamic(
+        plan,
+        PLAY_PACKET_IDS.player_info_update,
+        scratch,
+        |writer| {
+            encode_initial_player_info(core::slice::from_ref(&snapshot.joining_player), writer)
+                .map_err(Into::into)
+        },
+    )?;
     plan.finish_stage(7, start)?;
 
-    prepare_level_stage(plan, snapshot, ids, scratch)?;
+    prepare_level_stage(plan, snapshot, scratch)?;
 
     let start = plan.len();
-    dynamic(plan, ids.container_set_content, scratch, |writer| {
-        snapshot.inventory.encode(writer).map_err(Into::into)
-    })?;
+    dynamic(
+        plan,
+        PLAY_PACKET_IDS.container_set_content,
+        scratch,
+        |writer| snapshot.inventory.encode(writer).map_err(Into::into),
+    )?;
     plan.finish_stage(9, start)?;
     Ok(())
 }
@@ -439,19 +420,21 @@ fn prepare_stages(
 fn prepare_level_stage(
     plan: &mut PreparedR2bPlanBuilder<'_>,
     snapshot: &FreshR2bBootstrapSnapshot<'_>,
-    ids: PlayPacketIds,
     scratch: &mut PacketWriter,
 ) -> Result<(), PrepareR2bError> {
     let start = plan.len();
-    dynamic(plan, ids.initialize_border, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.initialize_border, scratch, |writer| {
         snapshot.border.encode(writer).map_err(Into::into)
     })?;
-    dynamic(plan, ids.set_time, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.set_time, scratch, |writer| {
         snapshot.clock.encode(writer).map_err(Into::into)
     })?;
-    dynamic(plan, ids.set_default_spawn_position, scratch, |writer| {
-        snapshot.spawn.encode(writer).map_err(Into::into)
-    })?;
+    dynamic(
+        plan,
+        PLAY_PACKET_IDS.set_default_spawn_position,
+        scratch,
+        |writer| snapshot.spawn.encode(writer).map_err(Into::into),
+    )?;
 
     if let BootstrapWeather::Raining {
         rain_level,
@@ -460,21 +443,18 @@ fn prepare_level_stage(
     {
         weather_event(
             plan,
-            ids.game_event,
             scratch,
             BootstrapGameEvent::StartRaining,
             0.0,
         )?;
         weather_event(
             plan,
-            ids.game_event,
             scratch,
             BootstrapGameEvent::RainLevelChange,
             rain_level,
         )?;
         weather_event(
             plan,
-            ids.game_event,
             scratch,
             BootstrapGameEvent::ThunderLevelChange,
             thunder_level,
@@ -483,15 +463,14 @@ fn prepare_level_stage(
 
     weather_event(
         plan,
-        ids.game_event,
         scratch,
         BootstrapGameEvent::LevelChunksLoadStart,
         0.0,
     )?;
-    dynamic(plan, ids.ticking_state, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.ticking_state, scratch, |writer| {
         snapshot.ticking_state.encode(writer).map_err(Into::into)
     })?;
-    dynamic(plan, ids.ticking_step, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.ticking_step, scratch, |writer| {
         snapshot.ticking_step.encode(writer).map_err(Into::into)
     })?;
     plan.finish_stage(8, start)?;
@@ -529,12 +508,11 @@ where
 
 fn weather_event(
     plan: &mut PreparedR2bPlanBuilder<'_>,
-    packet_id: i32,
     scratch: &mut PacketWriter,
     event: BootstrapGameEvent,
     parameter: f32,
 ) -> Result<(), PrepareR2bError> {
-    dynamic(plan, packet_id, scratch, |writer| {
+    dynamic(plan, PLAY_PACKET_IDS.game_event, scratch, |writer| {
         GameEventPayload { event, parameter }
             .encode(writer)
             .map_err(Into::into)
