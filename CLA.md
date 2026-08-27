@@ -1,20 +1,24 @@
-# Crucible Contributor Licence Agreement
+# Helve Contributor Licence Agreement
 
-Version 1.0 — 23 August 2026
+Version 1.1 — 27 August 2026
 
-This Contributor Licence Agreement (the **Agreement**) applies to Contributions submitted to the Crucible project.
+> **Project-name continuity update.** Version 1.1 changes the public project name from Crucible to Helve and clarifies continuity with the former repository identity. It does not expand the substantive licences granted by Version 1.0.
 
-The purpose of this Agreement is to let contributors keep ownership of their work while giving the Crucible project steward sufficiently broad and durable rights to maintain, distribute, sublicense, dual-license, and relicense Crucible over the lifetime of the project.
+This Contributor Licence Agreement (the **Agreement**) applies to Contributions submitted to the Helve project.
 
-This Agreement is additional to the Mozilla Public License 2.0 (**MPL-2.0**) that governs the public Crucible source tree. It does not take away any rights a contributor has in their own Contribution, and it does not revoke rights already granted to recipients of Crucible under MPL-2.0 or another valid licence.
+The purpose of this Agreement is to let contributors keep ownership of their work while giving the Helve project steward sufficiently broad and durable rights to maintain, distribute, sublicense, dual-license, and relicense Helve over the lifetime of the project.
+
+This Agreement is additional to the Mozilla Public License 2.0 (**MPL-2.0**) that governs the public Helve source tree. It does not take away any rights a contributor has in their own Contribution, and it does not revoke rights already granted to recipients of the Project under MPL-2.0 or another valid licence.
 
 ## 1. Parties and definitions
 
 **You** means the individual or legal entity accepting this Agreement.
 
-**Project** means Crucible, currently hosted at `github.com/JamieLittle16/Crucible`, together with successor repositories, distributions, and works maintained as continuations of Crucible.
+**Project** means **Helve, formerly named Crucible**, currently hosted at `github.com/JamieLittle16/Crucible` pending the repository-name migration, together with successor repositories, distributions, and works maintained as continuations of the same project under either name.
 
-**Project Steward** means Jamie Little and any person or legal entity to which Jamie Little later transfers or assigns stewardship of Crucible and the rights held under this Agreement.
+For avoidance of doubt, the change from Crucible to Helve is a project rename, not the creation of a separate project. Rights granted for Contributions submitted under the former Crucible name continue to apply to the Project after the rename according to the version of this Agreement accepted for those Contributions.
+
+**Project Steward** means Jamie Little and any person or legal entity to which Jamie Little later transfers or assigns stewardship of the Project and the rights held under this Agreement.
 
 **Contribution** means any original work of authorship, modification, code, documentation, test, benchmark, data definition, design material, or other material that You intentionally submit for inclusion in, discussion for, or development of the Project through a pull request, commit, patch, issue, review, electronic communication, or another submission channel designated by the Project Steward.
 
@@ -64,7 +68,7 @@ You represent that:
 1. You have the legal capacity and authority to enter into this Agreement.
 2. You are legally entitled to grant every right and licence granted by this Agreement.
 3. To the best of Your knowledge, each Contribution is Your original work except for material whose origin and licence You clearly identify to the Project before submission.
-4. You will not knowingly submit material that is subject to terms incompatible with this Agreement, MPL-2.0, or the intended inclusion of that material in Crucible.
+4. You will not knowingly submit material that is subject to terms incompatible with this Agreement, MPL-2.0, or the intended inclusion of that material in the Project.
 5. If an employer, client, educational institution, or another person or entity may own or control rights in a Contribution, You have obtained all permission required to make the Contribution and grant the rights in this Agreement before submitting it.
 6. If You do not have authority to grant rights in employer-owned or third-party-owned material, You will not submit that material as a Contribution unless the Project Steward has accepted separate written authorization from the rights holder.
 
@@ -89,7 +93,7 @@ The Project Steward may distribute different versions or editions of the Project
 
 ## 9. Trademarks
 
-This Agreement grants no right to use the Crucible name, logos, service marks, or other Project branding except for truthful nominative reference to the Project or as separately permitted by the Project Steward.
+This Agreement grants no right to use the Helve name, logos, service marks, or other Project branding except for truthful nominative reference to the Project or as separately permitted by the Project Steward.
 
 ## 10. Acceptance and electronic records
 
@@ -117,4 +121,4 @@ This Agreement is governed by the laws of England and Wales, without regard to c
 
 By accepting this Agreement, You confirm:
 
-> I retain ownership of my Contributions. I grant the Crucible Project Steward the perpetual, worldwide, sublicensable, transferable, royalty-free and irrevocable copyright, related-rights and patent licences stated in this Agreement, including the right to relicense my Contributions under other open-source or proprietary/commercial terms. I have authority to make these grants.
+> I retain ownership of my Contributions. I grant the Helve Project Steward the perpetual, worldwide, sublicensable, transferable, royalty-free and irrevocable copyright, related-rights and patent licences stated in this Agreement, including the right to relicense my Contributions under other open-source or proprietary/commercial terms. I have authority to make these grants.
