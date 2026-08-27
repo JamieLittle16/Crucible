@@ -35,7 +35,7 @@ pub enum DynamicBootstrapArenaError {
 /// `N` is fixed by the target/profile at compile time. Spans are stored inline and packet bytes are
 /// contiguous, avoiding one heap allocation and allocator metadata entry per dynamic packet.
 #[derive(Debug)]
-pub struct DynamicBootstrapArena<const N: usize> {
+pub(crate) struct DynamicBootstrapArena<const N: usize> {
     bytes: Vec<u8>,
     spans: [BodySpan; N],
     len: usize,
@@ -46,7 +46,7 @@ impl<const N: usize> DynamicBootstrapArena<N> {
     ///
     /// Capacity is a performance hint only; semantic/body-count bounds remain independent.
     #[must_use]
-    pub fn with_capacity(byte_capacity: usize) -> Self {
+    pub(crate) fn with_capacity(byte_capacity: usize) -> Self {
         Self {
             bytes: Vec::with_capacity(byte_capacity),
             spans: [BodySpan::default(); N],
@@ -56,13 +56,13 @@ impl<const N: usize> DynamicBootstrapArena<N> {
 
     /// Number of dynamic packet bodies currently sealed into the arena.
     #[must_use]
-    pub const fn body_count(&self) -> usize {
+    pub(crate) const fn body_count(&self) -> usize {
         self.len
     }
 
     /// Total encoded packet-body bytes retained by this arena.
     #[must_use]
-    pub fn body_bytes(&self) -> usize {
+    pub(crate) fn body_bytes(&self) -> usize {
         self.bytes.len()
     }
 
@@ -76,7 +76,7 @@ impl<const N: usize> DynamicBootstrapArena<N> {
     ///
     /// Fails before changing either arena or scratch writer when the body is empty, the static body
     /// count is exhausted, or compact span arithmetic cannot represent the result.
-    pub fn seal_from(
+    pub(crate) fn seal_from(
         &mut self,
         scratch: &mut PacketWriter,
     ) -> Result<usize, DynamicBootstrapArenaError> {
@@ -111,7 +111,7 @@ impl<const N: usize> DynamicBootstrapArena<N> {
 
     /// Borrows one sealed packet body by stable insertion index.
     #[must_use]
-    pub fn body(&self, index: usize) -> Option<&[u8]> {
+    pub(crate) fn body(&self, index: usize) -> Option<&[u8]> {
         let span = *self.spans.get(index)?;
         if index >= self.len {
             return None;
