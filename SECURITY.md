@@ -1,6 +1,6 @@
 # Security Policy
 
-Crucible is under active foundational development. Security reports are welcome, but the project does not yet claim a stable production release surface.
+Helve is under active development. Security reports are welcome, but the project does not yet claim a stable production release surface.
 
 ## Reporting a vulnerability
 
@@ -21,8 +21,8 @@ Please do not include Mojang source code, proprietary server artifacts, private 
 
 ## Supported versions
 
-Until Crucible has formal releases, only the current development line is actively maintained. Historical commits and experimental branches do not receive security backports.
+Until Helve has formal releases, only the current development line is actively maintained. Historical commits and experimental branches do not receive security backports.
 
 ## Disclosure
 
-Please allow a reasonable opportunity to reproduce, fix, qualify, and publish a security update before public disclosure. Security fixes remain subject to Crucible's normal correctness and regression requirements; urgency does not justify knowingly weakening another safety boundary.
+Please allow a reasonable opportunity to reproduce, fix, qualify, and publish a security update before public disclosure. Security fixes remain subject to Helve's normal correctness and regression requirements; urgency does not justify knowingly weakening another safety boundary.
