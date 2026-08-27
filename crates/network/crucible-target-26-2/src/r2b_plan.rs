@@ -9,11 +9,11 @@ use crucible_publication_core::{StagedPublicationLookup, StagedPublicationPlan};
 use crate::r2b_arena::DynamicBootstrapArena;
 
 /// Number of network-owned semantic stages before the explicit R2C world handoff.
-pub const NETWORK_STAGE_COUNT: usize = 10;
+pub(crate) const NETWORK_STAGE_COUNT: usize = 10;
 /// Maximum dynamic bodies: selected clear route plus three optional weather events.
-pub const MAX_DYNAMIC_BODIES: usize = 20;
+pub(crate) const MAX_DYNAMIC_BODIES: usize = 20;
 /// Maximum total bodies after shared commands/recipes and optional server data are included.
-pub const MAX_PUBLICATION_BODIES: usize = 23;
+pub(crate) const MAX_PUBLICATION_BODIES: usize = 23;
 
 /// Exact result of one immutable prepared-plan lookup.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
