@@ -1,9 +1,11 @@
 //! Whole-plan black-box confirmation for the selected replay-free R2B bootstrap.
 //!
 //! The committed fixture is confirmation evidence only: source-backed SEM rules remain authoritative
-//! for stage order and branch law. This test deliberately exercises the production-candidate
-//! preparation path as one unit so packet IDs, shared projections, dynamic codecs, arena indexing and
-//! semantic stage assembly cannot each be locally correct while composing to the wrong bootstrap.
+//! for stage order, branch law and selected-profile state. One captured body is intentionally excluded
+//! from exact comparison: the stock capture's recipe-book-add contains player-owned known-recipe state,
+//! while R2B admits a fresh/default player with an empty known set. This test keeps that boundary
+//! explicit while exercising packet IDs, shared projections, dynamic codecs, arena indexing and
+//! semantic stage assembly as one production-candidate unit.
 
 use crucible_packet_core::PacketWriter;
 
@@ -35,6 +37,9 @@ use crate::r2b_teleport::TeleportTransaction;
 const IDS: PlayPacketIds = PlayPacketIds::from_source_order([
     10, 16, 18, 34, 38, 43, 49, 64, 70, 72, 74, 76, 86, 97, 105, 113, 127, 128, 133,
 ]);
+
+const CAPTURE_PLAYER_STATE_RECIPE_ADD_INDEX: usize = 8;
+const FRESH_EMPTY_RECIPE_ADD_BODY: &[u8] = &[74, 0, 1];
 
 const LEVELS: [&str; 3] = [
     "minecraft:overworld",
@@ -188,7 +193,7 @@ fn selected_snapshot(
 }
 
 #[test]
-fn selected_prepared_plan_matches_every_committed_black_box_body() {
+fn selected_prepared_plan_matches_admissible_black_box_bodies() {
     let expected = fixture_bodies();
     assert_eq!(expected.len(), 20, "selected fixture body count drifted");
 
@@ -236,6 +241,24 @@ fn selected_prepared_plan_matches_every_committed_black_box_body() {
 
     assert_eq!(observed.len(), expected.len());
     for (index, (observed, expected)) in observed.iter().zip(&expected).enumerate() {
+        if index == CAPTURE_PLAYER_STATE_RECIPE_ADD_INDEX {
+            assert_eq!(
+                observed.as_slice(),
+                FRESH_EMPTY_RECIPE_ADD_BODY,
+                "fresh/default recipe-book add must remain empty with replace=true"
+            );
+            assert_ne!(
+                observed, expected,
+                "capture unexpectedly stopped carrying player-owned recipe state; revisit this boundary"
+            );
+            assert_eq!(
+                expected.get(..2),
+                Some(&[74, 1][..]),
+                "captured recipe-add no longer contains the one-entry player-state shape"
+            );
+            continue;
+        }
+
         assert_eq!(
             observed, expected,
             "selected black-box body {index} drifted"
