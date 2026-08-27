@@ -22,8 +22,9 @@ use crucible_target_26_2::{
     },
 };
 
+const HELVE_PRODUCT_BRAND_BODY: &[u8] = b"\x01\x0fminecraft:brand\x05Helve";
 const CONFIGURATION_BODY_SIZES: [usize; 34] = [
-    25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980, 282,
+    23, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980, 282,
     116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
 ];
 
@@ -222,8 +223,11 @@ fn configuration_bodies() -> Vec<Box<[u8]>> {
         .into_iter()
         .enumerate()
         .map(|(index, size)| {
+            if index == 0 {
+                debug_assert_eq!(size, HELVE_PRODUCT_BRAND_BODY.len());
+                return HELVE_PRODUCT_BRAND_BODY.to_vec().into_boxed_slice();
+            }
             let packet_id = match index {
-                0 => 1,
                 1 => 12,
                 2 => 14,
                 3..=31 => 7,
