@@ -1,9 +1,10 @@
 //! Fresh-profile initial recipe-book add projection for R2B Minecraft Java 26.2.
 //!
 //! Source law builds this packet from `ServerRecipeBook.known` and always publishes it with
-//! `replace=true`. The admitted R2B profile is a genuinely fresh player with no persisted known
-//! recipes, so the entries list is empty. Crucible therefore emits only `VarInt(0) + true` and does
-//! not source-admit or construct the general recipe-display entry graph on this hot path.
+//! `replace=true`. The selected R2B profile explicitly admits fresh/default player state with an
+//! empty known-recipe set; persisted-player recipe state is a later profile expansion. Crucible
+//! therefore emits only `VarInt(0) + true` and does not source-admit or construct the general
+//! recipe-display entry graph on this hot path.
 
 use crucible_packet_core::{PacketCodecError, PacketWriter};
 
