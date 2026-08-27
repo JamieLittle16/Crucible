@@ -8,33 +8,26 @@
 
 use crucible_packet_core::{PacketCodecError, PacketWriter};
 
-/// Fresh selected-profile recipe-add packet payload.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct FreshRecipeBookAddPayload;
-
-impl FreshRecipeBookAddPayload {
-    /// Encodes empty entry count followed by `replace=true`.
-    ///
-    /// # Errors
-    ///
-    /// The complete two-byte payload is appended transactionally by one bounded raw write.
-    pub fn encode(self, writer: &mut PacketWriter) -> Result<(), PacketCodecError> {
-        writer.write_bytes(&[0x00, 0x01])
-    }
+/// Encodes the selected fresh/default recipe-add payload: zero entries and `replace=true`.
+///
+/// This path has no semantic state, so it is deliberately a function rather than a zero-sized
+/// payload object. The complete two-byte payload is appended transactionally by one bounded write.
+pub(crate) fn encode_fresh_recipe_book_add(
+    writer: &mut PacketWriter,
+) -> Result<(), PacketCodecError> {
+    writer.write_bytes(&[0x00, 0x01])
 }
 
 #[cfg(test)]
 mod tests {
     use crucible_packet_core::{PacketCodecError, PacketWriter};
 
-    use super::FreshRecipeBookAddPayload;
+    use super::encode_fresh_recipe_book_add;
 
     #[test]
     fn fresh_recipe_book_add_is_empty_entries_with_replace_true() {
         let mut writer = PacketWriter::new(2).expect("exact fresh recipe-add body");
-        FreshRecipeBookAddPayload
-            .encode(&mut writer)
-            .expect("two-byte payload fits");
+        encode_fresh_recipe_book_add(&mut writer).expect("two-byte payload fits");
         assert_eq!(writer.as_slice(), &[0x00, 0x01]);
     }
 
@@ -43,7 +36,7 @@ mod tests {
         let mut writer = PacketWriter::new(2).expect("one byte short after packet id");
         writer.write_u8(0x4a).expect("recipe-add packet id");
         assert_eq!(
-            FreshRecipeBookAddPayload.encode(&mut writer),
+            encode_fresh_recipe_book_add(&mut writer),
             Err(PacketCodecError::PacketLimitExceeded {
                 attempted: 3,
                 maximum: 2,
