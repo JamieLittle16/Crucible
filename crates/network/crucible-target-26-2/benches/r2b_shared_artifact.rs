@@ -652,12 +652,17 @@ fn render_json(config: &Config, samples: &Samples, evidence: &Evidence) -> Strin
     push_samples(&mut out, "certified_sample_ns", &samples.certified_ns);
     push_samples(&mut out, "paired_block_ratio_ppm", &samples.block_ratio_ppm);
     push_samples(&mut out, "epoch_ratio_ppm", &evidence.epoch_ratio_ppm);
-
     push_distribution(&mut out, "reference_service_ns", &evidence.reference);
     push_distribution(&mut out, "certified_service_ns", &evidence.certified);
     push_distribution(&mut out, "paired_block_ratio", &evidence.block_ratio);
     push_distribution(&mut out, "epoch_ratio", &evidence.epoch_ratio);
+    push_direction(&mut out, evidence);
+    push_tail(&mut out, evidence);
+    out.push('}');
+    out
+}
 
+fn push_direction(out: &mut String, evidence: &Evidence) {
     out.push_str(",\"direction\":{");
     out.push_str("\"certified_faster_paired_p50\":");
     out.push_str(if evidence.block_ratio.p50 < RATIO_SCALE_PPM {
@@ -666,27 +671,29 @@ fn render_json(config: &Config, samples: &Samples, evidence: &Evidence) -> Strin
         "false"
     });
     push_usize_field(
-        &mut out,
+        out,
         "certified_faster_blocks",
         evidence.certified_faster_blocks,
     );
     push_u128_field(
-        &mut out,
+        out,
         "certified_faster_block_rate_ppm",
         evidence.certified_faster_block_rate_ppm,
     );
     push_usize_field(
-        &mut out,
+        out,
         "certified_faster_epochs",
         evidence.certified_faster_epochs,
     );
     push_u128_field(
-        &mut out,
+        out,
         "certified_faster_epoch_rate_ppm",
         evidence.certified_faster_epoch_rate_ppm,
     );
     out.push('}');
+}
 
+fn push_tail(out: &mut String, evidence: &Evidence) {
     out.push_str(",\"tail\":{");
     out.push_str("\"p99_not_worse\":");
     out.push_str(if evidence.certified.p99 <= evidence.reference.p99 {
@@ -717,8 +724,6 @@ fn render_json(config: &Config, samples: &Samples, evidence: &Evidence) -> Strin
         },
     );
     out.push('}');
-    out.push('}');
-    out
 }
 
 fn push_distribution(out: &mut String, name: &str, stats: &DistributionStats) {
