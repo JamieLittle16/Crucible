@@ -46,7 +46,9 @@ pub use crate::r2b_prepare::{
 };
 pub use crate::r2b_recipe::{RecipeBookSettingFlags, RecipeBookSettingsPayload};
 pub use crate::r2b_spawn::DefaultSpawnPayload;
-pub use crate::r2b_teleport::{AwaitingTeleport, TeleportAckResult, TeleportTransaction};
+pub use crate::r2b_teleport::{
+    AwaitingTeleport, TeleportAckResult, TeleportTransaction, decode_serverbound_teleport_ack,
+};
 
 /// Semantic Play-bootstrap stages frozen by `SEM-NET-R2B-PLAY-001..015`.
 ///
