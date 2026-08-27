@@ -4,8 +4,8 @@
 //! for stage order, branch law and selected-profile state. One captured body is intentionally excluded
 //! from exact comparison: the stock capture's recipe-book-add contains player-owned known-recipe state,
 //! while R2B admits a fresh/default player with an empty known set. This test keeps that boundary
-//! explicit while exercising packet IDs, shared projections, dynamic codecs, arena indexing and
-//! semantic stage assembly as one production-candidate unit.
+//! explicit while exercising target-owned packet IDs, shared projections, dynamic codecs, arena
+//! indexing and semantic stage assembly as one production-candidate unit.
 
 use crucible_packet_core::PacketWriter;
 
@@ -27,16 +27,12 @@ use crate::r2b_login::{
 use crate::r2b_plan::{PreparedLookup, PreparedR2bPlan};
 use crate::r2b_player_info::InitialPlayerInfoEntry;
 use crate::r2b_prepare::{
-    BootstrapWeather, FreshR2bBootstrapSnapshot, PlayPacketIds, SELECTED_DYNAMIC_ARENA_CAPACITY,
+    BootstrapWeather, FreshR2bBootstrapSnapshot, SELECTED_DYNAMIC_ARENA_CAPACITY,
     ServerDataProjection, ServerDataProjectionKey, TeleportDestination,
 };
 use crate::r2b_recipe::{RecipeBookSettingFlags, RecipeBookSettingsPayload};
 use crate::r2b_spawn::DefaultSpawnPayload;
 use crate::r2b_teleport::TeleportTransaction;
-
-const IDS: PlayPacketIds = PlayPacketIds::from_source_order([
-    10, 16, 18, 34, 38, 43, 49, 64, 70, 72, 74, 76, 86, 97, 105, 113, 127, 128, 133,
-]);
 
 const CAPTURE_PLAYER_STATE_RECIPE_ADD_INDEX: usize = 8;
 const FRESH_EMPTY_RECIPE_ADD_BODY: &[u8] = &[74, 0, 1];
@@ -212,7 +208,6 @@ fn selected_prepared_plan_matches_admissible_black_box_bodies() {
     let plan = PreparedR2bPlan::prepare(
         selected_snapshot(&status),
         &image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
