@@ -344,7 +344,7 @@ impl<'a> PreparedR2bPlan<'a> {
             server_data,
         );
 
-        if let Err(error) = prepare_stages(&mut plan, snapshot, ids, teleport, server_data, scratch)
+        if let Err(error) = prepare_stages(&mut plan, &snapshot, ids, teleport, server_data, scratch)
         {
             scratch.reset();
             return Err(error);
@@ -359,7 +359,7 @@ impl<'a> PreparedR2bPlan<'a> {
 
 fn prepare_stages(
     plan: &mut PreparedR2bPlanBuilder<'_>,
-    snapshot: FreshR2bBootstrapSnapshot<'_>,
+    snapshot: &FreshR2bBootstrapSnapshot<'_>,
     ids: PlayPacketIds,
     teleport: AbsoluteTeleportPayload,
     server_data: Option<&[u8]>,
@@ -437,7 +437,7 @@ fn prepare_stages(
 
 fn prepare_level_stage(
     plan: &mut PreparedR2bPlanBuilder<'_>,
-    snapshot: FreshR2bBootstrapSnapshot<'_>,
+    snapshot: &FreshR2bBootstrapSnapshot<'_>,
     ids: PlayPacketIds,
     scratch: &mut PacketWriter,
 ) -> Result<(), PrepareR2bError> {
