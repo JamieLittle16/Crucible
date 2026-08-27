@@ -25,17 +25,13 @@ use crate::r2b_login::{
 use crate::r2b_plan::{PreparedLookup, PreparedR2bPlan};
 use crate::r2b_player_info::InitialPlayerInfoEntry;
 use crate::r2b_prepare::{
-    BootstrapWeather, FreshR2bBootstrapSnapshot, PlayPacketIds, PrepareR2bError,
-    SELECTED_DYNAMIC_ARENA_CAPACITY, ServerDataProjection, ServerDataProjectionKey,
-    TeleportDestination,
+    BootstrapWeather, FreshR2bBootstrapSnapshot, PrepareR2bError, SELECTED_DYNAMIC_ARENA_CAPACITY,
+    ServerDataProjection, ServerDataProjectionKey, TeleportDestination,
 };
 use crate::r2b_recipe::{RecipeBookSettingFlags, RecipeBookSettingsPayload};
 use crate::r2b_spawn::DefaultSpawnPayload;
 use crate::r2b_teleport::TeleportTransaction;
 
-const IDS: PlayPacketIds = PlayPacketIds::from_source_order([
-    10, 16, 18, 34, 38, 43, 49, 64, 70, 72, 74, 76, 86, 97, 105, 113, 127, 128, 133,
-]);
 const LEVELS: [&str; 3] = [
     "minecraft:overworld",
     "minecraft:the_nether",
@@ -224,7 +220,6 @@ fn clear_status_route_has_exact_source_stage_order() {
             BootstrapWeather::Clear,
         ),
         &image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -274,7 +269,6 @@ fn clear_weather_and_absent_status_are_explicit_empty_branches() {
     let plan = PreparedR2bPlan::prepare(
         snapshot(None, BootstrapWeather::Clear),
         &image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -300,7 +294,6 @@ fn raining_route_adds_exact_three_events_before_load_start() {
             },
         ),
         &image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -327,7 +320,6 @@ fn failure_does_not_commit_teleport_or_leave_scratch_dirty() {
     let error = PreparedR2bPlan::prepare(
         snapshot(None, BootstrapWeather::Clear),
         &image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -353,7 +345,6 @@ fn shared_packet_identity_and_status_revision_fail_closed_before_dynamic_work() 
     let error = PreparedR2bPlan::prepare(
         snapshot(None, BootstrapWeather::Clear),
         &bad_image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -380,7 +371,6 @@ fn shared_packet_identity_and_status_revision_fail_closed_before_dynamic_work() 
             BootstrapWeather::Clear,
         ),
         &image(),
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -393,29 +383,25 @@ fn shared_packet_identity_and_status_revision_fail_closed_before_dynamic_work() 
 }
 
 #[test]
-fn negative_static_packet_identity_is_rejected_before_dynamic_work() {
+fn target_packet_identity_is_not_a_runtime_input() {
     let image = image();
     let mut scratch = PacketWriter::new(4096).expect("scratch");
     let mut teleport = TeleportTransaction::new();
-    let mut values = [
-        10, 16, 18, 34, 38, 43, 49, 64, 70, 72, 74, 76, 86, 97, 105, 113, 127, 128, 133,
-    ];
-    values[6] = -1;
+    let plan = PreparedR2bPlan::prepare(
+        snapshot(None, BootstrapWeather::Clear),
+        &image,
+        &mut scratch,
+        &mut teleport,
+        SELECTED_DYNAMIC_ARENA_CAPACITY,
+    )
+    .expect("static target IDs prepare");
 
-    assert_eq!(
-        PreparedR2bPlan::prepare(
-            snapshot(None, BootstrapWeather::Clear),
-            &image,
-            PlayPacketIds::from_source_order(values),
-            &mut scratch,
-            &mut teleport,
-            SELECTED_DYNAMIC_ARENA_CAPACITY,
-        )
-        .expect_err("negative static ID"),
-        PrepareR2bError::InvalidPacketIds
-    );
+    let PreparedLookup::Body(login) = plan.lookup(0, 0) else {
+        panic!("login body");
+    };
+    assert_eq!(body_id(login), 49);
     assert!(scratch.is_empty());
-    assert_eq!(teleport.awaiting(), None);
+    assert_eq!(teleport.awaiting().expect("teleport committed").id, 1);
 }
 
 #[test]
@@ -426,7 +412,6 @@ fn prepared_plan_runs_through_target_neutral_staged_publication() {
     let plan = PreparedR2bPlan::prepare(
         snapshot(None, BootstrapWeather::Clear),
         &image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -466,7 +451,6 @@ fn prepared_plan_backpressure_preserves_cursor_and_existing_egress() {
     let plan = PreparedR2bPlan::prepare(
         snapshot(None, BootstrapWeather::Clear),
         &image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
