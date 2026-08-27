@@ -1,5 +1,5 @@
 [package]
-name = "crucible-preplay-core"
+name = "helve-preplay-core"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -8,13 +8,13 @@ license.workspace = true
 publish = false
 
 [dependencies]
-crucible-connection-core = { path = "../crucible-connection-core" }
-crucible-connection-driver = { path = "../crucible-connection-driver" }
-crucible-publication-core = { path = "../crucible-publication-core" }
-crucible-session-core = { path = "../crucible-session-core" }
+helve-connection-core = { path = "../helve-connection-core" }
+helve-connection-driver = { path = "../helve-connection-driver" }
+helve-publication-core = { path = "../helve-publication-core" }
+helve-session-core = { path = "../helve-session-core" }
 
 [dev-dependencies]
-crucible-packet-core = { path = "../crucible-packet-core" }
+helve-packet-core = { path = "../helve-packet-core" }
 
 [lints]
 workspace = true
