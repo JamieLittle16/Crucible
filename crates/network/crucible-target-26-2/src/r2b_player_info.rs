@@ -63,7 +63,7 @@ impl From<PacketCodecError> for PlayerInfoEncodeError {
 ///
 /// Validates every name/count and the complete payload byte budget before mutation, preserving any
 /// already-written packet-ID prefix on failure.
-pub fn encode_initial_player_info(
+pub(crate) fn encode_initial_player_info(
     entries: &[InitialPlayerInfoEntry<'_>],
     writer: &mut PacketWriter,
 ) -> Result<(), PlayerInfoEncodeError> {
