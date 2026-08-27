@@ -131,7 +131,7 @@ mod tests {
     use std::time::Duration;
 
     use super::{
-        HELVE_STATUS_JSON, R0ConnectionExit, R0_ORACLE_STATUS_JSON,
+        HELVE_STATUS_JSON, R0_ORACLE_STATUS_JSON, R0ConnectionExit,
         serve_r0_blocking_transport_with_status,
     };
 
