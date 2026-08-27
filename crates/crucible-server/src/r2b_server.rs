@@ -238,18 +238,14 @@ fn publish_complete_plan(
                 );
                 return Ok(());
             }
-            StagedPublicationStep::StageComplete { .. }
-            | StagedPublicationStep::Queued { .. } => {}
+            StagedPublicationStep::StageComplete { .. } | StagedPublicationStep::Queued { .. } => {}
         }
     }
 
     Err(R2bServerError::PublicationDidNotConverge)
 }
 
-fn drain_egress<RW>(
-    transport: &mut RW,
-    driver: &mut ConnectionDriver,
-) -> Result<(), R2bServerError>
+fn drain_egress<RW>(transport: &mut RW, driver: &mut ConnectionDriver) -> Result<(), R2bServerError>
 where
     RW: Write + ?Sized,
 {
@@ -321,8 +317,8 @@ mod tests {
     use crucible_packet_core::PacketWriter;
     use crucible_publication_core::StagedPublicationPlan;
     use crucible_target_26_2::r2b::{
-        CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2,
-        ProjectionRevision, QualifiedProjectionArtifact, RecipeProjectionKey,
+        CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2, ProjectionRevision,
+        QualifiedProjectionArtifact, RecipeProjectionKey,
     };
 
     use super::{EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, limits};
@@ -353,30 +349,20 @@ mod tests {
             revision(4),
             CommandPermissionProfile::DefaultNonOperator,
         );
-        let recipe_key = RecipeProjectionKey::new(
-            revision(5),
-            revision(6),
-            revision(7),
-            revision(8),
-        );
+        let recipe_key =
+            RecipeProjectionKey::new(revision(5), revision(6), revision(7), revision(8));
         let image = PlayBootstrapImage26_2::new(
             QualifiedProjectionArtifact::new(command_key, vec![16, 0].into_boxed_slice())
                 .expect("command artifact"),
-            QualifiedProjectionArtifact::new(
-                recipe_key,
-                vec![0x85, 0x01, 0].into_boxed_slice(),
-            )
-            .expect("recipe artifact"),
+            QualifiedProjectionArtifact::new(recipe_key, vec![0x85, 0x01, 0].into_boxed_slice())
+                .expect("recipe artifact"),
         );
 
         let mut scratch = PacketWriter::new(8).expect("bounded scratch");
         scratch.write_u8(1).expect("test byte");
         assert_eq!(scratch.as_slice(), &[1]);
         assert_eq!(image.commands(&command_key), Ok(&[16, 0][..]));
-        assert_eq!(
-            image.update_recipes(&recipe_key),
-            Ok(&[0x85, 0x01, 0][..])
-        );
+        assert_eq!(image.update_recipes(&recipe_key), Ok(&[0x85, 0x01, 0][..]));
 
         assert_plan_trait::<crucible_target_26_2::r2b::PreparedR2bPlan<'_>>();
     }
