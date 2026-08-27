@@ -19,5 +19,9 @@ crucible-session-core = { path = "../crucible-session-core" }
 name = "r2b_shared_artifact"
 harness = false
 
+[[bench]]
+name = "r2b_prepare_scratch"
+harness = false
+
 [lints]
 workspace = true
