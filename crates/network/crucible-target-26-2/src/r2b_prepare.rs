@@ -91,6 +91,9 @@ impl ServerDataProjectionKey {
     }
 }
 
+/// Packet-qualified immutable server-data artifact.
+pub type ServerDataProjectionArtifact = QualifiedProjectionArtifact<ServerDataProjectionKey>;
+
 impl QualifiedProjectionArtifact<ServerDataProjectionKey> {
     /// Creates server-data projection bytes only for the Minecraft 26.2 server-data packet kind.
     ///
@@ -110,7 +113,7 @@ impl QualifiedProjectionArtifact<ServerDataProjectionKey> {
 #[derive(Clone, Copy, Debug)]
 pub struct ServerDataProjection<'a> {
     /// Cached status body qualified for an exact revision key and packet kind.
-    pub artifact: &'a QualifiedProjectionArtifact<ServerDataProjectionKey>,
+    pub artifact: &'a ServerDataProjectionArtifact,
     /// Status revision requested by the semantic/status owner.
     pub requested: ServerDataProjectionKey,
 }
