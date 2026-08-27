@@ -46,7 +46,7 @@ struct Config {
 impl Config {
     const fn defaults(mode: Mode) -> Self {
         match mode {
-            Self::Smoke => Self {
+            Mode::Smoke => Self {
                 mode,
                 output: None,
                 warmup_blocks: 256,
@@ -54,7 +54,7 @@ impl Config {
                 joins_per_sample: 1_024,
                 blocks_per_epoch: 256,
             },
-            Self::Full => Self {
+            Mode::Full => Self {
                 mode,
                 output: None,
                 warmup_blocks: 2_048,
@@ -302,12 +302,7 @@ fn run() -> Result<(), String> {
 
     let mut samples = Samples::with_capacity(&config, reference_gate)?;
     for block in 0..config.measured_blocks {
-        run_balanced_block(
-            block,
-            &fixture,
-            config.joins_per_sample,
-            Some(&mut samples),
-        )?;
+        run_balanced_block(block, &fixture, config.joins_per_sample, Some(&mut samples))?;
     }
 
     let evidence = Evidence::from_samples(&config, &samples)?;
@@ -571,8 +566,8 @@ fn upper_tail_mean(sorted: &[u128], tail_permille: usize) -> Result<u128, String
         .ok_or_else(|| "tail rank overflow".to_owned())?
         / 1_000;
     let tail = &sorted[sorted.len() - count.max(1)..];
-    let divisor = u128::try_from(tail.len())
-        .map_err(|_| "tail sample count does not fit u128".to_owned())?;
+    let divisor =
+        u128::try_from(tail.len()).map_err(|_| "tail sample count does not fit u128".to_owned())?;
     checked_sum(tail)?
         .checked_div(divisor)
         .ok_or_else(|| "tail sample count must be positive".to_owned())
@@ -587,8 +582,8 @@ fn ratio_ppm(numerator: u128, denominator: u128) -> Result<u128, String> {
 }
 
 fn rate_ppm(successes: usize, total: usize) -> Result<u128, String> {
-    let successes = u128::try_from(successes)
-        .map_err(|_| "success count does not fit u128".to_owned())?;
+    let successes =
+        u128::try_from(successes).map_err(|_| "success count does not fit u128".to_owned())?;
     let total = u128::try_from(total).map_err(|_| "total count does not fit u128".to_owned())?;
     ratio_ppm(successes, total)
 }
