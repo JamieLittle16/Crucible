@@ -22,8 +22,8 @@ pub mod r2b_difficulty {
 
 pub mod r2b_dynamic {
     pub use crucible_target_26_2::r2b::{
-        HeldSlotPayload, PermissionEntityEventPayload, PermissionLevelEvent, PlayerAbilitiesPayload,
-        PlayerAbilityFlags, TickingStatePayload, TickingStepPayload,
+        HeldSlotPayload, PermissionEntityEventPayload, PermissionLevelEvent,
+        PlayerAbilitiesPayload, PlayerAbilityFlags, TickingStatePayload, TickingStepPayload,
     };
 }
 
