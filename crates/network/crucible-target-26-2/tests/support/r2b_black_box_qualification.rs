@@ -96,9 +96,9 @@ const fn status_key() -> ServerDataProjectionKey {
     ServerDataProjectionKey::new(rev(9), rev(10))
 }
 
-fn selected_snapshot(
-    status: &'static QualifiedProjectionArtifact<ServerDataProjectionKey>,
-) -> FreshR2bBootstrapSnapshot<'static> {
+fn selected_snapshot<'a>(
+    status: &'a QualifiedProjectionArtifact<ServerDataProjectionKey>,
+) -> FreshR2bBootstrapSnapshot<'a> {
     FreshR2bBootstrapSnapshot {
         command_key: command_key(),
         recipe_key: recipe_key(),
@@ -198,15 +198,14 @@ fn selected_prepared_plan_matches_every_committed_black_box_body() {
         QualifiedProjectionArtifact::new(recipe_key(), expected[4].clone().into_boxed_slice())
             .expect("fixture recipe projection"),
     );
-    let status = Box::leak(Box::new(
+    let status =
         QualifiedProjectionArtifact::new(status_key(), expected[10].clone().into_boxed_slice())
-            .expect("fixture status projection"),
-    ));
+            .expect("fixture status projection");
 
     let mut scratch = PacketWriter::new(4_096).expect("selected R2B scratch bound");
     let mut teleport = TeleportTransaction::new();
     let plan = PreparedR2bPlan::prepare(
-        selected_snapshot(status),
+        selected_snapshot(&status),
         &image,
         IDS,
         &mut scratch,
@@ -237,7 +236,10 @@ fn selected_prepared_plan_matches_every_committed_black_box_body() {
 
     assert_eq!(observed.len(), expected.len());
     for (index, (observed, expected)) in observed.iter().zip(&expected).enumerate() {
-        assert_eq!(observed, expected, "selected black-box body {index} drifted");
+        assert_eq!(
+            observed, expected,
+            "selected black-box body {index} drifted"
+        );
     }
 }
 
