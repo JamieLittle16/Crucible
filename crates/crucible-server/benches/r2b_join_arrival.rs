@@ -8,9 +8,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use crucible_packet_core::PacketWriter;
-use crucible_server::{
-    R2bEntryOutcome, ServerSessionEpoch, enter_r2b_play_blocking_transport,
-};
+use crucible_server::{R2bEntryOutcome, ServerSessionEpoch, enter_r2b_play_blocking_transport};
 use crucible_target_26_2::{
     Target26_2R1xContext,
     r2b::{
@@ -32,8 +30,8 @@ const NS_PER_SECOND: u128 = 1_000_000_000;
 const CHECKSUM_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const CHECKSUM_PRIME: u64 = 0x0000_0100_0000_01b3;
 const CONFIGURATION_BODY_SIZES: [usize; 34] = [
-    25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980,
-    282, 116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
+    25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980, 282,
+    116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
 ];
 const LEVELS: [&str; 3] = [
     "minecraft:overworld",
@@ -149,7 +147,8 @@ impl Stats {
             .collect::<Vec<_>>();
         deviations.sort_unstable();
         let mad = quantile(&deviations, 500)?;
-        let divisor = u128::try_from(sorted.len()).map_err(|_| "sample count overflow".to_owned())?;
+        let divisor =
+            u128::try_from(sorted.len()).map_err(|_| "sample count overflow".to_owned())?;
         let mean = checked_sum(&sorted)? / divisor;
         Ok(Self {
             count: sorted.len(),
@@ -195,12 +194,8 @@ struct Fixture {
 
 impl Fixture {
     fn new() -> Result<Self, String> {
-        let context = Target26_2R1xContext::new(
-            "{}".into(),
-            configuration_bodies(),
-            Vec::new(),
-        )
-        .map_err(|error| format!("configuration-only context: {error:?}"))?;
+        let context = Target26_2R1xContext::new("{}".into(), configuration_bodies(), Vec::new())
+            .map_err(|error| format!("configuration-only context: {error:?}"))?;
         if context.play_frame_count() != 0 || context.play_body_bytes() != 0 {
             return Err("join-arrival qualification requires zero captured Play bodies".to_owned());
         }
@@ -333,21 +328,10 @@ fn run() -> Result<(), String> {
         ("burst-8of64-phase48", 48),
     ] {
         let offers = burst_offers(service_ns.len(), burst_interval, phase)?;
-        profiles.push(model_arrivals(
-            name,
-            &service_ns,
-            &offers,
-            burst_interval,
-        )?);
+        profiles.push(model_arrivals(name, &service_ns, &offers, burst_interval)?);
     }
 
-    let artifact = render_json(
-        &config,
-        expected,
-        service,
-        service_epoch_mean,
-        &profiles,
-    )?;
+    let artifact = render_json(&config, expected, service, service_epoch_mean, &profiles)?;
     write_artifact(config.output.as_ref(), &artifact)?;
 
     println!(
@@ -451,9 +435,8 @@ fn model_arrivals(
         let in_system_before = index
             .checked_sub(completed_before)
             .ok_or_else(|| "arrival backlog accounting underflow".to_owned())?;
-        backlog.push(
-            u128::try_from(in_system_before + 1).map_err(|_| "backlog overflow".to_owned())?,
-        );
+        backlog
+            .push(u128::try_from(in_system_before + 1).map_err(|_| "backlog overflow".to_owned())?);
 
         let start = server_free_ns.max(offered);
         let queue = start - offered;
@@ -722,16 +705,11 @@ const fn recipe_key() -> RecipeProjectionKey {
 }
 
 fn image() -> Result<PlayBootstrapImage26_2, String> {
-    let commands = CommandProjectionArtifact::new(
-        command_key(),
-        vec![16, 0xaa].into_boxed_slice(),
-    )
-    .map_err(|error| format!("command artifact: {error:?}"))?;
-    let recipes = RecipeProjectionArtifact::new(
-        recipe_key(),
-        vec![0x85, 0x01, 0xbb].into_boxed_slice(),
-    )
-    .map_err(|error| format!("recipe artifact: {error:?}"))?;
+    let commands = CommandProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
+        .map_err(|error| format!("command artifact: {error:?}"))?;
+    let recipes =
+        RecipeProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
+            .map_err(|error| format!("recipe artifact: {error:?}"))?;
     Ok(PlayBootstrapImage26_2::new(commands, recipes))
 }
 
@@ -855,7 +833,9 @@ fn login_client_chunk() -> Result<Vec<u8>, String> {
     let mut handshake = PacketWriter::new(64).map_err(codec_error)?;
     handshake.write_var_int(0).map_err(codec_error)?;
     handshake.write_var_int(776).map_err(codec_error)?;
-    handshake.write_string("localhost", 255).map_err(codec_error)?;
+    handshake
+        .write_string("localhost", 255)
+        .map_err(codec_error)?;
     handshake.write_u16(25_566).map_err(codec_error)?;
     handshake.write_var_int(2).map_err(codec_error)?;
     frames.extend_from_slice(&frame(handshake.as_slice())?);
@@ -874,7 +854,8 @@ fn known_pack_chunk() -> Result<Vec<u8>, String> {
     let mut body = PacketWriter::new(64).map_err(codec_error)?;
     body.write_var_int(7).map_err(codec_error)?;
     body.write_var_int(1).map_err(codec_error)?;
-    body.write_string("minecraft", 32_767).map_err(codec_error)?;
+    body.write_string("minecraft", 32_767)
+        .map_err(codec_error)?;
     body.write_string("core", 32_767).map_err(codec_error)?;
     body.write_string("26.2", 32_767).map_err(codec_error)?;
     frame(body.as_slice())
@@ -882,7 +863,8 @@ fn known_pack_chunk() -> Result<Vec<u8>, String> {
 
 fn frame(body: &[u8]) -> Result<Vec<u8>, String> {
     let mut writer = PacketWriter::new(body.len() + 5).map_err(codec_error)?;
-    let body_len = i32::try_from(body.len()).map_err(|_| "frame body length overflow".to_owned())?;
+    let body_len =
+        i32::try_from(body.len()).map_err(|_| "frame body length overflow".to_owned())?;
     writer.write_var_int(body_len).map_err(codec_error)?;
     writer.write_bytes(body).map_err(codec_error)?;
     Ok(writer.into_bytes())
