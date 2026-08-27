@@ -5,6 +5,7 @@
 //! target must subsequently publish immutable packet bodies over multiple bounded service
 //! opportunities. The target may propose work but never receives the connection driver.
 
+use crucible_connection_driver::ConnectionDriver;
 use crucible_publication_core::publish_one as publish_one_body;
 pub use crucible_publication_core::{PublicationCursor, PublicationStep};
 use crucible_session_core::SessionState;
@@ -92,6 +93,30 @@ pub enum PrePlayPublicationProcess {
     Idle,
     /// The target proposed work and the qualified publication primitive completed successfully.
     Progress(PublicationStep),
+}
+
+impl<T> PrePlayConnection<T>
+where
+    T: PrePlayTarget,
+{
+    /// Transfers the existing bounded driver only when both userspace queues are empty.
+    ///
+    /// This is the zero-allocation phase-handoff primitive for callers that have completed a
+    /// target-specific pre-play boundary and want to continue using the exact ingress/egress
+    /// allocations under a different owner. The binder deliberately does not decide whether the
+    /// current protocol phase is eligible: semantic phase ownership remains with the caller. It
+    /// enforces only the target-neutral byte-safety condition required to move the driver without
+    /// losing buffered ingress or queued egress.
+    ///
+    /// On failure the complete connection is returned unchanged, so the caller may continue
+    /// servicing or report a richer boundary error without reconstructing any state.
+    pub fn try_into_drained_driver(self) -> Result<ConnectionDriver, Self> {
+        if self.driver.buffered_ingress() == 0 && self.driver.queued_egress() == 0 {
+            Ok(self.driver)
+        } else {
+            Err(self)
+        }
+    }
 }
 
 impl<T> PrePlayConnection<T>
@@ -258,6 +283,45 @@ mod tests {
             .advance(SessionPhase::Configuration)
             .expect("login to configuration");
         connection
+    }
+
+    #[test]
+    fn drained_connection_transfers_existing_driver() {
+        let connection = configuration_connection(limits(16, 64));
+        let driver = connection
+            .try_into_drained_driver()
+            .expect("empty userspace queues permit handoff");
+        assert_eq!(driver.buffered_ingress(), 0);
+        assert_eq!(driver.queued_egress(), 0);
+    }
+
+    #[test]
+    fn buffered_ingress_refuses_driver_handoff_without_losing_owner() {
+        let mut connection = configuration_connection(limits(16, 64));
+        connection.ingest(&[0x02]).expect("partial frame fits");
+        let connection = connection
+            .try_into_drained_driver()
+            .expect_err("buffered ingress blocks handoff");
+        assert_eq!(connection.buffered_ingress(), 1);
+        assert_eq!(connection.queued_egress(), 0);
+    }
+
+    #[test]
+    fn queued_egress_refuses_driver_handoff_without_losing_owner() {
+        let context = PublishingContext {
+            bodies: vec![vec![0x01]],
+        };
+        let mut connection = configuration_connection(limits(16, 64));
+        assert!(matches!(
+            connection.service_publication(&context),
+            Ok(PrePlayPublicationProcess::Progress(PublicationStep::Queued { .. }))
+        ));
+        let queued = connection.queued_egress();
+        let connection = connection
+            .try_into_drained_driver()
+            .expect_err("queued egress blocks handoff");
+        assert_eq!(connection.buffered_ingress(), 0);
+        assert_eq!(connection.queued_egress(), queued);
     }
 
     #[test]
