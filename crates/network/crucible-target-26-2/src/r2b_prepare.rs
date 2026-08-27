@@ -441,12 +441,7 @@ fn prepare_level_stage(
         thunder_level,
     } = snapshot.weather
     {
-        weather_event(
-            plan,
-            scratch,
-            BootstrapGameEvent::StartRaining,
-            0.0,
-        )?;
+        weather_event(plan, scratch, BootstrapGameEvent::StartRaining, 0.0)?;
         weather_event(
             plan,
             scratch,
@@ -461,12 +456,7 @@ fn prepare_level_stage(
         )?;
     }
 
-    weather_event(
-        plan,
-        scratch,
-        BootstrapGameEvent::LevelChunksLoadStart,
-        0.0,
-    )?;
+    weather_event(plan, scratch, BootstrapGameEvent::LevelChunksLoadStart, 0.0)?;
     dynamic(plan, PLAY_PACKET_IDS.ticking_state, scratch, |writer| {
         snapshot.ticking_state.encode(writer).map_err(Into::into)
     })?;
