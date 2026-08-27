@@ -150,7 +150,7 @@ impl PermissionEntityEventPayload {
 /// entering R2B merely because it shares the same generic packet type.
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum BootstrapGameEvent {
+pub(crate) enum BootstrapGameEvent {
     /// Conditional weather branch: begin rain.
     StartRaining = 1,
     /// Conditional weather branch: rain intensity changed.
@@ -163,11 +163,11 @@ pub enum BootstrapGameEvent {
 
 /// One bootstrap game-event payload.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GameEventPayload {
+pub(crate) struct GameEventPayload {
     /// Source-admitted event identity.
-    pub event: BootstrapGameEvent,
+    pub(crate) event: BootstrapGameEvent,
     /// Event parameter interpreted by the vanilla client according to `event`.
-    pub parameter: f32,
+    pub(crate) parameter: f32,
 }
 
 impl GameEventPayload {
@@ -176,7 +176,7 @@ impl GameEventPayload {
     /// # Errors
     ///
     /// Returns the bounded writer error before mutation when all five bytes do not fit.
-    pub fn encode(self, writer: &mut PacketWriter) -> Result<(), PacketCodecError> {
+    pub(crate) fn encode(self, writer: &mut PacketWriter) -> Result<(), PacketCodecError> {
         let parameter = self.parameter.to_bits().to_be_bytes();
         writer.write_bytes(&[
             self.event as u8,
