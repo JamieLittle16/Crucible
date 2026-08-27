@@ -6,16 +6,17 @@ use std::time::Instant;
 
 use crucible_packet_core::PacketWriter;
 use crucible_target_26_2::r2b::{
-    BootstrapGameMode, BootstrapWeather, ChangeDifficultyPayload, ClockFullSyncPayload, ClockUpdate,
-    CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey, DefaultSpawnPayload,
-    Difficulty26_2, FreshCommonSpawnInfo, FreshEmptyInventoryPayload, FreshLoginFlags,
-    FreshLoginPayload, FreshR2bBootstrapSnapshot, HeldSlotPayload, InitialPlayerInfoEntry,
-    PermissionEntityEventPayload, PermissionLevelEvent, PlayBootstrapImage26_2, PlayerAbilitiesPayload,
-    PlayerAbilityFlags, PreparedLookup, PreparedR2bPlan, ProjectionRevision, RecipeBookSettingFlags,
-    RecipeBookSettingsPayload, RecipeProjectionArtifact, RecipeProjectionKey,
-    SELECTED_DYNAMIC_ARENA_CAPACITY, ServerDataProjection, ServerDataProjectionArtifact,
-    ServerDataProjectionKey, TeleportDestination, TeleportTransaction, TickingStatePayload,
-    TickingStepPayload, WorldBorderPayload,
+    BootstrapGameMode, BootstrapWeather, ChangeDifficultyPayload, ClockFullSyncPayload,
+    ClockUpdate, CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
+    DefaultSpawnPayload, Difficulty26_2, FreshCommonSpawnInfo, FreshEmptyInventoryPayload,
+    FreshLoginFlags, FreshLoginPayload, FreshR2bBootstrapSnapshot, HeldSlotPayload,
+    InitialPlayerInfoEntry, PermissionEntityEventPayload, PermissionLevelEvent,
+    PlayBootstrapImage26_2, PlayerAbilitiesPayload, PlayerAbilityFlags, PreparedLookup,
+    PreparedR2bPlan, ProjectionRevision, RecipeBookSettingFlags, RecipeBookSettingsPayload,
+    RecipeProjectionArtifact, RecipeProjectionKey, SELECTED_DYNAMIC_ARENA_CAPACITY,
+    ServerDataProjection, ServerDataProjectionArtifact, ServerDataProjectionKey,
+    TeleportDestination, TeleportTransaction, TickingStatePayload, TickingStepPayload,
+    WorldBorderPayload,
 };
 
 const SCHEMA: u32 = 1;
@@ -145,11 +146,9 @@ impl Fixture {
             RecipeProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
                 .map_err(|error| format!("recipe artifact: {error:?}"))?,
         );
-        let status = ServerDataProjectionArtifact::new(
-            status_key(),
-            vec![86, 0x00].into_boxed_slice(),
-        )
-        .map_err(|error| format!("status artifact: {error:?}"))?;
+        let status =
+            ServerDataProjectionArtifact::new(status_key(), vec![86, 0x00].into_boxed_slice())
+                .map_err(|error| format!("status artifact: {error:?}"))?;
         Ok(Self {
             image,
             status,
@@ -470,9 +469,8 @@ fn run_balanced_block(
     let mut candidate_total = 0_u128;
     for candidate in order {
         let selected_reservation = if candidate { reservation } else { 0 };
-        let (elapsed, witness) = timed(|| {
-            timed_prepare_batch(fixture, workload, selected_reservation, joins)
-        })?;
+        let (elapsed, witness) =
+            timed(|| timed_prepare_batch(fixture, workload, selected_reservation, joins))?;
         black_box(witness);
         if candidate {
             candidate_total = candidate_total
