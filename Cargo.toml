@@ -60,7 +60,7 @@ default-members = [
 [workspace.package]
 edition = "2024"
 rust-version = "1.97.1"
-repository = "https://github.com/JamieLittle16/Crucible"
+repository = "https://github.com/JamieLittle16/Helve"
 license = "MPL-2.0"
 
 [workspace.lints.rust]
