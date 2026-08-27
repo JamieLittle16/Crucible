@@ -10,6 +10,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, id};
 
+/// Parts-per-million scale used for benchmark ratios and rates.
+pub const RATIO_SCALE_PPM: u128 = 1_000_000;
+
 /// Machine/toolchain state recorded beside every Crucible microarchitectural benchmark artifact.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HardwareMetadata {
@@ -97,6 +100,112 @@ impl HardwareMetadata {
     }
 }
 
+/// Robust summary of one non-empty benchmark latency/sample distribution.
+///
+/// Percentiles use the nearest-rank definition. `top_1pct_mean` and `top_0_1pct_mean` average the
+/// slowest tails rather than trusting one maximum sample. Ratio fields are expressed in ppm against
+/// `p50`, making tail amplification directly comparable across workloads with different scales.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DistributionStats {
+    pub count: usize,
+    pub min: u128,
+    pub p50: u128,
+    pub p90: u128,
+    pub p95: u128,
+    pub p99: u128,
+    pub p999: u128,
+    pub max: u128,
+    pub mean: u128,
+    pub mad: u128,
+    pub iqr: u128,
+    pub top_1pct_mean: u128,
+    pub top_0_1pct_mean: u128,
+    pub relative_mad_ppm: u128,
+    pub p99_to_p50_ppm: u128,
+    pub p999_to_p50_ppm: u128,
+    pub max_to_p50_ppm: u128,
+}
+
+impl DistributionStats {
+    /// Summarizes a non-empty set of unsigned benchmark samples.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an empty sample set or if checked aggregate/ratio arithmetic overflows.
+    pub fn from_samples(values: &[u128]) -> Result<Self, String> {
+        if values.is_empty() {
+            return Err("cannot summarize an empty sample set".to_owned());
+        }
+
+        let mut sorted = values.to_vec();
+        sorted.sort_unstable();
+        let p25 = quantile_permille_sorted(&sorted, 250)?;
+        let p50 = quantile_permille_sorted(&sorted, 500)?;
+        let p75 = quantile_permille_sorted(&sorted, 750)?;
+        let p90 = quantile_permille_sorted(&sorted, 900)?;
+        let p95 = quantile_permille_sorted(&sorted, 950)?;
+        let p99 = quantile_permille_sorted(&sorted, 990)?;
+        let p999 = quantile_permille_sorted(&sorted, 999)?;
+        let sum = checked_sum(&sorted)?;
+        let count = u128::try_from(sorted.len())
+            .map_err(|_| "sample count does not fit u128".to_owned())?;
+        let mean = sum
+            .checked_div(count)
+            .ok_or_else(|| "sample count must be positive".to_owned())?;
+
+        let mut deviations = Vec::with_capacity(sorted.len());
+        deviations.extend(sorted.iter().map(|value| value.abs_diff(p50)));
+        deviations.sort_unstable();
+        let mad = quantile_permille_sorted(&deviations, 500)?;
+        let max = sorted[sorted.len() - 1];
+
+        Ok(Self {
+            count: sorted.len(),
+            min: sorted[0],
+            p50,
+            p90,
+            p95,
+            p99,
+            p999,
+            max,
+            mean,
+            mad,
+            iqr: p75.saturating_sub(p25),
+            top_1pct_mean: upper_tail_mean(&sorted, 10)?,
+            top_0_1pct_mean: upper_tail_mean(&sorted, 1)?,
+            relative_mad_ppm: ratio_ppm(mad, p50)?,
+            p99_to_p50_ppm: ratio_ppm(p99, p50)?,
+            p999_to_p50_ppm: ratio_ppm(p999, p50)?,
+            max_to_p50_ppm: ratio_ppm(max, p50)?,
+        })
+    }
+}
+
+/// Computes `numerator / denominator` in parts per million with checked arithmetic.
+///
+/// # Errors
+///
+/// Returns an error when multiplication overflows or `denominator` is zero.
+pub fn ratio_ppm(numerator: u128, denominator: u128) -> Result<u128, String> {
+    numerator
+        .checked_mul(RATIO_SCALE_PPM)
+        .ok_or_else(|| "ratio numerator overflow".to_owned())?
+        .checked_div(denominator)
+        .ok_or_else(|| "ratio denominator must be positive".to_owned())
+}
+
+/// Computes a success fraction in parts per million with checked conversion/arithmetic.
+///
+/// # Errors
+///
+/// Returns an error when counts do not fit the arithmetic domain or `total` is zero.
+pub fn rate_ppm(successes: usize, total: usize) -> Result<u128, String> {
+    let successes =
+        u128::try_from(successes).map_err(|_| "success count does not fit u128".to_owned())?;
+    let total = u128::try_from(total).map_err(|_| "total count does not fit u128".to_owned())?;
+    ratio_ppm(successes, total)
+}
+
 /// Collects best-effort machine and exact toolchain provenance for a benchmark run.
 ///
 /// Core repository/toolchain identity is required. Optional Linux topology/state fields degrade to
@@ -172,6 +281,54 @@ pub fn push_json_string(output: &mut String, value: &str) {
         }
     }
     output.push('"');
+}
+
+fn checked_sum(values: &[u128]) -> Result<u128, String> {
+    values.iter().try_fold(0_u128, |sum, value| {
+        sum.checked_add(*value)
+            .ok_or_else(|| "sample sum overflow".to_owned())
+    })
+}
+
+fn quantile_permille_sorted(sorted: &[u128], permille: usize) -> Result<u128, String> {
+    if sorted.is_empty() {
+        return Err("cannot compute a quantile of an empty sample set".to_owned());
+    }
+    if permille == 0 || permille > 1_000 {
+        return Err("quantile permille must be in 1..=1000".to_owned());
+    }
+    let numerator = sorted
+        .len()
+        .checked_mul(permille)
+        .ok_or_else(|| "quantile rank overflow".to_owned())?;
+    let rank = numerator
+        .checked_add(999)
+        .ok_or_else(|| "quantile rank overflow".to_owned())?
+        / 1_000;
+    Ok(sorted[rank.saturating_sub(1).min(sorted.len() - 1)])
+}
+
+fn upper_tail_mean(sorted: &[u128], tail_permille: usize) -> Result<u128, String> {
+    if sorted.is_empty() {
+        return Err("cannot summarize an empty tail".to_owned());
+    }
+    if tail_permille == 0 || tail_permille > 1_000 {
+        return Err("tail permille must be in 1..=1000".to_owned());
+    }
+    let numerator = sorted
+        .len()
+        .checked_mul(tail_permille)
+        .ok_or_else(|| "tail rank overflow".to_owned())?;
+    let count = numerator
+        .checked_add(999)
+        .ok_or_else(|| "tail rank overflow".to_owned())?
+        / 1_000;
+    let tail = &sorted[sorted.len() - count.max(1)..];
+    let divisor =
+        u128::try_from(tail.len()).map_err(|_| "tail sample count does not fit u128".to_owned())?;
+    checked_sum(tail)?
+        .checked_div(divisor)
+        .ok_or_else(|| "tail sample count must be positive".to_owned())
 }
 
 fn command_output(program: &str, args: &[&str]) -> Result<String, String> {
@@ -260,7 +417,7 @@ fn status_allowed_list(prefix: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_hardware_metadata, push_json_string};
+    use super::{DistributionStats, RATIO_SCALE_PPM, collect_hardware_metadata, push_json_string};
 
     #[test]
     fn hardware_metadata_has_nonempty_identity_fields() {
@@ -283,5 +440,33 @@ mod tests {
         let mut output = String::new();
         push_json_string(&mut output, "a\"b\\c\n\t");
         assert_eq!(output, "\"a\\\"b\\\\c\\n\\t\"");
+    }
+
+    #[test]
+    fn latency_distribution_uses_nearest_rank_and_robust_spread() {
+        let samples = (1_u128..=1_000).collect::<Vec<_>>();
+        let stats = DistributionStats::from_samples(&samples).expect("valid distribution");
+        assert_eq!(stats.count, 1_000);
+        assert_eq!(stats.min, 1);
+        assert_eq!(stats.p50, 500);
+        assert_eq!(stats.p90, 900);
+        assert_eq!(stats.p95, 950);
+        assert_eq!(stats.p99, 990);
+        assert_eq!(stats.p999, 999);
+        assert_eq!(stats.max, 1_000);
+        assert_eq!(stats.mean, 500);
+        assert_eq!(stats.mad, 250);
+        assert_eq!(stats.iqr, 500);
+        assert_eq!(stats.top_1pct_mean, 995);
+        assert_eq!(stats.top_0_1pct_mean, 1_000);
+        assert_eq!(stats.relative_mad_ppm, 500_000);
+        assert_eq!(stats.p99_to_p50_ppm, 1_980_000);
+        assert_eq!(stats.p999_to_p50_ppm, 1_998_000);
+        assert_eq!(stats.max_to_p50_ppm, 2 * RATIO_SCALE_PPM);
+    }
+
+    #[test]
+    fn latency_distribution_rejects_empty_samples() {
+        assert!(DistributionStats::from_samples(&[]).is_err());
     }
 }
