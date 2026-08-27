@@ -328,10 +328,7 @@ impl QualifiedProjectionArtifact<RecipeProjectionKey> {
     ///
     /// Rejects empty, malformed/non-canonical, or wrong-packet bodies before the artifact can be
     /// shared with any connection.
-    pub fn new(
-        key: RecipeProjectionKey,
-        body: Box<[u8]>,
-    ) -> Result<Self, ProjectionArtifactError> {
+    pub fn new(key: RecipeProjectionKey, body: Box<[u8]>) -> Result<Self, ProjectionArtifactError> {
         Self::new_with_packet_id(key, body, PLAY_PACKET_IDS.update_recipes)
     }
 }
@@ -527,11 +524,8 @@ mod tests {
             }
         );
         assert_eq!(
-            QualifiedProjectionArtifact::new(
-                command_key(1),
-                vec![0x90, 0x00].into_boxed_slice(),
-            )
-            .expect_err("non-canonical command packet id must be rejected"),
+            QualifiedProjectionArtifact::new(command_key(1), vec![0x90, 0x00].into_boxed_slice(),)
+                .expect_err("non-canonical command packet id must be rejected"),
             ProjectionArtifactError::InvalidPacketBodyIdentity
         );
     }
