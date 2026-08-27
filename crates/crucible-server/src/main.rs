@@ -46,7 +46,12 @@ fn run() -> Result<(), String> {
     let local_address = listener
         .local_addr()
         .map_err(|error| format!("could not read listener address: {error}"))?;
-    announce(local_address, &options, r1x_context.as_ref(), r2b_playtest.as_ref());
+    announce(
+        local_address,
+        &options,
+        r1x_context.as_ref(),
+        r2b_playtest.as_ref(),
+    );
 
     loop {
         let (mut stream, peer) = listener
@@ -255,7 +260,9 @@ fn options() -> Result<Options, String> {
     }
 
     if r1x_replay_image.is_some() && r2b_playtest_image.is_some() {
-        return Err("--r1x-replay-image and --r2b-playtest-image are mutually exclusive".to_owned());
+        return Err(
+            "--r1x-replay-image and --r2b-playtest-image are mutually exclusive".to_owned(),
+        );
     }
 
     if r1x_replay_image.is_some() || r2b_playtest_image.is_some() {
