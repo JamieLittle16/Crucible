@@ -37,20 +37,20 @@ jobs:
           python3 tools/ci_policy.py
           cargo xtask guard
 
-      - name: Build crucible-server
-        run: cargo build --release --locked --package crucible-server
+      - name: Build Helve
+        run: cargo build --release --locked --package crucible-server --bin helve
 
       - name: Package binary and checksum
         shell: bash
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
-          package="crucible-server-${tag}-x86_64-unknown-linux-gnu"
+          package="helve-${tag}-x86_64-unknown-linux-gnu"
           stage="target/release-package/${package}"
           archive="target/${package}.tar.gz"
 
           mkdir -p "$stage"
-          cp target/release/crucible-server "$stage/crucible-server"
+          cp target/release/helve "$stage/helve"
           cp LICENSE "$stage/LICENSE"
           cp README.md "$stage/README.md"
           tar -C target/release-package -czf "$archive" "$package"
@@ -63,14 +63,14 @@ jobs:
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
-          package="crucible-server-${tag}-x86_64-unknown-linux-gnu"
+          package="helve-${tag}-x86_64-unknown-linux-gnu"
           archive="target/${package}.tar.gz"
           notes="$(python3 tools/milestone_release_notes.py "$tag")"
 
           gh release create "$tag" \
             --verify-tag \
             --prerelease \
-            --title "Crucible ${tag}" \
+            --title "Helve ${tag}" \
             --notes-file "$notes"
 
           gh release upload "$tag" \
