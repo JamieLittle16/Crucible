@@ -2,17 +2,18 @@ use std::io::{self, Read, Write};
 
 use crucible_packet_core::PacketWriter;
 use crucible_server::{
-    R2bEntryOutcome, R2bPlayInbound, R2bPlayProcess, R2bServerError, ServerSessionEpoch,
-    enter_r2b_play_blocking_transport,
+    R2bEntryOutcome, R2bLivenessProcess, R2bPlayInbound, R2bPlayProcess, R2bServerError,
+    ServerSessionEpoch, enter_r2b_play_blocking_transport,
 };
 use crucible_target_26_2::{
     Target26_2R1xContext,
+    play_liveness::{encode_clientbound_keep_alive, encode_serverbound_keep_alive},
     r2b::{
         BootstrapGameMode, BootstrapWeather, ChangeDifficultyPayload, ClockFullSyncPayload,
         ClockUpdate, CommandPermissionProfile, CommandProjectionKey, DefaultSpawnPayload,
         Difficulty26_2, FreshCommonSpawnInfo, FreshEmptyInventoryPayload, FreshLoginFlags,
         FreshLoginPayload, FreshR2bBootstrapSnapshot, HeldSlotPayload, InitialPlayerInfoEntry,
-        PermissionEntityEventPayload, PermissionLevelEvent, PlayBootstrapImage26_2, PlayPacketIds,
+        PermissionEntityEventPayload, PermissionLevelEvent, PlayBootstrapImage26_2,
         PlayerAbilitiesPayload, PlayerAbilityFlags, PreparedLookup, PreparedR2bPlan,
         ProjectionRevision, QualifiedProjectionArtifact, RecipeBookSettingFlags,
         RecipeBookSettingsPayload, RecipeProjectionKey, SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -25,10 +26,6 @@ const CONFIGURATION_BODY_SIZES: [usize; 34] = [
     25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73, 980, 282,
     116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
 ];
-
-const IDS: PlayPacketIds = PlayPacketIds::from_source_order([
-    10, 16, 18, 34, 38, 43, 49, 64, 70, 72, 74, 76, 86, 97, 105, 113, 127, 128, 133,
-]);
 
 const LEVELS: [&str; 3] = [
     "minecraft:overworld",
@@ -307,7 +304,6 @@ fn prepared_bodies(image: &PlayBootstrapImage26_2) -> Vec<Vec<u8>> {
     let plan = PreparedR2bPlan::prepare(
         snapshot(),
         image,
-        IDS,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -379,7 +375,6 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
         &context,
         &image,
         snapshot(),
-        IDS,
     )
     .expect("configuration-only R2B entry succeeds");
 
@@ -390,6 +385,8 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
     assert_eq!(session.buffered_ingress(), 0);
     assert_eq!(session.queued_egress(), 0);
     assert_eq!(session.read_scratch_bytes(), 16 * 1_024);
+    assert_eq!(session.latency_ms(), 0);
+    assert_eq!(session.pending_keep_alive(), None);
     assert_eq!(
         session
             .teleport_transaction()
@@ -417,7 +414,7 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
         .ingest_play(&frame(&[0x00, 0x01]))
         .expect("teleport acknowledgement fits continuing ingress");
     assert_eq!(
-        session.process_one_play_control(),
+        session.process_one_play_control(1),
         Ok(R2bPlayProcess::Committed(
             R2bPlayInbound::TeleportAcknowledgement(TeleportAckResult::Accepted)
         ))
@@ -425,17 +422,46 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
     assert_eq!(session.teleport_transaction().awaiting(), None);
     assert_eq!(session.buffered_ingress(), 0);
 
-    let keepalive = frame(&[0x1c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]);
+    assert_eq!(
+        session.service_play_liveness(15_000),
+        Ok(R2bLivenessProcess::ChallengeQueued { id: 15_000 })
+    );
+    assert_eq!(session.pending_keep_alive(), Some(15_000));
+    {
+        let queued = decode_frames(session.pending_play_egress());
+        assert_eq!(queued, [encode_clientbound_keep_alive(15_000).as_slice()]);
+    }
+    let queued = session.queued_egress();
+    session
+        .consume_play_written(queued)
+        .expect("challenge write commits against existing egress");
+    assert_eq!(session.queued_egress(), 0);
+
+    let keepalive = frame(&encode_serverbound_keep_alive(15_000));
     session
         .ingest_play(&keepalive)
         .expect("keepalive response fits continuing ingress");
     assert_eq!(
-        session.process_one_play_control(),
-        Ok(R2bPlayProcess::Unclaimed { packet_id: 0x1c })
+        session.process_one_play_control(15_120),
+        Ok(R2bPlayProcess::Committed(
+            R2bPlayInbound::KeepAliveAccepted { latency_ms: 30 }
+        ))
+    );
+    assert_eq!(session.pending_keep_alive(), None);
+    assert_eq!(session.latency_ms(), 30);
+    assert_eq!(session.buffered_ingress(), 0);
+
+    let world_owned = frame(&[0x01]);
+    session
+        .ingest_play(&world_owned)
+        .expect("world-owned packet fits continuing ingress");
+    assert_eq!(
+        session.process_one_play_control(15_120),
+        Ok(R2bPlayProcess::Unclaimed { packet_id: 0x01 })
     );
     assert_eq!(
         session.buffered_ingress(),
-        keepalive.len(),
+        world_owned.len(),
         "unclaimed frame remains byte-for-byte owned by continuing ingress"
     );
 }
@@ -455,7 +481,6 @@ fn any_captured_play_body_is_rejected_before_transport_io() {
         &context,
         &image,
         snapshot(),
-        IDS,
     )
     .expect_err("R2B must reject captured Play before any I/O");
 
