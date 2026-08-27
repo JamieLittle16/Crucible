@@ -1,0 +1,38 @@
+name: One-shot Helve namespace rustfmt
+
+on:
+  push:
+    branches:
+      - namespace/helve
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.repository == 'JamieLittle16/Helve' && github.ref == 'refs/heads/namespace/helve'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout namespace branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: namespace/helve
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt
+
+      - name: Apply rustfmt
+        run: cargo fmt --all
+
+      - name: Remove one-shot workflow and commit
+        shell: bash
+        run: |
+          rm .github/workflows/namespace-rustfmt.yml
+          git config user.name 'Jamie Little'
+          git config user.email '160879046+JamieLittle16@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'helve: normalize namespace rustfmt'
+          git push origin HEAD:namespace/helve
