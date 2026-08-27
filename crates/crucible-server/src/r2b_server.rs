@@ -14,9 +14,11 @@ use std::convert::Infallible;
 use std::io::{self, Read, Write};
 use std::num::NonZeroUsize;
 
-use crucible_connection_core::ConnectionLimits;
-use crucible_connection_driver::{ConnectionDriver, DriverError};
-use crucible_packet_core::PacketWriter;
+use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
+use crucible_connection_driver::{
+    ConnectionDriver, DriverError, OutboundBatch, TransactionResult,
+};
+use crucible_packet_core::{PacketCodecError, PacketWriter};
 use crucible_preplay_core::{PrePlayConnection, PrePlayError};
 use crucible_preplay_io::{
     ActionBudget, IoOperation, PrePlayIo, PrePlayIoError, PublicationServiceStop,
@@ -30,7 +32,8 @@ use crucible_target_26_2::{
     r2b::{
         FreshR2bBootstrapSnapshot, PLAY_PUBLICATION_STAGES, PlayBootstrapImage26_2,
         PlayBootstrapStage, PlayPacketIds, PrepareR2bError, PreparedR2bPlan,
-        SELECTED_DYNAMIC_ARENA_CAPACITY, TeleportTransaction, stage_for_publication_index,
+        SELECTED_DYNAMIC_ARENA_CAPACITY, TeleportAckResult, TeleportTransaction,
+        decode_serverbound_teleport_ack, stage_for_publication_index,
     },
 };
 
@@ -42,6 +45,7 @@ const EGRESS_LIMIT: usize = 128 * 1_024;
 const READ_SCRATCH_BYTES: usize = 16 * 1_024;
 const PREPLAY_ACTIONS_PER_SERVICE: usize = 4;
 const PREPARE_SCRATCH_BYTES: usize = 4 * 1_024;
+const NO_OUTBOUND_BODIES: [&[u8]; 0] = [];
 const _: () = assert!(PREPLAY_ACTIONS_PER_SERVICE > 0);
 
 /// Fail-closed R2B server-composition error.
@@ -82,6 +86,65 @@ impl From<PrepareR2bError> for R2bServerError {
     }
 }
 
+/// Fail-closed continuing-Play control-slice error.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum R2bPlayError {
+    /// Bounded ingress/egress or frame law rejected the operation.
+    Buffer(ConnectionBufferError),
+    /// The target-owned teleport acknowledgement codec rejected a claimed packet.
+    Codec(PacketCodecError),
+    /// An impossible ingress-commit failure was followed by failed egress rollback.
+    RollbackFailed {
+        /// Failure consuming the already-admitted inbound frame.
+        operation: ConnectionBufferError,
+        /// Failure restoring the prior egress tail.
+        rollback: ConnectionBufferError,
+    },
+    /// Driver accounting overflowed.
+    AccountingOverflow,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PlayInboundDecodeError {
+    Codec(PacketCodecError),
+    Unclaimed(i32),
+}
+
+/// One R2B-owned continuing-Play semantic event committed from the existing driver.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum R2bPlayInbound {
+    /// Client teleport confirmation was consumed and applied to the pending transaction.
+    TeleportAcknowledgement(TeleportAckResult),
+}
+
+/// Result of one bounded R2B continuing-Play control service opportunity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum R2bPlayProcess {
+    /// No complete frame is currently buffered.
+    Incomplete,
+    /// One R2B-owned frame committed.
+    Committed(R2bPlayInbound),
+    /// A complete frame belongs to another Play slice and remains entirely unconsumed.
+    Unclaimed {
+        /// Target-decoded packet identity at the front of ingress.
+        packet_id: i32,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PreparedPlayInbound {
+    teleport: TeleportTransaction,
+    event: R2bPlayInbound,
+}
+
+impl OutboundBatch for PreparedPlayInbound {
+    type Body = &'static [u8];
+
+    fn outbound_frames(&self) -> &[Self::Body] {
+        &NO_OUTBOUND_BODIES
+    }
+}
+
 /// Connection-owned state handed to the world/live-Play owner after R2B network bootstrap.
 ///
 /// `driver` and `read_scratch` are the exact allocations used by pre-play, moved rather than
@@ -117,6 +180,56 @@ impl R2bPlaySession {
     #[must_use]
     pub fn queued_egress(&self) -> usize {
         self.driver.queued_egress()
+    }
+
+    /// Appends one arbitrary post-R2B transport fragment to the same bounded ingress allocation.
+    ///
+    /// # Errors
+    ///
+    /// Returns the fail-closed connection-buffer error without changing the logical active stream
+    /// on rejection.
+    pub fn ingest_play(&mut self, incoming: &[u8]) -> Result<(), R2bPlayError> {
+        self.driver
+            .ingest::<PlayInboundDecodeError>(incoming)
+            .map_err(map_play_driver_error)
+    }
+
+    /// Tries to commit exactly one R2B-owned continuing-Play control frame.
+    ///
+    /// Teleport acknowledgement is decoded into a candidate copy of the transaction. The driver
+    /// consumes ingress first; only a committed transaction is then adopted into live state. Other
+    /// Play packet identities are reported as `Unclaimed` and remain byte-for-byte at the front of
+    /// ingress for the eventual liveness/world multiplexer.
+    ///
+    /// # Errors
+    ///
+    /// Returns malformed claimed-packet, bounded-buffer, rollback or accounting failures without
+    /// committing the candidate teleport state.
+    pub fn process_one_play_control(&mut self) -> Result<R2bPlayProcess, R2bPlayError> {
+        let teleport = self.teleport;
+        let transaction = self.driver.process_one_transactional(|frame| {
+            let received = decode_serverbound_teleport_ack(frame)
+                .map_err(PlayInboundDecodeError::Codec)?
+                .ok_or(PlayInboundDecodeError::Unclaimed(frame.packet_id()))?;
+            let mut candidate = teleport;
+            let result = candidate.acknowledge(received);
+            Ok(PreparedPlayInbound {
+                teleport: candidate,
+                event: R2bPlayInbound::TeleportAcknowledgement(result),
+            })
+        });
+
+        match transaction {
+            Ok(TransactionResult::Incomplete) => Ok(R2bPlayProcess::Incomplete),
+            Ok(TransactionResult::Committed(action)) => {
+                self.teleport = action.teleport;
+                Ok(R2bPlayProcess::Committed(action.event))
+            }
+            Err(DriverError::Handler(PlayInboundDecodeError::Unclaimed(packet_id))) => {
+                Ok(R2bPlayProcess::Unclaimed { packet_id })
+            }
+            Err(error) => Err(map_play_driver_error(error)),
+        }
     }
 }
 
@@ -302,6 +415,24 @@ where
         }
     }
     Ok(())
+}
+
+fn map_play_driver_error(error: DriverError<PlayInboundDecodeError>) -> R2bPlayError {
+    match error {
+        DriverError::Buffer(error) => R2bPlayError::Buffer(error),
+        DriverError::Handler(PlayInboundDecodeError::Codec(error)) => R2bPlayError::Codec(error),
+        DriverError::Handler(PlayInboundDecodeError::Unclaimed(_)) => {
+            unreachable!("unclaimed packets are mapped to a non-error process result")
+        }
+        DriverError::RollbackFailed {
+            operation,
+            rollback,
+        } => R2bPlayError::RollbackFailed {
+            operation,
+            rollback,
+        },
+        DriverError::AccountingOverflow => R2bPlayError::AccountingOverflow,
+    }
 }
 
 fn map_driver_error(error: &DriverError<Infallible>) -> PrePlayIoError<R1xError> {
