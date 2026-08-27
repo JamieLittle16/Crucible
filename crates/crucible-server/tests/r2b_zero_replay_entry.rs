@@ -244,12 +244,8 @@ fn configuration_bodies() -> Vec<Box<[u8]>> {
 }
 
 fn empty_play_context(configuration: &[Box<[u8]>]) -> Target26_2R1xContext {
-    Target26_2R1xContext::new(
-        "{}".into(),
-        configuration.iter().cloned().collect(),
-        Vec::new(),
-    )
-    .expect("structurally sealed configuration-only image")
+    Target26_2R1xContext::new("{}".into(), configuration.to_vec(), Vec::new())
+        .expect("structurally sealed configuration-only image")
 }
 
 fn session_epoch() -> ServerSessionEpoch {
@@ -399,7 +395,7 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
     assert_eq!(observed.len(), 1 + configuration.len() + expected_r2b.len());
     assert_eq!(observed[0][0], 2, "first server frame is LoginFinished");
 
-    for (actual, expected) in observed[1..1 + configuration.len()]
+    for (actual, expected) in observed[1..=configuration.len()]
         .iter()
         .zip(&configuration)
     {
