@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/branding/crucible-lockup.png" alt="Crucible" width="900">
+# Helve
 
 ### Same game. Different engine.
 
@@ -9,21 +9,26 @@ A high-performance, parity-focused Minecraft: Java Edition server engine written
 [![CI](https://github.com/JamieLittle16/Crucible/actions/workflows/ci.yml/badge.svg)](https://github.com/JamieLittle16/Crucible/actions/workflows/ci.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 [![Rust 1.97.1](https://img.shields.io/badge/Rust-1.97.1-orange.svg)](rust-toolchain.toml)
-[![Status: R1X Visible World](https://img.shields.io/badge/status-R1X%20visible%20world-6f42c1.svg)](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md)
 
 **Strict supported vanilla fidelity. Independently designed internals. Measured performance.**
 
-[Documentation](docs/README.md) · [Latest milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) · [Architecture](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) · [Execution plan](docs/execution/EXECUTION_MASTER_PLAN.md) · [Contributing](CONTRIBUTING.md)
+[Documentation](docs/README.md) · [Architecture](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) · [Execution plan](docs/execution/EXECUTION_MASTER_PLAN.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
 ---
 
-## What is Crucible?
+> [!NOTE]
+> Helve is the new public name of the project previously called Crucible. The GitHub repository and
+> some internal `crucible-*` crate/path identifiers are intentionally being migrated separately so
+> the product rename does not create unrelated build-graph churn. Approved Helve visual assets will
+> be added separately; the previous Crucible lockup is intentionally not shown here.
 
-Crucible is a from-scratch Minecraft: Java Edition server engine whose target is **the supported game, not Mojang's implementation architecture**.
+## What is Helve?
 
-The official server is used as a white-box and black-box semantic oracle. Crucible reconstructs those semantics behind independently designed, replaceable, data-oriented mechanisms intended to eliminate unnecessary work, scale cleanly across cores, and remain efficient on ordinary hardware.
+Helve is a from-scratch Minecraft: Java Edition server engine whose target is **the supported game, not Mojang's implementation architecture**.
+
+The official server is used as a white-box and black-box semantic oracle. Helve reconstructs those semantics behind independently designed, replaceable, data-oriented mechanisms intended to eliminate unnecessary work, scale cleanly across cores, and remain efficient on ordinary hardware.
 
 The project is intentionally strict about the distinction between **correctness evidence** and **performance evidence**. An optimization does not become production-worthy merely because it is fast, and a plausible reimplementation does not become "vanilla" merely because common cases appear to work.
 
@@ -34,11 +39,11 @@ The project is intentionally strict about the distinction between **correctness 
 ## Project status
 
 > [!IMPORTANT]
-> **Crucible remains experimental and does not yet provide a playable production server release.**
+> **Helve remains experimental and does not yet provide a playable production server release.**
 >
-> On **25 August 2026**, an unmodified Minecraft: Java Edition **26.2** client completed Handshake → Login → Configuration → Play through Crucible and rendered world data. This first visible-world result used the explicitly experimental R1X target: Configuration is independently admitted, while the demonstrated early Play bootstrap is a finite captured replay and remains `production_admitted=false`.
+> On **27 August 2026**, an unmodified Minecraft: Java Edition **26.2** client completed Handshake → Login → Configuration → replay-free Play through Helve's source-backed networking/bootstrap path with **zero captured Play publication**. The client crossed the `WorldProjection` boundary and eventually entered the expected pre-R2C void. Native world/chunk/light projection is the next product milestone.
 
-The [R1X First Visible World milestone record](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) preserves the exact test boundary, evidence and claim limits.
+This closes the R2B bootstrap boundary: the stock client can enter Play through Helve-owned semantic bootstrap, continue on the same bounded connection driver, acknowledge the initial teleport and remain under live keep-alive control. Terrain is intentionally absent until R2C owns world projection.
 
 Current work includes:
 
@@ -46,22 +51,23 @@ Current work includes:
 - section representation candidates and semantic equivalence qualification;
 - world/section contracts and reference implementations;
 - bounded Handshake/Login/Configuration networking accepted by the stock 26.2 client;
-- progressive replacement of the experimental captured Play bootstrap with source-backed, Crucible-owned live Play semantics;
+- replay-free R2B Play bootstrap, teleport acknowledgement and continuing liveness;
+- R2C native chunk/light/world projection;
 - deterministic qualification, replay and evidence machinery;
 - repository architecture, dependency and provenance guards;
-- the handoff from correctness-qualified mechanisms to controlled performance qualification.
+- controlled performance qualification including tail latency and arrival smoothness.
 
-The next product-facing vertical slice is a **persistent walkable server**: an unmodified client connects, remains alive without captured Play replay, receives Crucible-owned chunks/light, moves and collides correctly, teleports, and reconnects. World generation is deliberately not a prerequisite for that first live slice.
+The next product-facing visual slice is intentionally narrow: replace **Loading Terrain → void** with a source-backed Helve world projection containing valid chunk/section/light state and visible terrain. World generation is not a prerequisite for that first native-world slice.
 
-### Latest milestone: R1X first visible world
+### Current client boundary: replay-free R2B
 
-The successful black-box smoke test used 34 Configuration frames (44,432 body bytes) followed by a selected 385-frame experimental Play prefix (560,569 body bytes). The client entered Play and displayed one chunk before eventually timing out after the finite replay stopped supplying continuing live-server traffic.
+The current stock-client development path uses the real source-admitted Configuration route and Helve's replay-free semantic R2B bootstrap. Captured Play traffic is structurally excluded from that path. Until R2C publishes world state, the client may remain on Loading Terrain before entering an empty void.
 
-That result establishes the end-to-end client path through Crucible's Rust networking/session spine. It does **not** establish a production Play implementation: the next gate is live keepalive/player state, position and movement handling, inventory initialization, Crucible-owned chunk/light publication, and chunk tracking with no captured Play replay.
+The earlier [R1X First Visible World milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) remains historical evidence for the first end-to-end visible-world smoke test, but it is no longer the current implementation boundary.
 
-## Why Crucible exists
+## Why Helve exists
 
-Crucible is built around four simultaneous requirements.
+Helve is built around four simultaneous requirements.
 
 ### 1. Semantic fidelity
 
@@ -79,7 +85,7 @@ Independent semantic work should execute in parallel without allowing worker sch
 
 Important mechanisms should be independently testable and replaceable without forcing plugin-style dynamic dispatch through every hot operation.
 
-## How Crucible establishes parity
+## How Helve establishes parity
 
 The development pipeline is explicit:
 
@@ -88,13 +94,13 @@ Official Mojang source
         ↓
 Vanilla Algorithm Record (VAR)
         ↓
-Crucible semantic rules (SEM)
+Helve semantic rules (SEM)
         ↓
 Simple reference implementation
         ↓
 Vanilla parity qualification
         ↓
-Optimized Crucible component
+Optimized Helve component
         ↓
 Equivalence evidence (EQUIV)
         ↓
@@ -107,7 +113,7 @@ Reference implementations are permanent infrastructure, not throwaway prototypes
 
 ## Performance philosophy
 
-Crucible does not define success as "Rust is faster than Java" or as winning isolated microbenchmarks.
+Helve does not define success as "Rust is faster than Java" or as winning isolated microbenchmarks.
 
 For hot systems, the preferred optimization order is broadly:
 
@@ -122,13 +128,13 @@ For hot systems, the preferred optimization order is broadly:
 9. specialize hot representations;
 10. apply SIMD, unsafe code or low-level tuning only when evidence earns it.
 
-Performance claims are expected to carry workload identity, semantic coverage, memory effects, tail latency and reproducible evidence rather than a single flattering throughput number.
+Performance claims are expected to carry workload identity, semantic coverage, memory effects, tail latency/variance and reproducible evidence rather than a single flattering throughput number.
 
 ## Repository map
 
 ```text
 crates/                 Rust implementation and semantic/reference components
-vanilla/                Crucible-owned target-version records, fixtures and provenance metadata
+vanilla/                project-owned target-version records, fixtures and provenance metadata
 docs/architecture/      product and architecture contracts
 docs/qualification/     parity, equivalence and performance qualification design
 docs/execution/         milestone, CI and release operating plans
@@ -138,11 +144,13 @@ tools/                  qualification, source-indexing and repository tooling
 benchmark-results/      checked-in benchmark/evidence outputs where policy permits
 ```
 
+The internal `crucible-*` crate/path namespace is temporarily retained as a migration-stable implementation namespace. It is not the current public product name.
+
 Start with the [documentation index](docs/README.md) rather than browsing the tree at random.
 
-## Working on Crucible
+## Working on Helve
 
-The pinned toolchain is declared in [`rust-toolchain.toml`](rust-toolchain.toml). For an existing Rust installation, a normal contributor loop starts with:
+The pinned toolchain is declared in [`rust-toolchain.toml`](rust-toolchain.toml). Until the GitHub repository rename lands, an existing Rust installation can use:
 
 ```bash
 git clone https://github.com/JamieLittle16/Crucible.git
@@ -153,18 +161,21 @@ cargo test --workspace --all-features --locked
 cargo xtask guard
 ```
 
+The runnable product binary is named **`helve`**; the Cargo package remains internally named `crucible-server` during the first rebrand step.
+
 The ordinary CI lane additionally runs formatting, Clippy, source-backed section qualification, Python tooling tests and rustdoc with warnings denied.
 
-Before proposing a change, read [`CONTRIBUTING.md`](CONTRIBUTING.md). Crucible intentionally uses a stricter engineering process than most early-stage projects: meaningful changes should explain their semantic effect, evidence, performance consequence, concurrency impact and architectural cost.
+Before proposing a change, read [`CONTRIBUTING.md`](CONTRIBUTING.md). Helve intentionally uses a stricter engineering process than most early-stage projects: meaningful changes should explain their semantic effect, evidence, performance consequence, concurrency impact and architectural cost.
 
 ## Documentation
 
 Good entry points are:
 
-- [R1X First Visible World milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) — the first stock-client Handshake → Play → visible-world black-box result and its exact claim limits.
-- [Master architecture blueprint](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) — what the project is trying to build and why.
+- [R2B replay-free vanilla playtest gate](docs/qualification/R2B_VANILLA_PLAYTEST.md) — the current stock-client Handshake → Play boundary and exact claim limits.
+- [R1X First Visible World milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) — historical first visible-world black-box evidence.
+- [Master architecture blueprint](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) — what the engine is trying to build and why; filename retained during the staged rename.
 - [M0 foundation implementation spec](docs/architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) — the foundational implementation boundary.
-- [World/section implementation slice](docs/architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — the current foundational subsystem.
+- [World/section implementation slice](docs/architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — foundational world subsystem work.
 - [Execution master plan](docs/execution/EXECUTION_MASTER_PLAN.md) — milestone sequencing and operating model.
 - [CI qualification roadmap](docs/execution/CI_QUALIFICATION_ROADMAP.md) — how evidence becomes enforceable repository law.
 - [Evidence and experiment records](docs/qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md) — how performance and correctness decisions remain reproducible.
@@ -173,18 +184,18 @@ See [`docs/README.md`](docs/README.md) for the full curated index.
 
 ## Contributing
 
-Contributions are welcome, but Crucible deliberately optimizes for **high-confidence engineering rather than low-friction merging**.
+Contributions are welcome, but Helve deliberately optimizes for **high-confidence engineering rather than low-friction merging**.
 
 A good contribution is narrow, source/provenance-aware, independently testable, and explicit about what would falsify its assumptions. Large speculative abstractions, silent semantic compromises and performance claims without evidence are intentionally difficult to merge.
 
-Contributors retain ownership of their work. External contributions must also accept the [`Crucible Contributor Licence Agreement`](CLA.md); the pull-request workflow records that acceptance and fails closed when it is absent.
+Contributors retain ownership of their work. External contributions must also accept the project [`Contributor Licence Agreement`](CLA.md); the pull-request workflow records that acceptance and fails closed when it is absent.
 
 Read the full [contribution guide](CONTRIBUTING.md) before opening substantial work.
 
 ## Licence and project independence
 
-Crucible is licensed under the **Mozilla Public License 2.0 (MPL-2.0)**. See [`LICENSE`](LICENSE).
+Helve is licensed under the **Mozilla Public License 2.0 (MPL-2.0)**. See [`LICENSE`](LICENSE).
 
-Do not copy or commit Mojang source code, server JARs, game assets, worlds, credentials or other proprietary Minecraft artifacts into this repository. Official source/runtime material is a local semantic and qualification oracle and is represented in the repository only through Crucible-owned records, fingerprints, fixtures and derived evidence where permitted.
+Do not copy or commit Mojang source code, server JARs, game assets, worlds, credentials or other proprietary Minecraft artifacts into this repository. Official source/runtime material is a local semantic and qualification oracle and is represented in the repository only through project-owned records, fingerprints, fixtures and derived evidence where permitted.
 
-Crucible is an independent project and is not affiliated with, sponsored by, or endorsed by Mojang Studios or Microsoft. Minecraft is a trademark of Microsoft Corporation.
+Helve is an independent project and is not affiliated with, sponsored by, or endorsed by Mojang Studios or Microsoft. Minecraft is a trademark of Microsoft Corporation.
