@@ -178,7 +178,7 @@ fn run_pair(
     measured: bool,
     mut samples: Option<&mut Samples>,
 ) -> Result<(), String> {
-    let reference_first = round % 2 == 0;
+    let reference_first = round.is_multiple_of(2);
     let first = if reference_first {
         Candidate::Reference
     } else {
@@ -358,7 +358,7 @@ fn render_json(
     out.push_str(",\"benchmark\":\"r2b-shared-artifact-validation\"");
     out.push_str(",\"mode\":\"");
     out.push_str(config.mode.as_str());
-    out.push_str("\"");
+    out.push('"');
     out.push_str(",\"hosted_ci_is_diagnostic_only\":true");
     out.push_str(",\"production_path_is_construction_certified\":true");
     out.push_str(",\"joins_per_round\":");
