@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R2B-PLAY-FINAL-SEAMS-26_2-001",
+  "prior_review_id": "REVIEW-NET-R2B-PLAY-WIRE-CLOSURE-26_2-001",
+  "prior_dossier_sha256": "93999fca0a4c69eda607e729af61c74e7ce40c96bf4201516904fabf79bc2e3a",
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "scope": "Reusable dynamic wire primitives only. Commands and synchronized recipes are composition-locked artifacts for this profile; non-empty ItemStack, world/chunk/light/movement and gameplay helpers are forbidden.",
+  "groups": [
+    {
+      "group_id": "GENERIC_REGISTRY_WIRE",
+      "review_focus": "Close map, registry-holder/id-mapper and difficulty-id encoding used by dynamic clock, dimension-holder and difficulty projection.",
+      "selectors": [
+        {
+          "mode": "type_name_regex",
+          "required": true,
+          "type_name": "net.minecraft.network.codec.ByteBufCodecs",
+          "name_regex": "^(map|holderRegistry|holder|registry|registryKey|idMapper)$"
+        },
+        {
+          "mode": "type_names",
+          "required": true,
+          "type_name": "net.minecraft.world.Difficulty",
+          "names": ["<clinit>", "Difficulty", "getId"]
+        }
+      ]
+    },
+    {
+      "group_id": "GLOBAL_POS_WIRE",
+      "review_focus": "Close GlobalPos.STREAM_CODEC and exactly the reusable resource-key/packed-position primitives delegated by default-spawn projection.",
+      "selectors": [
+        {
+          "mode": "type_all",
+          "required": true,
+          "type_name": "net.minecraft.core.GlobalPos"
+        },
+        {
+          "mode": "type_names",
+          "required": true,
+          "type_name": "net.minecraft.resources.ResourceKey",
+          "names": ["streamCodec"]
+        },
+        {
+          "mode": "type_name_regex",
+          "required": true,
+          "type_name": "net.minecraft.core.BlockPos",
+          "name_regex": "^(<clinit>|of|asLong)$"
+        },
+        {
+          "mode": "type_names",
+          "required": true,
+          "type_name": "net.minecraft.network.FriendlyByteBuf",
+          "names": ["writeBlockPos"]
+        }
+      ]
+    }
+  ]
+}

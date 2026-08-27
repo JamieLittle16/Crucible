@@ -6,6 +6,8 @@
 
 #![forbid(unsafe_code)]
 
+mod fixed_write;
+
 use crucible_protocol_core::{
     DecodeResult, WireError, decode_string, decode_var_int, encode_string, encode_var_int,
     var_int_len,

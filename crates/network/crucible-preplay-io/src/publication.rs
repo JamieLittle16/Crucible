@@ -7,7 +7,9 @@
 
 use std::io::{Read, Write};
 
-use crucible_preplay_core::{PrePlayPublicationProcess, PrePlayPublisher, PublicationStep};
+use crucible_preplay_core::{
+    PrePlayConnection, PrePlayPublicationProcess, PrePlayPublisher, PrePlayTarget, PublicationStep,
+};
 
 use super::{
     ActionBudget, PrePlayIo, PrePlayIoError, ProcessReport, ProcessStop, ReadOutcome, WriteOutcome,
@@ -33,7 +35,7 @@ pub enum PublicationServiceStop {
     SessionClosed,
 }
 
-/// Evidence from one bounded publication-aware service call.
+/// Evidence from one bounded publication-aware I/O service call.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PublicationServiceReport {
     /// Bytes read from the transport during this call.
@@ -108,6 +110,23 @@ impl ServiceTally {
         } else {
             PublicationServiceStop::PublicationProgress
         }
+    }
+}
+
+impl<T> PrePlayIo<T>
+where
+    T: PrePlayTarget,
+{
+    /// Consumes the adapter while retaining both expensive connection allocations for a new owner.
+    ///
+    /// The caller receives the complete target-bound connection, the already-allocated retained
+    /// read scratch, and the EOF observation bit. This method performs no semantic handoff checks;
+    /// callers must establish their target-specific phase boundary and may use
+    /// [`PrePlayConnection::try_into_drained_driver`] to require empty userspace queues before
+    /// transferring the driver itself.
+    #[must_use]
+    pub fn into_parts(self) -> (PrePlayConnection<T>, Box<[u8]>, bool) {
+        (self.connection, self.read_scratch, self.peer_eof)
     }
 }
 

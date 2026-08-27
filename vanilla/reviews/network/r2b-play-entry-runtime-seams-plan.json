@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R2B-PLAY-RUNTIME-SEAMS-26_2-001",
+  "base_gate": {
+    "id": "GATE-NET-PLAY-ENTRY-26_2-001",
+    "sha256": "a304f8f35a411b2d14300c5cf1bbe8097afe9eadd1059ae180e4129ef8d781cb",
+    "required_methods": 206
+  },
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "scope": "Last implementation-discovered outbound terminals for the selected fresh/offline/default R2B profile. This supplement may close only Login/player-info/empty-inventory envelope and absolute teleport primitives. Commands, synchronized recipes, non-empty ItemStack, component/server-data serialization, world/chunk/light and general gameplay are forbidden.",
+  "reused_source_records": [
+    "vanilla/records/network/r1/configuration-closure/VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-001.json",
+    "vanilla/records/network/r1/configuration-closure/VAR-NET-R1B-CLOSURE-BYTEBUF-COLLECTION-DEFAULT-001.json",
+    "vanilla/records/network/r1/configuration-closure/VAR-NET-R1B-CLOSURE-BYTEBUF-OPTIONAL-001.json",
+    "vanilla/records/network/r1/configuration-closure/VAR-NET-R1B-CLOSURE-FRIENDLY-WRITE-RESOURCE-KEY-001.json"
+  ],
+  "groups": [
+    {
+      "group_id": "TELEPORT_TERMINALS",
+      "review_focus": "Close only the outbound Vec3 triple-double codec and Relative empty-set mask terminal used by the selected absolute zero-velocity teleport.",
+      "selectors": [
+        {
+          "mode": "type_names",
+          "required": true,
+          "type_name": "net.minecraft.world.phys.Vec3",
+          "names": ["<clinit>"]
+        },
+        {
+          "mode": "type_names",
+          "required": true,
+          "type_name": "net.minecraft.world.entity.Relative",
+          "names": ["pack"]
+        }
+      ]
+    },
+    {
+      "group_id": "GAME_TYPE_IDS",
+      "review_focus": "Close the literal enum-id -> constructor field -> getId/getNullableId chain used by Login and initial player-info game-mode projection.",
+      "selectors": [
+        {
+          "mode": "type_names",
+          "required": true,
+          "type_name": "net.minecraft.world.level.GameType",
+          "names": ["<clinit>", "GameType", "getId", "getNullableId"]
+        }
+      ]
+    },
+    {
+      "group_id": "SELECTED_PROFILE_BYTEBUF_HELPERS",
+      "review_focus": "Pin the static PLAYER_NAME/GAME_PROFILE_PROPERTIES/CONTAINER_ID codec declarations and the exact UUID/enum-set/fixed-bitset/nullable/container-id outbound helpers needed by selected offline player-info and fresh empty inventory.",
+      "selectors": [
+        {
+          "mode": "type_names",
+          "required": true,
+          "type_name": "net.minecraft.network.codec.ByteBufCodecs",
+          "names": ["<clinit>"]
+        },
+        {
+          "mode": "type_names",
+          "required": true,
+          "type_name": "net.minecraft.network.FriendlyByteBuf",
+          "names": ["writeEnumSet", "writeFixedBitSet", "writeNullable", "writeUUID", "writeContainerId"]
+        }
+      ]
+    }
+  ]
+}

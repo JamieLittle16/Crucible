@@ -1,0 +1,28 @@
+{
+  "classifications": [
+    "PROTOCOL"
+  ],
+  "evidence": [
+    "REVIEW-NET-R2B-PLAY-RUNTIME-SEAMS-26_2-001"
+  ],
+  "hazards_reviewed": [
+    "CODEC"
+  ],
+  "id": "VAR-NET-R2B-PLAY-RUNTIME-SEAM-015",
+  "notes": [
+    "Canonicalized from the exact accepted R2B runtime-seam worksheet; selected-profile specializations and reachability constraints are documented in that review."
+  ],
+  "schema": 1,
+  "semantic_rules": [
+    "SEM-NET-R2B-PLAY-006",
+    "SEM-NET-R2B-PLAY-012"
+  ],
+  "source": {
+    "body_sha256": "e4cf1c83d253f40a497095df29767e2c42f92e33ceba9f09e910fd11f7ac4eca",
+    "fingerprint_algorithm": "java-token-v2-literal-sensitive",
+    "normalized_sha256": "fcb60d35b2557ee82b59e87471c60702bcde31c202e6e6563ee0526d5295b882",
+    "signature": "<clinit>()",
+    "type": "net.minecraft.world.phys.Vec3"
+  },
+  "status": "VAR_REVIEWED"
+}

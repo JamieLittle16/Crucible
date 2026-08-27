@@ -22,7 +22,10 @@
 
 mod staged;
 
-pub use staged::{StagedPublicationCursor, StagedPublicationStep, publish_staged_one};
+pub use staged::{
+    StagedPublicationCursor, StagedPublicationLookup, StagedPublicationPlan, StagedPublicationStep,
+    publish_staged_one, publish_staged_plan_one,
+};
 
 use crucible_connection_driver::{ConnectionDriver, DriverError};
 

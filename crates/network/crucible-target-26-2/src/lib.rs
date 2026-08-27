@@ -1,19 +1,17 @@
-//! Source-admitted Minecraft Java 26.2 pre-play target for Crucible.
+//! Source-admitted Minecraft Java 26.2 target layer for Crucible.
 //!
 //! This crate is the target-version semantic layer above Crucible's target-neutral packet,
-//! connection and pre-play machinery. It currently implements two independently admitted finite
-//! surfaces:
+//! connection and publication machinery. The normal [`Target26_2`] route currently exposes the
+//! independently admitted R0 Status and R1A Login surfaces. An explicitly separate
+//! [`Target26_2R1x`] development target exercises Configuration plus quarantined captured Play data.
 //!
-//! - R0: Handshake -> Status -> Status response -> Ping/Pong;
-//! - R1A: Handshake(LOGIN) -> offline Hello -> `LoginFinished` -> `LoginAcknowledged` -> Configuration.
+//! The [`r2b`] module is the replay-free Play-bootstrap projection candidate. It is compiled as real
+//! target-library code so server/runtime qualification can exercise exactly the implementation that
+//! would be routed later, while the normal [`Target26_2`] Play route remains deliberately disabled
+//! until R2B runtime qualification is complete.
 //!
-//! An explicitly separate [`Target26_2R1x`] development target additionally exercises the admitted
-//! Configuration route plus a source-free captured Play prefix. R1X is a smoke fixture only and is
-//! intentionally unable to broaden the production [`Target26_2`] Play semantics.
-//!
-//! Packet identities are generated from admitted contracts. Runtime dispatch is direct static
-//! matching; there is no packet registry, target lookup, trait object, socket runtime or second
-//! framing/buffering layer here.
+//! Packet identities are generated/static target facts. Runtime dispatch is direct matching; there
+//! is no packet registry, target lookup, trait-object service graph or second buffering layer here.
 
 #![forbid(unsafe_code)]
 
@@ -21,6 +19,22 @@ mod login_profile;
 mod offline_uuid;
 pub mod play_liveness;
 mod r1x;
+pub mod r2b;
+mod r2b_arena;
+mod r2b_border;
+mod r2b_clock;
+mod r2b_difficulty;
+mod r2b_dynamic;
+mod r2b_inventory;
+mod r2b_login;
+mod r2b_plan;
+mod r2b_player_info;
+mod r2b_prepare;
+mod r2b_recipe;
+mod r2b_recipe_add;
+mod r2b_spawn;
+mod r2b_teleport;
+mod r2b_wire;
 
 pub use r1x::{R1xContextError, R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState};
 

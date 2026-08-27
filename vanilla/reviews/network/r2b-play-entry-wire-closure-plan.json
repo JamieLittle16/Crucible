@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R2B-PLAY-WIRE-CLOSURE-26_2-001",
+  "prior_review_id": "REVIEW-NET-R2B-PLAY-ENTRY-FINAL-26_2-001",
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "groups": [
+    {
+      "group_id": "COMMAND_TREE",
+      "review_focus": "Close only the permission-filtered command-tree construction and outbound entry serialization delegated by the reviewed commands packet.",
+      "selectors": [
+        {"mode": "type_names", "type_name": "net.minecraft.commands.Commands", "names": ["<clinit>", "fillUsableCommands"], "required": true},
+        {"mode": "type_names", "type_name": "net.minecraft.network.protocol.game.ClientboundCommandsPacket", "names": ["enumerateNodes", "createEntries", "createEntry"], "required": true},
+        {"mode": "prefix_all", "type_prefix": "net.minecraft.network.protocol.game.ClientboundCommandsPacket$", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.commands.synchronization.ArgumentTypeInfos", "required": false},
+        {"mode": "type_all", "type_name": "net.minecraft.commands.synchronization.SuggestionProviders", "required": false}
+      ]
+    },
+    {
+      "group_id": "RECIPE_BOOK_SETTINGS",
+      "review_focus": "Bind RecipeBookSettings.STREAM_CODEC and the exact settings representation used by mandatory initial recipe-book settings publication.",
+      "selectors": [
+        {"mode": "type_all", "type_name": "net.minecraft.stats.RecipeBookSettings", "required": true}
+      ]
+    },
+    {
+      "group_id": "SYNCHRONIZED_RECIPES",
+      "review_focus": "Bind the custom recipe-property and stonecutter no-recipe codecs delegated by mandatory ClientboundUpdateRecipesPacket.",
+      "selectors": [
+        {"mode": "type_all", "type_name": "net.minecraft.world.item.crafting.RecipePropertySet", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.item.crafting.SelectableRecipe$SingleInputSet", "required": true}
+      ]
+    },
+    {
+      "group_id": "CLOCK_FULL_SYNC",
+      "review_focus": "Bind ClientboundSetTimePacket and the clock package network-state packing/codec surface used by mandatory full clock synchronization.",
+      "selectors": [
+        {"mode": "type_all", "type_name": "net.minecraft.network.protocol.game.ClientboundSetTimePacket", "required": true},
+        {"mode": "prefix_all", "type_prefix": "net.minecraft.world.clock.", "required": true}
+      ]
+    },
+    {
+      "group_id": "DEFAULT_SPAWN",
+      "review_focus": "Bind LevelData.RespawnData.STREAM_CODEC used by mandatory default-spawn publication.",
+      "selectors": [
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.storage.LevelData$RespawnData", "required": true}
+      ]
+    },
+    {
+      "group_id": "DIMENSION_TYPE",
+      "review_focus": "Bind DimensionType.STREAM_CODEC used inside mandatory CommonPlayerSpawnInfo.",
+      "selectors": [
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.dimension.DimensionType", "required": true}
+      ]
+    },
+    {
+      "group_id": "INITIAL_INVENTORY",
+      "review_focus": "Bind only the ItemStack network/codec helpers needed by OPTIONAL_STREAM_CODEC and OPTIONAL_LIST_STREAM_CODEC for the mandatory initial container snapshot.",
+      "selectors": [
+        {"mode": "exact_signature", "type_name": "net.minecraft.world.item.ItemStack", "signature": "<clinit>()", "required": true},
+        {"mode": "type_name_regex", "type_name": "net.minecraft.world.item.ItemStack", "name_regex": "(?i)(stream|codec|network|write|read|encode|decode|parse)", "required": false},
+        {"mode": "prefix_name_regex", "type_prefix": "net.minecraft.world.item.ItemStack$", "name_regex": "(?i)(stream|codec|network|write|read|encode|decode|parse)", "required": false}
+      ]
+    }
+  ]
+}
