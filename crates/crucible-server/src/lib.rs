@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn current_product_status_is_helve() {
-        assert!(HELVE_STATUS_JSON.contains("\\\"description\\\":\\\"Helve\\\""));
+        assert!(HELVE_STATUS_JSON.contains("\"description\":\"Helve\""));
         assert!(!HELVE_STATUS_JSON.contains("Crucible"));
     }
 }
