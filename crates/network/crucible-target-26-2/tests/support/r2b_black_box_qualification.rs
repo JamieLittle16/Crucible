@@ -159,8 +159,8 @@ fn selected_snapshot(
         border: WorldBorderPayload {
             center_x: 0.0,
             center_z: 0.0,
-            old_size: 60_000_000.0,
-            new_size: 60_000_000.0,
+            old_size: 59_999_968.0,
+            new_size: 59_999_968.0,
             lerp_time: 0,
             absolute_max_size: 29_999_984,
             warning_blocks: 5,
