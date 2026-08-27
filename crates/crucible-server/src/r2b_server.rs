@@ -465,12 +465,10 @@ where
         }
     };
 
-    let mut scratch = PacketWriter::with_capacity(
-        PREPARE_SCRATCH_BYTES,
-        PREPARE_SCRATCH_INITIAL_CAPACITY,
-    )
-    .map_err(PrepareR2bError::from)
-    .map_err(R2bServerError::from)?;
+    let mut scratch =
+        PacketWriter::with_capacity(PREPARE_SCRATCH_BYTES, PREPARE_SCRATCH_INITIAL_CAPACITY)
+            .map_err(PrepareR2bError::from)
+            .map_err(R2bServerError::from)?;
     let mut teleport = TeleportTransaction::new();
     let plan = PreparedR2bPlan::prepare(
         snapshot,
