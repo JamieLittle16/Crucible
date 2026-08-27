@@ -1,0 +1,142 @@
+name: R2B Join-Arrival Full Qualification
+
+on:
+  pull_request:
+    paths:
+      - crates/crucible-server/benches/r2b_join_arrival.rs
+      - .github/workflows/r2b-join-arrival-full.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  qualify:
+    name: R2B join-arrival full qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Select one benchmark CPU
+        run: |
+          allowed="$(awk '/^Cpus_allowed_list:/ {print $2}' /proc/self/status)"
+          first="${allowed%%,*}"
+          first="${first%%-*}"
+          test -n "${first}"
+          echo "CRUCIBLE_BENCH_CPU=${first}" >> "${GITHUB_ENV}"
+          echo "benchmark cpu: ${first} (allowed: ${allowed})"
+
+      - name: Run three full join-arrival measurements
+        run: |
+          mkdir -p "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b"
+          for repetition in 1 2 3; do
+            taskset -c "${CRUCIBLE_BENCH_CPU}" \
+              cargo bench --locked \
+              --package crucible-server \
+              --bench r2b_join_arrival -- \
+              --full \
+              --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/join-arrival-full-${repetition}.json"
+          done
+
+      - name: Validate full join-arrival evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          paths = sorted(Path('target/crucible-qualification/r2b').glob('join-arrival-full-*.json'))
+          assert len(paths) == 3
+          rows = [json.loads(path.read_text()) for path in paths]
+          expected_profiles = {
+              'steady-80pct',
+              'steady-95pct',
+              'burst-8of64-phase0',
+              'burst-8of64-phase16',
+              'burst-8of64-phase32',
+              'burst-8of64-phase48',
+          }
+          witnesses = []
+
+          def validate_stats(stats, expected_count):
+              assert stats['count'] == expected_count
+              assert stats['min'] <= stats['p01'] <= stats['p05'] <= stats['p50']
+              assert stats['p50'] <= stats['p95'] <= stats['p99'] <= stats['p999'] <= stats['max']
+              assert stats['mean'] > 0 or stats['max'] == 0
+              assert stats['mad'] >= 0
+              assert stats['relative_mad_ppm'] >= 0
+
+          for run_index, data in enumerate(rows, start=1):
+              assert data['schema'] == 1
+              assert data['benchmark'] == 'r2b-join-arrival-smoothness'
+              assert data['mode'] == 'full'
+              assert data['hosted_ci_is_diagnostic_only'] is True
+              assert data['runtime_scheduler_selected_by_this_benchmark'] is False
+              assert data['model_scope'] == 'one-r2b-entry-service-lane'
+              assert data['timed_boundary'] == 'enter_r2b_play_blocking_transport-to-WorldProjectionReady'
+              assert data['sampling'] == {
+                  'warmup_joins': 512,
+                  'measured_joins': 8192,
+                  'joins_per_epoch': 256,
+              }
+              assert data['host']['available_parallelism'] > 0
+              witness = data['semantic_witness']
+              assert witness['output_bytes'] > 0
+              assert witness['output_checksum'] != 0
+              assert witness['read_calls'] == 3
+              assert witness['read_bytes'] > 0
+              assert witness['retained_read_scratch_bytes'] == 16 * 1024
+              assert witness['pending_teleport_id'] == 1
+              witnesses.append(witness)
+              validate_stats(data['service_ns'], 8192)
+              validate_stats(data['service_epoch_mean_ns'], 32)
+              assert {profile['name'] for profile in data['profiles']} == expected_profiles
+              assert len(data['profiles']) == len(expected_profiles)
+              print(
+                  f'run {run_index}:',
+                  'service_p50_ns=', data['service_ns']['p50'],
+                  'service_p99_ns=', data['service_ns']['p99'],
+                  'service_p999_ns=', data['service_ns']['p999'],
+                  'service_max_ns=', data['service_ns']['max'],
+                  'service_mad_ppm=', data['service_ns']['relative_mad_ppm'],
+              )
+              for profile in data['profiles']:
+                  validate_stats(profile['queue_delay_ns'], 8192)
+                  validate_stats(profile['sojourn_ns'], 8192)
+                  validate_stats(profile['completion_spacing_ns'], 8191)
+                  validate_stats(profile['backlog_in_system'], 8192)
+                  assert 0 <= profile['queued_join_rate_ppm'] <= 1_000_000
+                  assert 0 <= profile['compressed_completion_rate_ppm'] <= 1_000_000
+                  assert 0 <= profile['max_queued_run'] <= 8192
+                  print(
+                      f"  {profile['name']}:",
+                      'load_ppm=', profile['effective_offered_load_ppm'],
+                      'queue_p99_ns=', profile['queue_delay_ns']['p99'],
+                      'queue_p999_ns=', profile['queue_delay_ns']['p999'],
+                      'backlog_p99=', profile['backlog_in_system']['p99'],
+                      'backlog_max=', profile['backlog_in_system']['max'],
+                      'gap_p01_ns=', profile['completion_spacing_ns']['p01'],
+                      'compressed_ppm=', profile['compressed_completion_rate_ppm'],
+                      'max_queued_run=', profile['max_queued_run'],
+                  )
+
+          assert all(witness == witnesses[0] for witness in witnesses)
+          PY
+
+      - name: Upload full join-arrival evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: crucible-r2b-join-arrival-full
+          path: target/crucible-qualification/r2b/join-arrival-full-*.json
+          if-no-files-found: error
+          retention-days: 7
