@@ -1,4 +1,4 @@
-//! Product composition for Crucible's first runnable Minecraft Java server slices.
+//! Product composition for Helve's first runnable Minecraft Java server slices.
 //!
 //! R0 composes the source-admitted Status target. R1A additionally composes the admitted offline
 //! Login path up to the Configuration boundary. R1X is an explicitly experimental continuation
@@ -8,7 +8,7 @@
 //! stock-client playtest wraps that same session only until R2C owns world projection; its compact
 //! image format cannot contain captured Play publication bodies.
 //! Transport composition lives here; listener/runtime policy stays in the executable, while target
-//! packet semantics stay in `crucible-target-26-2`.
+//! packet semantics stay in the internal `crucible-target-26-2` crate namespace.
 
 #![forbid(unsafe_code)]
 
@@ -40,16 +40,22 @@ use crucible_connection_core::ConnectionLimits;
 use crucible_preplay_io::{ActionBudget, PrePlayIo, PrePlayIoError, ServiceStop};
 use crucible_target_26_2::{MAX_R0_PACKET_BODY_BYTES, Target26_2, Target26_2Error};
 
-/// Default localhost endpoint for the R0 development server.
+/// Canonical public product name.
+pub const PRODUCT_NAME: &str = "Helve";
+/// Canonical Minecraft server brand sent by current Helve Configuration composition.
+pub const MINECRAFT_SERVER_BRAND: &str = "Helve";
+/// Default localhost endpoint for the development server.
 pub const DEFAULT_R0_BIND_ADDRESS: &str = "127.0.0.1:25565";
-/// Sealed admission session implemented by this R0 composition.
+/// Sealed admission session implemented by the historical R0 composition.
 pub const R0_ADMISSION_SESSION_SHA256: &str =
     "fb57c003d0e96c467dad55c209237dd23478ff287caea51943823cc62848cea0";
-/// Exact status JSON used by the admitted vanilla capture and first Crucible external probe.
+/// Exact status JSON used by the admitted vanilla capture and original R0 external probe.
 ///
-/// Keeping the first product probe byte-identical to the admitted oracle session makes external
-/// convergence unambiguous. Product status presentation can become configurable after R0.
+/// This is historical qualification evidence and intentionally retains the old observed product
+/// string. Current Helve runtime composition uses [`HELVE_STATUS_JSON`] instead.
 pub const R0_ORACLE_STATUS_JSON: &str = "{\"description\":\"Crucible R0 Oracle\",\"players\":{\"max\":20,\"online\":0},\"version\":{\"name\":\"26.2\",\"protocol\":776},\"enforcesSecureChat\":true}";
+/// Current product Status response for Minecraft Java 26.2 development routes.
+pub const HELVE_STATUS_JSON: &str = "{\"description\":\"Helve\",\"players\":{\"max\":20,\"online\":0},\"version\":{\"name\":\"26.2\",\"protocol\":776},\"enforcesSecureChat\":true}";
 
 const R0_FRAME_BODY_LIMIT: usize = 4 * 1_024;
 const R0_INGRESS_LIMIT: usize = 16 * 1_024;
@@ -67,11 +73,8 @@ pub enum R0ConnectionExit {
     PeerEof,
 }
 
-/// Drives one blocking transport through the admitted R0 Handshake/Status protocol.
-///
-/// This is deliberately not a general socket runtime. It is the smallest product composition that
-/// can prove the first real client vertical slice while preserving the option to replace listener
-/// and scheduling policy independently later.
+/// Drives one blocking transport through the admitted R0 Handshake/Status protocol using Helve's
+/// current product presentation.
 ///
 /// # Errors
 ///
@@ -82,11 +85,21 @@ pub fn serve_r0_blocking_transport<RW>(
 where
     RW: Read + Write + ?Sized,
 {
+    serve_r0_blocking_transport_with_status(transport, HELVE_STATUS_JSON)
+}
+
+fn serve_r0_blocking_transport_with_status<RW>(
+    transport: &mut RW,
+    status_json: &str,
+) -> Result<R0ConnectionExit, PrePlayIoError<Target26_2Error>>
+where
+    RW: Read + Write + ?Sized,
+{
     let mut io = PrePlayIo::<Target26_2>::new(r0_limits(), read_scratch_bytes());
     let budget = action_budget();
 
     loop {
-        let report = io.service_once(transport, R0_ORACLE_STATUS_JSON, budget)?;
+        let report = io.service_once(transport, status_json, budget)?;
         match report.stop {
             ServiceStop::SessionClosed => return Ok(R0ConnectionExit::SessionClosed),
             ServiceStop::PeerEof => return Ok(R0ConnectionExit::PeerEof),
@@ -117,7 +130,10 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use super::{R0ConnectionExit, serve_r0_blocking_transport};
+    use super::{
+        HELVE_STATUS_JSON, R0ConnectionExit, R0_ORACLE_STATUS_JSON,
+        serve_r0_blocking_transport_with_status,
+    };
 
     #[allow(
         dead_code,
@@ -207,24 +223,24 @@ mod tests {
     }
 
     #[test]
-    fn coalesced_real_oracle_stream_is_byte_exact_through_product_composition() {
+    fn historical_oracle_stream_remains_byte_exact() {
         let mut transport = MemoryTransport::coalesced(oracle_client_stream());
         assert_eq!(
-            serve_r0_blocking_transport(&mut transport),
+            serve_r0_blocking_transport_with_status(&mut transport, R0_ORACLE_STATUS_JSON),
             Ok(R0ConnectionExit::SessionClosed)
         );
         assert_eq!(transport.output, oracle_server_stream());
     }
 
     #[test]
-    fn every_real_oracle_stream_split_point_is_byte_equivalent() {
+    fn every_real_oracle_stream_split_point_remains_byte_equivalent() {
         let input = oracle_client_stream();
         let expected = oracle_server_stream();
         for split in 1..input.len() {
             let mut transport =
                 MemoryTransport::scheduled(input.clone(), vec![split, input.len() - split]);
             assert_eq!(
-                serve_r0_blocking_transport(&mut transport),
+                serve_r0_blocking_transport_with_status(&mut transport, R0_ORACLE_STATUS_JSON),
                 Ok(R0ConnectionExit::SessionClosed),
                 "split={split}"
             );
@@ -233,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn clean_eof_after_status_response_flushes_response_and_is_admitted() {
+    fn clean_eof_after_oracle_status_response_flushes_response_and_is_admitted() {
         let mut input = Vec::new();
         input.extend_from_slice(
             admitted_codegen::golden::HANDSHAKE_SERVERBOUND_CLIENT_INTENTION_FRAME,
@@ -242,7 +258,7 @@ mod tests {
         let mut transport = MemoryTransport::coalesced(input);
 
         assert_eq!(
-            serve_r0_blocking_transport(&mut transport),
+            serve_r0_blocking_transport_with_status(&mut transport, R0_ORACLE_STATUS_JSON),
             Ok(R0ConnectionExit::PeerEof)
         );
         assert_eq!(
@@ -265,7 +281,7 @@ mod tests {
             stream
                 .set_write_timeout(Some(TEST_TIMEOUT))
                 .expect("server write timeout");
-            serve_r0_blocking_transport(&mut stream)
+            serve_r0_blocking_transport_with_status(&mut stream, R0_ORACLE_STATUS_JSON)
         });
 
         let mut client = TcpStream::connect(address).expect("connect loopback R0 client");
@@ -282,11 +298,17 @@ mod tests {
         let mut observed = vec![0_u8; expected.len()];
         client
             .read_exact(&mut observed)
-            .expect("read exact Crucible R0 responses");
+            .expect("read exact historical R0 responses");
         assert_eq!(observed, expected);
         assert_eq!(
             server.join().expect("loopback R0 server finishes"),
             Ok(R0ConnectionExit::SessionClosed)
         );
+    }
+
+    #[test]
+    fn current_product_status_is_helve() {
+        assert!(HELVE_STATUS_JSON.contains("\\\"description\\\":\\\"Helve\\\""));
+        assert!(!HELVE_STATUS_JSON.contains("Crucible"));
     }
 }
