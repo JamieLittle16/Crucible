@@ -37,7 +37,7 @@ jobs:
           --package crucible-target-26-2
           --bench r2b_shared_artifact --
           --smoke
-          --output target/crucible-qualification/r2b/shared-artifact-smoke.json
+          --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/shared-artifact-smoke.json"
 
       - name: Validate shared-artifact evidence
         run: |
@@ -78,7 +78,7 @@ jobs:
           --package crucible-client-spine-qualification
           --bin r2b_bootstrap_arena_bench --
           --smoke
-          --output target/crucible-qualification/r2b/bootstrap-arena-smoke.json
+          --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/bootstrap-arena-smoke.json"
 
       - name: Validate dynamic-arena evidence
         run: |
