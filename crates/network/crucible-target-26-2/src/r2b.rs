@@ -41,7 +41,7 @@ pub use crate::r2b_plan::{PreparedLookup, PreparedR2bPlan};
 pub use crate::r2b_player_info::InitialPlayerInfoEntry;
 pub use crate::r2b_prepare::{
     BootstrapWeather, FreshR2bBootstrapSnapshot, PrepareR2bError, SELECTED_DYNAMIC_ARENA_CAPACITY,
-    ServerDataProjection, ServerDataProjectionKey, TeleportDestination,
+    ServerDataProjection, ServerDataProjectionArtifact, ServerDataProjectionKey, TeleportDestination,
 };
 pub use crate::r2b_recipe::{RecipeBookSettingFlags, RecipeBookSettingsPayload};
 pub use crate::r2b_spawn::DefaultSpawnPayload;
@@ -279,6 +279,11 @@ pub struct QualifiedProjectionArtifact<K> {
     body: Box<[u8]>,
 }
 
+/// Packet-qualified immutable command-tree artifact.
+pub type CommandProjectionArtifact = QualifiedProjectionArtifact<CommandProjectionKey>;
+/// Packet-qualified immutable synchronized-recipe artifact.
+pub type RecipeProjectionArtifact = QualifiedProjectionArtifact<RecipeProjectionKey>;
+
 impl<K> QualifiedProjectionArtifact<K> {
     pub(crate) fn new_with_packet_id(
         key: K,
@@ -371,16 +376,16 @@ where
 /// is intentionally not stored here.
 #[derive(Debug)]
 pub struct PlayBootstrapImage26_2 {
-    commands: QualifiedProjectionArtifact<CommandProjectionKey>,
-    update_recipes: QualifiedProjectionArtifact<RecipeProjectionKey>,
+    commands: CommandProjectionArtifact,
+    update_recipes: RecipeProjectionArtifact,
 }
 
 impl PlayBootstrapImage26_2 {
     /// Creates one shared image from already packet-qualified immutable artifacts.
     #[must_use]
     pub const fn new(
-        commands: QualifiedProjectionArtifact<CommandProjectionKey>,
-        update_recipes: QualifiedProjectionArtifact<RecipeProjectionKey>,
+        commands: CommandProjectionArtifact,
+        update_recipes: RecipeProjectionArtifact,
     ) -> Self {
         Self {
             commands,
@@ -444,9 +449,10 @@ const fn var_int_len(value: i32) -> usize {
 #[cfg(test)]
 mod tests {
     use super::{
-        CommandPermissionProfile, CommandProjectionKey, PLAY_PUBLICATION_STAGES,
-        PlayBootstrapImage26_2, PlayBootstrapStage, ProjectionArtifactError, ProjectionRevision,
-        QualifiedProjectionArtifact, RecipeProjectionKey, stage_for_publication_index,
+        CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
+        PLAY_PUBLICATION_STAGES, PlayBootstrapImage26_2, PlayBootstrapStage,
+        ProjectionArtifactError, ProjectionRevision, RecipeProjectionArtifact, RecipeProjectionKey,
+        stage_for_publication_index,
     };
 
     const fn revision(byte: u8) -> ProjectionRevision {
@@ -507,7 +513,7 @@ mod tests {
     #[test]
     fn empty_projection_artifacts_fail_closed() {
         assert_eq!(
-            QualifiedProjectionArtifact::new(command_key(1), Box::<[u8]>::default())
+            CommandProjectionArtifact::new(command_key(1), Box::<[u8]>::default())
                 .expect_err("empty command body must be rejected"),
             ProjectionArtifactError::EmptyBody
         );
@@ -516,7 +522,7 @@ mod tests {
     #[test]
     fn packet_identity_is_certified_at_artifact_construction() {
         assert_eq!(
-            QualifiedProjectionArtifact::new(command_key(1), vec![0x11].into_boxed_slice())
+            CommandProjectionArtifact::new(command_key(1), vec![0x11].into_boxed_slice())
                 .expect_err("wrong command packet kind must be rejected"),
             ProjectionArtifactError::PacketIdMismatch {
                 expected: 16,
@@ -524,7 +530,7 @@ mod tests {
             }
         );
         assert_eq!(
-            QualifiedProjectionArtifact::new(command_key(1), vec![0x90, 0x00].into_boxed_slice(),)
+            CommandProjectionArtifact::new(command_key(1), vec![0x90, 0x00].into_boxed_slice())
                 .expect_err("non-canonical command packet id must be rejected"),
             ProjectionArtifactError::InvalidPacketBodyIdentity
         );
@@ -534,7 +540,7 @@ mod tests {
     fn command_projection_never_reuses_a_mismatched_key() {
         let key = command_key(10);
         let stale = command_key(11);
-        let artifact = QualifiedProjectionArtifact::new(key, vec![0x10, 0xAA].into_boxed_slice())
+        let artifact = CommandProjectionArtifact::new(key, vec![0x10, 0xAA].into_boxed_slice())
             .expect("packet-qualified command artifact");
 
         assert_eq!(artifact.body_for(&key), Ok(&[0x10, 0xAA][..]));
@@ -549,12 +555,12 @@ mod tests {
         let commands_key = command_key(20);
         let recipes_key = recipe_key(30);
         let image = PlayBootstrapImage26_2::new(
-            QualifiedProjectionArtifact::new(
+            CommandProjectionArtifact::new(
                 commands_key,
                 vec![0x10, 0x01, 0x02].into_boxed_slice(),
             )
             .expect("commands artifact"),
-            QualifiedProjectionArtifact::new(
+            RecipeProjectionArtifact::new(
                 recipes_key,
                 vec![0x85, 0x01, 0x03].into_boxed_slice(),
             )
@@ -576,9 +582,9 @@ mod tests {
         let commands_key = command_key(40);
         let recipes_key = recipe_key(50);
         let image = PlayBootstrapImage26_2::new(
-            QualifiedProjectionArtifact::new(commands_key, vec![0x10].into_boxed_slice())
+            CommandProjectionArtifact::new(commands_key, vec![0x10].into_boxed_slice())
                 .expect("commands artifact"),
-            QualifiedProjectionArtifact::new(recipes_key, vec![0x85, 0x01].into_boxed_slice())
+            RecipeProjectionArtifact::new(recipes_key, vec![0x85, 0x01].into_boxed_slice())
                 .expect("recipes artifact"),
         );
 
