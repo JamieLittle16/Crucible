@@ -22,7 +22,7 @@ jobs:
   evidence:
     name: R2B performance evidence
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -111,15 +111,15 @@ jobs:
               )
           PY
 
-      - name: Run preparation-scratch reservation sweep
+      - name: Run preparation-scratch full reservation sweep
         run: |
           for repetition in 1 2 3; do
             taskset -c "${CRUCIBLE_BENCH_CPU}" \
               cargo bench --locked \
               --package crucible-target-26-2 \
               --bench r2b_prepare_scratch -- \
-              --smoke \
-              --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/prepare-scratch-smoke-${repetition}.json"
+              --full \
+              --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/prepare-scratch-full-${repetition}.json"
           done
 
       - name: Validate preparation-scratch evidence
@@ -129,7 +129,7 @@ jobs:
           from collections import defaultdict
           from pathlib import Path
 
-          paths = sorted(Path('target/crucible-qualification/r2b').glob('prepare-scratch-smoke-*.json'))
+          paths = sorted(Path('target/crucible-qualification/r2b').glob('prepare-scratch-full-*.json'))
           assert len(paths) == 3
           rows = [json.loads(path.read_text()) for path in paths]
           reservations = {64, 128, 256, 512, 1024, 2048, 4096}
@@ -139,12 +139,12 @@ jobs:
           for run_index, data in enumerate(rows, start=1):
               assert data['schema'] == 1
               assert data['benchmark'] == 'r2b-prepare-scratch-reservation'
-              assert data['mode'] == 'smoke'
+              assert data['mode'] == 'full'
               assert data['hosted_ci_is_diagnostic_only'] is True
               assert data['scratch_maximum_bytes'] == 4096
               assert data['sampling']['pattern'] == 'balanced-abba-baab'
-              assert data['sampling']['measured_blocks'] > 0
-              assert data['sampling']['joins_per_sample'] > 0
+              assert data['sampling']['measured_blocks'] >= 4096
+              assert data['sampling']['joins_per_sample'] >= 32
               assert len(data['comparisons']) == len(reservations) * len(workloads)
               seen = set()
               for comparison in data['comparisons']:
