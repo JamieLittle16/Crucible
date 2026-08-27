@@ -1,5 +1,5 @@
 [package]
-name = "crucible-executor-baseline"
+name = "helve-executor-baseline"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -8,11 +8,11 @@ license.workspace = true
 publish = false
 
 [dependencies]
-crucible-benchmark-support = { path = "../crucible-benchmark-support" }
-crucible-generated = { path = "../../data/crucible-generated" }
-crucible-ownership-qualification = { path = "../crucible-ownership-qualification" }
-crucible-world-contract = { path = "../../world/crucible-world-contract" }
-crucible-world-reference = { path = "../../world/crucible-world-reference" }
+helve-benchmark-support = { path = "../helve-benchmark-support" }
+helve-generated = { path = "../../data/helve-generated" }
+helve-ownership-qualification = { path = "../helve-ownership-qualification" }
+helve-world-contract = { path = "../../world/helve-world-contract" }
+helve-world-reference = { path = "../../world/helve-world-reference" }
 
 [lints]
 workspace = true
