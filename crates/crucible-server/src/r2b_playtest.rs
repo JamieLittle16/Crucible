@@ -40,7 +40,7 @@ use crate::{
 const MAGIC: [u8; 8] = *b"CRR2B001";
 const EXPECTED_PROTOCOL: u32 = 776;
 const EXPECTED_CONFIGURATION_COUNT: usize = 34;
-const EXPECTED_CONFIGURATION_BYTES: usize = 44_432;
+const EXPECTED_CONFIGURATION_BYTES: usize = 44_430;
 const MAX_BODY_BYTES: usize = 65_536;
 const HEADER_BYTES: u64 = 88;
 const LENGTH_PREFIX_BYTES: u64 = 37 * 4;
@@ -119,7 +119,7 @@ pub enum R2bPlaytestImageError {
     CaptureCommitment,
     /// Configuration count differs from the sealed selected route.
     ConfigurationCount { observed: usize },
-    /// Configuration body-byte total differs from the sealed selected route.
+    /// Configuration body-byte total differs from the selected runtime route.
     ConfigurationBytes { observed: usize },
     /// One body is empty or exceeds the finite packet-body bound.
     BodyLength { index: usize, observed: usize },
