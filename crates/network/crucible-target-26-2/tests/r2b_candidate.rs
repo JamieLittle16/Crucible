@@ -40,5 +40,7 @@ pub mod r2b_teleport;
 #[path = "../src/r2b_wire.rs"]
 pub mod r2b_wire;
 
+#[path = "support/r2b_black_box_qualification.rs"]
+mod r2b_black_box_qualification;
 #[path = "support/r2b_prepare_qualification.rs"]
 mod r2b_prepare_qualification;
