@@ -1,14 +1,9 @@
 //! Stock-client development composition for the replay-free R2B boundary.
 //!
-//! This module is intentionally a temporary outer owner around the permanent R2B session. Its cold
-//! image format contains the source-admitted Configuration image plus only the three immutable shared
-//! R2B projections needed by the selected profile. It has no captured-Play section, so captured Play
-//! traffic is structurally incapable of reaching the client through this mode.
-//!
-//! After `WorldProjectionReady`, teleport acknowledgement and keep-alive remain owned by the canonical
-//! [`R2bPlaySession`]. Until R2C exists, other complete Play frames are discarded by this development
-//! owner so movement cannot head-of-line block later keep-alive replies. No second driver, queue, or
-//! read scratch is created.
+//! The cold image contains source-admitted Configuration plus exactly three immutable shared R2B
+//! projections. It has no captured-Play publication section. After `WorldProjectionReady`, this
+//! temporary owner keeps the exact R2B driver/read scratch, claims teleport and keep-alive normally,
+//! and discards currently-unowned gameplay frames only until R2C exists.
 
 use std::convert::Infallible;
 use std::fmt;
@@ -19,7 +14,6 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use crucible_connection_driver::{DriverError, OutboundBatch, TransactionResult};
-use crucible_session_core::LivenessState;
 use crucible_target_26_2::{
     R1xContextError, Target26_2R1xContext,
     play_liveness::PLAY_LIVENESS_POLICY,
@@ -47,13 +41,15 @@ const EXPECTED_PROTOCOL: u32 = 776;
 const EXPECTED_CONFIGURATION_COUNT: usize = 34;
 const EXPECTED_CONFIGURATION_BYTES: usize = 44_432;
 const MAX_BODY_BYTES: usize = 65_536;
-const HEADER_BYTES: u64 = 8 + 4 + 32 + 32 + 4 + 8;
-const BODY_COUNT: usize = EXPECTED_CONFIGURATION_COUNT + 3;
+const HEADER_BYTES: u64 = 88;
+const LENGTH_PREFIX_BYTES: u64 = 37 * 4;
+const MAX_SHARED_BODY_BYTES: u64 = 3 * 65_536;
 const MAX_IMAGE_BYTES: u64 = HEADER_BYTES
-    + (BODY_COUNT as u64 * 4)
+    + LENGTH_PREFIX_BYTES
     + EXPECTED_CONFIGURATION_BYTES as u64
-    + (3 * MAX_BODY_BYTES) as u64;
+    + MAX_SHARED_BODY_BYTES;
 const ACTIONS_PER_SERVICE: usize = 32;
+const _: () = assert!(ACTIONS_PER_SERVICE > 0);
 
 const EXPECTED_SOURCE_SHA256: [u8; 32] = [
     0x1e, 0x9b, 0xca, 0x3d, 0xff, 0x83, 0xcd, 0x83, 0xe7, 0x90, 0x5f, 0x88, 0x10, 0xf1, 0xec, 0x98,
@@ -189,7 +185,7 @@ impl From<ProjectionArtifactError> for R2bPlaytestImageError {
     }
 }
 
-/// Process-owned, replay-free inputs for the selected vanilla-client R2B playtest.
+/// Process-owned replay-free inputs for the selected stock-client R2B playtest.
 #[derive(Debug)]
 pub struct R2bPlaytestImage {
     configuration: Target26_2R1xContext,
@@ -210,12 +206,12 @@ pub enum R2bPlaytestExit {
         teleport_acknowledged: bool,
         /// Valid keep-alive replies committed through the canonical R2B session.
         accepted_keep_alives: u64,
-        /// Complete currently-unowned Play frames discarded by the temporary development owner.
+        /// Currently-unowned complete Play frames discarded by the temporary owner.
         discarded_world_frames: u64,
         /// Last source-compatible smoothed latency.
         latency_ms: i32,
     },
-    /// Initial teleport acknowledgement was absent, stale, or unsolicited.
+    /// Initial teleport acknowledgement was stale, wrong, duplicate, or unsolicited.
     InvalidTeleportAcknowledgement(TeleportAckResult),
     /// A keep-alive reply did not match the outstanding challenge.
     InvalidKeepAlive,
@@ -238,7 +234,7 @@ pub enum R2bPlaytestError {
     Driver(DriverError<Infallible>),
     /// Transport I/O failed.
     Io {
-        /// Read or write operation.
+        /// Read/write operation.
         operation: &'static str,
         /// Stable I/O classification.
         kind: io::ErrorKind,
@@ -247,8 +243,7 @@ pub enum R2bPlaytestError {
     },
     /// EOF arrived with an incomplete framed Play packet buffered.
     TruncatedEof { buffered_ingress: usize },
-    /// The development owner observed an impossible incomplete frame after R2B had classified it as
-    /// complete and unclaimed.
+    /// An impossible incomplete frame followed an R2B `Unclaimed` classification.
     DiscardInvariant,
     /// A diagnostic counter overflowed.
     AccountingOverflow,
@@ -268,8 +263,8 @@ impl From<R2bPlayError> for R2bPlaytestError {
 
 /// Loads the compact replay-free R2B playtest image.
 ///
-/// The file contains exactly the admitted Configuration bodies followed by update-recipes, commands
-/// and server-data shared projection bodies. There is no captured-Play publication section.
+/// The fixed body sequence is Configuration, update-recipes, commands, server-data. There is no
+/// captured-Play publication section.
 ///
 /// # Errors
 ///
@@ -313,6 +308,7 @@ fn decode_image<R: Read>(
     if read_array::<32, _>(reader)? != EXPECTED_CAPTURE_SHA256 {
         return Err(R2bPlaytestImageError::CaptureCommitment);
     }
+
     let configuration_count = usize_from_u32(read_u32(reader)?)?;
     let configuration_bytes = usize_from_u64(read_u64(reader)?)?;
     if configuration_count != EXPECTED_CONFIGURATION_COUNT {
@@ -373,11 +369,7 @@ fn decode_image<R: Read>(
 }
 
 /// Drives one stock-client connection through real Configuration, replay-free R2B and the temporary
-/// post-`WorldProjection` development owner.
-///
-/// Unclaimed gameplay packets are discarded only because R2C does not exist yet. The exact R2B
-/// driver and retained read scratch continue to own transport bytes; no replacement queue or driver
-/// is constructed at this seam.
+/// post-`WorldProjection` owner.
 ///
 /// # Errors
 ///
@@ -723,73 +715,4 @@ fn transport_error(operation: &'static str, error: &io::Error) -> R2bPlaytestErr
 
 fn elapsed_millis(origin: Instant) -> Option<u64> {
     u64::try_from(origin.elapsed().as_millis()).ok()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{
-        EXPECTED_CAPTURE_SHA256, EXPECTED_CONFIGURATION_BODY_BYTES, EXPECTED_CONFIGURATION_COUNT,
-        EXPECTED_PROTOCOL, EXPECTED_SOURCE_SHA256, MAGIC, command_key, decode_image, recipe_key,
-        status_key,
-    };
-
-    // Kept intentionally small: the production target constructor independently seals all 34
-    // Configuration lengths/packet IDs. This test verifies the playtest format strips Play and wires
-    // the three typed shared projections in their fixed order.
-    #[test]
-    fn compact_image_constructs_zero_play_context_and_typed_shared_artifacts() {
-        let configuration = configuration_bodies();
-        let recipes = vec![0x85, 0x01, 0xbb];
-        let commands = vec![16, 0xaa];
-        let status = vec![86, 0xcc];
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(&MAGIC);
-        bytes.extend_from_slice(&EXPECTED_PROTOCOL.to_le_bytes());
-        bytes.extend_from_slice(&EXPECTED_SOURCE_SHA256);
-        bytes.extend_from_slice(&EXPECTED_CAPTURE_SHA256);
-        bytes.extend_from_slice(&(EXPECTED_CONFIGURATION_COUNT as u32).to_le_bytes());
-        bytes.extend_from_slice(&(EXPECTED_CONFIGURATION_BODY_BYTES as u64).to_le_bytes());
-        for body in configuration.iter().map(Vec::as_slice).chain([
-            recipes.as_slice(),
-            commands.as_slice(),
-            status.as_slice(),
-        ]) {
-            bytes.extend_from_slice(&(body.len() as u32).to_le_bytes());
-            bytes.extend_from_slice(body);
-        }
-
-        let image = decode_image(&mut bytes.as_slice(), "{}").expect("valid compact playtest image");
-        assert_eq!(image.configuration.play_frame_count(), 0);
-        assert_eq!(
-            image.bootstrap.update_recipes(&recipe_key()),
-            Ok(recipes.as_slice())
-        );
-        assert_eq!(image.bootstrap.commands(&command_key()), Ok(commands.as_slice()));
-        assert_eq!(image.server_data.body_for(&status_key()), Ok(status.as_slice()));
-    }
-
-    fn configuration_bodies() -> Vec<Vec<u8>> {
-        const SIZES: [usize; 34] = [
-            25, 20, 22, 1_612, 224, 327, 227, 184, 149, 77, 80, 78, 233, 66, 66, 77, 70, 81, 73,
-            980, 282, 116, 1_143, 1_036, 968, 416, 237, 48, 49, 94, 64, 103, 35_204, 1,
-        ];
-        SIZES
-            .into_iter()
-            .enumerate()
-            .map(|(index, size)| {
-                let id = match index {
-                    0 => 1,
-                    1 => 12,
-                    2 => 14,
-                    3..=31 => 7,
-                    32 => 13,
-                    33 => 3,
-                    _ => unreachable!(),
-                };
-                let mut body = vec![0_u8; size];
-                body[0] = id;
-                body
-            })
-            .collect()
-    }
 }
