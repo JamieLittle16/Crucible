@@ -663,6 +663,7 @@ fn render_json(config: &Config, comparisons: &[Comparison]) -> String {
     out.push_str(env::consts::OS);
     out.push_str("\",\"arch\":\"");
     out.push_str(env::consts::ARCH);
+    out.push('"');
     if let Ok(cpu) = env::var("CRUCIBLE_BENCH_CPU") {
         out.push_str(",\"pinned_cpu\":\"");
         out.push_str(&cpu);
