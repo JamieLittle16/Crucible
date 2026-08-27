@@ -23,11 +23,12 @@ use crucible_target_26_2::{
         DefaultSpawnPayload, Difficulty26_2, FreshCommonSpawnInfo, FreshEmptyInventoryPayload,
         FreshLoginFlags, FreshLoginPayload, FreshR2bBootstrapSnapshot, HeldSlotPayload,
         InitialPlayerInfoEntry, PermissionEntityEventPayload, PermissionLevelEvent,
-        PlayBootstrapImage26_2, PlayerAbilitiesPayload, PlayerAbilityFlags, ProjectionArtifactError,
-        ProjectionRevision, RecipeBookSettingFlags, RecipeBookSettingsPayload,
-        RecipeProjectionArtifact, RecipeProjectionKey, ServerDataProjection,
-        ServerDataProjectionArtifact, ServerDataProjectionKey, TeleportAckResult,
-        TeleportDestination, TickingStatePayload, TickingStepPayload, WorldBorderPayload,
+        PlayBootstrapImage26_2, PlayerAbilitiesPayload, PlayerAbilityFlags,
+        ProjectionArtifactError, ProjectionRevision, RecipeBookSettingFlags,
+        RecipeBookSettingsPayload, RecipeProjectionArtifact, RecipeProjectionKey,
+        ServerDataProjection, ServerDataProjectionArtifact, ServerDataProjectionKey,
+        TeleportAckResult, TeleportDestination, TickingStatePayload, TickingStepPayload,
+        WorldBorderPayload,
     },
 };
 
@@ -135,7 +136,9 @@ pub enum R2bPlaytestImageError {
 impl fmt::Display for R2bPlaytestImageError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Io { kind, message } => write!(formatter, "playtest image I/O {kind:?}: {message}"),
+            Self::Io { kind, message } => {
+                write!(formatter, "playtest image I/O {kind:?}: {message}")
+            }
             Self::Symlink => formatter.write_str("playtest image must not be a symlink"),
             Self::NotFile => formatter.write_str("playtest image must be a regular file"),
             Self::FileTooLarge { observed, maximum } => write!(
@@ -147,7 +150,9 @@ impl fmt::Display for R2bPlaytestImageError {
                 formatter,
                 "playtest image protocol mismatch: expected {EXPECTED_PROTOCOL}, got {observed}"
             ),
-            Self::SourceCommitment => formatter.write_str("playtest image source commitment mismatch"),
+            Self::SourceCommitment => {
+                formatter.write_str("playtest image source commitment mismatch")
+            }
             Self::CaptureCommitment => {
                 formatter.write_str("playtest image capture commitment mismatch")
             }
@@ -160,7 +165,10 @@ impl fmt::Display for R2bPlaytestImageError {
                 "playtest Configuration bytes mismatch: expected {EXPECTED_CONFIGURATION_BYTES}, got {observed}"
             ),
             Self::BodyLength { index, observed } => {
-                write!(formatter, "playtest body {index} has invalid {observed}-byte length")
+                write!(
+                    formatter,
+                    "playtest body {index} has invalid {observed}-byte length"
+                )
             }
             Self::AggregateMismatch { declared, observed } => write!(
                 formatter,
@@ -168,7 +176,9 @@ impl fmt::Display for R2bPlaytestImageError {
             ),
             Self::TrailingData => formatter.write_str("playtest image contains trailing data"),
             Self::Context(error) => write!(formatter, "playtest Configuration rejected: {error:?}"),
-            Self::Projection(error) => write!(formatter, "playtest shared projection rejected: {error:?}"),
+            Self::Projection(error) => {
+                write!(formatter, "playtest shared projection rejected: {error:?}")
+            }
         }
     }
 }
@@ -326,12 +336,12 @@ fn decode_image<R: Read>(
     let mut observed_configuration_bytes = 0_usize;
     for index in 0..configuration_count {
         let body = read_body(reader, index)?;
-        observed_configuration_bytes = observed_configuration_bytes
-            .checked_add(body.len())
-            .ok_or(R2bPlaytestImageError::AggregateMismatch {
+        observed_configuration_bytes = observed_configuration_bytes.checked_add(body.len()).ok_or(
+            R2bPlaytestImageError::AggregateMismatch {
                 declared: configuration_bytes,
                 observed: usize::MAX,
-            })?;
+            },
+        )?;
         configuration.push(body);
     }
     if observed_configuration_bytes != configuration_bytes {
@@ -353,8 +363,7 @@ fn decode_image<R: Read>(
         return Err(R2bPlaytestImageError::TrailingData);
     }
 
-    let configuration =
-        Target26_2R1xContext::new(status_json.into(), configuration, Vec::new())?;
+    let configuration = Target26_2R1xContext::new(status_json.into(), configuration, Vec::new())?;
     debug_assert_eq!(configuration.play_frame_count(), 0);
     let bootstrap = PlayBootstrapImage26_2::new(
         CommandProjectionArtifact::new(command_key(), commands)?,
@@ -395,7 +404,10 @@ pub fn serve_r2b_playtest_blocking_transport(
 
     eprintln!(
         "R2B WorldProjectionReady | captured_play_publication=0 | pending_teleport={:?} | R2C_world_projection_pending=true",
-        session.teleport_transaction().awaiting().map(|pending| pending.id)
+        session
+            .teleport_transaction()
+            .awaiting()
+            .map(|pending| pending.id)
     );
     serve_world_projection_wait(transport, &mut session)
 }
@@ -502,14 +514,10 @@ impl OutboundBatch for DiscardedPlayFrame {
     }
 }
 
-fn discard_one_complete_play_frame(
-    session: &mut R2bPlaySession,
-) -> Result<(), R2bPlaytestError> {
+fn discard_one_complete_play_frame(session: &mut R2bPlaySession) -> Result<(), R2bPlaytestError> {
     match session
         .driver
-        .process_one_transactional::<Infallible, DiscardedPlayFrame, _>(|_| {
-            Ok(DiscardedPlayFrame)
-        })
+        .process_one_transactional::<Infallible, DiscardedPlayFrame, _>(|_| Ok(DiscardedPlayFrame))
         .map_err(R2bPlaytestError::Driver)?
     {
         TransactionResult::Committed(_) => Ok(()),
