@@ -110,6 +110,10 @@ where
     ///
     /// On failure the complete connection is returned unchanged, so the caller may continue
     /// servicing or report a richer boundary error without reconstructing any state.
+    ///
+    /// # Errors
+    ///
+    /// Returns the untouched connection when active ingress or queued egress is still present.
     pub fn try_into_drained_driver(self) -> Result<ConnectionDriver, Self> {
         if self.driver.buffered_ingress() == 0 && self.driver.queued_egress() == 0 {
             Ok(self.driver)
