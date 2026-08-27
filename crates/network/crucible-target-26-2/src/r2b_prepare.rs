@@ -344,7 +344,8 @@ impl<'a> PreparedR2bPlan<'a> {
             server_data,
         );
 
-        if let Err(error) = prepare_stages(&mut plan, &snapshot, ids, teleport, server_data, scratch)
+        if let Err(error) =
+            prepare_stages(&mut plan, &snapshot, ids, teleport, server_data, scratch)
         {
             scratch.reset();
             return Err(error);
