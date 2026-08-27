@@ -2,7 +2,8 @@ use std::io::{self, Read, Write};
 
 use crucible_packet_core::PacketWriter;
 use crucible_server::{
-    R2bEntryOutcome, R2bServerError, ServerSessionEpoch, enter_r2b_play_blocking_transport,
+    R2bEntryOutcome, R2bPlayInbound, R2bPlayProcess, R2bServerError, ServerSessionEpoch,
+    enter_r2b_play_blocking_transport,
 };
 use crucible_target_26_2::{
     Target26_2R1xContext,
@@ -15,8 +16,8 @@ use crucible_target_26_2::{
         PlayerAbilitiesPayload, PlayerAbilityFlags, PreparedLookup, PreparedR2bPlan,
         ProjectionRevision, QualifiedProjectionArtifact, RecipeBookSettingFlags,
         RecipeBookSettingsPayload, RecipeProjectionKey, SELECTED_DYNAMIC_ARENA_CAPACITY,
-        TeleportDestination, TeleportTransaction, TickingStatePayload, TickingStepPayload,
-        WorldBorderPayload,
+        TeleportAckResult, TeleportDestination, TeleportTransaction, TickingStatePayload,
+        TickingStepPayload, WorldBorderPayload,
     },
 };
 
@@ -382,12 +383,13 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
     )
     .expect("configuration-only R2B entry succeeds");
 
-    let R2bEntryOutcome::WorldProjectionReady(session) = outcome else {
+    let R2bEntryOutcome::WorldProjectionReady(mut session) = outcome else {
         panic!("expected explicit world-projection handoff");
     };
     assert_eq!(transport.next_read, 3);
     assert_eq!(session.buffered_ingress(), 0);
     assert_eq!(session.queued_egress(), 0);
+    assert_eq!(session.read_scratch_bytes(), 16 * 1_024);
     assert_eq!(
         session
             .teleport_transaction()
@@ -410,6 +412,32 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
     {
         assert_eq!(*actual, expected.as_slice());
     }
+
+    session
+        .ingest_play(&frame(&[0x00, 0x01]))
+        .expect("teleport acknowledgement fits continuing ingress");
+    assert_eq!(
+        session.process_one_play_control(),
+        Ok(R2bPlayProcess::Committed(
+            R2bPlayInbound::TeleportAcknowledgement(TeleportAckResult::Accepted)
+        ))
+    );
+    assert_eq!(session.teleport_transaction().awaiting(), None);
+    assert_eq!(session.buffered_ingress(), 0);
+
+    let keepalive = frame(&[0x1c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]);
+    session
+        .ingest_play(&keepalive)
+        .expect("keepalive response fits continuing ingress");
+    assert_eq!(
+        session.process_one_play_control(),
+        Ok(R2bPlayProcess::Unclaimed { packet_id: 0x1c })
+    );
+    assert_eq!(
+        session.buffered_ingress(),
+        keepalive.len(),
+        "unclaimed frame remains byte-for-byte owned by continuing ingress"
+    );
 }
 
 #[test]
