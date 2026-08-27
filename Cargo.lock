@@ -124,8 +124,10 @@ version = "0.0.0"
 dependencies = [
  "crucible-connection-core",
  "crucible-connection-driver",
+ "crucible-packet-core",
  "crucible-preplay-core",
  "crucible-preplay-io",
+ "crucible-publication-core",
  "crucible-session-core",
  "crucible-target-26-2",
 ]
