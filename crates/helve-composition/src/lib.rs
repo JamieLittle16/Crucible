@@ -5,11 +5,11 @@
 
 #![forbid(unsafe_code)]
 
-pub const COMPOSITION_SHA256: &str = "b49458049dc651a9d7118e5737b4750e4f1d081a0fb04533611f2493b0eb4e11";
+pub const COMPOSITION_SHA256: &str = "48eb2c70901221c2d1cace24074f2eb202c9d9e998773a4757e6102327711d50";
 pub const PROFILE: &str = "reference";
 pub const MINECRAFT_VERSION: &str = "26.2";
 
-pub use crucible_world_reference::DirectBlockSection as SectionStore;
+pub use helve_world_reference::DirectBlockSection as SectionStore;
 
 #[cfg(test)]
 mod tests {
