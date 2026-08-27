@@ -624,8 +624,8 @@ mod tests {
     use crucible_packet_core::PacketWriter;
     use crucible_publication_core::StagedPublicationPlan;
     use crucible_target_26_2::r2b::{
-        CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2, ProjectionRevision,
-        QualifiedProjectionArtifact, RecipeProjectionKey,
+        CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
+        PlayBootstrapImage26_2, ProjectionRevision, RecipeProjectionArtifact, RecipeProjectionKey,
     };
 
     use super::{EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, READ_SCRATCH_BYTES, limits};
@@ -660,9 +660,9 @@ mod tests {
         let recipe_key =
             RecipeProjectionKey::new(revision(5), revision(6), revision(7), revision(8));
         let image = PlayBootstrapImage26_2::new(
-            QualifiedProjectionArtifact::new(command_key, vec![16, 0].into_boxed_slice())
+            CommandProjectionArtifact::new(command_key, vec![16, 0].into_boxed_slice())
                 .expect("command artifact"),
-            QualifiedProjectionArtifact::new(recipe_key, vec![0x85, 0x01, 0].into_boxed_slice())
+            RecipeProjectionArtifact::new(recipe_key, vec![0x85, 0x01, 0].into_boxed_slice())
                 .expect("recipe artifact"),
         );
 
