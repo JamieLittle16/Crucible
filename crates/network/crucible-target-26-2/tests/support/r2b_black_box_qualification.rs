@@ -198,11 +198,9 @@ fn selected_prepared_plan_matches_admissible_black_box_bodies() {
         RecipeProjectionArtifact::new(recipe_key(), expected[4].clone().into_boxed_slice())
             .expect("fixture recipe projection"),
     );
-    let status = ServerDataProjectionArtifact::new(
-        status_key(),
-        expected[10].clone().into_boxed_slice(),
-    )
-    .expect("fixture status projection");
+    let status =
+        ServerDataProjectionArtifact::new(status_key(), expected[10].clone().into_boxed_slice())
+            .expect("fixture status projection");
 
     let mut scratch = PacketWriter::new(4_096).expect("selected R2B scratch bound");
     let mut teleport = TeleportTransaction::new();
