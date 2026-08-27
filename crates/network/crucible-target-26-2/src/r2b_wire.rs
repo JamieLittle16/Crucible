@@ -59,10 +59,7 @@ pub(crate) fn pack_block_pos(x: i32, y: i32, z: i32) -> i64 {
 /// # Errors
 ///
 /// Rejects negative IDs and propagates bounded packet-writer failure without mutation.
-pub(crate) fn write_registry_id(
-    writer: &mut PacketWriter,
-    id: i32,
-) -> Result<(), R2bWireError> {
+pub(crate) fn write_registry_id(writer: &mut PacketWriter, id: i32) -> Result<(), R2bWireError> {
     if id < 0 {
         return Err(R2bWireError::NegativeRegistryId(id));
     }
