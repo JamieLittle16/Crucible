@@ -4,7 +4,9 @@
 //! Login path up to the Configuration boundary. R1X is an explicitly experimental continuation
 //! through the admitted Configuration route plus a source-free captured Play smoke prefix. R2B
 //! reuses that admitted Configuration carrier with an empty captured Play image, then publishes the
-//! replay-free semantic Play bootstrap through one continuing bounded Play driver.
+//! replay-free semantic Play bootstrap through one continuing bounded Play driver. The explicit R2B
+//! stock-client playtest wraps that same session only until R2C owns world projection; its compact
+//! image format cannot contain captured Play publication bodies.
 //! Transport composition lives here; listener/runtime policy stays in the executable, while target
 //! packet semantics stay in `crucible-target-26-2`.
 
@@ -13,6 +15,7 @@
 mod login_server;
 mod r1x_image;
 mod r1x_server;
+mod r2b_playtest;
 mod r2b_server;
 
 pub use login_server::{
@@ -21,6 +24,10 @@ pub use login_server::{
 };
 pub use r1x_image::{R1xImageError, R1xImageSection, load_r1x_image};
 pub use r1x_server::{R1xConnectionExit, serve_r1x_blocking_transport};
+pub use r2b_playtest::{
+    R2bPlaytestError, R2bPlaytestExit, R2bPlaytestImage, R2bPlaytestImageError,
+    load_r2b_playtest_image, serve_r2b_playtest_blocking_transport,
+};
 pub use r2b_server::{
     R2bEntryOutcome, R2bLivenessProcess, R2bPlayError, R2bPlayInbound, R2bPlayProcess,
     R2bPlaySession, R2bServerError, enter_r2b_play_blocking_transport,
