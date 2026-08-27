@@ -1,10 +1,11 @@
 //! Replay-free R2B Configuration -> Play entry composition.
 //!
 //! This development composition intentionally reuses the source-admitted R1X Configuration target
-//! with an empty captured Play image, then destroys the fully drained pre-play driver and creates
-//! exactly one Play driver. That Play driver publishes the canonical [`PreparedR2bPlan`] and is
-//! returned intact at the explicit `WorldProjection` seam so R2C/live Play can continue without a
-//! second queue or another driver allocation.
+//! with an empty captured Play image. At the fully drained Play boundary it consumes the pre-play
+//! owner and transfers the exact existing bounded driver plus retained read scratch into continuing
+//! Play; no connection-buffer allocation is destroyed/recreated at the phase transition. That same
+//! driver publishes the canonical [`PreparedR2bPlan`] and is returned intact at the explicit
+//! `WorldProjection` seam.
 //!
 //! Captured Play bodies are rejected before transport I/O. R1X is used only as the temporary
 //! Configuration carrier; every non-world Play body comes from replay-free R2B semantic projection.
@@ -53,6 +54,13 @@ pub enum R2bServerError {
         /// Aggregate captured Play body bytes.
         body_bytes: usize,
     },
+    /// The phase handoff was attempted with userspace bytes still owned by pre-play.
+    HandoffNotDrained {
+        /// Active ingress bytes that would be lost by moving owners.
+        buffered_ingress: usize,
+        /// Queued egress bytes that would be lost by moving owners.
+        queued_egress: usize,
+    },
     /// Source-admitted pre-play I/O/target failure.
     PrePlay(PrePlayIoError<R1xError>),
     /// Replay-free semantic bootstrap preparation failed.
@@ -76,12 +84,13 @@ impl From<PrepareR2bError> for R2bServerError {
 
 /// Connection-owned state handed to the world/live-Play owner after R2B network bootstrap.
 ///
-/// The driver is the same single bounded Play driver that admitted the R2B frames. Its egress is
-/// fully drained before handoff and R2B never reads Play ingress, so no userspace packet bytes are
-/// discarded at this boundary. The teleport transaction remains pending until the client sends the
-/// exact acknowledgement required by `SEM-NET-R2B-PLAY-006`.
+/// `driver` and `read_scratch` are the exact allocations used by pre-play, moved rather than
+/// recreated once both userspace queues were proven empty. The driver then admits every R2B frame
+/// and remains the sole continuing queue. The teleport transaction remains pending until the client
+/// sends the exact acknowledgement required by `SEM-NET-R2B-PLAY-006`.
 pub struct R2bPlaySession {
     pub(crate) driver: ConnectionDriver,
+    pub(crate) read_scratch: Box<[u8]>,
     pub(crate) teleport: TeleportTransaction,
 }
 
@@ -90,6 +99,12 @@ impl R2bPlaySession {
     #[must_use]
     pub const fn teleport_transaction(&self) -> TeleportTransaction {
         self.teleport
+    }
+
+    /// Retained transport-read scratch transferred from pre-play without reallocation.
+    #[must_use]
+    pub fn read_scratch_bytes(&self) -> usize {
+        self.read_scratch.len()
     }
 
     /// Userspace ingress bytes already buffered in the continuing Play driver.
@@ -111,6 +126,7 @@ impl core::fmt::Debug for R2bPlaySession {
             .debug_struct("R2bPlaySession")
             .field("buffered_ingress", &self.driver.buffered_ingress())
             .field("queued_egress", &self.driver.queued_egress())
+            .field("read_scratch_bytes", &self.read_scratch.len())
             .field("teleport", &self.teleport)
             .finish()
     }
@@ -130,16 +146,17 @@ pub enum R2bEntryOutcome {
 /// Drives one transport through Login, source-admitted Configuration, zero captured Play bodies and
 /// the complete replay-free R2B network bootstrap.
 ///
-/// The pre-play object is dropped only after the generic phase is Play, empty-Play publication is
-/// committed, and both of its userspace queues are empty. One fresh bounded Play driver is then
-/// created, receives the prepared R2B plan through [`publish_staged_plan_one`], flushes that egress,
-/// and is returned rather than replaced. This makes the explicit `WorldProjection` seam a real
-/// ownership boundary with one continuing queue.
+/// Once the generic phase is Play, empty-Play publication is committed and both userspace queues are
+/// empty, the pre-play owners are consumed. The exact existing bounded driver and retained read
+/// scratch move into Play; there is no driver, ingress, egress or transport-scratch reallocation at
+/// the phase boundary. R2B then publishes through that driver and returns the same owner at
+/// `WorldProjection`.
 ///
 /// # Errors
 ///
-/// Fails before I/O when captured Play is non-empty, then preserves the existing fail-closed
-/// pre-play/driver errors and transactional R2B preparation errors.
+/// Fails before I/O when captured Play is non-empty, rejects any impossible non-drained ownership
+/// transfer, then preserves the existing fail-closed pre-play/driver errors and transactional R2B
+/// preparation errors.
 pub fn enter_r2b_play_blocking_transport<RW>(
     transport: &mut RW,
     session_epoch: ServerSessionEpoch,
@@ -180,7 +197,19 @@ where
     }
 
     debug_assert!(ready_for_r2b_handoff(&io));
-    drop(io);
+    let (connection, read_scratch, peer_eof) = io.into_parts();
+    if peer_eof {
+        return Ok(R2bEntryOutcome::PeerEof);
+    }
+    let mut driver = match connection.try_into_drained_driver() {
+        Ok(driver) => driver,
+        Err(connection) => {
+            return Err(R2bServerError::HandoffNotDrained {
+                buffered_ingress: connection.buffered_ingress(),
+                queued_egress: connection.queued_egress(),
+            });
+        }
+    };
 
     let mut scratch = PacketWriter::new(PREPARE_SCRATCH_BYTES)
         .map_err(PrepareR2bError::from)
@@ -196,7 +225,6 @@ where
     )?;
     debug_assert!(scratch.is_empty());
 
-    let mut driver = ConnectionDriver::new(limits());
     publish_complete_plan(&plan, &mut driver)?;
     drain_egress(transport, &mut driver)?;
 
@@ -204,6 +232,7 @@ where
     debug_assert_eq!(driver.queued_egress(), 0);
     Ok(R2bEntryOutcome::WorldProjectionReady(R2bPlaySession {
         driver,
+        read_scratch,
         teleport,
     }))
 }
@@ -321,7 +350,7 @@ mod tests {
         QualifiedProjectionArtifact, RecipeProjectionKey,
     };
 
-    use super::{EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, limits};
+    use super::{EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, READ_SCRATCH_BYTES, limits};
 
     const fn revision(byte: u8) -> ProjectionRevision {
         ProjectionRevision::new([byte; 32])
@@ -335,6 +364,7 @@ mod tests {
         assert_eq!(limits.max_frame_body_len(), FRAME_BODY_LIMIT);
         assert_eq!(limits.max_ingress_buffered(), INGRESS_LIMIT);
         assert_eq!(limits.max_egress_queued(), EGRESS_LIMIT);
+        assert_eq!(READ_SCRATCH_BYTES, 16 * 1_024);
         let driver = ConnectionDriver::new(limits);
         assert_eq!(driver.buffered_ingress(), 0);
         assert_eq!(driver.queued_egress(), 0);
