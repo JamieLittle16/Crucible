@@ -2,7 +2,9 @@
 //!
 //! R0 composes the source-admitted Status target. R1A additionally composes the admitted offline
 //! Login path up to the Configuration boundary. R1X is an explicitly experimental continuation
-//! through the admitted Configuration route plus a source-free captured Play smoke prefix.
+//! through the admitted Configuration route plus a source-free captured Play smoke prefix. R2B
+//! reuses that admitted Configuration carrier with an empty captured Play image, then publishes the
+//! replay-free semantic Play bootstrap through one continuing bounded Play driver.
 //! Transport composition lives here; listener/runtime policy stays in the executable, while target
 //! packet semantics stay in `crucible-target-26-2`.
 
@@ -11,6 +13,7 @@
 mod login_server;
 mod r1x_image;
 mod r1x_server;
+mod r2b_server;
 
 pub use login_server::{
     R1AConnectionExit, ServerSessionEpoch, ServerSessionEpochParseError,
@@ -18,6 +21,9 @@ pub use login_server::{
 };
 pub use r1x_image::{R1xImageError, R1xImageSection, load_r1x_image};
 pub use r1x_server::{R1xConnectionExit, serve_r1x_blocking_transport};
+pub use r2b_server::{
+    R2bEntryOutcome, R2bPlaySession, R2bServerError, enter_r2b_play_blocking_transport,
+};
 
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
