@@ -8,8 +8,9 @@ use crucible_publication_core::{
 };
 
 use crate::r2b::{
-    CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2,
-    ProjectionArtifactError, ProjectionRevision, QualifiedProjectionArtifact, RecipeProjectionKey,
+    CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
+    PlayBootstrapImage26_2, ProjectionArtifactError, ProjectionRevision, RecipeProjectionArtifact,
+    RecipeProjectionKey, ServerDataProjectionArtifact,
 };
 use crate::r2b_border::WorldBorderPayload;
 use crate::r2b_clock::{ClockFullSyncPayload, ClockUpdate};
@@ -88,15 +89,15 @@ const fn status_key() -> ServerDataProjectionKey {
 
 fn image() -> PlayBootstrapImage26_2 {
     PlayBootstrapImage26_2::new(
-        QualifiedProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
+        CommandProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
             .expect("commands"),
-        QualifiedProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
+        RecipeProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
             .expect("recipes"),
     )
 }
 
-fn status_artifact() -> QualifiedProjectionArtifact<ServerDataProjectionKey> {
-    QualifiedProjectionArtifact::new(status_key(), vec![86, 0x00].into_boxed_slice())
+fn status_artifact() -> ServerDataProjectionArtifact {
+    ServerDataProjectionArtifact::new(status_key(), vec![86, 0x00].into_boxed_slice())
         .expect("server data")
 }
 
@@ -334,7 +335,7 @@ fn failure_does_not_commit_teleport_or_leave_scratch_dirty() {
 #[test]
 fn shared_packet_identity_is_rejected_before_artifact_publication() {
     assert_eq!(
-        QualifiedProjectionArtifact::new(command_key(), vec![17, 0xaa].into_boxed_slice())
+        CommandProjectionArtifact::new(command_key(), vec![17, 0xaa].into_boxed_slice())
             .expect_err("mismatched command packet identity"),
         ProjectionArtifactError::PacketIdMismatch {
             expected: 16,
@@ -342,7 +343,7 @@ fn shared_packet_identity_is_rejected_before_artifact_publication() {
         }
     );
     assert_eq!(
-        QualifiedProjectionArtifact::new(status_key(), vec![85, 0x00].into_boxed_slice())
+        ServerDataProjectionArtifact::new(status_key(), vec![85, 0x00].into_boxed_slice())
             .expect_err("mismatched status packet identity"),
         ProjectionArtifactError::PacketIdMismatch {
             expected: 86,
