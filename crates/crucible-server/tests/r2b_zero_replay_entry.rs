@@ -128,11 +128,8 @@ fn image() -> PlayBootstrapImage26_2 {
     PlayBootstrapImage26_2::new(
         QualifiedProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
             .expect("command projection"),
-        QualifiedProjectionArtifact::new(
-            recipe_key(),
-            vec![0x85, 0x01, 0xbb].into_boxed_slice(),
-        )
-        .expect("recipe projection"),
+        QualifiedProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
+            .expect("recipe projection"),
     )
 }
 
@@ -262,7 +259,9 @@ fn login_client_chunk() -> Vec<u8> {
     let mut handshake = PacketWriter::new(64).expect("handshake body bound");
     handshake.write_var_int(0).expect("handshake packet id");
     handshake.write_var_int(776).expect("protocol");
-    handshake.write_string("localhost", 255).expect("server address");
+    handshake
+        .write_string("localhost", 255)
+        .expect("server address");
     handshake.write_u16(25_566).expect("server port");
     handshake.write_var_int(2).expect("login intent");
     frames.extend_from_slice(&frame(handshake.as_slice()));
@@ -389,16 +388,20 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
     assert_eq!(transport.next_read, 3);
     assert_eq!(session.buffered_ingress(), 0);
     assert_eq!(session.queued_egress(), 0);
-    assert_eq!(session.teleport_transaction().awaiting().expect("teleport pending").id, 1);
+    assert_eq!(
+        session
+            .teleport_transaction()
+            .awaiting()
+            .expect("teleport pending")
+            .id,
+        1
+    );
 
     let observed = decode_frames(&transport.output);
     assert_eq!(observed.len(), 1 + configuration.len() + expected_r2b.len());
     assert_eq!(observed[0][0], 2, "first server frame is LoginFinished");
 
-    for (actual, expected) in observed[1..=configuration.len()]
-        .iter()
-        .zip(&configuration)
-    {
+    for (actual, expected) in observed[1..=configuration.len()].iter().zip(&configuration) {
         assert_eq!(*actual, expected.as_ref());
     }
     for (actual, expected) in observed[1 + configuration.len()..]
@@ -412,12 +415,9 @@ fn configuration_only_r1x_hands_one_driver_to_exact_replay_free_r2b() {
 #[test]
 fn any_captured_play_body_is_rejected_before_transport_io() {
     let configuration = configuration_bodies();
-    let context = Target26_2R1xContext::new(
-        "{}".into(),
-        configuration,
-        vec![vec![1].into_boxed_slice()],
-    )
-    .expect("one structurally valid captured Play body");
+    let context =
+        Target26_2R1xContext::new("{}".into(), configuration, vec![vec![1].into_boxed_slice()])
+            .expect("one structurally valid captured Play body");
     let image = image();
     let mut transport = ScriptedTransport::new(Vec::new());
 
