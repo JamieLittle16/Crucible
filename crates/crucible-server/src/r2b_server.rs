@@ -299,10 +299,9 @@ impl R2bPlaySession {
                 .receive_keep_alive(now_ms, id)
                 .map_err(PlayInboundDecodeError::Liveness)?
             {
-                KeepAliveReply::Accepted { latency_ms } => (
-                    candidate,
-                    R2bPlayInbound::KeepAliveAccepted { latency_ms },
-                ),
+                KeepAliveReply::Accepted { latency_ms } => {
+                    (candidate, R2bPlayInbound::KeepAliveAccepted { latency_ms })
+                }
                 KeepAliveReply::Rejected => (liveness, R2bPlayInbound::KeepAliveRejected { id }),
             };
             Ok(PreparedPlayInbound {
