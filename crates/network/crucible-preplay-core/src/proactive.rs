@@ -314,7 +314,9 @@ mod tests {
         let mut connection = configuration_connection(limits(16, 64));
         assert!(matches!(
             connection.service_publication(&context),
-            Ok(PrePlayPublicationProcess::Progress(PublicationStep::Queued { .. }))
+            Ok(PrePlayPublicationProcess::Progress(
+                PublicationStep::Queued { .. }
+            ))
         ));
         let queued = connection.queued_egress();
         let connection = connection
