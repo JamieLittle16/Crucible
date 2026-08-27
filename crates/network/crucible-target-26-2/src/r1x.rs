@@ -789,12 +789,9 @@ mod tests {
 
         let mut context = dummy_context(0);
         context.configuration[0][22] ^= 1;
-        let error = Target26_2R1xContext::new(
-            "{}".into(),
-            context.configuration.into_vec(),
-            Vec::new(),
-        )
-        .expect_err("wrong product brand");
+        let error =
+            Target26_2R1xContext::new("{}".into(), context.configuration.into_vec(), Vec::new())
+                .expect_err("wrong product brand");
         assert_eq!(error, R1xContextError::ConfigurationBrandMismatch);
 
         let context = dummy_context(0);
