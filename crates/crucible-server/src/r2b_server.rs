@@ -49,6 +49,10 @@ const EGRESS_LIMIT: usize = 128 * 1_024;
 const READ_SCRATCH_BYTES: usize = 16 * 1_024;
 const PREPLAY_ACTIONS_PER_SERVICE: usize = 4;
 const PREPARE_SCRATCH_BYTES: usize = 4 * 1_024;
+const INITIAL_LIVENESS: LivenessState = match LivenessState::new(0, 0) {
+    Ok(state) => state,
+    Err(_) => panic!("zero must remain inside the signed-64-bit monotone liveness domain"),
+};
 const _: () = assert!(PREPLAY_ACTIONS_PER_SERVICE > 0);
 
 /// Fail-closed R2B server-composition error.
@@ -374,6 +378,14 @@ impl core::fmt::Debug for R2bPlaySession {
 }
 
 /// Result of attempting the R2B entry boundary on one connection.
+///
+/// The successful variant intentionally stores the session inline. Boxing it solely to shrink this
+/// transient return enum would add a heap allocation on every successful join after we explicitly
+/// eliminated the Configuration -> Play driver/read-buffer allocation churn.
+#[allow(
+    clippy::large_enum_variant,
+    reason = "boxing the successful continuing session would add a per-join heap allocation; this transient outcome is immediately destructured"
+)]
 #[derive(Debug)]
 pub enum R2bEntryOutcome {
     /// The target committed a terminal session before reaching Play and all queued output drained.
@@ -469,13 +481,11 @@ where
 
     debug_assert_eq!(driver.buffered_ingress(), 0);
     debug_assert_eq!(driver.queued_egress(), 0);
-    let liveness = LivenessState::new(0, 0)
-        .expect("zero is inside the admitted signed-64-bit monotone liveness domain");
     Ok(R2bEntryOutcome::WorldProjectionReady(R2bPlaySession {
         driver,
         read_scratch,
         teleport,
-        liveness,
+        liveness: INITIAL_LIVENESS,
     }))
 }
 
