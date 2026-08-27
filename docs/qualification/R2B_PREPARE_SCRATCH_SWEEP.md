@@ -107,6 +107,10 @@ The accepted production change may only replace the writer constructor with the 
 
 The initial capacity is a performance hint, not a semantic maximum. The existing 4096-byte packet-body bound remains authoritative and the same scratch writer remains connection-local and transactionally reset by preparation.
 
+## Acceptance gate
+
+The production change is accepted only when the branch passes the normal workspace format/check/Clippy/tests, the R0 server gate and the R2B performance-evidence smoke workflow after the runtime constructor is changed. The full sweep above qualifies the numeric choice; normal CI qualifies the actual integrated implementation.
+
 ## Ongoing CI policy
 
 The permanent R2B performance workflow returns to the shorter smoke sweep after selection. The full sweep is a qualification event, not a tax on every later network PR. Re-running `--full` remains available whenever preparation semantics, allocator behavior or representative bootstrap workloads change enough to invalidate this decision.
