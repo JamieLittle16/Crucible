@@ -1,5 +1,5 @@
 [package]
-name = "crucible-world-section"
+name = "helve-world-section"
 version = "0.0.0"
 edition = "2024"
 rust-version = "1.97.1"
@@ -7,11 +7,11 @@ license.workspace = true
 publish = false
 
 [dependencies]
-crucible-world-contract = { path = "../crucible-world-contract" }
+helve-world-contract = { path = "../helve-world-contract" }
 
 [dev-dependencies]
-crucible-generated = { path = "../../data/crucible-generated" }
-crucible-world-reference = { path = "../crucible-world-reference" }
+helve-generated = { path = "../../data/helve-generated" }
+helve-world-reference = { path = "../helve-world-reference" }
 
 [lints]
 workspace = true
