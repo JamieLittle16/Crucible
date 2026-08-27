@@ -7,9 +7,9 @@ mod tests;
 
 use std::path::Path;
 
-use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId};
-use crucible_world_reference::DirectBlockSection;
-use crucible_world_section::{
+use helve_generated::{BLOCK_STATE_COUNT, BlockStateId};
+use helve_world_reference::DirectBlockSection;
+use helve_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 

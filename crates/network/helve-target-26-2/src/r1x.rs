@@ -21,14 +21,14 @@
 
 use std::fmt;
 
-use crucible_connection_core::FrameView;
-use crucible_connection_driver::OutboundBatch;
-use crucible_packet_core::{PacketCodecError, PacketReader};
-use crucible_preplay_core::{
+use helve_connection_core::FrameView;
+use helve_connection_driver::OutboundBatch;
+use helve_packet_core::{PacketCodecError, PacketReader};
+use helve_preplay_core::{
     PrePlayAction, PrePlayPublication, PrePlayPublisher, PrePlayTarget, PublicationCursor,
     PublicationStep,
 };
-use crucible_session_core::{SessionPhase, SessionState, SessionStateError};
+use helve_session_core::{SessionPhase, SessionState, SessionStateError};
 
 use crate::{LoginState, Target26_2, Target26_2Action, Target26_2Error, Target26_2State};
 
@@ -735,7 +735,7 @@ impl PrePlayPublisher for Target26_2R1x {
 
 #[cfg(test)]
 mod tests {
-    use crucible_preplay_core::{PrePlayPublisher, PublicationCursor, PublicationStep};
+    use helve_preplay_core::{PrePlayPublisher, PublicationCursor, PublicationStep};
 
     use super::{
         CONFIGURATION_BODY_SIZES, CONFIGURATION_ENTRY_END, CONFIGURATION_REGISTRY_END,

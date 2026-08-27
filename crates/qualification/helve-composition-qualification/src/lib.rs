@@ -8,10 +8,10 @@
 use core::any::TypeId;
 use core::mem::{align_of, size_of};
 
-use crucible_composition::SectionStore;
-use crucible_generated::BlockStateId;
-use crucible_world_contract::{BlockSection, SectionBlockPos};
-use crucible_world_reference::DirectBlockSection;
+use helve_composition::SectionStore;
+use helve_generated::BlockStateId;
+use helve_world_contract::{BlockSection, SectionBlockPos};
+use helve_world_reference::DirectBlockSection;
 
 /// Concrete section type selected by the generated reference composition.
 pub type GeneratedSection = SectionStore<BlockStateId>;
@@ -45,8 +45,8 @@ mod tests {
     use core::any::TypeId;
     use core::mem::{align_of, size_of};
 
-    use crucible_generated::{AIR, GeneratedStateFacts};
-    use crucible_world_reference::DirectBlockSection;
+    use helve_generated::{AIR, GeneratedStateFacts};
+    use helve_world_reference::DirectBlockSection;
 
     use super::{GeneratedSection, HandWiredSection, exact_type_identity};
 

@@ -13,8 +13,8 @@ use std::net::TcpStream;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use crucible_connection_driver::{DriverError, OutboundBatch, TransactionResult};
-use crucible_target_26_2::{
+use helve_connection_driver::{DriverError, OutboundBatch, TransactionResult};
+use helve_target_26_2::{
     R1xContextError, Target26_2R1xContext,
     play_liveness::PLAY_LIVENESS_POLICY,
     r2b::{

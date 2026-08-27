@@ -1,9 +1,9 @@
 //! Qualification coverage for transactional replay-free R2B preparation.
 
-use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-use crucible_connection_driver::{ConnectionDriver, DriverError};
-use crucible_packet_core::PacketWriter;
-use crucible_publication_core::{
+use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
+use helve_connection_driver::{ConnectionDriver, DriverError};
+use helve_packet_core::PacketWriter;
+use helve_publication_core::{
     StagedPublicationCursor, StagedPublicationStep, publish_staged_plan_one,
 };
 

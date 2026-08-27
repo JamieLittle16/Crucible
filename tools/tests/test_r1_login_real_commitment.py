@@ -83,7 +83,7 @@ class R1LoginRealCommitmentTests(unittest.TestCase):
 
         archive = self.commitment["archive"]
         self.assertEqual(archive["format"], "zip")
-        self.assertEqual(archive["member"], "crucible-r1a2-login-capture.json")
+        self.assertEqual(archive["member"], "helve-r1a2-login-capture.json")
         self.assertEqual(archive["archive_bytes"], 2_174_431)
         self.assertEqual(archive["member_bytes"], 25_174_268)
         self.assertEqual(

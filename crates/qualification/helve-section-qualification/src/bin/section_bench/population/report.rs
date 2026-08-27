@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::fs;
 
-use crucible_generated::{
+use helve_generated::{
     BLOCK_STATE_COUNT, STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256,
 };
-use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use helve_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::hardware::HardwareMetadata;
 use crate::model::BenchSection;

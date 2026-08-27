@@ -27,7 +27,7 @@ pub use staged::{
     publish_staged_one, publish_staged_plan_one,
 };
 
-use crucible_connection_driver::{ConnectionDriver, DriverError};
+use helve_connection_driver::{ConnectionDriver, DriverError};
 
 /// Allocation-free per-connection progress through one ordered immutable publication.
 ///
@@ -116,8 +116,8 @@ where
 mod tests {
     use std::mem::size_of;
 
-    use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-    use crucible_connection_driver::{ConnectionDriver, DriverError};
+    use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
+    use helve_connection_driver::{ConnectionDriver, DriverError};
 
     use super::{PublicationCursor, PublicationStep, publish_one};
 

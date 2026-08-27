@@ -6,11 +6,11 @@ use std::mem;
 use std::path::Path;
 use std::time::Instant;
 
-use crucible_generated::{
+use helve_generated::{
     AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
 };
-use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary};
+use helve_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use helve_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary};
 
 use crate::model::BenchSection;
 use crate::workloads::pos;

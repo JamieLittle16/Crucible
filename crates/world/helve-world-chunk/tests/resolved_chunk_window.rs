@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crucible_types::{BlockPos, ChunkGeneration, ChunkPos};
-use crucible_world_chunk::{
+use helve_types::{BlockPos, ChunkGeneration, ChunkPos};
+use helve_world_chunk::{
     ChunkCoreError, LiveChunkCore, ResolvedChunkWindow, ResolvedChunkWindowError,
 };
-use crucible_world_contract::{BlockStateFacts, SectionStateFacts};
-use crucible_world_reference::DirectBlockSection;
+use helve_world_contract::{BlockStateFacts, SectionStateFacts};
+use helve_world_reference::DirectBlockSection;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct State(u16);

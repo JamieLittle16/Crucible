@@ -4,7 +4,7 @@
 //! bodies. Its only per-connection metadata is a fixed inline locator array plus ten compact stage
 //! spans. It owns no packet semantics, queue or socket state.
 
-use crucible_publication_core::{StagedPublicationLookup, StagedPublicationPlan};
+use helve_publication_core::{StagedPublicationLookup, StagedPublicationPlan};
 
 use crate::r2b_arena::DynamicBootstrapArena;
 
@@ -227,8 +227,8 @@ impl<'a> PreparedR2bPlanBuilder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::PacketWriter;
-    use crucible_publication_core::{StagedPublicationLookup, StagedPublicationPlan};
+    use helve_packet_core::PacketWriter;
+    use helve_publication_core::{StagedPublicationLookup, StagedPublicationPlan};
 
     use super::{
         MAX_DYNAMIC_BODIES, MAX_PUBLICATION_BODIES, NETWORK_STAGE_COUNT, PreparedLookup,

@@ -1,7 +1,7 @@
-use crucible_generated::{
+use helve_generated::{
     AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_MUTATION_FLAGS,
 };
-use crucible_world_contract::{BLOCK_SECTION_CELLS, SectionBlockPos};
+use helve_world_contract::{BLOCK_SECTION_CELLS, SectionBlockPos};
 
 use crate::model::{BENCH_SEED, BenchSection, CARDINALITIES, CaseSpec, Mode, Pattern};
 
@@ -338,15 +338,15 @@ fn mix_u64(mut value: u64) -> u64 {
 mod tests {
     use std::collections::BTreeSet;
 
-    use crucible_generated::{AIR, GeneratedStateFacts, STATE_MUTATION_FLAGS};
-    use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts};
-    use crucible_world_section::DirectNBlockSection;
+    use helve_generated::{AIR, GeneratedStateFacts, STATE_MUTATION_FLAGS};
+    use helve_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts};
+    use helve_world_section::DirectNBlockSection;
 
     use super::{COUNTED_FLUID, CaseSpec, NON_AIR, Pattern, pos, positive_contains_state, prepare};
 
     fn observed_states(
-        section: &DirectNBlockSection<crucible_generated::BlockStateId>,
-    ) -> BTreeSet<crucible_generated::BlockStateId> {
+        section: &DirectNBlockSection<helve_generated::BlockStateId>,
+    ) -> BTreeSet<helve_generated::BlockStateId> {
         (0..BLOCK_SECTION_CELLS)
             .map(|cell| section.get(pos(cell)))
             .collect()

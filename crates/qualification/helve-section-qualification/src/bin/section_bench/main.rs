@@ -21,7 +21,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use crucible_generated::BLOCK_STATE_COUNT;
+use helve_generated::BLOCK_STATE_COUNT;
 
 use crate::model::Mode;
 use crate::population::PopulationMode;

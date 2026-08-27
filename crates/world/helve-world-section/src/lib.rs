@@ -9,7 +9,7 @@
 
 use std::mem;
 
-use crucible_world_contract::{
+use helve_world_contract::{
     BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBlockPos, SectionStateFacts,
     SectionSummary,
 };
@@ -498,7 +498,7 @@ impl<S: Copy + Eq> BlockSection<S> for AdaptiveBlockSection<S> {
 
 /// Direct 4096-state CPU baseline for the live-representation laboratory.
 ///
-/// This is intentionally separate from `crucible-world-reference::DirectBlockSection`: the latter
+/// This is intentionally separate from `helve-world-reference::DirectBlockSection`: the latter
 /// remains the correctness oracle, while this type is a benchmark candidate with lab diagnostics.
 #[derive(Clone, Debug)]
 pub struct DirectNBlockSection<S: Copy + Eq> {
@@ -566,10 +566,10 @@ mod tests {
     use super::{
         AdaptiveBlockSection, DirectNBlockSection, LOCAL4_CAPACITY, PaletteSlot, RepresentationKind,
     };
-    use crucible_world_contract::{
+    use helve_world_contract::{
         BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBlockPos, SectionStateFacts,
     };
-    use crucible_world_reference::DirectBlockSection;
+    use helve_world_reference::DirectBlockSection;
 
     struct SyntheticFacts;
 

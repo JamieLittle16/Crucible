@@ -2,7 +2,7 @@
 //!
 //! This crate owns no packet IDs, connection-state transitions, authentication policy or socket
 //! runtime. It turns arbitrary TCP byte fragments into borrowed framed packet views and provides a
-//! bounded transactional outbound queue over `crucible-protocol-core`.
+//! bounded transactional outbound queue over `helve-protocol-core`.
 //!
 //! The reference mechanism deliberately uses compacting `Vec<u8>` buffers. Complete frame bodies
 //! and packet payloads are borrowed directly from ingress storage: parsing does not allocate or copy
@@ -11,7 +11,7 @@
 
 #![forbid(unsafe_code)]
 
-use crucible_protocol_core::{
+use helve_protocol_core::{
     DecodeResult, MAX_FRAME_BODY_LEN, WireError, decode_frame, decode_var_int, encode_frame,
     var_int_len,
 };
@@ -545,7 +545,7 @@ fn encoded_frame_len(body_len: usize) -> Result<usize, ConnectionBufferError> {
 
 #[cfg(test)]
 mod tests {
-    use crucible_protocol_core::{WireError, encode_frame, encode_var_int};
+    use helve_protocol_core::{WireError, encode_frame, encode_var_int};
 
     use super::{BufferKind, ConnectionBufferError, ConnectionLimits, EgressBuffer, IngressBuffer};
 

@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 
-use crucible_generated::BlockStateId;
-use crucible_world_reference::DirectBlockSection;
-use crucible_world_section::{
+use helve_generated::BlockStateId;
+use helve_world_reference::DirectBlockSection;
+use helve_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 

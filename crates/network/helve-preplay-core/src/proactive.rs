@@ -5,10 +5,10 @@
 //! target must subsequently publish immutable packet bodies over multiple bounded service
 //! opportunities. The target may propose work but never receives the connection driver.
 
-use crucible_connection_driver::ConnectionDriver;
-use crucible_publication_core::publish_one as publish_one_body;
-pub use crucible_publication_core::{PublicationCursor, PublicationStep};
-use crucible_session_core::SessionState;
+use helve_connection_driver::ConnectionDriver;
+use helve_publication_core::publish_one as publish_one_body;
+pub use helve_publication_core::{PublicationCursor, PublicationStep};
+use helve_session_core::SessionState;
 
 use super::{
     PrePlayConnection, PrePlayError, PrePlayTarget, TargetBoundaryError, map_driver_error,
@@ -131,7 +131,7 @@ where
     ///
     /// The target first observes immutable context/session/state and proposes borrowed publication
     /// bodies plus copied progression. The binder then delegates the sole queue operation to
-    /// `crucible-publication-core`. Only after that operation succeeds does the target receive its
+    /// `helve-publication-core`. Only after that operation succeeds does the target receive its
     /// infallible commit hook. No inbound bytes are consumed and the generic session state is never
     /// changed by this method.
     ///
@@ -144,7 +144,7 @@ where
         &mut self,
         context: &T::Context,
     ) -> Result<PrePlayPublicationProcess, PrePlayError<T::Error>> {
-        if self.session.phase() == crucible_session_core::SessionPhase::Closed {
+        if self.session.phase() == helve_session_core::SessionPhase::Closed {
             return Err(PrePlayError::ClosedSession);
         }
 
@@ -173,9 +173,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crucible_connection_core::{ConnectionBufferError, ConnectionLimits, FrameView};
-    use crucible_connection_driver::{ConnectionDriver, OutboundBatch};
-    use crucible_session_core::{SessionPhase, SessionState};
+    use helve_connection_core::{ConnectionBufferError, ConnectionLimits, FrameView};
+    use helve_connection_driver::{ConnectionDriver, OutboundBatch};
+    use helve_session_core::{SessionPhase, SessionState};
 
     use super::{
         PrePlayPublication, PrePlayPublicationProcess, PrePlayPublicationResult, PrePlayPublisher,

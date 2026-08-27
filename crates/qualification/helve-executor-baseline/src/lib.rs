@@ -13,15 +13,15 @@ use std::ops::Range;
 use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::thread;
 
-use crucible_generated::{
+use helve_generated::{
     AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
     STATE_DATA_INPUT_SHA256,
 };
-use crucible_ownership_qualification::{
+use helve_ownership_qualification::{
     DomainId, EffectId, EffectPayload, OwnershipSimulator, SemanticDigest, WorkerId,
 };
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
-use crucible_world_reference::DirectBlockSection;
+use helve_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
+use helve_world_reference::DirectBlockSection;
 
 /// Target-state input digest bound into this baseline's semantic work.
 pub const TARGET_STATE_INPUT_SHA256: &str = STATE_DATA_INPUT_SHA256;

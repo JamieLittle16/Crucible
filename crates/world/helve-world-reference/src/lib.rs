@@ -5,7 +5,7 @@
 
 #![forbid(unsafe_code)]
 
-use crucible_world_contract::{
+use helve_world_contract::{
     BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBiomePos,
     SectionBlockPos, SectionStateFacts, SectionSummary,
 };
@@ -175,7 +175,7 @@ impl<B: Copy + Eq> DirectBiomeSection<B> {
 #[cfg(test)]
 mod tests {
     use super::{DirectBiomeSection, DirectBlockSection};
-    use crucible_world_contract::{
+    use helve_world_contract::{
         BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBiomePos, SectionBlockPos,
         SectionStateFacts, SectionSummary,
     };

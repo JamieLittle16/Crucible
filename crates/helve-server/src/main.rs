@@ -4,13 +4,13 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
 
-use crucible_server::{
+use helve_server::{
     DEFAULT_R0_BIND_ADDRESS, HELVE_STATUS_JSON, PRODUCT_NAME, R0_ADMISSION_SESSION_SHA256,
     R2bPlaytestImage, ServerSessionEpoch, load_r1x_image, load_r2b_playtest_image,
     serve_r0_blocking_transport, serve_r1a_blocking_transport, serve_r1x_blocking_transport,
     serve_r2b_playtest_blocking_transport,
 };
-use crucible_target_26_2::{Target26_2R1xContext, generated};
+use helve_target_26_2::{Target26_2R1xContext, generated};
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(15);
 const LOGIN_SESSION_EPOCH_PREFIX: &str = "--login-session-epoch=";

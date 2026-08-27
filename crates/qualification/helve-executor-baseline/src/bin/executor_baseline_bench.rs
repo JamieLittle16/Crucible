@@ -4,8 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_benchmark_support::{collect_hardware_metadata, push_json_string};
-use crucible_executor_baseline::{
+use helve_benchmark_support::{collect_hardware_metadata, push_json_string};
+use helve_executor_baseline::{
     LogicalMemory, PreparedWorkload, RunEvidence, TARGET_STATE_GENERATION_SHA256,
     TARGET_STATE_INPUT_SHA256, read_process_memory, semantic_digest_checksum,
 };

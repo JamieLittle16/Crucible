@@ -3,13 +3,13 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crucible_generated::{
+use helve_generated::{
     BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
     STATE_DATA_INPUT_SHA256,
 };
-use crucible_world_contract::{BlockStateFacts, SectionStateFacts};
-use crucible_world_reference::DirectBlockSection;
-use crucible_world_section::{
+use helve_world_contract::{BlockStateFacts, SectionStateFacts};
+use helve_world_reference::DirectBlockSection;
+use helve_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 
@@ -31,7 +31,7 @@ impl TempCorpus {
     fn write(text: &str) -> Self {
         let serial = TEMP_CORPUS_COUNTER.fetch_add(1, Ordering::Relaxed);
         let path = std::env::temp_dir().join(format!(
-            "crucible-section-corpus-test-{}-{serial}.corpus",
+            "helve-section-corpus-test-{}-{serial}.corpus",
             std::process::id()
         ));
         fs::write(&path, text).expect("write temporary corpus");

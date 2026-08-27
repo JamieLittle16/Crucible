@@ -1,10 +1,10 @@
-use crucible_generated::{AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
-use crucible_types::{BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp};
-use crucible_world_chunk::{ChunkCoreError, LiveChunkCore, MutationFacts, SectionMasks};
-use crucible_world_contract::{
+use helve_generated::{AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
+use helve_types::{BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp};
+use helve_world_chunk::{ChunkCoreError, LiveChunkCore, MutationFacts, SectionMasks};
+use helve_world_contract::{
     BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBlockPos, SectionStateFacts,
 };
-use crucible_world_reference::DirectBlockSection;
+use helve_world_reference::DirectBlockSection;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum State {

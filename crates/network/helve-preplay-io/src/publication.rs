@@ -7,7 +7,7 @@
 
 use std::io::{Read, Write};
 
-use crucible_preplay_core::{
+use helve_preplay_core::{
     PrePlayConnection, PrePlayPublicationProcess, PrePlayPublisher, PrePlayTarget, PublicationStep,
 };
 

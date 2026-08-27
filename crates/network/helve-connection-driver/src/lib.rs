@@ -1,6 +1,6 @@
 //! Runtime-neutral bounded connection driving for Crucible.
 //!
-//! This crate sits above `crucible-connection-core` and below target-version packet semantics. It
+//! This crate sits above `helve-connection-core` and below target-version packet semantics. It
 //! provides a small, statically dispatched processing loop over borrowed frame views while keeping
 //! ingress/egress bounds and exact stream consumption explicit.
 //!
@@ -11,7 +11,7 @@
 
 use std::num::NonZeroUsize;
 
-use crucible_connection_core::{
+use helve_connection_core::{
     ConnectionBufferError, ConnectionLimits, EgressBuffer, FrameView, IngressBuffer,
 };
 
@@ -321,7 +321,7 @@ mod tests {
         ConnectionDriver, DriverError, FrameBudget, FrameFlow, OutboundBatch, StopReason,
         TransactionResult,
     };
-    use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
+    use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
 
     #[derive(Debug, Eq, PartialEq)]
     struct PreparedAction {

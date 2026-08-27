@@ -1,9 +1,9 @@
 use std::mem;
 
-use crucible_generated::{BlockStateId, GeneratedStateFacts};
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection};
-use crucible_world_reference::DirectBlockSection;
-use crucible_world_section::{
+use helve_generated::{BlockStateId, GeneratedStateFacts};
+use helve_world_contract::{BLOCK_SECTION_CELLS, BlockSection};
+use helve_world_reference::DirectBlockSection;
+use helve_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, FastLocalRepresentation,
     PackedLocalBlockSection, PackedLocalRepresentation, RepresentationKind,
 };
@@ -377,9 +377,9 @@ impl BenchSection for PackedLocalBlockSection<BlockStateId> {
 #[cfg(test)]
 mod tests {
     use super::{BenchSection, RepresentationCode, SampleSummary};
-    use crucible_generated::{AIR, GeneratedStateFacts};
-    use crucible_world_contract::{BlockSection, SectionBlockPos};
-    use crucible_world_section::PackedLocalBlockSection;
+    use helve_generated::{AIR, GeneratedStateFacts};
+    use helve_world_contract::{BlockSection, SectionBlockPos};
+    use helve_world_section::PackedLocalBlockSection;
 
     #[test]
     fn integer_normalization_never_needs_float_precision() {
@@ -428,8 +428,8 @@ mod tests {
     #[test]
     fn packed_first_widen_is_observable_in_benchmark_build_shape() {
         let mut section = PackedLocalBlockSection::filled(AIR, &GeneratedStateFacts);
-        let first = crucible_generated::BlockStateId::new(1).expect("state 1 exists");
-        let second = crucible_generated::BlockStateId::new(2).expect("state 2 exists");
+        let first = helve_generated::BlockStateId::new(1).expect("state 1 exists");
+        let second = helve_generated::BlockStateId::new(2).expect("state 2 exists");
         let first_pos = SectionBlockPos::new(0, 0, 0).expect("valid position");
         let second_pos = SectionBlockPos::new(1, 0, 0).expect("valid position");
         let _ = section.replace(first_pos, first, &GeneratedStateFacts);

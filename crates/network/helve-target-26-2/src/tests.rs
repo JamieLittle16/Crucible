@@ -1,8 +1,8 @@
-use crucible_connection_core::ConnectionLimits;
-use crucible_connection_driver::ConnectionDriver;
-use crucible_packet_core::{PacketCodecError, PacketField, PacketWriter};
-use crucible_preplay_core::{PrePlayConnection, PrePlayError, PrePlayProcess};
-use crucible_session_core::SessionPhase;
+use helve_connection_core::ConnectionLimits;
+use helve_connection_driver::ConnectionDriver;
+use helve_packet_core::{PacketCodecError, PacketField, PacketWriter};
+use helve_preplay_core::{PrePlayConnection, PrePlayError, PrePlayProcess};
+use helve_session_core::SessionPhase;
 
 use super::{
     LoginState, MAX_R0_PACKET_BODY_BYTES, MAX_SERVER_ADDRESS_UTF16_UNITS, Target26_2,

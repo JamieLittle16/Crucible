@@ -5,10 +5,10 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_benchmark_support::{collect_hardware_metadata, push_json_string};
-use crucible_connection_core::{ConnectionLimits, EgressBuffer};
-use crucible_packet_core::PacketWriter;
-use crucible_protocol_core::{encode_string, encode_var_int, var_int_len};
+use helve_benchmark_support::{collect_hardware_metadata, push_json_string};
+use helve_connection_core::{ConnectionLimits, EgressBuffer};
+use helve_packet_core::PacketWriter;
+use helve_protocol_core::{encode_string, encode_var_int, var_int_len};
 
 const SCHEMA: u32 = 1;
 const MAX_BODY: usize = 65_536;
@@ -843,7 +843,7 @@ mod tests {
         EGRESS_LIMIT, FusedEgress, MAX_BODY, PacketShape, TraceCase, limits, queue_reference,
         require_byte_equivalence,
     };
-    use crucible_connection_core::EgressBuffer;
+    use helve_connection_core::EgressBuffer;
 
     #[test]
     fn frame_prefix_boundaries_match_reference_exactly() {

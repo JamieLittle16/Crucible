@@ -5,9 +5,9 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_benchmark_support::collect_hardware_metadata;
-use crucible_types::ChunkPos;
-use crucible_world_chunk::{RegionCellLayout, VerticalSectionLattice};
+use helve_benchmark_support::collect_hardware_metadata;
+use helve_types::ChunkPos;
+use helve_world_chunk::{RegionCellLayout, VerticalSectionLattice};
 
 const SCHEMA: u32 = 1;
 const REGION_SHIFT: u32 = 3;

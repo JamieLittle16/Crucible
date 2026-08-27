@@ -191,7 +191,7 @@ def _read_admission(path: Path) -> dict[str, str]:
 
 
 def _server_session(repo_root: Path) -> str:
-    path = repo_root / "crates/crucible-server/src/lib.rs"
+    path = repo_root / "crates/helve-server/src/lib.rs"
     if path.is_symlink() or not path.is_file():
         raise ExternalProbeError("current checkout does not contain the R0 Crucible server")
     text = path.read_text(encoding="utf-8")
@@ -202,7 +202,7 @@ def _server_session(repo_root: Path) -> str:
 
 
 def _generated_digest(repo_root: Path) -> str:
-    path = repo_root / "crates/network/crucible-target-26-2/src/generated/status_26_2.rs"
+    path = repo_root / "crates/network/helve-target-26-2/src/generated/status_26_2.rs"
     if path.is_symlink() or not path.is_file():
         raise ExternalProbeError("current checkout is missing generated Minecraft 26.2 packet facts")
     return hashlib.sha256(path.read_bytes()).hexdigest()

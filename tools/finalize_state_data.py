@@ -33,7 +33,7 @@ DEFAULT_RAW_RUNTIME = ROOT / ".crucible" / "vanilla" / "26.2-block-states.raw.js
 DEFAULT_QUALIFIED_RUNTIME = (
     ROOT / ".crucible" / "vanilla" / "26.2-block-states.qualified.json"
 )
-DEFAULT_RUST_OUTPUT = ROOT / "crates" / "data" / "crucible-generated" / "src" / "lib.rs"
+DEFAULT_RUST_OUTPUT = ROOT / "crates" / "data" / "helve-generated" / "src" / "lib.rs"
 DEFAULT_MANIFEST = ROOT / "vanilla" / "state-data" / "26.2-state-data-manifest.json"
 
 

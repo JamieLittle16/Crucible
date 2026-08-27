@@ -5,7 +5,7 @@
 //! this single contiguous arena, and then borrowed by span during staged publication. The arena owns
 //! no semantic ordering and no socket queue.
 
-use crucible_packet_core::PacketWriter;
+use helve_packet_core::PacketWriter;
 
 /// Compact immutable location of one packet body within a dynamic bootstrap arena.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -125,7 +125,7 @@ impl<const N: usize> DynamicBootstrapArena<N> {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::PacketWriter;
+    use helve_packet_core::PacketWriter;
 
     use super::{DynamicBootstrapArena, DynamicBootstrapArenaError};
 

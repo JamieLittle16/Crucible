@@ -5,11 +5,11 @@ use std::mem::size_of;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_benchmark_support::{collect_hardware_metadata, push_json_string};
-use crucible_packet_core::PacketWriter;
-use crucible_protocol_core::encode_var_int;
+use helve_benchmark_support::{collect_hardware_metadata, push_json_string};
+use helve_packet_core::PacketWriter;
+use helve_protocol_core::encode_var_int;
 
-#[path = "../../../../network/crucible-target-26-2/src/r2b_arena.rs"]
+#[path = "../../../../network/helve-target-26-2/src/r2b_arena.rs"]
 pub mod r2b_arena;
 
 use r2b_arena::DynamicBootstrapArena;

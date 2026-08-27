@@ -7,9 +7,9 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_packet_core::PacketWriter;
-use crucible_server::{R2bEntryOutcome, ServerSessionEpoch, enter_r2b_play_blocking_transport};
-use crucible_target_26_2::{
+use helve_packet_core::PacketWriter;
+use helve_server::{R2bEntryOutcome, ServerSessionEpoch, enter_r2b_play_blocking_transport};
+use helve_target_26_2::{
     Target26_2R1xContext,
     r2b::{
         BootstrapGameMode, BootstrapWeather, ChangeDifficultyPayload, ClockFullSyncPayload,
@@ -582,7 +582,7 @@ fn render_json(
     profiles: &[ArrivalProfile],
 ) -> Result<String, String> {
     let parallelism = std::thread::available_parallelism().map_or(1, NonZeroUsize::get);
-    let pinned_cpu = env::var("CRUCIBLE_BENCH_CPU").unwrap_or_else(|_| "unbound".to_owned());
+    let pinned_cpu = env::var("HELVE_BENCH_CPU").unwrap_or_else(|_| "unbound".to_owned());
     let mut out = String::new();
     write!(
         out,

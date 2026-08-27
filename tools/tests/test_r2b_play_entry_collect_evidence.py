@@ -11,7 +11,7 @@ from tools import r2b_play_entry_collect_evidence as collect
 
 class R2BPlayEntryCollectEvidenceTests(unittest.TestCase):
     def test_repo_local_output_is_rejected_before_collection(self) -> None:
-        path = collect.REPO_ROOT / ".crucible-test-r2b-evidence"
+        path = collect.REPO_ROOT / ".helve-test-r2b-evidence"
         with self.assertRaisesRegex(collect.CollectError, "outside the repository"):
             collect._external_fresh_dir(path)
 

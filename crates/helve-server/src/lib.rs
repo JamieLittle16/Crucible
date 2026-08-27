@@ -8,7 +8,7 @@
 //! stock-client playtest wraps that same session only until R2C owns world projection; its compact
 //! image format cannot contain captured Play publication bodies.
 //! Transport composition lives here; listener/runtime policy stays in the executable, while target
-//! packet semantics stay in the internal `crucible-target-26-2` crate namespace.
+//! packet semantics stay in the internal `helve-target-26-2` crate namespace.
 
 #![forbid(unsafe_code)]
 
@@ -36,9 +36,9 @@ pub use r2b_server::{
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 
-use crucible_connection_core::ConnectionLimits;
-use crucible_preplay_io::{ActionBudget, PrePlayIo, PrePlayIoError, ServiceStop};
-use crucible_target_26_2::{MAX_R0_PACKET_BODY_BYTES, Target26_2, Target26_2Error};
+use helve_connection_core::ConnectionLimits;
+use helve_preplay_io::{ActionBudget, PrePlayIo, PrePlayIoError, ServiceStop};
+use helve_target_26_2::{MAX_R0_PACKET_BODY_BYTES, Target26_2, Target26_2Error};
 
 /// Canonical public product name.
 pub const PRODUCT_NAME: &str = "Helve";
@@ -141,7 +141,7 @@ mod tests {
         reason = "the qualification fixture reuses the exact generated evidence module, while these tests consume only its admitted frame constants"
     )]
     mod admitted_codegen {
-        include!("../../network/crucible-target-26-2/src/generated/status_26_2.rs");
+        include!("../../network/helve-target-26-2/src/generated/status_26_2.rs");
     }
 
     const TEST_TIMEOUT: Duration = Duration::from_secs(5);

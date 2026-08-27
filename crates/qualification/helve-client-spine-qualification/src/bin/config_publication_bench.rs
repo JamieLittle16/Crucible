@@ -5,9 +5,9 @@ use std::mem::size_of;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_benchmark_support::{collect_hardware_metadata, push_json_string};
-use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-use crucible_connection_driver::{ConnectionDriver, DriverError};
+use helve_benchmark_support::{collect_hardware_metadata, push_json_string};
+use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
+use helve_connection_driver::{ConnectionDriver, DriverError};
 
 #[path = "../config_publication.rs"]
 mod config_publication;

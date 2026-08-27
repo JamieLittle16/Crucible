@@ -8,12 +8,12 @@
 
 #[cfg(test)]
 mod tests {
-    use crucible_connection_core::{ConnectionLimits, FrameView};
-    use crucible_connection_driver::{
+    use helve_connection_core::{ConnectionLimits, FrameView};
+    use helve_connection_driver::{
         ConnectionDriver, DriverError, FrameBudget, FrameFlow, StopReason,
     };
-    use crucible_packet_core::{PacketCodecError, PacketReader, PacketWriter};
-    use crucible_session_core::{SessionPhase, SessionState, SessionStateError};
+    use helve_packet_core::{PacketCodecError, PacketReader, PacketWriter};
+    use helve_session_core::{SessionPhase, SessionState, SessionStateError};
 
     const SELECT_STATUS: i32 = 0x51;
     const SELECT_LOGIN: i32 = 0x52;
@@ -23,8 +23,8 @@ mod tests {
     const STATUS_QUERY: i32 = 0x56;
     const STATUS_REPLY: i32 = 0x71;
 
-    const STATUS_MAGIC: &str = "crucible-synthetic-status";
-    const LOGIN_MAGIC: &str = "crucible-synthetic-login";
+    const STATUS_MAGIC: &str = "helve-synthetic-status";
+    const LOGIN_MAGIC: &str = "helve-synthetic-login";
     const LOGIN_PROOF: i64 = 0x1122_3344_5566_7788;
     const MAX_SYNTHETIC_STRING_UNITS: usize = 64;
     const MAX_PACKET_BODY: usize = 1_024;

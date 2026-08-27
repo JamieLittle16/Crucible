@@ -20,7 +20,7 @@ def load_module(name: str, path: Path):
 
 
 fixture_tool = load_module(
-    "crucible_section_runtime_fixture", ROOT / "tools" / "section_runtime_fixture.py"
+    "helve_section_runtime_fixture", ROOT / "tools" / "section_runtime_fixture.py"
 )
 
 

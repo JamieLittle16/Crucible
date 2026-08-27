@@ -10,10 +10,10 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
-use crucible_generated::{
+use helve_generated::{
     BLOCK_STATE_COUNT, BlockStateId, STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256,
 };
-use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use helve_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 const PARSER_ADMISSION_EXTRACTOR: &str = "vanilla-save-region-v1-stored-sections";
 const REPRESENTATIVE_MEMBER_EXTRACTOR: &str = "vanilla-save-region-v2-representative-member";

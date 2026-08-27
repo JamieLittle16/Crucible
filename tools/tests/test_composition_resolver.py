@@ -284,7 +284,7 @@ class CompositionResolverTests(unittest.TestCase):
             fixture.add_component("section-reference")
             resolution = fixture.resolution()
             lock = fixture.root / "Crucible.lock"
-            crate = fixture.root / "crates/crucible-composition"
+            crate = fixture.root / "crates/helve-composition"
 
             resolver.generate(resolution=resolution, lock_path=lock, crate_dir=crate)
             first_lock = lock.read_bytes()

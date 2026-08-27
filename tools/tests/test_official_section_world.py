@@ -11,7 +11,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 MODULE_PATH = TOOLS / "official_section_world.py"
-SPEC = importlib.util.spec_from_file_location("crucible_official_section_world", MODULE_PATH)
+SPEC = importlib.util.spec_from_file_location("helve_official_section_world", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 official_section_world = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = official_section_world

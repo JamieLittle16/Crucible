@@ -7,15 +7,15 @@
 
 use std::fmt;
 
-use crucible_generated::{
+use helve_generated::{
     AIR, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256, STATE_MUTATION_FLAGS,
 };
-use crucible_world_contract::{
+use helve_world_contract::{
     BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, BlockSection, SectionBiomePos, SectionBlockPos,
     SectionSummary,
 };
-use crucible_world_reference::{DirectBiomeSection, DirectBlockSection};
-use crucible_world_section::{
+use helve_world_reference::{DirectBiomeSection, DirectBlockSection};
+use helve_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 

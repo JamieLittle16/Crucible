@@ -5,8 +5,8 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_benchmark_support::collect_hardware_metadata;
-use crucible_session_core::{KeepAliveReply, LivenessDecision, LivenessPolicy, LivenessState};
+use helve_benchmark_support::collect_hardware_metadata;
+use helve_session_core::{KeepAliveReply, LivenessDecision, LivenessPolicy, LivenessState};
 
 const SCHEMA: u32 = 1;
 const TICK_MS: u64 = 50;

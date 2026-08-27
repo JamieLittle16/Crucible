@@ -6,7 +6,7 @@
 //! therefore emits only `VarInt(0) + true` and does not source-admit or construct the general
 //! recipe-display entry graph on this hot path.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 /// Encodes the selected fresh/default recipe-add payload: zero entries and `replace=true`.
 ///
@@ -20,7 +20,7 @@ pub(crate) fn encode_fresh_recipe_book_add(
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::encode_fresh_recipe_book_add;
 

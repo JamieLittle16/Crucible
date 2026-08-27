@@ -16,7 +16,7 @@ STATUS_CONTRACT = REPO_ROOT / "vanilla/protocol/PROTO-NET-STATUS-26-2-001.json"
 STATUS_ADMISSION = REPO_ROOT / "vanilla/reports/r0-status-admission-26.2.json"
 STATUS_COMMITTED = (
     REPO_ROOT
-    / "crates/network/crucible-target-26-2/src/generated/status_26_2.rs"
+    / "crates/network/helve-target-26-2/src/generated/status_26_2.rs"
 )
 EXPECTED_STATUS_GENERATED_SHA256 = (
     "77aec1160385078ffe8757c362196b41b4801433088d06e3d9c68207c2efecf8"
@@ -25,7 +25,7 @@ EXPECTED_STATUS_GENERATED_SHA256 = (
 LOGIN_CONTRACT = REPO_ROOT / "vanilla/protocol/PROTO-NET-LOGIN-26-2-001.json"
 LOGIN_COMMITTED = (
     REPO_ROOT
-    / "crates/network/crucible-target-26-2/src/generated/login_26_2.rs"
+    / "crates/network/helve-target-26-2/src/generated/login_26_2.rs"
 )
 EXPECTED_LOGIN_GENERATED_SHA256 = (
     "c20ee1905265502380af13bb5396acc16144ca42923dd3dc54d640dd391afd29"
@@ -36,7 +36,7 @@ PLAY_LIVENESS_CONTRACT = (
 )
 PLAY_LIVENESS_COMMITTED = (
     REPO_ROOT
-    / "crates/network/crucible-target-26-2/src/generated/play_liveness_26_2.rs"
+    / "crates/network/helve-target-26-2/src/generated/play_liveness_26_2.rs"
 )
 EXPECTED_PLAY_LIVENESS_GENERATED_SHA256 = (
     "4db12fd5a859539eb019033a21efdb4ca8f3b2e39f61175fda65ace43935d6b0"

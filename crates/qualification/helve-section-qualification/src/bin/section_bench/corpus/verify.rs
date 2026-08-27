@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary};
-use crucible_world_reference::DirectBlockSection;
-use crucible_world_section::{
+use helve_generated::{BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
+use helve_world_contract::{BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionSummary};
+use helve_world_reference::DirectBlockSection;
+use helve_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 

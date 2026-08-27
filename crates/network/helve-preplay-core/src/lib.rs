@@ -11,9 +11,9 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crucible_connection_core::{ConnectionBufferError, ConnectionLimits, FrameView};
-use crucible_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
-use crucible_session_core::{SessionPhase, SessionState};
+use helve_connection_core::{ConnectionBufferError, ConnectionLimits, FrameView};
+use helve_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
+use helve_session_core::{SessionPhase, SessionState};
 
 mod proactive;
 pub use proactive::{
@@ -336,10 +336,10 @@ fn map_driver_error<E>(error: DriverError<TargetBoundaryError<E>>) -> PrePlayErr
 #[cfg(test)]
 mod tests {
     use super::{PrePlayAction, PrePlayConnection, PrePlayError, PrePlayProcess, PrePlayTarget};
-    use crucible_connection_core::{ConnectionLimits, FrameView};
-    use crucible_connection_driver::{ConnectionDriver, OutboundBatch};
-    use crucible_packet_core::{PacketCodecError, PacketReader, PacketWriter};
-    use crucible_session_core::{SessionPhase, SessionState, SessionStateError};
+    use helve_connection_core::{ConnectionLimits, FrameView};
+    use helve_connection_driver::{ConnectionDriver, OutboundBatch};
+    use helve_packet_core::{PacketCodecError, PacketReader, PacketWriter};
+    use helve_session_core::{SessionPhase, SessionState, SessionStateError};
 
     const SELECT_STATUS: i32 = 0x51;
     const STATUS_QUERY: i32 = 0x52;
@@ -353,8 +353,8 @@ mod tests {
     const LOGIN_REPLY_A: i32 = 0x72;
     const LOGIN_REPLY_B: i32 = 0x73;
 
-    const STATUS_MAGIC: &str = "crucible-status";
-    const LOGIN_MAGIC: &str = "crucible-login";
+    const STATUS_MAGIC: &str = "helve-status";
+    const LOGIN_MAGIC: &str = "helve-login";
     const LOGIN_PROOF: i64 = 0x1122_3344_5566_7788;
     const MAX_STRING_UNITS: usize = 64;
     const MAX_PACKET_BODY: usize = 128;
@@ -576,7 +576,7 @@ mod tests {
 
     fn context() -> SyntheticContext {
         SyntheticContext {
-            status_label: "crucible-synthetic-r0",
+            status_label: "helve-synthetic-r0",
         }
     }
 

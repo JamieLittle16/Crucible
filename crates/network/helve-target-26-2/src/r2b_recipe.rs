@@ -5,7 +5,7 @@
 //! order. Crucible keeps the same observable state in one typed byte and expands it only at the wire
 //! boundary. This avoids carrying eight booleans or a Mojang-shaped object graph per player.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 /// Compact source-admitted recipe-book settings mask.
 ///
@@ -74,7 +74,7 @@ impl RecipeBookSettingsPayload {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{RecipeBookSettingFlags, RecipeBookSettingsPayload};
 

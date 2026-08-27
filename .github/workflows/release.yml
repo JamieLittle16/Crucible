@@ -38,7 +38,7 @@ jobs:
           cargo xtask guard
 
       - name: Build Helve
-        run: cargo build --release --locked --package crucible-server --bin helve
+        run: cargo build --release --locked --package helve-server --bin helve
 
       - name: Package binary and checksum
         shell: bash

@@ -4,7 +4,7 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_target_26_2::r2b::{
+use helve_target_26_2::r2b::{
     CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
     PlayBootstrapImage26_2, ProjectionArtifactError, ProjectionRevision, RecipeProjectionArtifact,
     RecipeProjectionKey, ServerDataProjectionArtifact, ServerDataProjectionKey,
@@ -636,7 +636,7 @@ fn render_json(config: &Config, samples: &Samples, evidence: &Evidence) -> Strin
     out.push_str(env::consts::ARCH);
     out.push_str("\",\"available_parallelism\":");
     out.push_str(&parallelism.to_string());
-    if let Ok(cpu) = env::var("CRUCIBLE_BENCH_CPU") {
+    if let Ok(cpu) = env::var("HELVE_BENCH_CPU") {
         out.push_str(",\"pinned_cpu\":\"");
         out.push_str(&cpu);
         out.push('"');

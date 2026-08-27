@@ -8,7 +8,7 @@
 //! `WorldClock.STREAM_CODEC` uses `holderRegistry`, whose outbound path is the plain registry-ID
 //! `VarInt` codec (not the `id + 1` marker used by the generic direct/reference holder codec).
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 use crate::r2b_wire::{R2bWireError, write_bounded_collection_len, write_registry_id};
 
@@ -162,7 +162,7 @@ fn unsigned_var_len(value: u64) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{ClockFullSyncPayload, ClockProjectionError, ClockUpdate};
     use crate::r2b_wire::R2bWireError;

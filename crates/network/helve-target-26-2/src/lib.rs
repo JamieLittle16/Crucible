@@ -38,11 +38,11 @@ mod r2b_wire;
 
 pub use r1x::{R1xContextError, R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState};
 
-use crucible_connection_core::FrameView;
-use crucible_connection_driver::OutboundBatch;
-use crucible_packet_core::{PacketCodecError, PacketReader, PacketWriter};
-use crucible_preplay_core::{PrePlayAction, PrePlayTarget};
-use crucible_session_core::{SessionPhase, SessionState, SessionStateError};
+use helve_connection_core::FrameView;
+use helve_connection_driver::OutboundBatch;
+use helve_packet_core::{PacketCodecError, PacketReader, PacketWriter};
+use helve_preplay_core::{PrePlayAction, PrePlayTarget};
+use helve_session_core::{SessionPhase, SessionState, SessionStateError};
 use login_profile::LoginProfile;
 
 /// Generated compile-time packet identities and qualification-only golden bytes.

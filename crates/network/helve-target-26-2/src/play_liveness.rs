@@ -1,13 +1,13 @@
 //! Source-admitted Minecraft Java 26.2 Play-liveness wire binding.
 //!
-//! The reusable liveness state machine lives in `crucible-session-core`. This module owns only the
+//! The reusable liveness state machine lives in `helve-session-core`. This module owns only the
 //! 26.2-specific timing policy and finite Play packet wire law. Packet identities are generated from
 //! the admitted protocol contract; no runtime registry or target lookup is required.
 
 use core::mem::size_of;
 
-use crucible_connection_core::FrameView;
-use crucible_session_core::LivenessPolicy;
+use helve_connection_core::FrameView;
+use helve_session_core::LivenessPolicy;
 
 /// Generated compile-time identities, provenance and qualification-only golden bytes for the finite
 /// R2A Play-liveness contract.
@@ -93,7 +93,7 @@ const _: () = assert!(PLAY_KEEP_ALIVE_BODY_BYTES == 9);
 
 #[cfg(test)]
 mod tests {
-    use crucible_connection_core::{ConnectionLimits, IngressBuffer};
+    use helve_connection_core::{ConnectionLimits, IngressBuffer};
 
     use super::{
         PLAY_KEEP_ALIVE_BODY_BYTES, PLAY_LIVENESS_POLICY, PlayLivenessCodecError,

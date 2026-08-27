@@ -4,21 +4,21 @@ use std::num::NonZeroUsize;
 use std::thread;
 use std::time::Duration;
 
-use crucible_connection_core::{ConnectionLimits, FrameView};
-use crucible_connection_driver::{ConnectionDriver, OutboundBatch};
-use crucible_packet_core::{PacketCodecError, PacketReader, PacketWriter};
-use crucible_preplay_core::{PrePlayAction, PrePlayError, PrePlayTarget};
-use crucible_preplay_io::{
+use helve_connection_core::{ConnectionLimits, FrameView};
+use helve_connection_driver::{ConnectionDriver, OutboundBatch};
+use helve_packet_core::{PacketCodecError, PacketReader, PacketWriter};
+use helve_preplay_core::{PrePlayAction, PrePlayError, PrePlayTarget};
+use helve_preplay_io::{
     ActionBudget, PrePlayIo, PrePlayIoError, ProcessStop, ReadOutcome, ServiceStop, WriteOutcome,
 };
-use crucible_session_core::{SessionPhase, SessionState, SessionStateError};
+use helve_session_core::{SessionPhase, SessionState, SessionStateError};
 
 const SELECT_STATUS: i32 = 0x41;
 const STATUS_QUERY: i32 = 0x42;
 const CLOSE: i32 = 0x43;
 const STATUS_REPLY: i32 = 0x61;
-const STATUS_MAGIC: &str = "crucible-io-status";
-const STATUS_LABEL: &str = "crucible-io-adapter";
+const STATUS_MAGIC: &str = "helve-io-status";
+const STATUS_LABEL: &str = "helve-io-adapter";
 const MAX_PACKET_BODY: usize = 512;
 const TIMEOUT: Duration = Duration::from_secs(5);
 

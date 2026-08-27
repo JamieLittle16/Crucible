@@ -8,7 +8,7 @@
 //! `BlockPos`, then two network-order `f32` values. An exact non-mutating preflight covers the entire
 //! payload, so the caller-owned bounded writer cannot be left with a partial spawn packet.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 use crate::r2b_wire::pack_block_pos;
 
@@ -82,7 +82,7 @@ fn string_wire_len(value: &str) -> Result<usize, PacketCodecError> {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::DefaultSpawnPayload;
 

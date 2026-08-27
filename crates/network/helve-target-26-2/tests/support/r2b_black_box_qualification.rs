@@ -7,7 +7,7 @@
 //! explicit while exercising target-owned packet IDs, shared projections, dynamic codecs, arena
 //! indexing and semantic stage assembly as one production-candidate unit.
 
-use crucible_packet_core::PacketWriter;
+use helve_packet_core::PacketWriter;
 
 use crate::r2b::{
     CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,

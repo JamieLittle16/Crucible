@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / "tools" / "state_data.py"
-SPEC = importlib.util.spec_from_file_location("crucible_state_data", MODULE_PATH)
+SPEC = importlib.util.spec_from_file_location("helve_state_data", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 state_data = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = state_data

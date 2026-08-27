@@ -1,13 +1,13 @@
 //! Qualification model for immutable Configuration publication.
 //!
 //! This module intentionally contains no Minecraft packet identity. It supplies the lab's immutable
-//! shared-image representation while exercising the production `crucible-publication-core` cursor
+//! shared-image representation while exercising the production `helve-publication-core` cursor
 //! directly against Crucible's real bounded `ConnectionDriver` egress path.
 
 #![forbid(unsafe_code)]
 
-use crucible_connection_driver::{ConnectionDriver, DriverError};
-pub(crate) use crucible_publication_core::PublicationStep;
+use helve_connection_driver::{ConnectionDriver, DriverError};
+pub(crate) use helve_publication_core::PublicationStep;
 
 /// One immutable ordered set of already-formed packet bodies used by the qualification laboratory.
 ///
@@ -71,16 +71,16 @@ pub(crate) enum PublicationImageError {
 /// Lab-facing transparent wrapper over the production one-word cursor.
 ///
 /// The wrapper exists only so the original image-oriented qualification API remains stable. All
-/// progression logic is delegated to `crucible-publication-core`.
+/// progression logic is delegated to `helve-publication-core`.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) struct PublicationCursor(crucible_publication_core::PublicationCursor);
+pub(crate) struct PublicationCursor(helve_publication_core::PublicationCursor);
 
 impl PublicationCursor {
     /// Cursor before the first publication body.
     #[must_use]
     pub(crate) const fn new() -> Self {
-        Self(crucible_publication_core::PublicationCursor::new())
+        Self(helve_publication_core::PublicationCursor::new())
     }
 
     /// Index of the next body which has not yet been admitted to bounded egress.
@@ -110,5 +110,5 @@ pub(crate) fn publish_one<E>(
     cursor: &mut PublicationCursor,
     driver: &mut ConnectionDriver,
 ) -> Result<PublicationStep, DriverError<E>> {
-    crucible_publication_core::publish_one(image.bodies(), &mut cursor.0, driver)
+    helve_publication_core::publish_one(image.bodies(), &mut cursor.0, driver)
 }

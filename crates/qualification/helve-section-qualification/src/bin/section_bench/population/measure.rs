@@ -1,8 +1,8 @@
 use std::hint::black_box;
 use std::time::Instant;
 
-use crucible_generated::BlockStateId;
-use crucible_world_contract::BLOCK_SECTION_CELLS;
+use helve_generated::BlockStateId;
+use helve_world_contract::BLOCK_SECTION_CELLS;
 
 use crate::model::BenchSection;
 use crate::workloads::pos;

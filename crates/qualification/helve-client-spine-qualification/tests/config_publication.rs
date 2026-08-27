@@ -4,8 +4,8 @@ mod config_publication;
 use std::mem::size_of;
 
 use config_publication::{PublicationCursor, PublicationImage, PublicationStep, publish_one};
-use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-use crucible_connection_driver::{ConnectionDriver, DriverError};
+use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
+use helve_connection_driver::{ConnectionDriver, DriverError};
 
 fn limits(max_body: usize, egress: usize) -> ConnectionLimits {
     ConnectionLimits::new(max_body, max_body + 5, egress).expect("coherent publication limits")

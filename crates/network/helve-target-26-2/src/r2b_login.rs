@@ -9,7 +9,7 @@
 //! succeeds, all remaining operations are infallible with respect to selected-profile semantics and
 //! bounded only by the already-reserved writer capacity.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 use crate::r2b_wire::{R2bWireError, write_registry_id};
 
@@ -251,7 +251,7 @@ const fn var_int_len(value: i32) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::PacketWriter;
+    use helve_packet_core::PacketWriter;
 
     use super::{
         BootstrapGameMode, FreshCommonSpawnInfo, FreshLoginFlags, FreshLoginPayload,
@@ -311,7 +311,7 @@ mod tests {
         assert_eq!(
             error,
             LoginEncodeError::Codec(
-                crucible_packet_core::PacketCodecError::PacketLimitExceeded {
+                helve_packet_core::PacketCodecError::PacketLimitExceeded {
                     attempted: 110,
                     maximum: 109,
                 }

@@ -10,7 +10,7 @@
 //! temporary heap allocation. Variable-width payloads below consist of one `VarInt`, whose existing
 //! writer primitive is already transactional.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 /// Compact source-admitted player-ability flags.
 ///
@@ -232,7 +232,7 @@ impl TickingStepPayload {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{
         BootstrapGameEvent, GameEventPayload, HeldSlotPayload, PermissionEntityEventPayload,

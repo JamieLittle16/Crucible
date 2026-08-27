@@ -16,16 +16,16 @@ use std::net::TcpStream;
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 
-use crucible_connection_core::{ConnectionLimits, FrameView};
-use crucible_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
-use crucible_preplay_core::{PrePlayConnection, PrePlayError};
-use crucible_preplay_io::{
+use helve_connection_core::{ConnectionLimits, FrameView};
+use helve_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
+use helve_preplay_core::{PrePlayConnection, PrePlayError};
+use helve_preplay_io::{
     ActionBudget, IoOperation, PrePlayIo, PrePlayIoError, PublicationServiceStop,
 };
-use crucible_session_core::{
+use helve_session_core::{
     KeepAliveReply, LivenessDecision, LivenessPolicy, LivenessState, SessionPhase,
 };
-use crucible_target_26_2::{
+use helve_target_26_2::{
     R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState,
     play_liveness::{
         PLAY_LIVENESS_POLICY, decode_serverbound_keep_alive, encode_clientbound_keep_alive,
@@ -360,9 +360,9 @@ fn service_live_liveness(
 #[cfg(test)]
 fn serverbound_keep_alive_frame(
     id: i64,
-) -> [u8; crucible_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1] {
-    let body = crucible_target_26_2::play_liveness::encode_serverbound_keep_alive(id);
-    let mut frame = [0_u8; crucible_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1];
+) -> [u8; helve_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1] {
+    let body = helve_target_26_2::play_liveness::encode_serverbound_keep_alive(id);
+    let mut frame = [0_u8; helve_target_26_2::play_liveness::PLAY_KEEP_ALIVE_BODY_BYTES + 1];
     frame[0] = u8::try_from(body.len()).expect("keep-alive body length fits one-byte VarInt");
     frame[1..].copy_from_slice(&body);
     frame
@@ -436,12 +436,12 @@ mod tests {
         EGRESS_LIMIT, FRAME_BODY_LIMIT, INGRESS_LIMIT, LiveDisposition, LiveLivenessService,
         limits, process_one_live_inbound, serverbound_keep_alive_frame, service_live_liveness,
     };
-    use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-    use crucible_connection_driver::ConnectionDriver;
-    use crucible_preplay_core::PrePlayError;
-    use crucible_preplay_io::PrePlayIoError;
-    use crucible_session_core::LivenessState;
-    use crucible_target_26_2::play_liveness::{
+    use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
+    use helve_connection_driver::ConnectionDriver;
+    use helve_preplay_core::PrePlayError;
+    use helve_preplay_io::PrePlayIoError;
+    use helve_session_core::LivenessState;
+    use helve_target_26_2::play_liveness::{
         PLAY_KEEP_ALIVE_BODY_BYTES, PLAY_LIVENESS_POLICY, encode_clientbound_keep_alive,
         encode_serverbound_keep_alive,
     };

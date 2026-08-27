@@ -18,7 +18,7 @@ if str(TOOLS) not in sys.path:
 import state_data
 
 MODULE_PATH = TOOLS / "vanilla_section_extractor.py"
-SPEC = importlib.util.spec_from_file_location("crucible_vanilla_section_extractor", MODULE_PATH)
+SPEC = importlib.util.spec_from_file_location("helve_vanilla_section_extractor", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 extractor = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = extractor

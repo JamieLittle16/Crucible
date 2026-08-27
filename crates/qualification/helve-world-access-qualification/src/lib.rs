@@ -7,12 +7,12 @@
 
 use std::collections::HashMap;
 
-use crucible_generated::{BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
-use crucible_types::{BlockPos, ChunkGeneration, ChunkPos};
-use crucible_world_chunk::{
+use helve_generated::{BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
+use helve_types::{BlockPos, ChunkGeneration, ChunkPos};
+use helve_world_chunk::{
     ChunkCoreError, LiveChunkCore, ResolvedChunkWindow, ResolvedChunkWindowError,
 };
-use crucible_world_reference::DirectBlockSection;
+use helve_world_reference::DirectBlockSection;
 
 const BLOCKS_PER_CHUNK_AXIS: i32 = 16;
 const STANDARD_MIN_SECTION_Y: i32 = -4;

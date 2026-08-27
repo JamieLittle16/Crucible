@@ -5,17 +5,17 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_benchmark_support::{collect_hardware_metadata, push_json_string};
-use crucible_composition::{COMPOSITION_SHA256, MINECRAFT_VERSION, PROFILE};
-use crucible_composition_qualification::{
+use helve_benchmark_support::{collect_hardware_metadata, push_json_string};
+use helve_composition::{COMPOSITION_SHA256, MINECRAFT_VERSION, PROFILE};
+use helve_composition_qualification::{
     GeneratedSection, exact_type_identity, generated_get, hand_wired_get,
 };
-use crucible_generated::{
+use helve_generated::{
     AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
     STATE_DATA_INPUT_SHA256,
 };
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
-use crucible_world_reference::DirectBlockSection;
+use helve_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
+use helve_world_reference::DirectBlockSection;
 
 const SCHEMA: u32 = 1;
 

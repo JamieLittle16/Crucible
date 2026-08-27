@@ -25,7 +25,7 @@ DIMENSIONS = (
 def _target() -> section_corpus.TargetEvidence:
     return section_corpus.load_target_evidence(
         Path("vanilla/state-data/26.2-state-data-manifest.json"),
-        Path("crates/data/crucible-generated/src/lib.rs"),
+        Path("crates/data/helve-generated/src/lib.rs"),
     )
 
 
@@ -173,7 +173,7 @@ class SectionBenchmarkPackTests(unittest.TestCase):
                 root=root,
                 output_dir=output,
                 state_manifest=Path("vanilla/state-data/26.2-state-data-manifest.json"),
-                generated_rust=Path("crates/data/crucible-generated/src/lib.rs"),
+                generated_rust=Path("crates/data/helve-generated/src/lib.rs"),
             )
             self.assertEqual(result["population_sha256"], admission["population_sha256"])
             self.assertEqual(result["admission_sha256"], admission["admission_sha256"])
@@ -215,13 +215,13 @@ class SectionBenchmarkPackTests(unittest.TestCase):
                 root=root,
                 output_dir=Path(directory) / "first",
                 state_manifest=Path("vanilla/state-data/26.2-state-data-manifest.json"),
-                generated_rust=Path("crates/data/crucible-generated/src/lib.rs"),
+                generated_rust=Path("crates/data/helve-generated/src/lib.rs"),
             )
             second = section_benchmark_pack.build_packs(
                 root=root,
                 output_dir=Path(directory) / "second",
                 state_manifest=Path("vanilla/state-data/26.2-state-data-manifest.json"),
-                generated_rust=Path("crates/data/crucible-generated/src/lib.rs"),
+                generated_rust=Path("crates/data/helve-generated/src/lib.rs"),
             )
             self.assertEqual(first, second)
             for dimension in DIMENSIONS:

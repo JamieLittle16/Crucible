@@ -9,7 +9,7 @@
 //! Non-empty or persisted stacks are rejected by architecture rather than silently entering this
 //! fresh-only encoder; those profiles require their own admitted general `ItemStack` projection.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 const ZERO_CHUNK: [u8; 64] = [0; 64];
 
@@ -106,7 +106,7 @@ const fn var_int_len(value: i32) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{FreshEmptyInventoryPayload, InventoryEncodeError};
 

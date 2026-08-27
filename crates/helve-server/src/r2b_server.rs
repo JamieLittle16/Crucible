@@ -14,20 +14,20 @@ use std::convert::Infallible;
 use std::io::{self, Read, Write};
 use std::num::NonZeroUsize;
 
-use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-use crucible_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
-use crucible_packet_core::{PacketCodecError, PacketWriter};
-use crucible_preplay_core::{PrePlayConnection, PrePlayError};
-use crucible_preplay_io::{
+use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
+use helve_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
+use helve_packet_core::{PacketCodecError, PacketWriter};
+use helve_preplay_core::{PrePlayConnection, PrePlayError};
+use helve_preplay_io::{
     ActionBudget, IoOperation, PrePlayIo, PrePlayIoError, PublicationServiceStop,
 };
-use crucible_publication_core::{
+use helve_publication_core::{
     StagedPublicationCursor, StagedPublicationStep, publish_staged_plan_one,
 };
-use crucible_session_core::{
+use helve_session_core::{
     KeepAliveReply, LivenessDecision, LivenessError, LivenessState, SessionPhase,
 };
-use crucible_target_26_2::{
+use helve_target_26_2::{
     R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState,
     play_liveness::{
         PLAY_LIVENESS_POLICY, PlayLivenessCodecError, decode_serverbound_keep_alive,
@@ -623,10 +623,10 @@ fn action_budget() -> ActionBudget {
 
 #[cfg(test)]
 mod tests {
-    use crucible_connection_driver::ConnectionDriver;
-    use crucible_packet_core::PacketWriter;
-    use crucible_publication_core::StagedPublicationPlan;
-    use crucible_target_26_2::r2b::{
+    use helve_connection_driver::ConnectionDriver;
+    use helve_packet_core::PacketWriter;
+    use helve_publication_core::StagedPublicationPlan;
+    use helve_target_26_2::r2b::{
         CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
         PlayBootstrapImage26_2, ProjectionRevision, RecipeProjectionArtifact, RecipeProjectionKey,
     };
@@ -675,6 +675,6 @@ mod tests {
         assert_eq!(image.commands(&command_key), Ok(&[16, 0][..]));
         assert_eq!(image.update_recipes(&recipe_key), Ok(&[0x85, 0x01, 0][..]));
 
-        assert_plan_trait::<crucible_target_26_2::r2b::PreparedR2bPlan<'_>>();
+        assert_plan_trait::<helve_target_26_2::r2b::PreparedR2bPlan<'_>>();
     }
 }

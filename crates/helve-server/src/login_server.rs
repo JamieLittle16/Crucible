@@ -13,11 +13,11 @@ use std::fmt;
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 
-use crucible_connection_core::ConnectionLimits;
-use crucible_preplay_core::PrePlayConnection;
-use crucible_preplay_io::{ActionBudget, PrePlayIo, PrePlayIoError, ServiceStop};
-use crucible_session_core::SessionPhase;
-use crucible_target_26_2::{Target26_2, Target26_2Error, Target26_2State};
+use helve_connection_core::ConnectionLimits;
+use helve_preplay_core::PrePlayConnection;
+use helve_preplay_io::{ActionBudget, PrePlayIo, PrePlayIoError, ServiceStop};
+use helve_session_core::SessionPhase;
+use helve_target_26_2::{Target26_2, Target26_2Error, Target26_2State};
 
 const FRAME_BODY_LIMIT: usize = 4 * 1_024;
 const INGRESS_LIMIT: usize = 16 * 1_024;
@@ -226,7 +226,7 @@ mod tests {
         reason = "the composition fixture reuses generated admitted Login evidence directly"
     )]
     mod admitted_login_codegen {
-        include!("../../network/crucible-target-26-2/src/generated/login_26_2.rs");
+        include!("../../network/helve-target-26-2/src/generated/login_26_2.rs");
     }
 
     const GOLDEN_EPOCH_HEX: &str = "4d7f604f196a43b08987f0b2a27c2663";

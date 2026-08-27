@@ -1,10 +1,10 @@
 use std::hint::black_box;
 use std::time::Instant;
 
-use crucible_generated::{BlockStateId, GeneratedStateFacts};
-use crucible_world_contract::BLOCK_SECTION_CELLS;
-use crucible_world_reference::DirectBlockSection;
-use crucible_world_section::{
+use helve_generated::{BlockStateId, GeneratedStateFacts};
+use helve_world_contract::BLOCK_SECTION_CELLS;
+use helve_world_reference::DirectBlockSection;
+use helve_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 
@@ -127,7 +127,7 @@ fn bench_reads<C: BenchSection>(
     prepared: &Prepared<C>,
     case: CaseSpec,
     settings: Settings,
-    positions: &[crucible_world_contract::SectionBlockPos],
+    positions: &[helve_world_contract::SectionBlockPos],
     timings: &mut Vec<TimingRecord>,
 ) {
     push_timing::<C>(
@@ -200,7 +200,7 @@ fn bench_replacements<C: BenchSection>(
     prepared: &Prepared<C>,
     case: CaseSpec,
     settings: Settings,
-    positions: &[crucible_world_contract::SectionBlockPos],
+    positions: &[helve_world_contract::SectionBlockPos],
     timings: &mut Vec<TimingRecord>,
 ) {
     let high_states = make_state_stream(&prepared.states, settings.mutations, 0xA11C_E003);
@@ -262,7 +262,7 @@ fn push_replace_timing<C: BenchSection>(
     prepared: &Prepared<C>,
     case: CaseSpec,
     settings: Settings,
-    positions: &[crucible_world_contract::SectionBlockPos],
+    positions: &[helve_world_contract::SectionBlockPos],
     states: &[BlockStateId],
     workload: &str,
 ) {

@@ -3,11 +3,11 @@ name: Section Benchmark Smoke
 on:
   pull_request:
     paths:
-      - crates/qualification/crucible-section-qualification/**
-      - crates/world/crucible-world-contract/**
-      - crates/world/crucible-world-reference/**
-      - crates/world/crucible-world-section/**
-      - crates/data/crucible-generated/**
+      - crates/qualification/helve-section-qualification/**
+      - crates/world/helve-world-contract/**
+      - crates/world/helve-world-reference/**
+      - crates/world/helve-world-section/**
+      - crates/data/helve-generated/**
       - .github/workflows/section-benchmark-smoke.yml
   workflow_dispatch:
 
@@ -35,10 +35,10 @@ jobs:
       - name: Run release benchmark smoke
         run: >-
           cargo run --release --locked
-          -p crucible-section-qualification
+          -p helve-section-qualification
           --bin section_bench --
           --smoke
-          --output target/crucible-qualification/section/benchmark-smoke.json
+          --output target/helve-qualification/section/benchmark-smoke.json
 
       - name: Validate smoke artifact semantics
         run: |
@@ -46,7 +46,7 @@ jobs:
           import json
           from pathlib import Path
 
-          path = Path('target/crucible-qualification/section/benchmark-smoke.json')
+          path = Path('target/helve-qualification/section/benchmark-smoke.json')
           data = json.loads(path.read_text())
           assert data['schema'] == 2
           assert data['harness_version'] == 'section-bench-v2'
@@ -83,7 +83,7 @@ jobs:
       - name: Upload diagnostic smoke artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: crucible-section-benchmark-smoke
-          path: target/crucible-qualification/section/benchmark-smoke.json
+          name: helve-section-benchmark-smoke
+          path: target/helve-qualification/section/benchmark-smoke.json
           if-no-files-found: error
           retention-days: 7

@@ -11,7 +11,7 @@ use std::fs::{self, File};
 use std::io::{self, BufReader, Read};
 use std::path::Path;
 
-use crucible_target_26_2::{R1xContextError, Target26_2R1xContext};
+use helve_target_26_2::{R1xContextError, Target26_2R1xContext};
 
 const MAGIC: [u8; 8] = *b"CRR1X001";
 const EXPECTED_PROTOCOL: u32 = 776;

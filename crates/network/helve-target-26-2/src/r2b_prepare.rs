@@ -7,7 +7,7 @@
 //! here is a private compile-time target fact: callers cannot supply, validate, or vary packet IDs on
 //! the join path.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 use crate::r2b::{
     CommandProjectionKey, PLAY_PACKET_IDS, PlayBootstrapImage26_2, ProjectionArtifactError,

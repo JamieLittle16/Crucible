@@ -122,7 +122,7 @@ fn render_json(evidence: fixtures::FixtureEvidence, commit_sha: &str) -> String 
         SOURCE_ARCHIVE_SHA256,
         SOURCE_QUALIFICATION_SHA256,
         RUNTIME_SERVER_SHA256,
-        crucible_generated::STATE_DATA_GENERATION_SHA256,
+        helve_generated::STATE_DATA_GENERATION_SHA256,
         evidence.cases(),
         evidence.block_candidate_checks(),
         evidence.biome_checks(),

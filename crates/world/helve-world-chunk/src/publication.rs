@@ -5,8 +5,8 @@
 //! section-major state image. Networking and persistence can therefore prepare work without
 //! retaining a borrow of mutable world state.
 
-use crucible_types::{ChunkPos, ChunkStamp};
-use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
+use helve_types::{ChunkPos, ChunkStamp};
+use helve_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
 
 use crate::{LiveChunkCore, SectionMasks};
 

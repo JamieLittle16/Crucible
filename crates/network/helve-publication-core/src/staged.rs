@@ -7,7 +7,7 @@
 
 use core::mem::size_of;
 
-use crucible_connection_driver::{ConnectionDriver, DriverError};
+use helve_connection_driver::{ConnectionDriver, DriverError};
 
 use crate::{PublicationCursor, PublicationStep, publish_one};
 
@@ -201,8 +201,8 @@ const _: () = assert!(size_of::<StagedPublicationCursor>() == 2 * size_of::<usiz
 mod tests {
     use core::mem::size_of;
 
-    use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-    use crucible_connection_driver::{ConnectionDriver, DriverError};
+    use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
+    use helve_connection_driver::{ConnectionDriver, DriverError};
 
     use super::{
         StagedPublicationCursor, StagedPublicationLookup, StagedPublicationPlan,

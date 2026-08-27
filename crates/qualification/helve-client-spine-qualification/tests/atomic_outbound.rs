@@ -1,6 +1,6 @@
-use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-use crucible_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
-use crucible_session_core::{SessionPhase, SessionState};
+use helve_connection_core::{ConnectionBufferError, ConnectionLimits};
+use helve_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
+use helve_session_core::{SessionPhase, SessionState};
 
 #[derive(Debug, Eq, PartialEq)]
 struct CandidateAction {

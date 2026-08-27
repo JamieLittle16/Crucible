@@ -13,8 +13,8 @@ mod window;
 
 use core::marker::PhantomData;
 
-use crucible_types::{BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp};
-use crucible_world_contract::{BlockSection, BlockStateFacts, SectionBlockPos, SectionSummary};
+use helve_types::{BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp};
+use helve_world_contract::{BlockSection, BlockStateFacts, SectionBlockPos, SectionSummary};
 
 pub use lattice::{VerticalSectionLattice, VerticalSectionLatticeError};
 pub use publication::PublishedChunk;

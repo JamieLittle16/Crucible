@@ -3,8 +3,8 @@ use std::net::{Shutdown, TcpListener, TcpStream};
 use std::thread;
 use std::time::Duration;
 
-use crucible_connection_core::ConnectionLimits;
-use crucible_connection_driver::{ConnectionDriver, FrameBudget, FrameFlow, StopReason};
+use helve_connection_core::ConnectionLimits;
+use helve_connection_driver::{ConnectionDriver, FrameBudget, FrameFlow, StopReason};
 
 const TIMEOUT: Duration = Duration::from_secs(5);
 const RESPONSE_ID_OFFSET: u8 = 32;

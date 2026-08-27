@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crucible_types::ChunkPos;
+use helve_types::ChunkPos;
 
 /// Coarse regionizer cell coordinate in chunk-space.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -132,7 +132,7 @@ impl<const SHIFT: u32> RegionCellLayout<SHIFT> {
 mod tests {
     use core::mem::size_of;
 
-    use crucible_types::ChunkPos;
+    use helve_types::ChunkPos;
 
     use super::{RegionCellCoord, RegionCellLayout};
 

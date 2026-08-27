@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use crucible_world_contract::{
+use helve_world_contract::{
     BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBlockPos, SectionSummary,
 };
 
@@ -545,9 +545,9 @@ impl<S: Copy + Eq> BlockSection<S> for PackedLocalBlockSection<S> {
 mod tests {
     use std::mem;
 
-    use crucible_generated::{AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
-    use crucible_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
-    use crucible_world_reference::DirectBlockSection;
+    use helve_generated::{AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts};
+    use helve_world_contract::{BLOCK_SECTION_CELLS, BlockSection, SectionBlockPos};
+    use helve_world_reference::DirectBlockSection;
 
     use crate::{AdaptiveBlockSection, DirectNBlockSection};
 

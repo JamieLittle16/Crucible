@@ -8,7 +8,7 @@
 //! component. Those branches therefore emit their zero/false markers directly rather than building
 //! property/chat/component objects on every join.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 use crate::r2b_login::BootstrapGameMode;
 
@@ -150,7 +150,7 @@ const fn var_int_len(value: i32) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{InitialPlayerInfoEntry, PlayerInfoEncodeError, encode_initial_player_info};
     use crate::r2b_login::BootstrapGameMode;

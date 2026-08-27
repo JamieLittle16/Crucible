@@ -8,7 +8,7 @@
 //! ID followed by one canonical boolean byte. Building both bytes on the stack and appending them in
 //! one operation gives one bounds check and whole-payload transactional mutation with no allocation.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 /// Exact Minecraft Java 26.2 difficulty IDs admitted from `Difficulty` source.
 ///
@@ -60,7 +60,7 @@ impl ChangeDifficultyPayload {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{ChangeDifficultyPayload, Difficulty26_2};
 

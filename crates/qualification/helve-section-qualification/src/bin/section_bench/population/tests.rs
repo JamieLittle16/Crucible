@@ -3,12 +3,12 @@ use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crucible_generated::{
+use helve_generated::{
     AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
 };
-use crucible_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
-use crucible_world_contract::BlockSection;
-use crucible_world_section::DirectNBlockSection;
+use helve_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use helve_world_contract::BlockSection;
+use helve_world_section::DirectNBlockSection;
 
 use crate::model::BenchSection;
 use crate::workloads::pos;
@@ -26,7 +26,7 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 fn temp_pack(payload_sections: usize, trailing: &[u8], target_generation: &str) -> PathBuf {
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let path = std::env::temp_dir().join(format!(
-        "crucible-section-population-pack-{}-{id}.bin",
+        "helve-section-population-pack-{}-{id}.bin",
         std::process::id()
     ));
     let mut file = fs::File::create(&path).expect("create pack");

@@ -10,8 +10,8 @@
 //! Serverbound packet identity is a target-owned static fact from the reviewed 26.2 `GameProtocols`
 //! insertion order; callers consume the semantic decoder and never perform a runtime packet lookup.
 
-use crucible_connection_core::FrameView;
-use crucible_packet_core::{PacketCodecError, PacketReader, PacketWriter};
+use helve_connection_core::FrameView;
+use helve_packet_core::{PacketCodecError, PacketReader, PacketWriter};
 
 const ABSOLUTE_FIXED_BYTES: usize = 24 + 24 + 8 + 4;
 // VAR-NET-R2B-PLAY-GAME-PROTOCOLS-001: protocol 776 serverbound teleport confirmation.
@@ -210,8 +210,8 @@ const fn var_int_len(value: i32) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crucible_connection_core::{ConnectionLimits, IngressBuffer};
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_connection_core::{ConnectionLimits, IngressBuffer};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{
         AbsoluteTeleportPayload, TeleportAckResult, TeleportTransaction,

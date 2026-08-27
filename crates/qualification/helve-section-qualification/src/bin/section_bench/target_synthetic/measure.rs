@@ -1,8 +1,8 @@
 use std::hint::black_box;
 use std::time::Instant;
 
-use crucible_generated::{BlockStateId, GeneratedStateFacts};
-use crucible_world_contract::BLOCK_SECTION_CELLS;
+use helve_generated::{BlockStateId, GeneratedStateFacts};
+use helve_world_contract::BLOCK_SECTION_CELLS;
 
 use crate::model::{
     BenchSection, CaseSpec, PROMOTION_TARGETS, RepresentationCode, SampleSummary, TimingRecord,
@@ -85,7 +85,7 @@ fn measure_replacements<C: BenchSection>(
 
 fn measure_replace_checked<C: BenchSection>(
     base: &C,
-    positions: &[crucible_world_contract::SectionBlockPos],
+    positions: &[helve_world_contract::SectionBlockPos],
     states: &[BlockStateId],
     settings: TargetSyntheticSettings,
     workload: &str,
@@ -119,7 +119,7 @@ fn measure_replace_checked<C: BenchSection>(
 
 fn apply_replacements<C: BenchSection>(
     section: &mut C,
-    positions: &[crucible_world_contract::SectionBlockPos],
+    positions: &[helve_world_contract::SectionBlockPos],
     states: &[BlockStateId],
 ) {
     for (&position, &state) in positions.iter().zip(states) {
@@ -129,7 +129,7 @@ fn apply_replacements<C: BenchSection>(
 
 fn expected_after<C: BenchSection>(
     base: &C,
-    positions: &[crucible_world_contract::SectionBlockPos],
+    positions: &[helve_world_contract::SectionBlockPos],
     states: &[BlockStateId],
 ) -> Vec<BlockStateId> {
     let mut expected = (0..BLOCK_SECTION_CELLS)

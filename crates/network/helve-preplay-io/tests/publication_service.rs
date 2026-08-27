@@ -1,14 +1,14 @@
 use std::io::{self, Read, Write};
 use std::num::NonZeroUsize;
 
-use crucible_connection_core::{ConnectionLimits, FrameView};
-use crucible_connection_driver::{ConnectionDriver, OutboundBatch};
-use crucible_preplay_core::{
+use helve_connection_core::{ConnectionLimits, FrameView};
+use helve_connection_driver::{ConnectionDriver, OutboundBatch};
+use helve_preplay_core::{
     PrePlayAction, PrePlayPublication, PrePlayPublisher, PrePlayTarget, PublicationCursor,
     PublicationStep,
 };
-use crucible_preplay_io::{ActionBudget, PrePlayIo, PublicationServiceStop};
-use crucible_session_core::{SessionPhase, SessionState};
+use helve_preplay_io::{ActionBudget, PrePlayIo, PublicationServiceStop};
+use helve_session_core::{SessionPhase, SessionState};
 
 const SELECT_LOGIN: i32 = 0x21;
 const LOGIN_ACK: i32 = 0x22;

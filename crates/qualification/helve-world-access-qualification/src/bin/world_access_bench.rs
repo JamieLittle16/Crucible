@@ -5,15 +5,15 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_benchmark_support::{HardwareMetadata, collect_hardware_metadata, push_json_string};
-use crucible_generated::BlockStateId;
-use crucible_generated::{STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256};
-use crucible_types::BlockPos;
-use crucible_world_access_qualification::{
+use helve_benchmark_support::{HardwareMetadata, collect_hardware_metadata, push_json_string};
+use helve_generated::BlockStateId;
+use helve_generated::{STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256};
+use helve_types::BlockPos;
+use helve_world_access_qualification::{
     CaseSpec, PreparedCase, ReferenceRouter, WorldAccessError, full_cases, smoke_cases,
 };
-use crucible_world_chunk::ResolvedChunkWindow;
-use crucible_world_reference::DirectBlockSection;
+use helve_world_chunk::ResolvedChunkWindow;
+use helve_world_reference::DirectBlockSection;
 
 const SCHEMA: u32 = 1;
 

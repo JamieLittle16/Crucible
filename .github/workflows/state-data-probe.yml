@@ -18,7 +18,7 @@ on:
       - vanilla/state-data/**
       - vanilla/fixtures/section/**
       - vanilla/vanilla.lock.toml
-      - crates/data/crucible-generated/**
+      - crates/data/helve-generated/**
       - .github/workflows/state-data-probe.yml
 
 permissions:
@@ -96,10 +96,10 @@ jobs:
             --output /tmp/target_26_2.qualified.rs \
             --manifest /tmp/26.2-state-data-qualified-manifest.json
           cmp --silent \
-            crates/data/crucible-generated/src/lib.rs \
+            crates/data/helve-generated/src/lib.rs \
             /tmp/target_26_2.qualified.rs || {
               echo 'generated Rust target data differs from committed output' >&2
-              diff -u crates/data/crucible-generated/src/lib.rs /tmp/target_26_2.qualified.rs | head -200
+              diff -u crates/data/helve-generated/src/lib.rs /tmp/target_26_2.qualified.rs | head -200
               exit 1
             }
           cmp --silent \

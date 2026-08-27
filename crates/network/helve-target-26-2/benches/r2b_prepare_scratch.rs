@@ -4,8 +4,8 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use crucible_packet_core::PacketWriter;
-use crucible_target_26_2::r2b::{
+use helve_packet_core::PacketWriter;
+use helve_target_26_2::r2b::{
     BootstrapGameMode, BootstrapWeather, ChangeDifficultyPayload, ClockFullSyncPayload,
     ClockUpdate, CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
     DefaultSpawnPayload, Difficulty26_2, FreshCommonSpawnInfo, FreshEmptyInventoryPayload,
@@ -664,7 +664,7 @@ fn render_json(config: &Config, comparisons: &[Comparison]) -> String {
     out.push_str("\",\"arch\":\"");
     out.push_str(env::consts::ARCH);
     out.push('"');
-    if let Ok(cpu) = env::var("CRUCIBLE_BENCH_CPU") {
+    if let Ok(cpu) = env::var("HELVE_BENCH_CPU") {
         out.push_str(",\"pinned_cpu\":\"");
         out.push_str(&cpu);
         out.push('"');

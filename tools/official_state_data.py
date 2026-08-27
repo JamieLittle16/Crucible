@@ -125,7 +125,7 @@ def extract(version:str,output:Path,cache:Path,server:Path|None,mappings:Path|No
   resolved,_=resolve(version,cache); server=resolved['server'][0]
   if mappings is None and 'server_mappings' in resolved: mappings=resolved['server_mappings'][0]
  assert server is not None
- with tempfile.TemporaryDirectory(prefix='crucible-state-probe-') as td: states=run_probe(server,mappings,Path(td))
+ with tempfile.TemporaryDirectory(prefix='helve-state-probe-') as td: states=run_probe(server,mappings,Path(td))
  data={'schema':1,'target':{'minecraft_version':version,'protocol_version':TARGET_PROTOCOL,'data_version':TARGET_DATA_VERSION},'air_key':'minecraft:air','provenance':{'server_sha256':sha256_file(server),'server_mappings_sha256':sha256_file(mappings) if mappings else None,'name_mapping':'proguard' if mappings else 'identity-unobfuscated','startup_sequence':['SharedConstants.tryDetectVersion','Bootstrap.bootStrap'],'source':'official-runtime-reflection-probe-v1'},'states':states}
  output.parent.mkdir(parents=True,exist_ok=True); output.write_text(json.dumps(data,indent=2,sort_keys=True)+'\n'); print(f'extracted {len(states)} official block states -> {output}')
 

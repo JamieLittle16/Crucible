@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / "tools" / "state_source_qualification.py"
-SPEC = importlib.util.spec_from_file_location("crucible_state_source_qualification", MODULE_PATH)
+SPEC = importlib.util.spec_from_file_location("helve_state_source_qualification", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 qualification = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = qualification

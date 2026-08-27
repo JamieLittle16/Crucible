@@ -3,7 +3,7 @@
 
 #![forbid(unsafe_code)]
 
-use crucible_world_contract::{BlockStateFacts, SectionStateFacts};
+use helve_world_contract::{BlockStateFacts, SectionStateFacts};
 
 pub type BlockStateRepr = u16;
 pub const BLOCK_STATE_COUNT: usize = 32366;

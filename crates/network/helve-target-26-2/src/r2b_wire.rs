@@ -5,7 +5,7 @@
 //! `VarInt` identities, and bounded map counts. It deliberately contains no packet IDs, stage order,
 //! world/chunk/light representation, or generic Mojang-style registry runtime.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 const PACKED_XZ_BITS: u32 = 26;
 const PACKED_Y_BITS: u32 = 12;
@@ -91,7 +91,7 @@ pub(crate) fn write_bounded_collection_len(
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::PacketWriter;
+    use helve_packet_core::PacketWriter;
 
     use super::{R2bWireError, pack_block_pos, write_bounded_collection_len, write_registry_id};
 

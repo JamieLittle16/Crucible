@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / "tools" / "section_corpus.py"
-SPEC = importlib.util.spec_from_file_location("crucible_section_corpus_dimensions", MODULE_PATH)
+SPEC = importlib.util.spec_from_file_location("helve_section_corpus_dimensions", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 section_corpus = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = section_corpus

@@ -8,15 +8,15 @@
 
 use std::fmt::{self, Write as _};
 
-use crucible_generated::{
+use helve_generated::{
     AIR, BLOCK_STATE_COUNT, BlockStateId, GeneratedStateFacts, STATE_DATA_GENERATION_SHA256,
     STATE_DATA_INPUT_SHA256, STATE_MUTATION_FLAGS,
 };
-use crucible_world_contract::{
+use helve_world_contract::{
     BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBlockPos, SectionStateFacts,
 };
-use crucible_world_reference::DirectBlockSection;
-use crucible_world_section::{
+use helve_world_reference::DirectBlockSection;
+use helve_world_section::{
     AdaptiveBlockSection, DirectNBlockSection, FastLocalBlockSection, PackedLocalBlockSection,
 };
 

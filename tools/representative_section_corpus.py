@@ -302,7 +302,7 @@ def main() -> int:
     parser.add_argument(
         "--generated-rust",
         type=Path,
-        default=Path("crates/data/crucible-generated/src/lib.rs"),
+        default=Path("crates/data/helve-generated/src/lib.rs"),
     )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)

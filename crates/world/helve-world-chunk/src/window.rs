@@ -1,5 +1,5 @@
-use crucible_types::{BlockPos, ChunkPos};
-use crucible_world_contract::BlockSection;
+use helve_types::{BlockPos, ChunkPos};
+use helve_world_contract::BlockSection;
 
 use super::{BLOCKS_PER_CHUNK_AXIS, ChunkCoreError, LiveChunkCore};
 

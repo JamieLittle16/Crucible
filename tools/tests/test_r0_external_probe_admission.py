@@ -47,7 +47,7 @@ class R0ExternalProbeAdmissionTests(unittest.TestCase):
         self.repo = Path(self.temp.name) / "repo"
         self.repo.mkdir()
 
-        server = self.repo / "crates/crucible-server/src"
+        server = self.repo / "crates/helve-server/src"
         server.mkdir(parents=True)
         (server / "lib.rs").write_text(
             "pub const R0_ADMISSION_SESSION_SHA256: &str =\n"
@@ -55,7 +55,7 @@ class R0ExternalProbeAdmissionTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        generated = self.repo / "crates/network/crucible-target-26-2/src/generated"
+        generated = self.repo / "crates/network/helve-target-26-2/src/generated"
         generated.mkdir(parents=True)
         self.generated_bytes = b"generated target facts\n"
         (generated / "status_26_2.rs").write_bytes(self.generated_bytes)
@@ -181,7 +181,7 @@ class R0ExternalProbeAdmissionTests(unittest.TestCase):
                 self._write_observation()
 
     def test_server_session_must_match_sealed_admission(self) -> None:
-        path = self.repo / "crates/crucible-server/src/lib.rs"
+        path = self.repo / "crates/helve-server/src/lib.rs"
         path.write_text(
             "pub const R0_ADMISSION_SESSION_SHA256: &str =\n"
             f'    "{"d" * 64}";\n',
@@ -191,7 +191,7 @@ class R0ExternalProbeAdmissionTests(unittest.TestCase):
             self.admit()
 
     def test_generated_target_bytes_must_match_sealed_admission(self) -> None:
-        path = self.repo / "crates/network/crucible-target-26-2/src/generated/status_26_2.rs"
+        path = self.repo / "crates/network/helve-target-26-2/src/generated/status_26_2.rs"
         path.write_bytes(b"drifted generated target\n")
         with self.assertRaisesRegex(probe.ExternalProbeError, "generated 26.2 packet facts"):
             self.admit()

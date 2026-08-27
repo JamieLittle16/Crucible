@@ -13,9 +13,9 @@ use std::fmt;
 use std::io::{self, Read, Write};
 use std::num::NonZeroUsize;
 
-use crucible_connection_core::ConnectionLimits;
-use crucible_preplay_core::{PrePlayConnection, PrePlayError, PrePlayProcess, PrePlayTarget};
-use crucible_session_core::SessionPhase;
+use helve_connection_core::ConnectionLimits;
+use helve_preplay_core::{PrePlayConnection, PrePlayError, PrePlayProcess, PrePlayTarget};
+use helve_session_core::SessionPhase;
 
 mod publication;
 pub use publication::{PublicationServiceReport, PublicationServiceStop};

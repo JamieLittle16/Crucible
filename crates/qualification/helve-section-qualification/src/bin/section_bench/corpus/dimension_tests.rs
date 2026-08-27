@@ -1,7 +1,7 @@
 use std::fs;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crucible_generated::{BLOCK_STATE_COUNT, STATE_DATA_GENERATION_SHA256};
+use helve_generated::{BLOCK_STATE_COUNT, STATE_DATA_GENERATION_SHA256};
 
 use super::check_corpus;
 
@@ -32,7 +32,7 @@ fn corpus_text() -> String {
 fn per_dimension_evidence_is_not_implicitly_cross_weighted() {
     let serial = SERIAL.fetch_add(1, Ordering::Relaxed);
     let path = std::env::temp_dir().join(format!(
-        "crucible-section-dimension-evidence-{}-{serial}.corpus",
+        "helve-section-dimension-evidence-{}-{serial}.corpus",
         std::process::id()
     ));
     fs::write(&path, corpus_text()).expect("write corpus");

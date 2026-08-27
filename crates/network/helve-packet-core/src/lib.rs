@@ -8,7 +8,7 @@
 
 mod fixed_write;
 
-use crucible_protocol_core::{
+use helve_protocol_core::{
     DecodeResult, WireError, decode_string, decode_var_int, encode_string, encode_var_int,
     var_int_len,
 };
@@ -386,7 +386,7 @@ impl PacketWriter {
 
 #[cfg(test)]
 mod tests {
-    use crucible_protocol_core::{WireError, encode_string, encode_var_int};
+    use helve_protocol_core::{WireError, encode_string, encode_var_int};
 
     use super::{PacketCodecError, PacketField, PacketReader, PacketWriter};
 

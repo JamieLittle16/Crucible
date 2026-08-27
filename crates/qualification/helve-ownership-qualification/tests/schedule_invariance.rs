@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 
-use crucible_ownership_qualification::{
+use helve_ownership_qualification::{
     DeferredFreshness, DeferredId, DeferredWork, DomainId, EffectId, EffectPayload, OwnershipError,
     OwnershipSimulator, SemanticDigest, WorkerId,
 };

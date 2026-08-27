@@ -10,7 +10,7 @@
 //! writes therefore cannot hit the packet bound, giving whole-payload rollback semantics without a
 //! second writer, heap allocation, or target-local copy of Minecraft's integer encoders.
 
-use crucible_packet_core::{PacketCodecError, PacketWriter};
+use helve_packet_core::{PacketCodecError, PacketWriter};
 
 const FIXED_PREFIX_BYTES: usize = 4 * std::mem::size_of::<f64>();
 
@@ -91,7 +91,7 @@ fn unsigned_var_len(value: u64) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crucible_packet_core::{PacketCodecError, PacketWriter};
+    use helve_packet_core::{PacketCodecError, PacketWriter};
 
     use super::{WorldBorderPayload, var_int_len, var_long_len};
 
