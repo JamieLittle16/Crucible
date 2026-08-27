@@ -96,9 +96,9 @@ const fn status_key() -> ServerDataProjectionKey {
     ServerDataProjectionKey::new(rev(9), rev(10))
 }
 
-fn selected_snapshot<'a>(
-    status: &'a QualifiedProjectionArtifact<ServerDataProjectionKey>,
-) -> FreshR2bBootstrapSnapshot<'a> {
+fn selected_snapshot(
+    status: &QualifiedProjectionArtifact<ServerDataProjectionKey>,
+) -> FreshR2bBootstrapSnapshot<'_> {
     FreshR2bBootstrapSnapshot {
         command_key: command_key(),
         recipe_key: recipe_key(),
