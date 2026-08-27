@@ -1,5 +1,5 @@
 [package]
-name = "crucible-connection-driver"
+name = "helve-connection-driver"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-crucible-connection-core = { path = "../crucible-connection-core" }
+helve-connection-core = { path = "../helve-connection-core" }
 
 [lints]
 workspace = true
