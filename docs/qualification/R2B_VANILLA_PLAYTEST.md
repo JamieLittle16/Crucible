@@ -112,6 +112,17 @@ A successful gate requires all of the following:
 Client-visible terrain is **not** a success criterion for this gate. Terrain/chunk/light visibility is
 R2C's responsibility.
 
+## Observed stock-client result — 2026-08-27
+
+An unmodified Minecraft Java 26.2 client completed the replay-free R2B route without a protocol
+disconnect. It remained on `Loading Terrain` for an extended period and then entered Play rendering
+the void, with the local player appearing to fall. That is the expected pre-R2C visual state: R2B has
+crossed the real Play/world-projection boundary successfully, while no R2C chunk/light/world
+projection exists yet to render terrain or provide authoritative world simulation.
+
+This closes the visual R2B development checkpoint. The next visual milestone belongs to R2C: replace
+`Loading Terrain -> void` with native Crucible world/chunk/light projection and visible terrain.
+
 ## Failure evidence
 
 For a stock-client failure, retain both:
