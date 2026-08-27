@@ -361,15 +361,21 @@ mod tests {
         let image = PlayBootstrapImage26_2::new(
             QualifiedProjectionArtifact::new(command_key, vec![16, 0].into_boxed_slice())
                 .expect("command artifact"),
-            QualifiedProjectionArtifact::new(recipe_key, vec![133, 0].into_boxed_slice())
-                .expect("recipe artifact"),
+            QualifiedProjectionArtifact::new(
+                recipe_key,
+                vec![0x85, 0x01, 0].into_boxed_slice(),
+            )
+            .expect("recipe artifact"),
         );
 
         let mut scratch = PacketWriter::new(8).expect("bounded scratch");
         scratch.write_u8(1).expect("test byte");
         assert_eq!(scratch.as_slice(), &[1]);
         assert_eq!(image.commands(&command_key), Ok(&[16, 0][..]));
-        assert_eq!(image.update_recipes(&recipe_key), Ok(&[133, 0][..]));
+        assert_eq!(
+            image.update_recipes(&recipe_key),
+            Ok(&[0x85, 0x01, 0][..])
+        );
 
         fn assert_plan_trait<T: StagedPublicationPlan>() {}
         assert_plan_trait::<crucible_target_26_2::r2b::PreparedR2bPlan<'_>>();
