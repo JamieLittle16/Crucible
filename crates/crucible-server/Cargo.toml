@@ -6,6 +6,7 @@ rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
 publish = false
+autobins = false
 
 [dependencies]
 crucible-connection-core = { path = "../network/crucible-connection-core" }
@@ -16,6 +17,10 @@ crucible-preplay-io = { path = "../network/crucible-preplay-io" }
 crucible-publication-core = { path = "../network/crucible-publication-core" }
 crucible-session-core = { path = "../network/crucible-session-core" }
 crucible-target-26-2 = { path = "../network/crucible-target-26-2" }
+
+[[bin]]
+name = "helve"
+path = "src/main.rs"
 
 [[bench]]
 name = "r2b_join_arrival"
