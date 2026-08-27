@@ -31,13 +31,25 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.97.1 --profile minimal
 
+      - name: Select one benchmark CPU
+        run: |
+          allowed="$(awk '/^Cpus_allowed_list:/ {print $2}' /proc/self/status)"
+          first="${allowed%%,*}"
+          first="${first%%-*}"
+          test -n "${first}"
+          echo "CRUCIBLE_BENCH_CPU=${first}" >> "${GITHUB_ENV}"
+          echo "benchmark cpu: ${first} (allowed: ${allowed})"
+
       - name: Run shared-artifact paired smoke
-        run: >-
-          cargo bench --locked
-          --package crucible-target-26-2
-          --bench r2b_shared_artifact --
-          --smoke
-          --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/shared-artifact-smoke.json"
+        run: |
+          for repetition in 1 2 3; do
+            taskset -c "${CRUCIBLE_BENCH_CPU}" \
+              cargo bench --locked \
+              --package crucible-target-26-2 \
+              --bench r2b_shared_artifact -- \
+              --smoke \
+              --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/shared-artifact-smoke-${repetition}.json"
+          done
 
       - name: Validate shared-artifact evidence
         run: |
@@ -45,35 +57,62 @@ jobs:
           import json
           from pathlib import Path
 
-          path = Path('target/crucible-qualification/r2b/shared-artifact-smoke.json')
-          data = json.loads(path.read_text())
-          assert data['schema'] == 1
-          assert data['benchmark'] == 'r2b-shared-artifact-validation'
-          assert data['mode'] == 'smoke'
-          assert data['hosted_ci_is_diagnostic_only'] is True
-          assert data['production_path_is_construction_certified'] is True
-          assert data['structural']['reference_packet_id_decodes_per_join'] == 3
-          assert data['structural']['certified_packet_id_decodes_per_join'] == 0
-          assert data['structural']['additional_allocations_per_join'] == 0
-          assert data['semantic_checksum'] != 0
-          assert data['measured_rounds'] == len(data['reference_ns'])
-          assert data['measured_rounds'] == len(data['certified_ns'])
-          assert data['measured_rounds'] > 0
-          assert all(value > 0 for value in data['reference_ns'])
-          assert all(value > 0 for value in data['certified_ns'])
-          assert data['reference_p50_ns'] > 0
-          assert data['certified_p50_ns'] > 0
-          print(
-              'shared-artifact diagnostic:',
-              'reference_p50_ns=', data['reference_p50_ns'],
-              'certified_p50_ns=', data['certified_p50_ns'],
-              'ratio_ppm=', data['certified_to_reference_ppm'],
-              'certified_faster_p50=', data['certified_faster_p50'],
-          )
+          paths = sorted(Path('target/crucible-qualification/r2b').glob('shared-artifact-smoke-*.json'))
+          assert len(paths) == 3
+          rows = [json.loads(path.read_text()) for path in paths]
+          checksums = {row['semantic_checksum'] for row in rows}
+          assert len(checksums) == 1
+
+          for data in rows:
+              assert data['schema'] == 2
+              assert data['benchmark'] == 'r2b-shared-artifact-validation'
+              assert data['mode'] == 'smoke'
+              assert data['hosted_ci_is_diagnostic_only'] is True
+              assert data['production_path_is_construction_certified'] is True
+              assert data['sampling']['pattern'] == 'balanced-abba-baab'
+              assert data['sampling']['measured_blocks'] > 0
+              assert data['sampling']['joins_per_sample'] > 0
+              assert data['sampling']['samples_per_candidate'] == len(data['reference_sample_ns'])
+              assert data['sampling']['samples_per_candidate'] == len(data['certified_sample_ns'])
+              assert data['sampling']['measured_blocks'] == len(data['paired_block_ratio_ppm'])
+              assert data['sampling']['epoch_count'] == len(data['epoch_ratio_ppm'])
+              assert data['host']['available_parallelism'] > 0
+              assert data['structural']['reference_packet_id_decodes_per_join'] == 3
+              assert data['structural']['certified_packet_id_decodes_per_join'] == 0
+              assert data['structural']['additional_allocations_per_join'] == 0
+              assert data['semantic_checksum'] != 0
+              assert data['reference_service_ns']['count'] == data['sampling']['samples_per_candidate']
+              assert data['certified_service_ns']['count'] == data['sampling']['samples_per_candidate']
+              assert data['reference_service_ns']['p50'] > 0
+              assert data['certified_service_ns']['p50'] > 0
+              assert data['reference_service_ns']['p99'] >= data['reference_service_ns']['p50']
+              assert data['certified_service_ns']['p99'] >= data['certified_service_ns']['p50']
+              assert data['reference_service_ns']['p999'] >= data['reference_service_ns']['p99']
+              assert data['certified_service_ns']['p999'] >= data['certified_service_ns']['p99']
+              assert data['paired_block_ratio']['p50'] > 0
+              assert data['epoch_ratio']['p50'] > 0
+
+          directions = [row['direction']['certified_faster_paired_p50'] for row in rows]
+          print('shared-artifact independent directions:', directions)
+          for index, data in enumerate(rows, start=1):
+              print(
+                  f'run {index}:',
+                  'paired_p50_ppm=', data['paired_block_ratio']['p50'],
+                  'paired_mad=', data['paired_block_ratio']['mad'],
+                  'epoch_p50_ppm=', data['epoch_ratio']['p50'],
+                  'epoch_win_rate_ppm=', data['direction']['certified_faster_epoch_rate_ppm'],
+                  'reference_p99_ns=', data['reference_service_ns']['p99'],
+                  'certified_p99_ns=', data['certified_service_ns']['p99'],
+                  'reference_p999_ns=', data['reference_service_ns']['p999'],
+                  'certified_p999_ns=', data['certified_service_ns']['p999'],
+                  'reference_relative_mad_ppm=', data['reference_service_ns']['relative_mad_ppm'],
+                  'certified_relative_mad_ppm=', data['certified_service_ns']['relative_mad_ppm'],
+              )
           PY
 
       - name: Run dynamic-arena structural smoke
         run: >-
+          taskset -c "${CRUCIBLE_BENCH_CPU}"
           cargo run --release --locked
           --package crucible-client-spine-qualification
           --bin r2b_bootstrap_arena_bench --
