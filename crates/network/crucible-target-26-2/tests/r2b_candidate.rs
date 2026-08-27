@@ -47,7 +47,7 @@ pub mod r2b_player_info {
 
 pub mod r2b_prepare {
     pub use crucible_target_26_2::r2b::{
-        BootstrapWeather, FreshR2bBootstrapSnapshot, PlayPacketIds, PrepareR2bError,
+        BootstrapWeather, FreshR2bBootstrapSnapshot, PrepareR2bError,
         SELECTED_DYNAMIC_ARENA_CAPACITY, ServerDataProjection, ServerDataProjectionKey,
         TeleportDestination,
     };
