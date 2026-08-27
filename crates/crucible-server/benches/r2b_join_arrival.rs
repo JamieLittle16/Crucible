@@ -672,6 +672,7 @@ fn parse_args() -> Result<Config, String> {
     let mut args = env::args().skip(1);
     while let Some(argument) = args.next() {
         match argument.as_str() {
+            "--bench" => {}
             "--smoke" => mode = Mode::Smoke,
             "--full" => mode = Mode::Full,
             "--output" => {
