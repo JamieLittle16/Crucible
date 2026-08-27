@@ -77,22 +77,17 @@ impl Fixture {
         let recipe_key = recipe_key();
         let status_key = status_key();
         let image = PlayBootstrapImage26_2::new(
-            CommandProjectionArtifact::new(
-                command_key,
-                vec![16, 0xaa, 0xbb].into_boxed_slice(),
-            )
-            .map_err(artifact_error)?,
+            CommandProjectionArtifact::new(command_key, vec![16, 0xaa, 0xbb].into_boxed_slice())
+                .map_err(artifact_error)?,
             RecipeProjectionArtifact::new(
                 recipe_key,
                 vec![0x85, 0x01, 0xcc, 0xdd].into_boxed_slice(),
             )
             .map_err(artifact_error)?,
         );
-        let status = ServerDataProjectionArtifact::new(
-            status_key,
-            vec![86, 0xee].into_boxed_slice(),
-        )
-        .map_err(artifact_error)?;
+        let status =
+            ServerDataProjectionArtifact::new(status_key, vec![86, 0xee].into_boxed_slice())
+                .map_err(artifact_error)?;
         Ok(Self {
             image,
             command_key,
