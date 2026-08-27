@@ -480,8 +480,11 @@ fn prepared_plan_backpressure_preserves_cursor_and_existing_egress() {
     let first_frame_bytes = probe.queued_egress();
     assert!(first_frame_bytes > 0);
 
+    let PreparedLookup::Body(first_body) = plan.lookup(0, 0) else {
+        panic!("first prepared body");
+    };
     let mut cursor = StagedPublicationCursor::new();
-    let mut driver = ConnectionDriver::new(limits(4096, first_frame_bytes));
+    let mut driver = ConnectionDriver::new(limits(first_body.len(), first_frame_bytes));
     assert!(matches!(
         publish_staged_plan_one::<(), _>(&plan, &mut cursor, &mut driver),
         Ok(StagedPublicationStep::Queued {
