@@ -22,8 +22,8 @@ pub use login_server::{
 pub use r1x_image::{R1xImageError, R1xImageSection, load_r1x_image};
 pub use r1x_server::{R1xConnectionExit, serve_r1x_blocking_transport};
 pub use r2b_server::{
-    R2bEntryOutcome, R2bPlayError, R2bPlayInbound, R2bPlayProcess, R2bPlaySession, R2bServerError,
-    enter_r2b_play_blocking_transport,
+    R2bEntryOutcome, R2bLivenessProcess, R2bPlayError, R2bPlayInbound, R2bPlayProcess,
+    R2bPlaySession, R2bServerError, enter_r2b_play_blocking_transport,
 };
 
 use std::io::{Read, Write};
