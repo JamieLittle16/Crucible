@@ -10,8 +10,9 @@
 use crucible_packet_core::PacketWriter;
 
 use crate::r2b::{
-    CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2, ProjectionRevision,
-    QualifiedProjectionArtifact, RecipeProjectionKey,
+    CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
+    PlayBootstrapImage26_2, ProjectionRevision, RecipeProjectionArtifact, RecipeProjectionKey,
+    ServerDataProjectionArtifact,
 };
 use crate::r2b_border::WorldBorderPayload;
 use crate::r2b_clock::{ClockFullSyncPayload, ClockUpdate};
@@ -97,9 +98,7 @@ const fn status_key() -> ServerDataProjectionKey {
     ServerDataProjectionKey::new(rev(9), rev(10))
 }
 
-fn selected_snapshot(
-    status: &QualifiedProjectionArtifact<ServerDataProjectionKey>,
-) -> FreshR2bBootstrapSnapshot<'_> {
+fn selected_snapshot(status: &ServerDataProjectionArtifact) -> FreshR2bBootstrapSnapshot<'_> {
     FreshR2bBootstrapSnapshot {
         command_key: command_key(),
         recipe_key: recipe_key(),
@@ -194,13 +193,13 @@ fn selected_prepared_plan_matches_admissible_black_box_bodies() {
     assert_eq!(expected.len(), 20, "selected fixture body count drifted");
 
     let image = PlayBootstrapImage26_2::new(
-        QualifiedProjectionArtifact::new(command_key(), expected[6].clone().into_boxed_slice())
+        CommandProjectionArtifact::new(command_key(), expected[6].clone().into_boxed_slice())
             .expect("fixture command projection"),
-        QualifiedProjectionArtifact::new(recipe_key(), expected[4].clone().into_boxed_slice())
+        RecipeProjectionArtifact::new(recipe_key(), expected[4].clone().into_boxed_slice())
             .expect("fixture recipe projection"),
     );
     let status =
-        QualifiedProjectionArtifact::new(status_key(), expected[10].clone().into_boxed_slice())
+        ServerDataProjectionArtifact::new(status_key(), expected[10].clone().into_boxed_slice())
             .expect("fixture status projection");
 
     let mut scratch = PacketWriter::new(4_096).expect("selected R2B scratch bound");

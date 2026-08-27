@@ -2,15 +2,16 @@
 //!
 //! Dynamic bodies are encoded through one reused bounded `PacketWriter`, copied once into the
 //! contiguous arena owned by [`PreparedR2bPlan`], and indexed in source-backed semantic stage order.
-//! Commands, synchronized recipes and optional server data remain borrowed immutable artifacts.
-//! Every Minecraft 26.2 packet identity used here is a private compile-time target fact: callers
-//! cannot supply, validate, or vary packet IDs on the join path.
+//! Commands, synchronized recipes and optional server data remain borrowed immutable artifacts whose
+//! packet identities were certified once at construction. Every Minecraft 26.2 packet identity used
+//! here is a private compile-time target fact: callers cannot supply, validate, or vary packet IDs on
+//! the join path.
 
 use crucible_packet_core::{PacketCodecError, PacketWriter};
 
 use crate::r2b::{
-    CommandProjectionKey, PlayBootstrapImage26_2, ProjectionArtifactError, ProjectionRevision,
-    QualifiedProjectionArtifact, RecipeProjectionKey,
+    CommandProjectionKey, PLAY_PACKET_IDS, PlayBootstrapImage26_2, ProjectionArtifactError,
+    ProjectionRevision, QualifiedProjectionArtifact, RecipeProjectionKey,
 };
 use crate::r2b_arena::{DynamicBootstrapArena, DynamicBootstrapArenaError};
 use crate::r2b_border::WorldBorderPayload;
@@ -38,56 +39,6 @@ use crate::r2b_teleport::{AbsoluteTeleportPayload, TeleportTransaction};
 /// This is a capacity hint, not a semantic limit; larger admitted player/clock state may grow the
 /// same single arena owner.
 pub const SELECTED_DYNAMIC_ARENA_CAPACITY: usize = 512;
-
-/// Exact finite Minecraft Java 26.2 Play packet identities frozen by the admitted R2B source law.
-///
-/// This type and value are private to the target implementation. They exist only to keep semantic
-/// names beside the encoder calls; there is no runtime packet registry, caller-supplied ID bundle,
-/// validation branch chain, or packet-name lookup on the join path.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct PlayPacketIds {
-    change_difficulty: i32,
-    commands: i32,
-    container_set_content: i32,
-    entity_event: i32,
-    game_event: i32,
-    initialize_border: i32,
-    login: i32,
-    player_abilities: i32,
-    player_info_update: i32,
-    player_position: i32,
-    recipe_book_add: i32,
-    recipe_book_settings: i32,
-    server_data: i32,
-    set_default_spawn_position: i32,
-    set_held_slot: i32,
-    set_time: i32,
-    ticking_state: i32,
-    ticking_step: i32,
-    update_recipes: i32,
-}
-
-const PLAY_PACKET_IDS: PlayPacketIds = PlayPacketIds {
-    change_difficulty: 10,
-    commands: 16,
-    container_set_content: 18,
-    entity_event: 34,
-    game_event: 38,
-    initialize_border: 43,
-    login: 49,
-    player_abilities: 64,
-    player_info_update: 70,
-    player_position: 72,
-    recipe_book_add: 74,
-    recipe_book_settings: 76,
-    server_data: 86,
-    set_default_spawn_position: 97,
-    set_held_slot: 105,
-    set_time: 113,
-    ticking_state: 127,
-    ticking_step: 128,
-    update_recipes: 133,
-};
 
 /// Initial absolute teleport destination before assigning the connection-owned sequence ID.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -140,11 +91,29 @@ impl ServerDataProjectionKey {
     }
 }
 
+/// Packet-qualified immutable server-data artifact.
+pub type ServerDataProjectionArtifact = QualifiedProjectionArtifact<ServerDataProjectionKey>;
+
+impl QualifiedProjectionArtifact<ServerDataProjectionKey> {
+    /// Creates server-data projection bytes only for the Minecraft 26.2 server-data packet kind.
+    ///
+    /// # Errors
+    ///
+    /// Rejects empty, malformed/non-canonical, or wrong-packet bodies before the artifact can be
+    /// borrowed by any joining connection.
+    pub fn new(
+        key: ServerDataProjectionKey,
+        body: Box<[u8]>,
+    ) -> Result<Self, ProjectionArtifactError> {
+        Self::new_with_packet_id(key, body, PLAY_PACKET_IDS.server_data)
+    }
+}
+
 /// Requested immutable server-data artifact for the current join.
 #[derive(Clone, Copy, Debug)]
 pub struct ServerDataProjection<'a> {
-    /// Cached status body qualified for an exact revision key.
-    pub artifact: &'a QualifiedProjectionArtifact<ServerDataProjectionKey>,
+    /// Cached status body qualified for an exact revision key and packet kind.
+    pub artifact: &'a ServerDataProjectionArtifact,
     /// Status revision requested by the semantic/status owner.
     pub requested: ServerDataProjectionKey,
 }
@@ -197,7 +166,7 @@ pub struct FreshR2bBootstrapSnapshot<'a> {
 pub enum PrepareR2bError {
     /// Packet-core write/preflight failure.
     Codec(PacketCodecError),
-    /// Immutable shared projection mismatch.
+    /// Immutable shared projection lookup mismatch.
     Projection(ProjectionArtifactError),
     /// Dynamic arena construction failure.
     Arena(DynamicBootstrapArenaError),
@@ -211,15 +180,6 @@ pub enum PrepareR2bError {
     PlayerInfo(PlayerInfoEncodeError),
     /// Inventory projection failure.
     Inventory(InventoryEncodeError),
-    /// A borrowed/shared full body carries the wrong packet identity.
-    PacketIdMismatch {
-        /// Expected packet ID.
-        expected: i32,
-        /// Decoded packet ID.
-        actual: i32,
-    },
-    /// A borrowed/shared body has no canonical non-negative packet-ID `VarInt`.
-    InvalidPacketBodyIdentity,
 }
 
 impl From<PacketCodecError> for PrepareR2bError {
@@ -268,13 +228,14 @@ impl<'a> PreparedR2bPlan<'a> {
     ///
     /// `scratch` is reused across all dynamic packets. Teleport sequence/awaiting state is advanced
     /// on a local copy and committed only after the entire plan succeeds. Packet identities are
-    /// compile-time target facts and therefore are not part of this runtime API.
+    /// compile-time target facts; shared artifacts have already certified their packet kind before
+    /// entering this join path.
     ///
     /// # Errors
     ///
-    /// Fails closed on projection-key mismatch, invalid shared body identity, semantic codec failure,
-    /// arena overflow or inline plan overflow. The caller's teleport state remains unchanged and
-    /// `scratch` is reset on every error path.
+    /// Fails closed on projection-key mismatch, semantic codec failure, arena overflow or inline plan
+    /// overflow. The caller's teleport state remains unchanged and `scratch` is reset on every error
+    /// path.
     pub fn prepare(
         snapshot: FreshR2bBootstrapSnapshot<'a>,
         image: &'a PlayBootstrapImage26_2,
@@ -286,15 +247,9 @@ impl<'a> PreparedR2bPlan<'a> {
 
         let commands = image.commands(&snapshot.command_key)?;
         let update_recipes = image.update_recipes(&snapshot.recipe_key)?;
-        validate_packet_id(commands, PLAY_PACKET_IDS.commands)?;
-        validate_packet_id(update_recipes, PLAY_PACKET_IDS.update_recipes)?;
 
         let server_data = match snapshot.server_data {
-            Some(projection) => {
-                let body = projection.artifact.body_for(&projection.requested)?;
-                validate_packet_id(body, PLAY_PACKET_IDS.server_data)?;
-                Some(body)
-            }
+            Some(projection) => Some(projection.artifact.body_for(&projection.requested)?),
             None => None,
         };
 
@@ -507,41 +462,4 @@ fn weather_event(
             .encode(writer)
             .map_err(Into::into)
     })
-}
-
-fn validate_packet_id(body: &[u8], expected: i32) -> Result<(), PrepareR2bError> {
-    let actual =
-        decode_nonnegative_var_int(body).ok_or(PrepareR2bError::InvalidPacketBodyIdentity)?;
-    if actual != expected {
-        return Err(PrepareR2bError::PacketIdMismatch { expected, actual });
-    }
-    Ok(())
-}
-
-fn decode_nonnegative_var_int(body: &[u8]) -> Option<i32> {
-    let mut value = 0_u32;
-    for (index, byte) in body.iter().copied().take(5).enumerate() {
-        value |= u32::from(byte & 0x7f) << (7 * index);
-        if byte & 0x80 == 0 {
-            if value > i32::MAX.cast_unsigned() {
-                return None;
-            }
-            let value = i32::try_from(value).ok()?;
-            if var_int_len(value) != index + 1 {
-                return None;
-            }
-            return Some(value);
-        }
-    }
-    None
-}
-
-const fn var_int_len(value: i32) -> usize {
-    let mut remaining = value.cast_unsigned();
-    let mut length = 1_usize;
-    while remaining & !0x7f != 0 {
-        remaining >>= 7;
-        length += 1;
-    }
-    length
 }

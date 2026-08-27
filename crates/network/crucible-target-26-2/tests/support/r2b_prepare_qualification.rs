@@ -8,8 +8,9 @@ use crucible_publication_core::{
 };
 
 use crate::r2b::{
-    CommandPermissionProfile, CommandProjectionKey, PlayBootstrapImage26_2,
-    ProjectionArtifactError, ProjectionRevision, QualifiedProjectionArtifact, RecipeProjectionKey,
+    CommandPermissionProfile, CommandProjectionArtifact, CommandProjectionKey,
+    PlayBootstrapImage26_2, ProjectionArtifactError, ProjectionRevision, RecipeProjectionArtifact,
+    RecipeProjectionKey, ServerDataProjectionArtifact,
 };
 use crate::r2b_border::WorldBorderPayload;
 use crate::r2b_clock::{ClockFullSyncPayload, ClockUpdate};
@@ -88,15 +89,15 @@ const fn status_key() -> ServerDataProjectionKey {
 
 fn image() -> PlayBootstrapImage26_2 {
     PlayBootstrapImage26_2::new(
-        QualifiedProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
+        CommandProjectionArtifact::new(command_key(), vec![16, 0xaa].into_boxed_slice())
             .expect("commands"),
-        QualifiedProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
+        RecipeProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
             .expect("recipes"),
     )
 }
 
-fn status_artifact() -> QualifiedProjectionArtifact<ServerDataProjectionKey> {
-    QualifiedProjectionArtifact::new(status_key(), vec![86, 0x00].into_boxed_slice())
+fn status_artifact() -> ServerDataProjectionArtifact {
+    ServerDataProjectionArtifact::new(status_key(), vec![86, 0x00].into_boxed_slice())
         .expect("server data")
 }
 
@@ -332,34 +333,29 @@ fn failure_does_not_commit_teleport_or_leave_scratch_dirty() {
 }
 
 #[test]
-fn shared_packet_identity_and_status_revision_fail_closed_before_dynamic_work() {
-    let bad_image = PlayBootstrapImage26_2::new(
-        QualifiedProjectionArtifact::new(command_key(), vec![17, 0xaa].into_boxed_slice())
-            .expect("commands"),
-        QualifiedProjectionArtifact::new(recipe_key(), vec![0x85, 0x01, 0xbb].into_boxed_slice())
-            .expect("recipes"),
-    );
-    let mut scratch = PacketWriter::new(4096).expect("scratch");
-    let mut teleport = TeleportTransaction::new();
-
-    let error = PreparedR2bPlan::prepare(
-        snapshot(None, BootstrapWeather::Clear),
-        &bad_image,
-        &mut scratch,
-        &mut teleport,
-        SELECTED_DYNAMIC_ARENA_CAPACITY,
-    )
-    .expect_err("mismatched command packet identity");
+fn shared_packet_identity_is_rejected_before_artifact_publication() {
     assert_eq!(
-        error,
-        PrepareR2bError::PacketIdMismatch {
+        CommandProjectionArtifact::new(command_key(), vec![17, 0xaa].into_boxed_slice())
+            .expect_err("mismatched command packet identity"),
+        ProjectionArtifactError::PacketIdMismatch {
             expected: 16,
             actual: 17,
         }
     );
-    assert!(scratch.is_empty());
-    assert_eq!(teleport.awaiting(), None);
+    assert_eq!(
+        ServerDataProjectionArtifact::new(status_key(), vec![85, 0x00].into_boxed_slice())
+            .expect_err("mismatched status packet identity"),
+        ProjectionArtifactError::PacketIdMismatch {
+            expected: 86,
+            actual: 85,
+        }
+    );
+}
 
+#[test]
+fn stale_status_revision_still_fails_closed_before_dynamic_work() {
+    let mut scratch = PacketWriter::new(4096).expect("scratch");
+    let mut teleport = TeleportTransaction::new();
     let status = Box::leak(Box::new(status_artifact()));
     let stale = ServerDataProjectionKey::new(rev(9), rev(11));
     let error = PreparedR2bPlan::prepare(
@@ -380,6 +376,8 @@ fn shared_packet_identity_and_status_revision_fail_closed_before_dynamic_work() 
         error,
         PrepareR2bError::Projection(ProjectionArtifactError::KeyMismatch)
     );
+    assert!(scratch.is_empty());
+    assert_eq!(teleport.awaiting(), None);
 }
 
 #[test]
