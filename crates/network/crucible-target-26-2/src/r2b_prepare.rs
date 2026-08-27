@@ -27,7 +27,7 @@ use crate::r2b_player_info::{
     InitialPlayerInfoEntry, PlayerInfoEncodeError, encode_initial_player_info,
 };
 use crate::r2b_recipe::RecipeBookSettingsPayload;
-use crate::r2b_recipe_add::FreshRecipeBookAddPayload;
+use crate::r2b_recipe_add::encode_fresh_recipe_book_add;
 use crate::r2b_spawn::DefaultSpawnPayload;
 use crate::r2b_teleport::{AbsoluteTeleportPayload, TeleportTransaction};
 
@@ -400,7 +400,7 @@ fn prepare_stages(
         snapshot.recipe_settings.encode(writer).map_err(Into::into)
     })?;
     dynamic(plan, ids.recipe_book_add, scratch, |writer| {
-        FreshRecipeBookAddPayload.encode(writer).map_err(Into::into)
+        encode_fresh_recipe_book_add(writer).map_err(Into::into)
     })?;
     plan.finish_stage(4, start)?;
 
