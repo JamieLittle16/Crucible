@@ -5,7 +5,8 @@
 
 #![forbid(unsafe_code)]
 
-pub const COMPOSITION_SHA256: &str = "48eb2c70901221c2d1cace24074f2eb202c9d9e998773a4757e6102327711d50";
+pub const COMPOSITION_SHA256: &str =
+    "48eb2c70901221c2d1cace24074f2eb202c9d9e998773a4757e6102327711d50";
 pub const PROFILE: &str = "reference";
 pub const MINECRAFT_VERSION: &str = "26.2";
 

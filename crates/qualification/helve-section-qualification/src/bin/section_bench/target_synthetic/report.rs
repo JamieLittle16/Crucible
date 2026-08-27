@@ -1,8 +1,6 @@
 use std::fmt::{self, Write as _};
 
-use helve_generated::{
-    BLOCK_STATE_COUNT, STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256,
-};
+use helve_generated::{BLOCK_STATE_COUNT, STATE_DATA_GENERATION_SHA256, STATE_DATA_INPUT_SHA256};
 use helve_section_qualification::{DATA_VERSION, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::hardware::HardwareMetadata;

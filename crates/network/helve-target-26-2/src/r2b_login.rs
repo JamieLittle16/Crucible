@@ -310,12 +310,10 @@ mod tests {
             .expect_err("109-byte payload cannot fit after one prefix byte");
         assert_eq!(
             error,
-            LoginEncodeError::Codec(
-                helve_packet_core::PacketCodecError::PacketLimitExceeded {
-                    attempted: 110,
-                    maximum: 109,
-                }
-            )
+            LoginEncodeError::Codec(helve_packet_core::PacketCodecError::PacketLimitExceeded {
+                attempted: 110,
+                maximum: 109,
+            })
         );
         assert_eq!(writer.as_slice(), &[0x31]);
     }
