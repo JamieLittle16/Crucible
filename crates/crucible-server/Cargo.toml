@@ -17,5 +17,9 @@ crucible-publication-core = { path = "../network/crucible-publication-core" }
 crucible-session-core = { path = "../network/crucible-session-core" }
 crucible-target-26-2 = { path = "../network/crucible-target-26-2" }
 
+[[bench]]
+name = "r2b_join_arrival"
+harness = false
+
 [lints]
 workspace = true
