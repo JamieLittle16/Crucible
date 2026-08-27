@@ -289,9 +289,8 @@ mod tests {
             PreparedLookup::Complete
         );
 
-        let first = match plan.lookup(1, 1) {
-            PreparedLookup::Body(body) => body,
-            _ => panic!("commands body"),
+        let PreparedLookup::Body(first) = plan.lookup(1, 1) else {
+            panic!("commands body");
         };
         assert_eq!(first.as_ptr(), commands.as_ptr());
 
