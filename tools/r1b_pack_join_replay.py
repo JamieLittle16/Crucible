@@ -2,8 +2,13 @@
 """Pack a validated source-free R1X join replay JSON into a compact runtime image.
 
 The JSON is a review/debug artifact and intentionally verbose. The runtime image is a cold-path
-development fixture: packet bodies are validated once here, then Crucible can load them without a
-JSON parser or per-connection reconstruction.
+development fixture: packet bodies are validated once here, then Helve can load them without a JSON
+parser or per-connection reconstruction.
+
+The sealed source capture records the vanilla reference server's `minecraft:brand=vanilla`. After the
+complete capture has been validated byte-for-byte, the runtime Configuration image replaces only that
+composition-owned brand body with the source-backed Helve value. Historical capture evidence remains
+unchanged.
 
 This does not promote captured Play traffic to production evidence. Configuration is independently
 source-admitted; Play remains an explicitly experimental smoke-test replay.
@@ -35,6 +40,23 @@ EXPECTED_PLAYER_NAME = "Stato16"
 EXPECTED_OFFLINE_UUID = "682014fe-ad63-3699-aada-79aa08d95b45"
 EXPECTED_SESSION_UUID = "4d7f604f-196a-43b0-8987-f0b2a27c2663"
 MAX_BODY_BYTES = 65_536
+
+PRODUCT_BRAND = "Helve"
+BRAND_CHANNEL = "minecraft:brand"
+CONFIG_CLIENTBOUND_CUSTOM_PAYLOAD_ID = 1
+
+# Source-backed 26.2 custom-payload/BrandPayload law:
+# packet-id VarInt + Identifier UTF-8 string + BrandPayload UTF-8 string.
+# All lengths here are < 128, so their canonical VarInts are one byte.
+PRODUCT_BRAND_BODY = (
+    bytes((CONFIG_CLIENTBOUND_CUSTOM_PAYLOAD_ID, len(BRAND_CHANNEL)))
+    + BRAND_CHANNEL.encode("utf-8")
+    + bytes((len(PRODUCT_BRAND),))
+    + PRODUCT_BRAND.encode("utf-8")
+)
+RUNTIME_CONFIG_BYTES = EXPECTED_CONFIG_BYTES - 25 + len(PRODUCT_BRAND_BODY)
+assert PRODUCT_BRAND_BODY == b"\x01\x0fminecraft:brand\x05Helve"
+assert RUNTIME_CONFIG_BYTES == 44_430
 
 
 class PackError(ValueError):
@@ -146,6 +168,17 @@ def _validate(value: dict[str, Any]) -> tuple[list[bytes], list[bytes]]:
     return config, play
 
 
+def _runtime_configuration(captured: Sequence[bytes]) -> list[bytes]:
+    """Return the validated selected Configuration with only product identity recomposed."""
+    if len(captured) != EXPECTED_CONFIG_COUNT:
+        raise PackError("runtime Configuration requires the exact validated selected route")
+    runtime = list(captured)
+    runtime[0] = PRODUCT_BRAND_BODY
+    if sum(map(len, runtime)) != RUNTIME_CONFIG_BYTES:
+        raise PackError("runtime Configuration byte count drifted unexpectedly")
+    return runtime
+
+
 def _write_u32(output, value: int) -> None:
     output.write(struct.pack("<I", value))
 
@@ -156,7 +189,8 @@ def _write_u64(output, value: int) -> None:
 
 def pack(input_path: Path, output_path: Path, play_frame_limit: int | None) -> tuple[int, int]:
     value = _read_json(input_path)
-    config, full_play = _validate(value)
+    captured_config, full_play = _validate(value)
+    config = _runtime_configuration(captured_config)
 
     if play_frame_limit is None:
         play = full_play
@@ -217,7 +251,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     print(f"r1x_image={args.output}")
     print(f"configuration_frames={EXPECTED_CONFIG_COUNT}")
-    print(f"configuration_bytes={EXPECTED_CONFIG_BYTES}")
+    print(f"configuration_bytes={RUNTIME_CONFIG_BYTES}")
+    print(f"server_brand={PRODUCT_BRAND}")
     print(f"play_frames={play_frames}")
     print(f"play_bytes={play_bytes}")
     print(f"capture_sha256={EXPECTED_CAPTURE_SHA256}")
