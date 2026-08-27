@@ -49,11 +49,13 @@ const EGRESS_LIMIT: usize = 128 * 1_024;
 const READ_SCRATCH_BYTES: usize = 16 * 1_024;
 const PREPLAY_ACTIONS_PER_SERVICE: usize = 4;
 const PREPARE_SCRATCH_BYTES: usize = 4 * 1_024;
+const PREPARE_SCRATCH_INITIAL_CAPACITY: usize = 1_024;
 const INITIAL_LIVENESS: LivenessState = match LivenessState::new(0, 0) {
     Ok(state) => state,
     Err(_) => panic!("zero must remain inside the signed-64-bit monotone liveness domain"),
 };
 const _: () = assert!(PREPLAY_ACTIONS_PER_SERVICE > 0);
+const _: () = assert!(PREPARE_SCRATCH_INITIAL_CAPACITY <= PREPARE_SCRATCH_BYTES);
 
 /// Fail-closed R2B server-composition error.
 #[derive(Debug)]
@@ -463,9 +465,12 @@ where
         }
     };
 
-    let mut scratch = PacketWriter::new(PREPARE_SCRATCH_BYTES)
-        .map_err(PrepareR2bError::from)
-        .map_err(R2bServerError::from)?;
+    let mut scratch = PacketWriter::with_capacity(
+        PREPARE_SCRATCH_BYTES,
+        PREPARE_SCRATCH_INITIAL_CAPACITY,
+    )
+    .map_err(PrepareR2bError::from)
+    .map_err(R2bServerError::from)?;
     let mut teleport = TeleportTransaction::new();
     let plan = PreparedR2bPlan::prepare(
         snapshot,
