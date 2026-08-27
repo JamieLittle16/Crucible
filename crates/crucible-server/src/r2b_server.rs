@@ -317,7 +317,6 @@ fn action_budget() -> ActionBudget {
 
 #[cfg(test)]
 mod tests {
-    use crucible_connection_core::ConnectionLimits;
     use crucible_connection_driver::ConnectionDriver;
     use crucible_packet_core::PacketWriter;
     use crucible_publication_core::StagedPublicationPlan;
@@ -331,6 +330,8 @@ mod tests {
     const fn revision(byte: u8) -> ProjectionRevision {
         ProjectionRevision::new([byte; 32])
     }
+
+    fn assert_plan_trait<T: StagedPublicationPlan>() {}
 
     #[test]
     fn r2b_entry_limits_are_finite_and_share_the_existing_single_driver_shape() {
@@ -377,7 +378,6 @@ mod tests {
             Ok(&[0x85, 0x01, 0][..])
         );
 
-        fn assert_plan_trait<T: StagedPublicationPlan>() {}
         assert_plan_trait::<crucible_target_26_2::r2b::PreparedR2bPlan<'_>>();
     }
 }
