@@ -73,7 +73,7 @@ Post-baseline optimization work must therefore demonstrate a win against an alre
 
 ## OPT-R2B-001 — certify immutable shared packet kinds once
 
-**Status:** qualification in progress on PR #192; current timing evidence is intentionally classified as inconclusive until the strengthened distribution benchmark is stable.
+**Status:** accepted for merge on PR #192. The target-local mechanism has stable positive schema-2 evidence and the complete correctness/server/performance gate is green. The quoted timing magnitude remains diagnostic hosted-runner evidence rather than a broad hardware claim.
 
 ### Previous cost
 
@@ -127,7 +127,33 @@ It records:
 
 The dedicated CI workflow pins the process to one allowed CPU and executes three independent smoke runs. Hosted CI remains diagnostic: it is useful for detecting gross regressions and unstable measurement direction, but it is not the authority for production magnitude.
 
-The earlier coarse benchmark produced opposite directions on two hosted runs. Those observations are retained as the reason schema 1 was rejected as insufficient evidence; neither run is treated as proof that OPT-R2B-001 is faster or slower.
+The earlier schema-1 coarse benchmark produced opposite directions on two hosted runs. Those observations are retained as the reason schema 1 was rejected as insufficient evidence; neither old run is treated as proof.
+
+### Qualification result
+
+The strengthened schema-2 run on GitHub Actions run `33088721247` pinned all three independent processes to one allowed CPU. Every process preserved the same semantic checksum and reported the certified candidate faster in **every epoch**.
+
+Representative candidate/reference paired medians were:
+
+| independent run | paired p50 ratio | paired-ratio MAD | epoch p50 ratio | candidate epoch win rate |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 0.830951 | 0.002281 | 0.830033 | 100% |
+| 2 | 0.829985 | 0.001797 | 0.828956 | 100% |
+| 3 | 0.829706 | 0.001592 | 0.829657 | 100% |
+
+The isolated mechanism therefore measured about **16.9–17.0% lower paired service cost** on that hosted runner, with the effect far larger than paired-ratio MAD.
+
+Tail service time also moved in the correct direction in all three independent runs:
+
+| independent run | reference p99 | candidate p99 | reference p99.9 | candidate p99.9 |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 24,527 ns | 19,539 ns | 30,566 ns | 27,461 ns |
+| 2 | 23,134 ns | 19,739 ns | 33,751 ns | 24,666 ns |
+| 3 | 22,885 ns | 19,770 ns | 30,085 ns | 24,347 ns |
+
+Relative MAD was slightly higher for the shorter candidate samples in this run (`0.14–0.23%` versus `0.12–0.13%` for the reference), but the paired ratio is tightly clustered and absolute p99/p99.9 are lower. There is therefore no evidence here of a player-relevant tail regression. This does **not** replace the planned end-to-end arrival benchmark, which must measure queueing and completion-gap jitter at the server composition boundary.
+
+The complete branch head used for this qualification also passed workspace check, strict Clippy, Rust/target qualification, the R0 server gate and the R2B performance-evidence workflow.
 
 ## OPT-R2B-002 — preparation scratch reservation
 
