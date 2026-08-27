@@ -1,44 +1,69 @@
-//! Qualification-only compiler/test harness for the R2B target model.
+//! Qualification harness for the canonical R2B target-library implementation.
 //!
-//! `src/r2b.rs`, the compact dynamic-body arena, prepared staged plan and target-owned
-//! selected-profile payload codecs are deliberately compiled here without making the live
-//! `Target26_2` route depend on them yet. The prepared plan is exercised through the target-neutral
-//! `StagedPublicationPlan` path, including real bounded-egress rollback. The hardened source boundary
-//! is independently admitted; production routing remains isolated until the replay-free runtime
-//! qualification suite passes.
+//! R2B is compiled exactly once by `crucible-target-26-2`. These tiny compatibility namespaces keep
+//! the existing focused qualification modules readable while every exported type below is merely a
+//! re-export of the library facade; no encoder, arena, wire codec or plan source file is path-included
+//! into this integration-test crate. Production `Target26_2` Play routing remains isolated until the
+//! replay-free runtime qualification suite passes.
 
-#[path = "../src/r2b.rs"]
-pub mod r2b;
-#[path = "../src/r2b_arena.rs"]
-pub mod r2b_arena;
-#[path = "../src/r2b_border.rs"]
-pub mod r2b_border;
-#[path = "../src/r2b_clock.rs"]
-pub mod r2b_clock;
-#[path = "../src/r2b_difficulty.rs"]
-pub mod r2b_difficulty;
-#[path = "../src/r2b_dynamic.rs"]
-pub mod r2b_dynamic;
-#[path = "../src/r2b_inventory.rs"]
-pub mod r2b_inventory;
-#[path = "../src/r2b_login.rs"]
-pub mod r2b_login;
-#[path = "../src/r2b_plan.rs"]
-pub mod r2b_plan;
-#[path = "../src/r2b_player_info.rs"]
-pub mod r2b_player_info;
-#[path = "../src/r2b_prepare.rs"]
-pub mod r2b_prepare;
-#[path = "../src/r2b_recipe.rs"]
-pub mod r2b_recipe;
-#[path = "../src/r2b_recipe_add.rs"]
-pub mod r2b_recipe_add;
-#[path = "../src/r2b_spawn.rs"]
-pub mod r2b_spawn;
-#[path = "../src/r2b_teleport.rs"]
-pub mod r2b_teleport;
-#[path = "../src/r2b_wire.rs"]
-pub mod r2b_wire;
+pub use crucible_target_26_2::r2b;
+
+pub mod r2b_border {
+    pub use crucible_target_26_2::r2b::WorldBorderPayload;
+}
+
+pub mod r2b_clock {
+    pub use crucible_target_26_2::r2b::{ClockFullSyncPayload, ClockUpdate};
+}
+
+pub mod r2b_difficulty {
+    pub use crucible_target_26_2::r2b::{ChangeDifficultyPayload, Difficulty26_2};
+}
+
+pub mod r2b_dynamic {
+    pub use crucible_target_26_2::r2b::{
+        HeldSlotPayload, PermissionEntityEventPayload, PermissionLevelEvent, PlayerAbilitiesPayload,
+        PlayerAbilityFlags, TickingStatePayload, TickingStepPayload,
+    };
+}
+
+pub mod r2b_inventory {
+    pub use crucible_target_26_2::r2b::FreshEmptyInventoryPayload;
+}
+
+pub mod r2b_login {
+    pub use crucible_target_26_2::r2b::{
+        BootstrapGameMode, FreshCommonSpawnInfo, FreshLoginFlags, FreshLoginPayload,
+    };
+}
+
+pub mod r2b_plan {
+    pub use crucible_target_26_2::r2b::{PreparedLookup, PreparedR2bPlan};
+}
+
+pub mod r2b_player_info {
+    pub use crucible_target_26_2::r2b::InitialPlayerInfoEntry;
+}
+
+pub mod r2b_prepare {
+    pub use crucible_target_26_2::r2b::{
+        BootstrapWeather, FreshR2bBootstrapSnapshot, PlayPacketIds, PrepareR2bError,
+        SELECTED_DYNAMIC_ARENA_CAPACITY, ServerDataProjection, ServerDataProjectionKey,
+        TeleportDestination,
+    };
+}
+
+pub mod r2b_recipe {
+    pub use crucible_target_26_2::r2b::{RecipeBookSettingFlags, RecipeBookSettingsPayload};
+}
+
+pub mod r2b_spawn {
+    pub use crucible_target_26_2::r2b::DefaultSpawnPayload;
+}
+
+pub mod r2b_teleport {
+    pub use crucible_target_26_2::r2b::TeleportTransaction;
+}
 
 #[path = "support/r2b_black_box_qualification.rs"]
 mod r2b_black_box_qualification;
