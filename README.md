@@ -1,6 +1,6 @@
 <div align="center">
 
-# Helve
+<img src="docs/assets/branding/helve-lockup.png" alt="Helve" width="498">
 
 ### Same game. Different engine.
 
@@ -9,6 +9,7 @@ A high-performance, parity-focused Minecraft: Java Edition server engine written
 [![CI](https://github.com/JamieLittle16/Crucible/actions/workflows/ci.yml/badge.svg)](https://github.com/JamieLittle16/Crucible/actions/workflows/ci.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 [![Rust 1.97.1](https://img.shields.io/badge/Rust-1.97.1-orange.svg)](rust-toolchain.toml)
+[![Status: R2B replay-free Play entry](https://img.shields.io/badge/status-R2B%20replay--free%20Play%20entry-6f42c1.svg)](docs/README.md)
 
 **Strict supported vanilla fidelity. Independently designed internals. Measured performance.**
 
@@ -17,12 +18,6 @@ A high-performance, parity-focused Minecraft: Java Edition server engine written
 </div>
 
 ---
-
-> [!NOTE]
-> Helve is the new public name of the project previously called Crucible. The GitHub repository and
-> some internal `crucible-*` crate/path identifiers are intentionally being migrated separately so
-> the product rename does not create unrelated build-graph churn. Approved Helve visual assets will
-> be added separately; the previous Crucible lockup is intentionally not shown here.
 
 ## What is Helve?
 
@@ -41,9 +36,9 @@ The project is intentionally strict about the distinction between **correctness 
 > [!IMPORTANT]
 > **Helve remains experimental and does not yet provide a playable production server release.**
 >
-> On **27 August 2026**, an unmodified Minecraft: Java Edition **26.2** client completed Handshake → Login → Configuration → replay-free Play through Helve's source-backed networking/bootstrap path with **zero captured Play publication**. The client crossed the `WorldProjection` boundary and eventually entered the expected pre-R2C void. Native world/chunk/light projection is the next product milestone.
+> The current 26.2 development route reaches Play on an unmodified stock client with the R2B bootstrap published from Helve-owned semantic state rather than captured Play replay. The same bounded connection driver then remains live across the handoff to `WorldProjection`; R2C is the next boundary and will supply Helve-owned chunk/light/world projection.
 
-This closes the R2B bootstrap boundary: the stock client can enter Play through Helve-owned semantic bootstrap, continue on the same bounded connection driver, acknowledge the initial teleport and remain under live keep-alive control. Terrain is intentionally absent until R2C owns world projection.
+The earlier [R1X First Visible World milestone record](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) remains durable historical evidence for the first visible-world result and its finite-replay claim limits. R2B has since removed captured Play publication from the entry/bootstrap path.
 
 Current work includes:
 
@@ -51,19 +46,19 @@ Current work includes:
 - section representation candidates and semantic equivalence qualification;
 - world/section contracts and reference implementations;
 - bounded Handshake/Login/Configuration networking accepted by the stock 26.2 client;
-- replay-free R2B Play bootstrap, teleport acknowledgement and continuing liveness;
-- R2C native chunk/light/world projection;
+- replay-free, Helve-owned Play bootstrap and continuing keep-alive/teleport control;
+- R2C world/chunk/light projection on the same live connection;
 - deterministic qualification, replay and evidence machinery;
 - repository architecture, dependency and provenance guards;
-- controlled performance qualification including tail latency and arrival smoothness.
+- the handoff from correctness-qualified mechanisms to controlled performance qualification.
 
-The next product-facing visual slice is intentionally narrow: replace **Loading Terrain → void** with a source-backed Helve world projection containing valid chunk/section/light state and visible terrain. World generation is not a prerequisite for that first native-world slice.
+The next product-facing vertical slice is a **persistent walkable server**: an unmodified client connects, remains alive without captured Play replay, receives Helve-owned chunks/light, moves and collides correctly, teleports, and reconnects. World generation is deliberately not a prerequisite for that first live slice.
 
-### Current client boundary: replay-free R2B
+### Current boundary: R2B → R2C
 
-The current stock-client development path uses the real source-admitted Configuration route and Helve's replay-free semantic R2B bootstrap. Captured Play traffic is structurally excluded from that path. Until R2C publishes world state, the client may remain on Loading Terrain before entering an empty void.
+R2B establishes replay-free Play entry and keeps the original bounded connection driver alive after the bootstrap. It owns initial player state, command/recipe projection, teleport, liveness and the explicit `WorldProjection` seam. The temporary development owner can keep the client alive while R2C is not yet implemented, but it deliberately does not pretend to own world semantics.
 
-The earlier [R1X First Visible World milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) remains historical evidence for the first end-to-end visible-world smoke test, but it is no longer the current implementation boundary.
+R2C will make that seam real by publishing Helve-owned world, chunk and light state. That is the remaining distinction between "the stock client enters and stays in Play" and the first genuinely usable persistent server slice.
 
 ## Why Helve exists
 
@@ -128,13 +123,13 @@ For hot systems, the preferred optimization order is broadly:
 9. specialize hot representations;
 10. apply SIMD, unsafe code or low-level tuning only when evidence earns it.
 
-Performance claims are expected to carry workload identity, semantic coverage, memory effects, tail latency/variance and reproducible evidence rather than a single flattering throughput number.
+Performance claims are expected to carry workload identity, semantic coverage, memory effects, tail latency and reproducible evidence rather than a single flattering throughput number.
 
 ## Repository map
 
 ```text
 crates/                 Rust implementation and semantic/reference components
-vanilla/                project-owned target-version records, fixtures and provenance metadata
+vanilla/                Helve-owned target-version records, fixtures and provenance metadata
 docs/architecture/      product and architecture contracts
 docs/qualification/     parity, equivalence and performance qualification design
 docs/execution/         milestone, CI and release operating plans
@@ -144,13 +139,11 @@ tools/                  qualification, source-indexing and repository tooling
 benchmark-results/      checked-in benchmark/evidence outputs where policy permits
 ```
 
-The internal `crucible-*` crate/path namespace is temporarily retained as a migration-stable implementation namespace. It is not the current public product name.
-
 Start with the [documentation index](docs/README.md) rather than browsing the tree at random.
 
 ## Working on Helve
 
-The pinned toolchain is declared in [`rust-toolchain.toml`](rust-toolchain.toml). Until the GitHub repository rename lands, an existing Rust installation can use:
+The pinned toolchain is declared in [`rust-toolchain.toml`](rust-toolchain.toml). Until the repository itself is renamed, a normal contributor loop starts with:
 
 ```bash
 git clone https://github.com/JamieLittle16/Crucible.git
@@ -161,7 +154,7 @@ cargo test --workspace --all-features --locked
 cargo xtask guard
 ```
 
-The runnable product binary is named **`helve`**; the Cargo package remains internally named `crucible-server` during the first rebrand step.
+The repository URL/path will become `Helve` in the repository-rename follow-up; the internal `crucible-*` Cargo namespace is intentionally retained for now to avoid mixing product identity with dependency-graph churn.
 
 The ordinary CI lane additionally runs formatting, Clippy, source-backed section qualification, Python tooling tests and rustdoc with warnings denied.
 
@@ -171,11 +164,10 @@ Before proposing a change, read [`CONTRIBUTING.md`](CONTRIBUTING.md). Helve inte
 
 Good entry points are:
 
-- [R2B replay-free vanilla playtest gate](docs/qualification/R2B_VANILLA_PLAYTEST.md) — the current stock-client Handshake → Play boundary and exact claim limits.
-- [R1X First Visible World milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) — historical first visible-world black-box evidence.
-- [Master architecture blueprint](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) — what the engine is trying to build and why; filename retained during the staged rename.
+- [R1X First Visible World milestone](docs/milestones/R1X_FIRST_VISIBLE_WORLD.md) — historical evidence for the first stock-client Handshake → Play → visible-world black-box result and its exact finite-replay claim limits.
+- [Master architecture blueprint](docs/architecture/CRUCIBLE_MASTER_BLUEPRINT.md) — what the project is trying to build and why. The stable filename predates the Helve rename.
 - [M0 foundation implementation spec](docs/architecture/M0_FOUNDATION_IMPLEMENTATION_SPEC.md) — the foundational implementation boundary.
-- [World/section implementation slice](docs/architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — foundational world subsystem work.
+- [World/section implementation slice](docs/architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — the current foundational subsystem.
 - [Execution master plan](docs/execution/EXECUTION_MASTER_PLAN.md) — milestone sequencing and operating model.
 - [CI qualification roadmap](docs/execution/CI_QUALIFICATION_ROADMAP.md) — how evidence becomes enforceable repository law.
 - [Evidence and experiment records](docs/qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md) — how performance and correctness decisions remain reproducible.
@@ -188,7 +180,7 @@ Contributions are welcome, but Helve deliberately optimizes for **high-confidenc
 
 A good contribution is narrow, source/provenance-aware, independently testable, and explicit about what would falsify its assumptions. Large speculative abstractions, silent semantic compromises and performance claims without evidence are intentionally difficult to merge.
 
-Contributors retain ownership of their work. External contributions must also accept the project [`Contributor Licence Agreement`](CLA.md); the pull-request workflow records that acceptance and fails closed when it is absent.
+Contributors retain ownership of their work. External contributions must also accept the contributor licence agreement in [`CLA.md`](CLA.md); the pull-request workflow records that acceptance and fails closed when it is absent.
 
 Read the full [contribution guide](CONTRIBUTING.md) before opening substantial work.
 
@@ -196,6 +188,6 @@ Read the full [contribution guide](CONTRIBUTING.md) before opening substantial w
 
 Helve is licensed under the **Mozilla Public License 2.0 (MPL-2.0)**. See [`LICENSE`](LICENSE).
 
-Do not copy or commit Mojang source code, server JARs, game assets, worlds, credentials or other proprietary Minecraft artifacts into this repository. Official source/runtime material is a local semantic and qualification oracle and is represented in the repository only through project-owned records, fingerprints, fixtures and derived evidence where permitted.
+Do not copy or commit Mojang source code, server JARs, game assets, worlds, credentials or other proprietary Minecraft artifacts into this repository. Official source/runtime material is a local semantic and qualification oracle and is represented in the repository only through Helve-owned records, fingerprints, fixtures and derived evidence where permitted.
 
 Helve is an independent project and is not affiliated with, sponsored by, or endorsed by Mojang Studios or Microsoft. Minecraft is a trademark of Microsoft Corporation.
