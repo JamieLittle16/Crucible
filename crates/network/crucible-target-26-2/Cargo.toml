@@ -15,5 +15,9 @@ crucible-preplay-core = { path = "../crucible-preplay-core" }
 crucible-publication-core = { path = "../crucible-publication-core" }
 crucible-session-core = { path = "../crucible-session-core" }
 
+[[bench]]
+name = "r2b_shared_artifact"
+harness = false
+
 [lints]
 workspace = true
