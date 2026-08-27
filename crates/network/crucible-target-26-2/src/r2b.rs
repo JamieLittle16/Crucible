@@ -41,7 +41,8 @@ pub use crate::r2b_plan::{PreparedLookup, PreparedR2bPlan};
 pub use crate::r2b_player_info::InitialPlayerInfoEntry;
 pub use crate::r2b_prepare::{
     BootstrapWeather, FreshR2bBootstrapSnapshot, PrepareR2bError, SELECTED_DYNAMIC_ARENA_CAPACITY,
-    ServerDataProjection, ServerDataProjectionArtifact, ServerDataProjectionKey, TeleportDestination,
+    ServerDataProjection, ServerDataProjectionArtifact, ServerDataProjectionKey,
+    TeleportDestination,
 };
 pub use crate::r2b_recipe::{RecipeBookSettingFlags, RecipeBookSettingsPayload};
 pub use crate::r2b_spawn::DefaultSpawnPayload;
@@ -555,16 +556,10 @@ mod tests {
         let commands_key = command_key(20);
         let recipes_key = recipe_key(30);
         let image = PlayBootstrapImage26_2::new(
-            CommandProjectionArtifact::new(
-                commands_key,
-                vec![0x10, 0x01, 0x02].into_boxed_slice(),
-            )
-            .expect("commands artifact"),
-            RecipeProjectionArtifact::new(
-                recipes_key,
-                vec![0x85, 0x01, 0x03].into_boxed_slice(),
-            )
-            .expect("recipes artifact"),
+            CommandProjectionArtifact::new(commands_key, vec![0x10, 0x01, 0x02].into_boxed_slice())
+                .expect("commands artifact"),
+            RecipeProjectionArtifact::new(recipes_key, vec![0x85, 0x01, 0x03].into_boxed_slice())
+                .expect("recipes artifact"),
         );
 
         let first = image.commands(&commands_key).expect("matching command key");
