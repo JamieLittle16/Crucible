@@ -52,7 +52,7 @@ Hosted CI runs are diagnostic. The acceptance decision requires stable direction
 
 ## Full-resolution evidence
 
-The decisive gate used three independent pinned processes. Each process used 256 warm-up blocks followed by 4096 measured ABBA/BAAB blocks, 32 complete preparations per timed sample and 256 blocks per epoch.
+The decisive gate used three independent pinned processes in GitHub Actions run `33094176969` (artifact `9655683157`). Each process used 256 warm-up blocks followed by 4096 measured ABBA/BAAB blocks, 32 complete preparations per timed sample and 256 blocks per epoch.
 
 Every 1024-byte epoch beat its paired zero-reserve epoch in all three runs and both workloads. The paired p50 ratios were:
 
@@ -106,6 +106,10 @@ The accepted production change may only replace the writer constructor with the 
 - fixture-derived correctness assumptions.
 
 The initial capacity is a performance hint, not a semantic maximum. The existing 4096-byte packet-body bound remains authoritative and the same scratch writer remains connection-local and transactionally reset by preparation.
+
+## Ongoing CI policy
+
+The permanent R2B performance workflow returns to the shorter smoke sweep after selection. The full sweep is a qualification event, not a tax on every later network PR. Re-running `--full` remains available whenever preparation semantics, allocator behavior or representative bootstrap workloads change enough to invalidate this decision.
 
 ## Command
 
