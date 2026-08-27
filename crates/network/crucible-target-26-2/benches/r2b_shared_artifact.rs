@@ -79,7 +79,7 @@ impl Fixture {
         let image = PlayBootstrapImage26_2::new(
             CommandProjectionArtifact::new(
                 command_key,
-                vec![COMMAND_PACKET_ID as u8, 0xaa, 0xbb].into_boxed_slice(),
+                vec![16, 0xaa, 0xbb].into_boxed_slice(),
             )
             .map_err(artifact_error)?,
             RecipeProjectionArtifact::new(
@@ -90,7 +90,7 @@ impl Fixture {
         );
         let status = ServerDataProjectionArtifact::new(
             status_key,
-            vec![SERVER_DATA_PACKET_ID as u8, 0xee].into_boxed_slice(),
+            vec![86, 0xee].into_boxed_slice(),
         )
         .map_err(artifact_error)?;
         Ok(Self {
@@ -154,13 +154,7 @@ fn run() -> Result<(), String> {
         .saturating_mul(1_000_000)
         .checked_div(reference_p50)
         .ok_or_else(|| "reference median must be positive".to_owned())?;
-    let artifact = render_json(
-        &config,
-        &samples,
-        reference_p50,
-        certified_p50,
-        ratio_ppm,
-    );
+    let artifact = render_json(&config, &samples, reference_p50, certified_p50, ratio_ppm);
 
     if let Some(path) = config.output {
         if let Some(parent) = path.parent()
