@@ -1,9 +1,10 @@
 //! Replay-free R2B Play-bootstrap target model for Minecraft Java 26.2.
 //!
-//! This module is intentionally not exported by the production target yet. The base and bounded
-//! runtime source gates are independently admitted, and the selected dynamic codecs plus prepared
-//! staged plan are compiled through the qualification target. Production routing remains isolated
-//! until the replay-free runtime suite and generated finite Play-entry contract are green.
+//! This is the public experimental R2B projection surface used by qualification and the development
+//! runtime. The normal `Target26_2` Play route remains deliberately isolated until the stock-client
+//! runtime gate is green. Encoder, arena and wire implementation modules stay private to this crate;
+//! callers receive only compact semantic inputs, immutable projection artifacts, the prepared plan
+//! and connection-owned teleport state.
 //!
 //! The permanent shape is deliberately small:
 //!
@@ -24,6 +25,28 @@
 //! qualification evidence only and never becomes the production publication mechanism.
 
 use core::fmt;
+
+pub use crate::r2b_border::WorldBorderPayload;
+pub use crate::r2b_clock::{ClockFullSyncPayload, ClockUpdate};
+pub use crate::r2b_difficulty::{ChangeDifficultyPayload, Difficulty26_2};
+pub use crate::r2b_dynamic::{
+    HeldSlotPayload, PermissionEntityEventPayload, PermissionLevelEvent, PlayerAbilitiesPayload,
+    PlayerAbilityFlags, TickingStatePayload, TickingStepPayload,
+};
+pub use crate::r2b_inventory::FreshEmptyInventoryPayload;
+pub use crate::r2b_login::{
+    BootstrapGameMode, FreshCommonSpawnInfo, FreshLoginFlags, FreshLoginPayload,
+};
+pub use crate::r2b_plan::{PreparedLookup, PreparedR2bPlan};
+pub use crate::r2b_player_info::InitialPlayerInfoEntry;
+pub use crate::r2b_prepare::{
+    BootstrapWeather, FreshR2bBootstrapSnapshot, PlayPacketIds, PrepareR2bError,
+    SELECTED_DYNAMIC_ARENA_CAPACITY, ServerDataProjection, ServerDataProjectionKey,
+    TeleportDestination,
+};
+pub use crate::r2b_recipe::{RecipeBookSettingFlags, RecipeBookSettingsPayload};
+pub use crate::r2b_spawn::DefaultSpawnPayload;
+pub use crate::r2b_teleport::{AwaitingTeleport, TeleportAckResult, TeleportTransaction};
 
 /// Semantic Play-bootstrap stages frozen by `SEM-NET-R2B-PLAY-001..015`.
 ///
