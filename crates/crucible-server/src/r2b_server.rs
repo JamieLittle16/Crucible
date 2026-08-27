@@ -4,8 +4,8 @@
 //! with an empty captured Play image. At the fully drained Play boundary it consumes the pre-play
 //! owner and transfers the exact existing bounded driver plus retained read scratch into continuing
 //! Play; no connection-buffer allocation is destroyed/recreated at the phase transition. That same
-//! driver publishes the canonical [`PreparedR2bPlan`] and is returned intact at the explicit
-//! `WorldProjection` seam.
+//! driver publishes the canonical [`PreparedR2bPlan`] and continues teleport/liveness control at the
+//! explicit `WorldProjection` seam.
 //!
 //! Captured Play bodies are rejected before transport I/O. R1X is used only as the temporary
 //! Configuration carrier; every non-world Play body comes from replay-free R2B semantic projection.
@@ -15,9 +15,7 @@ use std::io::{self, Read, Write};
 use std::num::NonZeroUsize;
 
 use crucible_connection_core::{ConnectionBufferError, ConnectionLimits};
-use crucible_connection_driver::{
-    ConnectionDriver, DriverError, OutboundBatch, TransactionResult,
-};
+use crucible_connection_driver::{ConnectionDriver, DriverError, OutboundBatch, TransactionResult};
 use crucible_packet_core::{PacketCodecError, PacketWriter};
 use crucible_preplay_core::{PrePlayConnection, PrePlayError};
 use crucible_preplay_io::{
@@ -26,14 +24,20 @@ use crucible_preplay_io::{
 use crucible_publication_core::{
     StagedPublicationCursor, StagedPublicationStep, publish_staged_plan_one,
 };
-use crucible_session_core::SessionPhase;
+use crucible_session_core::{
+    KeepAliveReply, LivenessDecision, LivenessError, LivenessState, SessionPhase,
+};
 use crucible_target_26_2::{
     R1xError, Target26_2R1x, Target26_2R1xContext, Target26_2R1xState,
+    play_liveness::{
+        PLAY_LIVENESS_POLICY, PlayLivenessCodecError, decode_serverbound_keep_alive,
+        encode_clientbound_keep_alive,
+    },
     r2b::{
         FreshR2bBootstrapSnapshot, PLAY_PUBLICATION_STAGES, PlayBootstrapImage26_2,
-        PlayBootstrapStage, PlayPacketIds, PrepareR2bError, PreparedR2bPlan,
-        SELECTED_DYNAMIC_ARENA_CAPACITY, TeleportAckResult, TeleportTransaction,
-        decode_serverbound_teleport_ack, stage_for_publication_index,
+        PlayBootstrapStage, PrepareR2bError, PreparedR2bPlan, SELECTED_DYNAMIC_ARENA_CAPACITY,
+        TeleportAckResult, TeleportTransaction, decode_serverbound_teleport_ack,
+        stage_for_publication_index,
     },
 };
 
@@ -45,7 +49,6 @@ const EGRESS_LIMIT: usize = 128 * 1_024;
 const READ_SCRATCH_BYTES: usize = 16 * 1_024;
 const PREPLAY_ACTIONS_PER_SERVICE: usize = 4;
 const PREPARE_SCRATCH_BYTES: usize = 4 * 1_024;
-const NO_OUTBOUND_BODIES: [&[u8]; 0] = [];
 const _: () = assert!(PREPLAY_ACTIONS_PER_SERVICE > 0);
 
 /// Fail-closed R2B server-composition error.
@@ -92,7 +95,11 @@ pub enum R2bPlayError {
     /// Bounded ingress/egress or frame law rejected the operation.
     Buffer(ConnectionBufferError),
     /// The target-owned teleport acknowledgement codec rejected a claimed packet.
-    Codec(PacketCodecError),
+    TeleportCodec(PacketCodecError),
+    /// The target-owned keep-alive codec rejected a claimed packet.
+    KeepAliveCodec(PlayLivenessCodecError),
+    /// Caller-supplied monotone time violated the admitted liveness domain.
+    Liveness(LivenessError),
     /// An impossible ingress-commit failure was followed by failed egress rollback.
     RollbackFailed {
         /// Failure consuming the already-admitted inbound frame.
@@ -106,7 +113,9 @@ pub enum R2bPlayError {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum PlayInboundDecodeError {
-    Codec(PacketCodecError),
+    TeleportCodec(PacketCodecError),
+    KeepAliveCodec(PlayLivenessCodecError),
+    Liveness(LivenessError),
     Unclaimed(i32),
 }
 
@@ -115,6 +124,16 @@ enum PlayInboundDecodeError {
 pub enum R2bPlayInbound {
     /// Client teleport confirmation was consumed and applied to the pending transaction.
     TeleportAcknowledgement(TeleportAckResult),
+    /// A keep-alive response matched the outstanding challenge and updated smoothed latency.
+    KeepAliveAccepted {
+        /// Source-compatible smoothed latency after this response.
+        latency_ms: i32,
+    },
+    /// A syntactically valid keep-alive response did not match an outstanding challenge.
+    KeepAliveRejected {
+        /// Rejected wire challenge identifier.
+        id: i64,
+    },
 }
 
 /// Result of one bounded R2B continuing-Play control service opportunity.
@@ -131,17 +150,34 @@ pub enum R2bPlayProcess {
     },
 }
 
+/// Result of servicing the source-admitted continuing-Play liveness deadline.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum R2bLivenessProcess {
+    /// No externally visible liveness action is due.
+    Idle,
+    /// One fixed-size keep-alive challenge entered the existing bounded egress successfully.
+    ChallengeQueued {
+        /// Exact challenge identifier carried on the wire.
+        id: i64,
+    },
+    /// The previous challenge remained pending through its next keep-alive deadline.
+    KeepAliveTimedOut,
+    /// Closed-listener linger timeout fired. R2B does not currently close the listener itself.
+    ClosedTimedOut,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct PreparedPlayInbound {
     teleport: TeleportTransaction,
+    liveness: LivenessState,
     event: R2bPlayInbound,
 }
 
 impl OutboundBatch for PreparedPlayInbound {
-    type Body = &'static [u8];
+    type Body = [u8; 0];
 
     fn outbound_frames(&self) -> &[Self::Body] {
-        &NO_OUTBOUND_BODIES
+        &[]
     }
 }
 
@@ -149,12 +185,13 @@ impl OutboundBatch for PreparedPlayInbound {
 ///
 /// `driver` and `read_scratch` are the exact allocations used by pre-play, moved rather than
 /// recreated once both userspace queues were proven empty. The driver then admits every R2B frame
-/// and remains the sole continuing queue. The teleport transaction remains pending until the client
-/// sends the exact acknowledgement required by `SEM-NET-R2B-PLAY-006`.
+/// and remains the sole continuing queue. Teleport acknowledgement and source-admitted keep-alive
+/// liveness both continue through this same driver with no packet registry or auxiliary queue.
 pub struct R2bPlaySession {
     pub(crate) driver: ConnectionDriver,
     pub(crate) read_scratch: Box<[u8]>,
     pub(crate) teleport: TeleportTransaction,
+    pub(crate) liveness: LivenessState,
 }
 
 impl R2bPlaySession {
@@ -162,6 +199,18 @@ impl R2bPlaySession {
     #[must_use]
     pub const fn teleport_transaction(&self) -> TeleportTransaction {
         self.teleport
+    }
+
+    /// Source-compatible smoothed keep-alive latency.
+    #[must_use]
+    pub const fn latency_ms(&self) -> i32 {
+        self.liveness.latency_ms()
+    }
+
+    /// Outstanding keep-alive challenge, when one exists.
+    #[must_use]
+    pub const fn pending_keep_alive(&self) -> Option<i64> {
+        self.liveness.pending_challenge()
     }
 
     /// Retained transport-read scratch transferred from pre-play without reallocation.
@@ -182,6 +231,12 @@ impl R2bPlaySession {
         self.driver.queued_egress()
     }
 
+    /// Contiguous encoded Play bytes ready for the transport writer.
+    #[must_use]
+    pub fn pending_play_egress(&self) -> &[u8] {
+        self.driver.pending_egress()
+    }
+
     /// Appends one arbitrary post-R2B transport fragment to the same bounded ingress allocation.
     ///
     /// # Errors
@@ -191,31 +246,69 @@ impl R2bPlaySession {
     pub fn ingest_play(&mut self, incoming: &[u8]) -> Result<(), R2bPlayError> {
         self.driver
             .ingest::<PlayInboundDecodeError>(incoming)
-            .map_err(map_play_driver_error)
+            .map_err(|error| map_play_driver_error(&error))
+    }
+
+    /// Acknowledges bytes successfully written by the continuing Play transport owner.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an impossible write count instead of clamping it.
+    pub fn consume_play_written(&mut self, bytes: usize) -> Result<(), R2bPlayError> {
+        self.driver
+            .consume_written::<PlayInboundDecodeError>(bytes)
+            .map_err(|error| map_play_driver_error(&error))
     }
 
     /// Tries to commit exactly one R2B-owned continuing-Play control frame.
     ///
-    /// Teleport acknowledgement is decoded into a candidate copy of the transaction. The driver
-    /// consumes ingress first; only a committed transaction is then adopted into live state. Other
-    /// Play packet identities are reported as `Unclaimed` and remain byte-for-byte at the front of
-    /// ingress for the eventual liveness/world multiplexer.
+    /// `now_ms` is monotone milliseconds since this session crossed the `WorldProjection` handoff.
+    /// Teleport and liveness state are decoded into candidate copies. The driver consumes ingress
+    /// first; only a committed transaction is then adopted into live state. Other Play packet
+    /// identities are reported as `Unclaimed` and remain byte-for-byte at the front of ingress for
+    /// the world/gameplay owner.
     ///
     /// # Errors
     ///
-    /// Returns malformed claimed-packet, bounded-buffer, rollback or accounting failures without
-    /// committing the candidate teleport state.
-    pub fn process_one_play_control(&mut self) -> Result<R2bPlayProcess, R2bPlayError> {
+    /// Returns malformed claimed-packet, invalid monotone time, bounded-buffer, rollback or
+    /// accounting failures without committing candidate teleport/liveness state.
+    pub fn process_one_play_control(
+        &mut self,
+        now_ms: u64,
+    ) -> Result<R2bPlayProcess, R2bPlayError> {
         let teleport = self.teleport;
+        let liveness = self.liveness;
         let transaction = self.driver.process_one_transactional(|frame| {
-            let received = decode_serverbound_teleport_ack(frame)
-                .map_err(PlayInboundDecodeError::Codec)?
+            if let Some(received) = decode_serverbound_teleport_ack(frame)
+                .map_err(PlayInboundDecodeError::TeleportCodec)?
+            {
+                let mut candidate = teleport;
+                let result = candidate.acknowledge(received);
+                return Ok(PreparedPlayInbound {
+                    teleport: candidate,
+                    liveness,
+                    event: R2bPlayInbound::TeleportAcknowledgement(result),
+                });
+            }
+
+            let id = decode_serverbound_keep_alive(frame)
+                .map_err(PlayInboundDecodeError::KeepAliveCodec)?
                 .ok_or(PlayInboundDecodeError::Unclaimed(frame.packet_id()))?;
-            let mut candidate = teleport;
-            let result = candidate.acknowledge(received);
+            let mut candidate = liveness;
+            let (next_liveness, event) = match candidate
+                .receive_keep_alive(now_ms, id)
+                .map_err(PlayInboundDecodeError::Liveness)?
+            {
+                KeepAliveReply::Accepted { latency_ms } => (
+                    candidate,
+                    R2bPlayInbound::KeepAliveAccepted { latency_ms },
+                ),
+                KeepAliveReply::Rejected => (liveness, R2bPlayInbound::KeepAliveRejected { id }),
+            };
             Ok(PreparedPlayInbound {
-                teleport: candidate,
-                event: R2bPlayInbound::TeleportAcknowledgement(result),
+                teleport,
+                liveness: next_liveness,
+                event,
             })
         });
 
@@ -223,12 +316,47 @@ impl R2bPlaySession {
             Ok(TransactionResult::Incomplete) => Ok(R2bPlayProcess::Incomplete),
             Ok(TransactionResult::Committed(action)) => {
                 self.teleport = action.teleport;
+                self.liveness = action.liveness;
                 Ok(R2bPlayProcess::Committed(action.event))
             }
             Err(DriverError::Handler(PlayInboundDecodeError::Unclaimed(packet_id))) => {
                 Ok(R2bPlayProcess::Unclaimed { packet_id })
             }
-            Err(error) => Err(map_play_driver_error(error)),
+            Err(error) => Err(map_play_driver_error(&error)),
+        }
+    }
+
+    /// Services one source-admitted keep-alive deadline through the existing bounded egress.
+    ///
+    /// `now_ms` uses the same handoff-relative monotone domain as [`Self::process_one_play_control`].
+    /// Challenge state is prepared on a copy, the fixed nine-byte 26.2 body is queued, and only then
+    /// is the candidate liveness state adopted. Egress backpressure therefore cannot create a
+    /// phantom pending challenge.
+    ///
+    /// # Errors
+    ///
+    /// Returns invalid monotone time or bounded-egress failure without committing candidate
+    /// liveness state.
+    pub fn service_play_liveness(
+        &mut self,
+        now_ms: u64,
+    ) -> Result<R2bLivenessProcess, R2bPlayError> {
+        let mut candidate = self.liveness;
+        match candidate
+            .service(now_ms, PLAY_LIVENESS_POLICY)
+            .map_err(R2bPlayError::Liveness)?
+        {
+            LivenessDecision::Idle => Ok(R2bLivenessProcess::Idle),
+            LivenessDecision::IssueChallenge { id } => {
+                let body = encode_clientbound_keep_alive(id);
+                self.driver
+                    .queue_frame::<PlayInboundDecodeError>(&body)
+                    .map_err(|error| map_play_driver_error(&error))?;
+                self.liveness = candidate;
+                Ok(R2bLivenessProcess::ChallengeQueued { id })
+            }
+            LivenessDecision::KeepAliveTimedOut => Ok(R2bLivenessProcess::KeepAliveTimedOut),
+            LivenessDecision::ClosedTimedOut => Ok(R2bLivenessProcess::ClosedTimedOut),
         }
     }
 }
@@ -241,6 +369,7 @@ impl core::fmt::Debug for R2bPlaySession {
             .field("queued_egress", &self.driver.queued_egress())
             .field("read_scratch_bytes", &self.read_scratch.len())
             .field("teleport", &self.teleport)
+            .field("liveness", &self.liveness)
             .finish()
     }
 }
@@ -276,7 +405,6 @@ pub fn enter_r2b_play_blocking_transport<RW>(
     preplay_context: &Target26_2R1xContext,
     bootstrap_image: &PlayBootstrapImage26_2,
     snapshot: FreshR2bBootstrapSnapshot<'_>,
-    packet_ids: PlayPacketIds,
 ) -> Result<R2bEntryOutcome, R2bServerError>
 where
     RW: Read + Write + ?Sized,
@@ -331,7 +459,6 @@ where
     let plan = PreparedR2bPlan::prepare(
         snapshot,
         bootstrap_image,
-        packet_ids,
         &mut scratch,
         &mut teleport,
         SELECTED_DYNAMIC_ARENA_CAPACITY,
@@ -343,10 +470,13 @@ where
 
     debug_assert_eq!(driver.buffered_ingress(), 0);
     debug_assert_eq!(driver.queued_egress(), 0);
+    let liveness = LivenessState::new(0, 0)
+        .expect("zero is inside the admitted signed-64-bit monotone liveness domain");
     Ok(R2bEntryOutcome::WorldProjectionReady(R2bPlaySession {
         driver,
         read_scratch,
         teleport,
+        liveness,
     }))
 }
 
@@ -417,10 +547,18 @@ where
     Ok(())
 }
 
-fn map_play_driver_error(error: DriverError<PlayInboundDecodeError>) -> R2bPlayError {
+fn map_play_driver_error(error: &DriverError<PlayInboundDecodeError>) -> R2bPlayError {
     match error {
-        DriverError::Buffer(error) => R2bPlayError::Buffer(error),
-        DriverError::Handler(PlayInboundDecodeError::Codec(error)) => R2bPlayError::Codec(error),
+        DriverError::Buffer(error) => R2bPlayError::Buffer(*error),
+        DriverError::Handler(PlayInboundDecodeError::TeleportCodec(error)) => {
+            R2bPlayError::TeleportCodec(*error)
+        }
+        DriverError::Handler(PlayInboundDecodeError::KeepAliveCodec(error)) => {
+            R2bPlayError::KeepAliveCodec(*error)
+        }
+        DriverError::Handler(PlayInboundDecodeError::Liveness(error)) => {
+            R2bPlayError::Liveness(*error)
+        }
         DriverError::Handler(PlayInboundDecodeError::Unclaimed(_)) => {
             unreachable!("unclaimed packets are mapped to a non-error process result")
         }
@@ -428,8 +566,8 @@ fn map_play_driver_error(error: DriverError<PlayInboundDecodeError>) -> R2bPlayE
             operation,
             rollback,
         } => R2bPlayError::RollbackFailed {
-            operation,
-            rollback,
+            operation: *operation,
+            rollback: *rollback,
         },
         DriverError::AccountingOverflow => R2bPlayError::AccountingOverflow,
     }
