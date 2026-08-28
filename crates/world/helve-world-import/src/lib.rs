@@ -8,6 +8,7 @@
 
 pub mod anvil;
 pub mod chunk;
+mod generated_state_lookup;
 pub mod nbt;
 pub mod state_lookup;
 pub mod stored_blocks;
@@ -18,7 +19,9 @@ pub use chunk::{
     ChunkImportError, StoredChunkHeader, TARGET_DATA_VERSION_26_2, inspect_chunk_header,
 };
 pub use nbt::{ListHeader, NamedTag, NbtError, NbtLimits, NbtReader, TagType};
-pub use state_lookup::{StoredStateLookup, StoredStateLookupRow, canonical_state_fingerprint};
+pub use state_lookup::{
+    Target262BlockStateResolver, canonical_state_fingerprint, resolve_target_26_2_block_state,
+};
 pub use stored_blocks::{
     BlockProperty, BlockSectionDecodeScratch, BlockSectionImportError,
     BlockSectionScratchCapacities, BlockStateResolver, ImportedBlockSection,
