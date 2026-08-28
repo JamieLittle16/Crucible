@@ -1,43 +1,39 @@
 //! Allocation-free lookup core for persisted block-state identities.
 //!
-//! The generated cold table stores canonical target state keys sorted by a stable fingerprint. A
-//! lookup hashes the already-canonicalized `(Name, Properties)` view without constructing a string,
-//! binary-searches the fingerprint range, then verifies the exact canonical key bytes before
-//! returning a dense semantic state ID. Fingerprints are therefore an index only, never identity.
+//! The generated cold table stores canonical target state keys behind a stable fingerprint index.
+//! Lookup hashes the already-canonicalized `(Name, Properties)` view without constructing a string,
+//! binary-searches the fingerprint array, then verifies exact canonical key bytes before returning a
+//! dense semantic state ID. Fingerprints are therefore an index only, never identity.
 
 use crate::stored_blocks::BlockProperty;
 
 const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 
-/// One compact generated cold-lookup row.
+/// Compact metadata paired positionally with one generated fingerprint.
 ///
-/// `key_offset` and `key_len` address UTF-8 bytes inside one generated canonical-key blob. Entries
-/// are generated in nondecreasing `(fingerprint, canonical key)` order.
+/// The frozen 26.2 target proves its dense state universe fits in `u16`. Keeping fingerprints in a
+/// separate SoA array lets binary search touch only eight bytes per probe; this row is exactly eight
+/// bytes and is read only after a matching fingerprint has been found.
+#[repr(C)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct StoredStateLookupEntry {
-    fingerprint: u64,
+pub struct StoredStateLookupRow {
     key_offset: u32,
     key_len: u16,
-    state_id: u32,
+    state_id: u16,
 }
 
-impl StoredStateLookupEntry {
-    /// Creates one generated lookup entry.
+const _: () = assert!(core::mem::size_of::<StoredStateLookupRow>() == 8);
+
+impl StoredStateLookupRow {
+    /// Creates one generated exact-match row.
     #[must_use]
-    pub const fn new(fingerprint: u64, key_offset: u32, key_len: u16, state_id: u32) -> Self {
+    pub const fn new(key_offset: u32, key_len: u16, state_id: u16) -> Self {
         Self {
-            fingerprint,
             key_offset,
             key_len,
             state_id,
         }
-    }
-
-    /// Stable fingerprint used only to narrow the exact-match search range.
-    #[must_use]
-    pub const fn fingerprint(self) -> u64 {
-        self.fingerprint
     }
 
     /// Byte offset of the canonical key in the generated blob.
@@ -54,7 +50,7 @@ impl StoredStateLookupEntry {
 
     /// Dense target semantic state ID associated with the exact key.
     #[must_use]
-    pub const fn state_id(self) -> u32 {
+    pub const fn state_id(self) -> u16 {
         self.state_id
     }
 }
@@ -63,14 +59,23 @@ impl StoredStateLookupEntry {
 #[derive(Clone, Copy, Debug)]
 pub struct StoredStateLookup<'a> {
     key_blob: &'a str,
-    entries: &'a [StoredStateLookupEntry],
+    fingerprints: &'a [u64],
+    rows: &'a [StoredStateLookupRow],
 }
 
 impl<'a> StoredStateLookup<'a> {
-    /// Binds a generated canonical-key blob and its fingerprint-sorted index.
+    /// Binds the generated canonical-key blob and positionally paired SoA index.
     #[must_use]
-    pub const fn new(key_blob: &'a str, entries: &'a [StoredStateLookupEntry]) -> Self {
-        Self { key_blob, entries }
+    pub const fn new(
+        key_blob: &'a str,
+        fingerprints: &'a [u64],
+        rows: &'a [StoredStateLookupRow],
+    ) -> Self {
+        Self {
+            key_blob,
+            fingerprints,
+            rows,
+        }
     }
 
     /// Resolves one saved state to the dense raw semantic ID.
@@ -89,11 +94,15 @@ impl<'a> StoredStateLookup<'a> {
         name: &str,
         properties: &[BlockProperty<'_>],
     ) -> Option<u32> {
+        if self.fingerprints.len() != self.rows.len() {
+            return None;
+        }
+
         let mut left = 0_usize;
-        let mut right = self.entries.len();
+        let mut right = self.fingerprints.len();
         while left < right {
             let middle = left + (right - left) / 2;
-            if self.entries[middle].fingerprint < fingerprint {
+            if self.fingerprints[middle] < fingerprint {
                 left = middle + 1;
             } else {
                 right = middle;
@@ -101,23 +110,21 @@ impl<'a> StoredStateLookup<'a> {
         }
 
         let mut index = left;
-        while let Some(entry) = self.entries.get(index).copied() {
-            if entry.fingerprint != fingerprint {
-                break;
-            }
-            if let Some(expected) = self.entry_key(entry)
+        while self.fingerprints.get(index).copied() == Some(fingerprint) {
+            let row = *self.rows.get(index)?;
+            if let Some(expected) = self.row_key(row)
                 && canonical_key_matches(expected, name, properties)
             {
-                return Some(entry.state_id);
+                return Some(u32::from(row.state_id));
             }
             index += 1;
         }
         None
     }
 
-    fn entry_key(&self, entry: StoredStateLookupEntry) -> Option<&str> {
-        let start = usize::try_from(entry.key_offset).ok()?;
-        let end = start.checked_add(usize::from(entry.key_len))?;
+    fn row_key(&self, row: StoredStateLookupRow) -> Option<&str> {
+        let start = usize::try_from(row.key_offset).ok()?;
+        let end = start.checked_add(usize::from(row.key_len))?;
         self.key_blob.get(start..end)
     }
 }
@@ -221,10 +228,15 @@ fn consume(bytes: &[u8], cursor: &mut usize, fragment: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        FNV_OFFSET_BASIS, StoredStateLookup, StoredStateLookupEntry, canonical_state_fingerprint,
+        FNV_OFFSET_BASIS, StoredStateLookup, StoredStateLookupRow, canonical_state_fingerprint,
         hash_bytes,
     };
     use crate::stored_blocks::BlockProperty;
+
+    #[test]
+    fn row_layout_is_exactly_eight_bytes() {
+        assert_eq!(core::mem::size_of::<StoredStateLookupRow>(), 8);
+    }
 
     #[test]
     fn structured_fingerprint_matches_exact_canonical_bytes() {
@@ -251,14 +263,16 @@ mod tests {
         let air = "minecraft:air";
         let log = "minecraft:oak_log[axis=y]";
         let blob = "minecraft:airminecraft:oak_log[axis=y]";
-        let mut entries = [
-            StoredStateLookupEntry::new(
+        let mut pairs = [
+            (
                 canonical_state_fingerprint("minecraft:air", &[]),
-                0,
-                u16::try_from(air.len()).expect("test key length"),
-                0,
+                StoredStateLookupRow::new(
+                    0,
+                    u16::try_from(air.len()).expect("test key length"),
+                    0,
+                ),
             ),
-            StoredStateLookupEntry::new(
+            (
                 canonical_state_fingerprint(
                     "minecraft:oak_log",
                     &[BlockProperty {
@@ -266,13 +280,17 @@ mod tests {
                         value: "y",
                     }],
                 ),
-                u32::try_from(air.len()).expect("test offset"),
-                u16::try_from(log.len()).expect("test key length"),
-                7,
+                StoredStateLookupRow::new(
+                    u32::try_from(air.len()).expect("test offset"),
+                    u16::try_from(log.len()).expect("test key length"),
+                    7,
+                ),
             ),
         ];
-        entries.sort_unstable_by_key(|entry| entry.fingerprint());
-        let lookup = StoredStateLookup::new(blob, &entries);
+        pairs.sort_unstable_by_key(|pair| pair.0);
+        let fingerprints = pairs.map(|pair| pair.0);
+        let rows = pairs.map(|pair| pair.1);
+        let lookup = StoredStateLookup::new(blob, &fingerprints, &rows);
 
         assert_eq!(lookup.resolve_raw("minecraft:air", &[]), Some(0));
         assert_eq!(
@@ -300,11 +318,12 @@ mod tests {
     #[test]
     fn fingerprint_collision_still_requires_exact_key() {
         let blob = "minecraft:airminecraft:stone";
-        let entries = [
-            StoredStateLookupEntry::new(7, 0, 13, 1),
-            StoredStateLookupEntry::new(7, 13, 15, 2),
+        let fingerprints = [7, 7];
+        let rows = [
+            StoredStateLookupRow::new(0, 13, 1),
+            StoredStateLookupRow::new(13, 15, 2),
         ];
-        let lookup = StoredStateLookup::new(blob, &entries);
+        let lookup = StoredStateLookup::new(blob, &fingerprints, &rows);
 
         assert_eq!(
             lookup.resolve_with_fingerprint(7, "minecraft:stone", &[]),
@@ -317,9 +336,16 @@ mod tests {
     }
 
     #[test]
-    fn malformed_generated_range_fails_closed() {
-        let entries = [StoredStateLookupEntry::new(1, u32::MAX, 10, 9)];
-        let lookup = StoredStateLookup::new("minecraft:air", &entries);
+    fn malformed_generated_ranges_fail_closed() {
+        let fingerprints = [1];
+        let rows = [StoredStateLookupRow::new(u32::MAX, 10, 9)];
+        let lookup = StoredStateLookup::new("minecraft:air", &fingerprints, &rows);
+        assert_eq!(
+            lookup.resolve_with_fingerprint(1, "minecraft:air", &[]),
+            None
+        );
+
+        let lookup = StoredStateLookup::new("minecraft:air", &[1, 1], &rows);
         assert_eq!(
             lookup.resolve_with_fingerprint(1, "minecraft:air", &[]),
             None

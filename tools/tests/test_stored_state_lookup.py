@@ -86,7 +86,7 @@ class StoredStateLookupTests(unittest.TestCase):
             0xA628DDE6F2234D1F,
         )
 
-    def test_generation_is_deterministic_and_sorted(self) -> None:
+    def test_generation_is_deterministic_sorted_and_compact(self) -> None:
         data = fixture()
         first_code, first_manifest = stored_state_lookup.render_rust(
             data, manifest(data)
@@ -103,6 +103,12 @@ class StoredStateLookupTests(unittest.TestCase):
         for fingerprint in sorted(fingerprints):
             self.assertIn(f"0x{fingerprint:016x}", first_code)
         self.assertEqual(first_manifest["state_count"], 3)
+        self.assertEqual(first_manifest["fingerprint_bytes"], 24)
+        self.assertEqual(first_manifest["metadata_bytes"], 24)
+        self.assertEqual(
+            first_manifest["layout"],
+            "soa-u64-fingerprint-u32-offset-u16-length-u16-state-v1",
+        )
         self.assertEqual(
             first_manifest["state_data_input_sha256"], state_data.digest(data)
         )
@@ -124,11 +130,25 @@ class StoredStateLookupTests(unittest.TestCase):
         selected_manifest = manifest(changed)
         selected_manifest["assignment_policy"] = "canonical-key"
         code, _ = stored_state_lookup.render_rust(changed, selected_manifest)
-        fingerprint = stored_state_lookup.canonical_state_fingerprint("minecraft:a")
-        row = next(
-            line for line in code.splitlines() if f"0x{fingerprint:016x}" in line
+
+        assigned = state_data.assign(states, "canonical-key")
+        rows = sorted(
+            (
+                stored_state_lookup.canonical_state_fingerprint(str(state["key"])),
+                str(state["key"]),
+                state_id,
+            )
+            for state_id, state in enumerate(assigned)
         )
-        self.assertTrue(row.rstrip().endswith(", 0),"))
+        target_index = next(
+            index for index, (_, key, _) in enumerate(rows) if key == "minecraft:a"
+        )
+        metadata_lines = [
+            line.strip()
+            for line in code.splitlines()
+            if "StoredStateLookupRow::new(" in line
+        ]
+        self.assertTrue(metadata_lines[target_index].endswith(", 0),"))
 
     def test_key_length_over_u16_is_rejected(self) -> None:
         data = fixture()
@@ -136,6 +156,23 @@ class StoredStateLookupTests(unittest.TestCase):
         assert isinstance(states, list)
         states[1]["key"] = "minecraft:" + ("x" * 65_536)
         selected_manifest = manifest(data)
+        with self.assertRaises(ValueError):
+            stored_state_lookup.render_rust(data, selected_manifest)
+
+    def test_more_than_u16_state_universe_is_rejected(self) -> None:
+        data = fixture()
+        states = data["states"]
+        assert isinstance(states, list)
+        prototype = dict(states[1])
+        states.clear()
+        for index in range(65_537):
+            state = dict(prototype)
+            state["key"] = f"minecraft:s{index}"
+            state["vanilla_id"] = index
+            states.append(state)
+        data["air_key"] = "minecraft:s0"
+        selected_manifest = manifest(data)
+        selected_manifest["state_count"] = 65_537
         with self.assertRaises(ValueError):
             stored_state_lookup.render_rust(data, selected_manifest)
 
