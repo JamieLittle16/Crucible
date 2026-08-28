@@ -10,6 +10,7 @@ pub mod anvil;
 pub mod chunk;
 pub mod nbt;
 pub mod stored_blocks;
+pub mod transaction;
 
 pub use anvil::{ChunkCompression, RegionChunk, RegionError, RegionLimits, RegionView};
 pub use chunk::{
@@ -20,4 +21,9 @@ pub use stored_blocks::{
     BlockProperty, BlockSectionDecodeScratch, BlockSectionImportError,
     BlockSectionScratchCapacities, BlockStateResolver, ImportedBlockSection,
     ImportedBlockSectionBuilder, ImportedChunkBlocks, decode_chunk_block_sections,
+};
+pub use transaction::{
+    ChunkPayloadDecoder, ChunkPayloadLimits, ExternalChunkPayload, ImportedStoredChunk,
+    StoredChunkImportError, StoredChunkSourceMetadata, UncompressedChunkPayloadDecoder,
+    UncompressedPayloadError, import_region_chunk_blocks,
 };
