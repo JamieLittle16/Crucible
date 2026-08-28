@@ -1,0 +1,102 @@
+name: R2C Cold Import Residency Qualification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "crates/qualification/helve-r2c-cold-path-qualification/**"
+      - "crates/world/helve-world-import/**"
+      - "crates/world/helve-world-load/**"
+      - "crates/world/helve-world-runtime/**"
+      - "crates/world/helve-world-reference/**"
+      - "crates/world/helve-world-contract/**"
+      - "crates/data/helve-generated/**"
+      - "docs/qualification/R2C_COLD_IMPORT_RESIDENCY_QUALIFICATION.md"
+      - ".github/workflows/r2c-cold-import-residency.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+  workflow_dispatch:
+
+concurrency:
+  group: r2c-cold-import-residency-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cold-path:
+    name: Stored bytes to resident chunk
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: Dependency policy
+        run: python3 tools/ci_policy.py
+
+      - name: Hermetic offline qualification build
+        run: |
+          empty_home="$(mktemp -d)"
+          CARGO_HOME="$empty_home" cargo check \
+            --offline --locked \
+            --package helve-r2c-cold-path-qualification \
+            --all-targets
+
+      - name: Format qualification crate
+        run: cargo fmt --package helve-r2c-cold-path-qualification -- --check
+
+      - name: Check qualification crate
+        run: cargo check --package helve-r2c-cold-path-qualification --all-targets --locked
+
+      - name: Clippy qualification crate
+        run: cargo clippy --package helve-r2c-cold-path-qualification --all-targets --locked -- -D warnings
+
+      - name: Cold-path semantic tests
+        run: cargo test --package helve-r2c-cold-path-qualification --locked
+
+      - name: Hosted release smoke
+        run: |
+          cargo run --release --locked \
+            --package helve-r2c-cold-path-qualification \
+            --bin r2c_cold_path_bench -- \
+            --smoke \
+            --output target/r2c-cold-path-smoke.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(Path("target/r2c-cold-path-smoke.json").read_text())
+          assert artifact["schema"] == 1
+          assert artifact["kind"] == "r2c-cold-import-residency-reference-baseline"
+          assert artifact["mode"] == "smoke"
+          assert artifact["reference_section_builder"] is True
+          assert artifact["production_section_policy_selected"] is False
+          assert artifact["performance_admitted"] is False
+          assert artifact["measured_rounds"] > 0
+          assert artifact["expected_state_id"] >= 0
+          assert len(artifact["samples"]) == artifact["measured_rounds"]
+          for phase in ("import", "install", "combined"):
+              summary = artifact["summary_ns"][phase]
+              assert 0 < summary["p50"] <= summary["p95"] <= summary["p99"] <= summary["p999"] <= summary["max"]
+          counters = artifact["builder_counters"]
+          assert counters["uniform_sections"] == artifact["measured_rounds"] * 2
+          assert counters["dense_sections"] == 0
+          assert counters["dense_cell_writes"] == 0
+          PY
+
+      - name: Rustdoc
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --package helve-r2c-cold-path-qualification --no-deps --document-private-items --locked
