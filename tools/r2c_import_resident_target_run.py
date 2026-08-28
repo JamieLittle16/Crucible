@@ -56,6 +56,12 @@ def parse_positive(value: int, label: str) -> int:
     return value
 
 
+def _nonnegative_int(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise TargetRunError(f"{label} must be a non-negative integer")
+    return value
+
+
 def _hash_world_member(digest: Any, root: Path, path: Path) -> int:
     if path.is_symlink() or not path.is_file():
         raise TargetRunError(f"world evidence member must be a regular non-symlink file: {path}")
@@ -153,23 +159,21 @@ def benchmark_command(
     ]
 
 
-def _require_summary(data: dict[str, Any], name: str) -> None:
+def _require_summary(data: dict[str, Any], name: str) -> int:
     samples = data.get("samples_ns")
     if not isinstance(samples, dict):
         raise TargetRunError("benchmark artifact samples_ns is missing")
     summary = samples.get(name)
     if not isinstance(summary, dict):
         raise TargetRunError(f"benchmark artifact missing samples_ns.{name}")
-    try:
-        count = int(summary["count"])
-        p50 = int(summary["p50"])
-        p95 = int(summary["p95"])
-        p99 = int(summary["p99"])
-        maximum = int(summary["max"])
-    except (KeyError, TypeError, ValueError) as error:
-        raise TargetRunError(f"benchmark artifact has malformed samples_ns.{name}") from error
-    if count <= 0 or not (0 <= p50 <= p95 <= p99 <= maximum):
+    count = _nonnegative_int(summary.get("count"), f"samples_ns.{name}.count")
+    p50 = _nonnegative_int(summary.get("p50"), f"samples_ns.{name}.p50")
+    p95 = _nonnegative_int(summary.get("p95"), f"samples_ns.{name}.p95")
+    p99 = _nonnegative_int(summary.get("p99"), f"samples_ns.{name}.p99")
+    maximum = _nonnegative_int(summary.get("max"), f"samples_ns.{name}.max")
+    if count == 0 or not (p50 <= p95 <= p99 <= maximum):
         raise TargetRunError(f"benchmark artifact has invalid samples_ns.{name}")
+    return count
 
 
 def annotate_artifact(
@@ -226,13 +230,15 @@ def annotate_artifact(
     world = data.get("world")
     if not isinstance(world, dict):
         raise TargetRunError("benchmark artifact world metadata is missing")
-    if world.get("region_files") != world_identity.get("region_files"):
+    region_files = _nonnegative_int(world.get("region_files"), "world.region_files")
+    region_bytes = _nonnegative_int(world.get("region_file_bytes"), "world.region_file_bytes")
+    chunks = _nonnegative_int(world.get("chunks"), "world.chunks")
+    if region_files == 0 or chunks == 0:
+        raise TargetRunError("benchmark artifact must contain region files and resident chunks")
+    if region_files != world_identity.get("region_files"):
         raise TargetRunError("benchmark/world identity region-file count mismatch")
-    if world.get("region_file_bytes") != world_identity.get("region_file_bytes"):
+    if region_bytes != world_identity.get("region_file_bytes"):
         raise TargetRunError("benchmark/world identity region-byte count mismatch")
-    chunks = world.get("chunks")
-    if isinstance(chunks, bool) or not isinstance(chunks, int) or chunks <= 0:
-        raise TargetRunError("benchmark artifact must contain at least one resident chunk")
 
     scratch = data.get("scratch")
     if not isinstance(scratch, dict):
@@ -242,8 +248,37 @@ def annotate_artifact(
     if scratch.get("decoder_grew_during_measurement") is not False:
         raise TargetRunError("decompression output scratch grew during target measurement")
 
-    for name in SUMMARY_NAMES:
-        _require_summary(data, name)
+    builder = data.get("builder")
+    if not isinstance(builder, dict):
+        raise TargetRunError("benchmark artifact builder accounting is missing")
+    uniform_sections = _nonnegative_int(builder.get("uniform_sections"), "builder.uniform_sections")
+    dense_sections = _nonnegative_int(builder.get("dense_sections"), "builder.dense_sections")
+    dense_cells = _nonnegative_int(builder.get("dense_cells_copied"), "builder.dense_cells_copied")
+    retained_cells = _nonnegative_int(
+        builder.get("retained_cells_written"), "builder.retained_cells_written"
+    )
+    built_sections = uniform_sections + dense_sections
+    if built_sections == 0:
+        raise TargetRunError("benchmark artifact builder materialized no sections")
+    if dense_cells != dense_sections * 4096:
+        raise TargetRunError("benchmark artifact dense section copy accounting mismatch")
+    if retained_cells != built_sections * 4096:
+        raise TargetRunError("benchmark artifact retained section write accounting mismatch")
+
+    counts = {name: _require_summary(data, name) for name in SUMMARY_NAMES}
+    expected_counts = {
+        "dimension_setup": measured_rounds,
+        "region_open": region_files * measured_rounds,
+        "import": chunks * measured_rounds,
+        "install": chunks * measured_rounds,
+        "whole_chunk": chunks * measured_rounds,
+        "round": measured_rounds,
+    }
+    for name, expected_count in expected_counts.items():
+        if counts[name] != expected_count:
+            raise TargetRunError(
+                f"benchmark artifact samples_ns.{name}.count must be {expected_count}, got {counts[name]}"
+            )
 
     annotated = dict(data)
     annotated["input_world"] = dict(world_identity)
