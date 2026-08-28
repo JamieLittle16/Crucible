@@ -226,9 +226,7 @@ fn read_u16(offset: usize) -> Option<u16> {
 
 fn read_u32(offset: usize) -> Option<u32> {
     let bytes = generated::STORED_STATE_LOOKUP_DATA.get(offset..offset.checked_add(4)?)?;
-    Some(u32::from_le_bytes([
-        bytes[0], bytes[1], bytes[2], bytes[3],
-    ]))
+    Some(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
 }
 
 fn bytes_at(offset: usize, len: usize) -> Option<&'static [u8]> {
@@ -238,8 +236,8 @@ fn bytes_at(offset: usize, len: usize) -> Option<&'static [u8]> {
 #[cfg(test)]
 mod tests {
     use super::{
-        Target262BlockStateResolver, canonical_state_fingerprint,
-        resolve_target_26_2_block_state, splitmix64,
+        Target262BlockStateResolver, canonical_state_fingerprint, resolve_target_26_2_block_state,
+        splitmix64,
     };
     use crate::{
         generated_state_lookup as generated,
