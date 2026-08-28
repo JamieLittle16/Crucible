@@ -11,10 +11,13 @@ on:
       - "tools/stored_state_lookup.py"
       - "tools/tests/test_state_data.py"
       - "tools/tests/test_stored_state_lookup.py"
+      - "crates/world/helve-world-import/Cargo.toml"
       - "crates/world/helve-world-import/src/state_lookup.rs"
       - "crates/world/helve-world-import/src/generated_state_lookup.rs"
+      - "crates/world/helve-world-import/src/generated/**"
       - "vanilla/state-data/**"
       - "vanilla/vanilla.lock.toml"
+      - "Cargo.lock"
       - ".github/workflows/r2c-stored-state-lookup.yml"
   workflow_dispatch:
 
@@ -42,7 +45,10 @@ jobs:
           distribution: temurin
           java-version: "25"
 
-      - name: State generator regressions
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: State and lookup generator regressions
         run: |
           python3 -m unittest tools.tests.test_state_data -v
           python3 -m unittest tools.tests.test_stored_state_lookup -v
@@ -84,14 +90,20 @@ jobs:
           )
           PY
 
-      - name: Verify committed stored-state lookup when present
-        if: ${{ hashFiles('crates/world/helve-world-import/src/generated_state_lookup.rs', 'vanilla/state-data/26.2-stored-state-lookup-manifest.json') != '' }}
+      - name: Byte-verify committed exact lookup
         run: |
           python3 tools/stored_state_lookup.py verify \
             /tmp/26.2-block-states.qualified.json \
             --state-manifest vanilla/state-data/26.2-state-data-manifest.json \
             --output crates/world/helve-world-import/src/generated_state_lookup.rs \
+            --binary-output crates/world/helve-world-import/src/generated/26.2-stored-state-lookup.bin \
             --manifest vanilla/state-data/26.2-stored-state-lookup-manifest.json
+
+      - name: Rust exact lookup qualification
+        run: |
+          cargo fmt --package helve-world-import -- --check
+          cargo test --locked -p helve-world-import state_lookup
+          cargo clippy --locked -p helve-world-import --all-targets -- -D warnings
 
       - name: Upload exact qualified state input
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
