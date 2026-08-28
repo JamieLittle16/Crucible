@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn negative_and_oversized_lengths_fail_closed() {
-        let negative = [0, 0, 0, 0xff, 0xff, 0xff, 0xff];
+        let negative = [0, 0xff, 0xff, 0xff, 0xff];
         let mut reader = NbtReader::new(&negative, limits());
         assert_eq!(
             reader.read_list_header(),
