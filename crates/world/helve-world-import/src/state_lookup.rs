@@ -157,11 +157,7 @@ fn hash_bytes(mut hash: u64, bytes: &[u8]) -> u64 {
     hash
 }
 
-fn canonical_key_matches(
-    expected: &str,
-    name: &str,
-    properties: &[BlockProperty<'_>],
-) -> bool {
+fn canonical_key_matches(expected: &str, name: &str, properties: &[BlockProperty<'_>]) -> bool {
     let Some(expected_len) = canonical_key_len(name, properties) else {
         return false;
     };
