@@ -23,6 +23,7 @@ RUNNER_ID = "r2c-import-resident-target-run-v1"
 WORLD_ID_POLICY = "r2c-dimension-region-bytes-sha256-v1"
 DEFAULT_WARMUP_ROUNDS = 3
 DEFAULT_MEASURED_ROUNDS = 12
+HASH_CHUNK_BYTES = 1024 * 1024
 EXPECTED_PROFILE = {
     "dimension": "minecraft:overworld",
     "min_block_y": -64,
@@ -55,6 +56,36 @@ def parse_positive(value: int, label: str) -> int:
     return value
 
 
+def _hash_world_member(digest: Any, root: Path, path: Path) -> int:
+    if path.is_symlink() or not path.is_file():
+        raise TargetRunError(f"world evidence member must be a regular non-symlink file: {path}")
+    try:
+        size = path.stat().st_size
+    except OSError as error:
+        raise TargetRunError(f"cannot stat world evidence member {path}: {error}") from error
+    if size < 0:
+        raise TargetRunError(f"world evidence member has invalid size: {path}")
+
+    relative = path.relative_to(root).as_posix().encode("utf-8")
+    digest.update(len(relative).to_bytes(4, "big"))
+    digest.update(relative)
+    digest.update(size.to_bytes(8, "big"))
+    try:
+        with path.open("rb") as stream:
+            while chunk := stream.read(HASH_CHUNK_BYTES):
+                digest.update(chunk)
+    except OSError as error:
+        raise TargetRunError(f"cannot hash world evidence member {path}: {error}") from error
+
+    try:
+        after_size = path.stat().st_size
+    except OSError as error:
+        raise TargetRunError(f"cannot restat world evidence member {path}: {error}") from error
+    if after_size != size:
+        raise TargetRunError(f"world evidence member changed while hashing: {path}")
+    return size
+
+
 def dimension_world_identity(dimension_root: Path) -> dict[str, Any]:
     root = dimension_root.resolve()
     region_dir = root / "region"
@@ -66,25 +97,15 @@ def dimension_world_identity(dimension_root: Path) -> dict[str, Any]:
     if not region_files:
         raise TargetRunError(f"dimension contains no Anvil region files: {region_dir}")
 
-    files = region_files + external_files
     digest = hashlib.sha256()
     digest.update(WORLD_ID_POLICY.encode("ascii"))
     digest.update(b"\0")
     region_bytes = 0
     external_bytes = 0
-    for path in files:
-        if path.is_symlink() or not path.is_file():
-            raise TargetRunError(f"world evidence member must be a regular non-symlink file: {path}")
-        data = path.read_bytes()
-        relative = path.relative_to(root).as_posix().encode("utf-8")
-        digest.update(len(relative).to_bytes(4, "big"))
-        digest.update(relative)
-        digest.update(len(data).to_bytes(8, "big"))
-        digest.update(data)
-        if path.suffix == ".mca":
-            region_bytes += len(data)
-        else:
-            external_bytes += len(data)
+    for path in region_files:
+        region_bytes += _hash_world_member(digest, root, path)
+    for path in external_files:
+        external_bytes += _hash_world_member(digest, root, path)
 
     return {
         "policy": WORLD_ID_POLICY,
@@ -263,6 +284,11 @@ def run_target_process(
             command_runner(command, check=True)
         except (OSError, subprocess.CalledProcessError) as error:
             raise TargetRunError(f"benchmark command failed: {error}") from error
+
+        after_identity = dimension_world_identity(dimension_root)
+        if after_identity != world_identity:
+            raise TargetRunError("dimension world changed during target measurement")
+
         try:
             data = json.loads(raw.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
