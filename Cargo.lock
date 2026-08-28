@@ -192,6 +192,7 @@ version = "0.0.0"
 name = "helve-world-import"
 version = "0.0.0"
 dependencies = [
+ "helve-generated",
  "helve-types",
 ]
 
