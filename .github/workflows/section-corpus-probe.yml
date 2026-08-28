@@ -15,10 +15,14 @@ on:
       - tools/tests/test_section_corpus.py
       - tools/tests/test_section_corpus_import_evidence.py
       - crates/qualification/helve-section-qualification/src/bin/section_bench/**
+      - crates/qualification/helve-world-load-qualification/**
       - crates/data/helve-generated/**
+      - crates/world/helve-world-chunk/**
       - crates/world/helve-world-contract/**
       - crates/world/helve-world-import/**
+      - crates/world/helve-world-load/**
       - crates/world/helve-world-reference/**
+      - crates/world/helve-world-runtime/**
       - crates/world/helve-world-section/**
       - vendor/adler2-2.0.1/**
       - vendor/miniz_oxide-0.8.9/**
@@ -126,6 +130,20 @@ jobs:
             --dimension minecraft:overworld \
             --evidence /tmp/26.2-production-import-differential.json
 
+      - name: Build import-to-resident qualification harness
+        run: >-
+          cargo build --release --offline --locked
+          --package helve-world-load-qualification
+          --bin r2c_import_resident_bench
+
+      - name: Measure official save import through residency
+        run: |
+          target/release/r2c_import_resident_bench \
+            --world /tmp/helve-section-world/world/dimensions/minecraft/overworld \
+            --warmup-rounds 1 \
+            --measured-rounds 2 \
+            --output /tmp/26.2-import-resident-hosted.json
+
       - name: Independently validate normalized corpus
         run: |
           python3 tools/section_corpus.py validate \
@@ -182,6 +200,9 @@ jobs:
           production_import = json.loads(
               Path('/tmp/26.2-production-import-differential.json').read_text()
           )
+          resident_load = json.loads(
+              Path('/tmp/26.2-import-resident-hosted.json').read_text()
+          )
           with Path('vanilla/vanilla.lock.toml').open('rb') as handle:
               lock = tomllib.load(handle)
           state_manifest = json.loads(
@@ -222,6 +243,65 @@ jobs:
           if production_import['corpus_sha256'] != corpus['corpus_sha256']:
               raise SystemExit('production importer compared a different corpus identity')
 
+          if resident_load['kind'] != 'r2c-import-resident-cpu-qualification':
+              raise SystemExit('unexpected import-resident evidence kind')
+          if resident_load['mode'] != 'hosted-diagnostic':
+              raise SystemExit('hosted import-resident evidence mode drifted')
+          if resident_load['production_decision_eligible'] is not False:
+              raise SystemExit('hosted import-resident evidence became decision-eligible')
+          if resident_load['profile'] != {
+              'dimension': 'minecraft:overworld',
+              'min_block_y': -64,
+              'height': 384,
+              'section_count': 24,
+          }:
+              raise SystemExit('import-resident Overworld profile drifted')
+          if resident_load['state_data']['input_sha256'] != state_manifest['input_digest']:
+              raise SystemExit('import-resident state-data input digest mismatch')
+          if (
+              resident_load['state_data']['generation_sha256']
+              != state_manifest['generation_digest']
+          ):
+              raise SystemExit('import-resident state-data generation digest mismatch')
+          if resident_load['world']['region_files'] != len(
+              list(
+                  Path(
+                      '/tmp/helve-section-world/world/dimensions/minecraft/overworld/region'
+                  ).glob('r.*.*.mca')
+              )
+          ):
+              raise SystemExit('import-resident region-file count mismatch')
+          if resident_load['world']['chunks'] <= 0:
+              raise SystemExit('import-resident benchmark observed no chunks')
+          if resident_load['scratch']['grew_during_measurement']:
+              raise SystemExit('importer section scratch grew after warmup')
+          if resident_load['scratch']['decoder_grew_during_measurement']:
+              raise SystemExit('decompression output scratch grew after warmup')
+
+          measured_rounds = resident_load['config']['measured_rounds']
+          built_sections = (
+              resident_load['builder']['uniform_sections']
+              + resident_load['builder']['dense_sections']
+          )
+          expected_sections = corpus['section_count'] * measured_rounds
+          if built_sections != expected_sections:
+              raise SystemExit(
+                  'import-resident builder did not materialize every official corpus section: '
+                  f'expected {expected_sections}, got {built_sections}'
+              )
+          if resident_load['builder']['dense_cells_copied'] != (
+              resident_load['builder']['dense_sections'] * 4096
+          ):
+              raise SystemExit('dense section copy accounting drifted')
+          if resident_load['builder']['retained_cells_written'] != built_sections * 4096:
+              raise SystemExit('retained section write accounting drifted')
+          if resident_load['samples_ns']['whole_chunk']['count'] != (
+              resident_load['world']['chunks'] * measured_rounds
+          ):
+              raise SystemExit('whole-chunk sample count mismatch')
+          if resident_load['samples_ns']['round']['count'] != measured_rounds:
+              raise SystemExit('whole-round sample count mismatch')
+
           print(
               'official section corpus PASS: '
               f"sections={corpus['section_count']} "
@@ -229,7 +309,9 @@ jobs:
               f"states={corpus['distinct_state_ids']} "
               f"inventory={inventory['inventory_sha256']} "
               f"corpus={corpus['corpus_sha256']} "
-              f"production_semantic={production_import['semantic_sha256']}"
+              f"production_semantic={production_import['semantic_sha256']} "
+              f"resident_chunks={resident_load['world']['chunks']} "
+              f"resident_p99_ns={resident_load['samples_ns']['whole_chunk']['p99']}"
           )
           PY
 
@@ -243,6 +325,7 @@ jobs:
             /tmp/26.2-spawn-sections.manifest.json
             /tmp/26.2-spawn-sections.rust-import.json
             /tmp/26.2-production-import-differential.json
+            /tmp/26.2-import-resident-hosted.json
             /tmp/26.2-spawn-sections.decision-rejection.log
             /tmp/26.2-spawn-sections.corpus
           if-no-files-found: error
