@@ -195,6 +195,10 @@ impl<'a> NbtReader<'a> {
     ///
     /// `Ok(None)` means the compound's `TAG_End` terminator was consumed. The payload of a returned
     /// field remains unread so schema code can decode or skip it directly.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for truncation, invalid tag identity, invalid UTF-8, or string limits.
     pub fn next_compound_field(&mut self) -> Result<Option<NamedTag<'a>>, NbtError> {
         let tag_type = TagType::try_from(self.read_u8()?)?;
         if tag_type == TagType::End {
@@ -220,50 +224,87 @@ impl<'a> NbtReader<'a> {
     }
 
     /// Reads one signed byte payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the payload is truncated.
     pub fn read_i8(&mut self) -> Result<i8, NbtError> {
         Ok(i8::from_be_bytes([self.read_u8()?]))
     }
 
     /// Reads one signed short payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the payload is truncated.
     pub fn read_i16(&mut self) -> Result<i16, NbtError> {
         Ok(i16::from_be_bytes(self.take_array()?))
     }
 
     /// Reads one signed integer payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the payload is truncated.
     pub fn read_i32(&mut self) -> Result<i32, NbtError> {
         Ok(i32::from_be_bytes(self.take_array()?))
     }
 
     /// Reads one signed long payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the payload is truncated.
     pub fn read_i64(&mut self) -> Result<i64, NbtError> {
         Ok(i64::from_be_bytes(self.take_array()?))
     }
 
     /// Reads one float payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the payload is truncated.
     pub fn read_f32(&mut self) -> Result<f32, NbtError> {
         Ok(f32::from_bits(u32::from_be_bytes(self.take_array()?)))
     }
 
     /// Reads one double payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the payload is truncated.
     pub fn read_f64(&mut self) -> Result<f64, NbtError> {
         Ok(f64::from_bits(u64::from_be_bytes(self.take_array()?)))
     }
 
     /// Reads one borrowed NBT string payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for truncation, invalid UTF-8, or the configured string-byte limit.
     pub fn read_string(&mut self) -> Result<&'a str, NbtError> {
         let length = usize::from(u16::from_be_bytes(self.take_array()?));
-        self.check_limit("string bytes", length, self.limits.max_string_bytes)?;
+        Self::check_limit("string bytes", length, self.limits.max_string_bytes)?;
         let bytes = self.take(length)?;
         str::from_utf8(bytes).map_err(|_| NbtError::InvalidUtf8)
     }
 
     /// Reads one borrowed byte-array payload without copying it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a negative or oversized array length, arithmetic overflow, or truncation.
     pub fn read_byte_array(&mut self) -> Result<&'a [u8], NbtError> {
         let length = self.read_bounded_length("byte array", self.limits.max_array_elements)?;
         self.take(length)
     }
 
     /// Reads homogeneous-list framing. Element payloads remain unread.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an invalid element tag, negative/oversized length, arithmetic overflow,
+    /// truncation, or a non-empty `TAG_End` list.
     pub fn read_list_header(&mut self) -> Result<ListHeader, NbtError> {
         let element_type = TagType::try_from(self.read_u8()?)?;
         let len = self.read_bounded_length("list", self.limits.max_list_elements)?;
@@ -274,11 +315,19 @@ impl<'a> NbtReader<'a> {
     }
 
     /// Reads an int-array length. Elements remain unread for schema-directed consumption.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a negative or oversized length, arithmetic overflow, or truncation.
     pub fn read_int_array_len(&mut self) -> Result<usize, NbtError> {
         self.read_bounded_length("int array", self.limits.max_array_elements)
     }
 
     /// Reads a long-array length. Elements remain unread for schema-directed consumption.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a negative or oversized length, arithmetic overflow, or truncation.
     pub fn read_long_array_len(&mut self) -> Result<usize, NbtError> {
         self.read_bounded_length("long array", self.limits.max_array_elements)
     }
@@ -344,26 +393,17 @@ impl<'a> NbtReader<'a> {
         Ok(nested)
     }
 
-    fn read_bounded_length(
-        &mut self,
-        kind: &'static str,
-        limit: usize,
-    ) -> Result<usize, NbtError> {
+    fn read_bounded_length(&mut self, kind: &'static str, limit: usize) -> Result<usize, NbtError> {
         let value = self.read_i32()?;
         if value < 0 {
             return Err(NbtError::NegativeLength { kind, value });
         }
         let length = usize::try_from(value).map_err(|_| NbtError::ArithmeticOverflow)?;
-        self.check_limit(kind, length, limit)?;
+        Self::check_limit(kind, length, limit)?;
         Ok(length)
     }
 
-    fn check_limit(
-        &self,
-        kind: &'static str,
-        actual: usize,
-        limit: usize,
-    ) -> Result<(), NbtError> {
+    fn check_limit(kind: &'static str, actual: usize, limit: usize) -> Result<(), NbtError> {
         if actual > limit {
             Err(NbtError::LimitExceeded {
                 kind,
@@ -523,7 +563,10 @@ mod tests {
         let mut reader = NbtReader::new(&bytes, limits());
         reader.begin_root_compound().expect("root");
         assert_eq!(reader.next_compound_field().expect("end"), None);
-        assert_eq!(reader.finish_root(), Err(NbtError::TrailingBytes { remaining: 1 }));
+        assert_eq!(
+            reader.finish_root(),
+            Err(NbtError::TrailingBytes { remaining: 1 })
+        );
     }
 
     #[test]

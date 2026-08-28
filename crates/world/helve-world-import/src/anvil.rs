@@ -81,6 +81,10 @@ pub enum RegionError {
     RegionTooSmall { actual: usize },
     /// Region files are sector aligned.
     RegionNotSectorAligned { actual: usize },
+    /// A validated framing read could not obtain the requested bytes.
+    UnexpectedEof { offset: usize, needed: usize },
+    /// Checked framing arithmetic could not be represented safely.
+    ArithmeticOverflow,
     /// A location-table entry points into the header or outside the file.
     InvalidLocation {
         slot: usize,
@@ -204,8 +208,8 @@ impl<'a> RegionView<'a> {
     ///
     /// # Errors
     ///
-    /// Returns an error for invalid local coordinates, malformed stored length, oversized inline
-    /// payload, coordinate overflow, or unknown compression identity.
+    /// Returns an error for invalid local coordinates, malformed/truncated framing, oversized inline
+    /// payload, checked-arithmetic or coordinate overflow, or unknown compression identity.
     pub fn chunk(&self, local_x: u8, local_z: u8) -> Result<Option<RegionChunk<'a>>, RegionError> {
         if local_x >= 32 || local_z >= 32 {
             return Err(RegionError::LocalChunkOutsideRegion { local_x, local_z });
@@ -216,14 +220,16 @@ impl<'a> RegionView<'a> {
             return Ok(None);
         };
         let position = self.chunk_position(local_x, local_z)?;
-        let start = location.offset_sectors * SECTOR_BYTES;
-        let allocation_bytes = location.sector_count * SECTOR_BYTES;
-        let length = usize::try_from(u32::from_be_bytes(
-            self.bytes[start..start + 4]
-                .try_into()
-                .expect("validated sector contains four length bytes"),
-        ))
-        .expect("u32 chunk length fits usize on supported targets");
+        let start = location
+            .offset_sectors
+            .checked_mul(SECTOR_BYTES)
+            .ok_or(RegionError::ArithmeticOverflow)?;
+        let allocation_bytes = location
+            .sector_count
+            .checked_mul(SECTOR_BYTES)
+            .ok_or(RegionError::ArithmeticOverflow)?;
+        let length = usize::try_from(read_u32_be(self.bytes, start)?)
+            .map_err(|_| RegionError::ArithmeticOverflow)?;
         if length < 1 || length > allocation_bytes - 4 {
             return Err(RegionError::InvalidChunkLength {
                 position,
@@ -232,7 +238,10 @@ impl<'a> RegionView<'a> {
             });
         }
 
-        let compression_byte = self.bytes[start + 4];
+        let compression_offset = start
+            .checked_add(4)
+            .ok_or(RegionError::ArithmeticOverflow)?;
+        let compression_byte = read_u8(self.bytes, compression_offset)?;
         let external = compression_byte & 0x80 != 0;
         let compression_id = compression_byte & 0x7f;
         let compression = ChunkCompression::from_id(compression_id).ok_or(
@@ -253,16 +262,19 @@ impl<'a> RegionView<'a> {
                     limit: self.limits.max_inline_chunk_payload_bytes,
                 });
             }
-            let end = start + 4 + length;
-            Some(&self.bytes[start + 5..end])
+            let payload_start = start
+                .checked_add(5)
+                .ok_or(RegionError::ArithmeticOverflow)?;
+            let payload_end = payload_start
+                .checked_add(payload_len)
+                .ok_or(RegionError::ArithmeticOverflow)?;
+            Some(read_slice(self.bytes, payload_start, payload_end)?)
         };
 
-        let timestamp_start = SECTOR_BYTES + slot * 4;
-        let timestamp = u32::from_be_bytes(
-            self.bytes[timestamp_start..timestamp_start + 4]
-                .try_into()
-                .expect("validated header contains timestamp bytes"),
-        );
+        let timestamp_start = SECTOR_BYTES
+            .checked_add(slot.checked_mul(4).ok_or(RegionError::ArithmeticOverflow)?)
+            .ok_or(RegionError::ArithmeticOverflow)?;
+        let timestamp = read_u32_be(self.bytes, timestamp_start)?;
         Ok(Some(RegionChunk {
             position,
             timestamp,
@@ -296,17 +308,13 @@ fn parse_location(
     file_sectors: usize,
     slot: usize,
 ) -> Result<Option<Location>, RegionError> {
-    let start = slot * 4;
-    let raw = u32::from_be_bytes(
-        bytes[start..start + 4]
-            .try_into()
-            .expect("validated region header contains location bytes"),
-    );
+    let start = slot.checked_mul(4).ok_or(RegionError::ArithmeticOverflow)?;
+    let raw = read_u32_be(bytes, start)?;
     if raw == 0 {
         return Ok(None);
     }
-    let offset_sectors = usize::try_from(raw >> 8).expect("24-bit offset fits usize");
-    let sector_count = usize::try_from(raw & 0xff).expect("8-bit sector count fits usize");
+    let offset_sectors = usize::try_from(raw >> 8).map_err(|_| RegionError::ArithmeticOverflow)?;
+    let sector_count = usize::try_from(raw & 0xff).map_err(|_| RegionError::ArithmeticOverflow)?;
     let valid = offset_sectors >= 2
         && sector_count > 0
         && offset_sectors
@@ -324,6 +332,30 @@ fn parse_location(
         offset_sectors,
         sector_count,
     }))
+}
+
+fn read_u8(bytes: &[u8], offset: usize) -> Result<u8, RegionError> {
+    bytes
+        .get(offset)
+        .copied()
+        .ok_or(RegionError::UnexpectedEof { offset, needed: 1 })
+}
+
+fn read_u32_be(bytes: &[u8], offset: usize) -> Result<u32, RegionError> {
+    let end = offset
+        .checked_add(4)
+        .ok_or(RegionError::ArithmeticOverflow)?;
+    let raw = read_slice(bytes, offset, end)?;
+    let mut value = [0_u8; 4];
+    value.copy_from_slice(raw);
+    Ok(u32::from_be_bytes(value))
+}
+
+fn read_slice(bytes: &[u8], start: usize, end: usize) -> Result<&[u8], RegionError> {
+    bytes.get(start..end).ok_or(RegionError::UnexpectedEof {
+        offset: start,
+        needed: end.saturating_sub(start),
+    })
 }
 
 #[cfg(test)]

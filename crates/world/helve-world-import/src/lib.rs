@@ -11,5 +11,7 @@ pub mod chunk;
 pub mod nbt;
 
 pub use anvil::{ChunkCompression, RegionChunk, RegionError, RegionLimits, RegionView};
-pub use chunk::{ChunkImportError, StoredChunkHeader, TARGET_DATA_VERSION_26_2, inspect_chunk_header};
+pub use chunk::{
+    ChunkImportError, StoredChunkHeader, TARGET_DATA_VERSION_26_2, inspect_chunk_header,
+};
 pub use nbt::{ListHeader, NamedTag, NbtError, NbtLimits, NbtReader, TagType};
