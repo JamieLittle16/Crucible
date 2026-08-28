@@ -1,139 +1,79 @@
-//! Allocation-free lookup core for persisted block-state identities.
+//! Allocation-free lookup of persisted Minecraft 26.2 block-state identities.
 //!
-//! The generated cold table stores canonical target state keys behind a stable fingerprint index.
-//! Lookup hashes the already-canonicalized `(Name, Properties)` view without constructing a string,
-//! binary-searches the fingerprint array, then verifies exact canonical key bytes before returning a
-//! dense semantic state ID. Fingerprints are therefore an index only, never identity.
+//! The generated table is a cold import artifact. A saved state is hashed without constructing a
+//! canonical string, mapped to exactly one generated candidate, then verified structurally before
+//! the existing dense `BlockStateId` is returned. Hashes are indexing only; exact structured
+//! equality remains the semantic authority.
 
-use crate::stored_blocks::BlockProperty;
+use helve_generated::{BLOCK_STATE_COUNT, BlockStateId};
+
+use crate::{
+    generated_state_lookup as generated,
+    stored_blocks::{BlockProperty, BlockStateResolver},
+};
 
 const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+const SPLITMIX_INCREMENT: u64 = 0x9e37_79b9_7f4a_7c15;
+const SPLITMIX_MIX1: u64 = 0xbf58_476d_1ce4_e5b9;
+const SPLITMIX_MIX2: u64 = 0x94d0_49bb_1331_11eb;
+const STATE_NAME_MASK: u32 = (1 << 11) - 1;
+const STATE_PROPERTY_START_MASK: u32 = (1 << 18) - 1;
+const PROPERTY_ID_MASK: u16 = (1 << 9) - 1;
 
-/// Compact metadata paired positionally with one generated fingerprint.
+const _: () = assert!(generated::STORED_STATE_LOOKUP_BYTES > 0);
+const _: () = assert!(generated::STORED_STATE_LOOKUP_COUNT == BLOCK_STATE_COUNT);
+const _: () = assert!(generated::STORED_STATE_BUCKET_COUNT.is_power_of_two());
+const _: () = assert!(generated::STORED_STATE_SLOT_COUNT.is_power_of_two());
+const _: () = assert!(generated::STORED_STATE_MAX_PROPERTIES <= 7);
+const _: () = assert!(generated::STORED_STATE_NAME_COUNT <= 1 << 11);
+const _: () = assert!(generated::STORED_STATE_PROPERTY_PAIR_COUNT <= 1 << 9);
+const _: () = assert!(generated::STORED_STATE_PROPERTY_OCCURRENCES <= 1 << 18);
+
+/// Exact persisted-state resolver for the pinned Minecraft 26.2 state universe.
 ///
-/// The frozen 26.2 target proves its dense state universe fits in `u16`. Keeping fingerprints in a
-/// separate SoA array lets binary search touch only eight bytes per probe; this row is exactly eight
-/// bytes and is read only after a matching fingerprint has been found.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct StoredStateLookupRow {
-    key_offset: u32,
-    key_len: u16,
-    state_id: u16,
-}
+/// This is a zero-sized cold-boundary mechanism. It performs no runtime table construction and no
+/// allocation. The generated binary is source/runtime-qualified and byte-reproducible in CI.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Target262BlockStateResolver;
 
-const _: () = assert!(core::mem::size_of::<StoredStateLookupRow>() == 8);
+impl BlockStateResolver for Target262BlockStateResolver {
+    type State = BlockStateId;
 
-impl StoredStateLookupRow {
-    /// Creates one generated exact-match row.
-    #[must_use]
-    pub const fn new(key_offset: u32, key_len: u16, state_id: u16) -> Self {
-        Self {
-            key_offset,
-            key_len,
-            state_id,
-        }
-    }
-
-    /// Byte offset of the canonical key in the generated blob.
-    #[must_use]
-    pub const fn key_offset(self) -> u32 {
-        self.key_offset
-    }
-
-    /// UTF-8 byte length of the canonical key.
-    #[must_use]
-    pub const fn key_len(self) -> u16 {
-        self.key_len
-    }
-
-    /// Dense target semantic state ID associated with the exact key.
-    #[must_use]
-    pub const fn state_id(self) -> u16 {
-        self.state_id
+    fn resolve(&self, name: &str, properties: &[BlockProperty<'_>]) -> Option<Self::State> {
+        resolve_target_26_2_block_state(name, properties)
     }
 }
 
-/// Borrowed generated exact-lookup table.
-#[derive(Clone, Copy, Debug)]
-pub struct StoredStateLookup<'a> {
-    key_blob: &'a str,
-    fingerprints: &'a [u64],
-    rows: &'a [StoredStateLookupRow],
-}
-
-impl<'a> StoredStateLookup<'a> {
-    /// Binds the generated canonical-key blob and positionally paired SoA index.
-    #[must_use]
-    pub const fn new(
-        key_blob: &'a str,
-        fingerprints: &'a [u64],
-        rows: &'a [StoredStateLookupRow],
-    ) -> Self {
-        Self {
-            key_blob,
-            fingerprints,
-            rows,
-        }
-    }
-
-    /// Resolves one saved state to the dense raw semantic ID.
-    ///
-    /// No allocation or temporary canonical string is required. A hash collision only widens the
-    /// exact comparison range; it can never produce a false semantic match.
-    #[must_use]
-    pub fn resolve_raw(&self, name: &str, properties: &[BlockProperty<'_>]) -> Option<u32> {
-        let fingerprint = canonical_state_fingerprint(name, properties);
-        self.resolve_with_fingerprint(fingerprint, name, properties)
-    }
-
-    fn resolve_with_fingerprint(
-        &self,
-        fingerprint: u64,
-        name: &str,
-        properties: &[BlockProperty<'_>],
-    ) -> Option<u32> {
-        if self.fingerprints.len() != self.rows.len() {
-            return None;
-        }
-
-        let mut left = 0_usize;
-        let mut right = self.fingerprints.len();
-        while left < right {
-            let middle = left + (right - left) / 2;
-            if self.fingerprints[middle] < fingerprint {
-                left = middle + 1;
-            } else {
-                right = middle;
-            }
-        }
-
-        let mut index = left;
-        while self.fingerprints.get(index).copied() == Some(fingerprint) {
-            let row = *self.rows.get(index)?;
-            if let Some(expected) = self.row_key(row)
-                && canonical_key_matches(expected, name, properties)
-            {
-                return Some(u32::from(row.state_id));
-            }
-            index += 1;
-        }
-        None
-    }
-
-    fn row_key(&self, row: StoredStateLookupRow) -> Option<&str> {
-        let start = usize::try_from(row.key_offset).ok()?;
-        let end = start.checked_add(usize::from(row.key_len))?;
-        self.key_blob.get(start..end)
-    }
-}
-
-/// Stable FNV-1a fingerprint of the canonical state key represented by `name + properties`.
+/// Resolves one canonicalized saved 26.2 block state to Helve's existing dense identity.
 ///
-/// Properties are expected in the lexicographic order guaranteed by the persisted-state decoder.
-/// The byte stream is exactly `name` for property-free states and
-/// `name[prop=value,...]` otherwise.
+/// `properties` must be lexicographically sorted by name, as guaranteed by the stored-section
+/// decoder. Unknown, malformed, non-canonical or hash-colliding input fails closed.
+#[must_use]
+pub fn resolve_target_26_2_block_state(
+    name: &str,
+    properties: &[BlockProperty<'_>],
+) -> Option<BlockStateId> {
+    if properties.len() > generated::STORED_STATE_MAX_PROPERTIES {
+        return None;
+    }
+
+    let fingerprint = canonical_state_fingerprint(name, properties);
+    let bucket = usize::try_from(fingerprint & generated::STORED_STATE_BUCKET_MASK).ok()?;
+    let displacement_offset =
+        scaled_offset(generated::STORED_STATE_DISPLACEMENTS_OFFSET, bucket, 2)?;
+    let displacement = read_u16(displacement_offset)?;
+    let slot_hash = splitmix64(fingerprint ^ u64::from(displacement));
+    let slot = usize::try_from(slot_hash & generated::STORED_STATE_SLOT_MASK).ok()?;
+    let slot_offset = scaled_offset(generated::STORED_STATE_SLOTS_OFFSET, slot, 2)?;
+    let state = BlockStateId::new(u32::from(read_u16(slot_offset)?))?;
+
+    descriptor_matches(state.as_usize(), name, properties).then_some(state)
+}
+
+/// Stable `FNV-1a` fingerprint of the canonical `name[properties]` byte stream.
+///
+/// The fingerprint narrows lookup to one generated candidate but is never treated as identity.
 #[must_use]
 pub fn canonical_state_fingerprint(name: &str, properties: &[BlockProperty<'_>]) -> u64 {
     let mut hash = hash_bytes(FNV_OFFSET_BASIS, name.as_bytes());
@@ -153,6 +93,117 @@ pub fn canonical_state_fingerprint(name: &str, properties: &[BlockProperty<'_>])
     hash_byte(hash, b']')
 }
 
+fn descriptor_matches(state_id: usize, name: &str, properties: &[BlockProperty<'_>]) -> bool {
+    let Some(descriptor_offset) =
+        scaled_offset(generated::STORED_STATE_DESCRIPTORS_OFFSET, state_id, 4)
+    else {
+        return false;
+    };
+    let Some(descriptor) = read_u32(descriptor_offset) else {
+        return false;
+    };
+    let Ok(name_id) = usize::try_from(descriptor & STATE_NAME_MASK) else {
+        return false;
+    };
+    let Ok(property_start) = usize::try_from((descriptor >> 11) & STATE_PROPERTY_START_MASK) else {
+        return false;
+    };
+    let Ok(property_len) = usize::try_from(descriptor >> 29) else {
+        return false;
+    };
+
+    property_len == properties.len()
+        && name_id < generated::STORED_STATE_NAME_COUNT
+        && name_matches(name_id, name)
+        && properties.iter().enumerate().all(|(index, property)| {
+            let Some(occurrence) = property_start.checked_add(index) else {
+                return false;
+            };
+            let Some(pair_id) = property_pair_id(occurrence) else {
+                return false;
+            };
+            pair_matches(pair_id, property)
+        })
+}
+
+fn name_matches(name_id: usize, name: &str) -> bool {
+    let Some(index_offset) = scaled_offset(generated::STORED_STATE_NAME_INDEX_OFFSET, name_id, 3)
+    else {
+        return false;
+    };
+    let Some(blob_offset) = read_u16(index_offset).map(usize::from) else {
+        return false;
+    };
+    let Some(length_offset) = index_offset.checked_add(2) else {
+        return false;
+    };
+    let Some(len) = read_u8(length_offset).map(usize::from) else {
+        return false;
+    };
+    let Some(start) = generated::STORED_STATE_NAME_BLOB_OFFSET.checked_add(blob_offset) else {
+        return false;
+    };
+    bytes_at(start, len) == Some(name.as_bytes())
+}
+
+fn property_pair_id(occurrence: usize) -> Option<usize> {
+    if occurrence >= generated::STORED_STATE_PROPERTY_OCCURRENCES {
+        return None;
+    }
+    let bit = occurrence.checked_mul(9)?;
+    let absolute = generated::STORED_STATE_PROPERTY_IDS_OFFSET.checked_add(bit / 8)?;
+    let word = read_u16(absolute)?;
+    Some(usize::from((word >> (bit % 8)) & PROPERTY_ID_MASK))
+}
+
+fn pair_matches(pair_id: usize, property: &BlockProperty<'_>) -> bool {
+    if pair_id >= generated::STORED_STATE_PROPERTY_PAIR_COUNT {
+        return false;
+    }
+    let Some(index_offset) = scaled_offset(generated::STORED_STATE_PAIR_INDEX_OFFSET, pair_id, 4)
+    else {
+        return false;
+    };
+    let Some(blob_offset) = read_u16(index_offset).map(usize::from) else {
+        return false;
+    };
+    let Some(name_len_offset) = index_offset.checked_add(2) else {
+        return false;
+    };
+    let Some(total_len_offset) = index_offset.checked_add(3) else {
+        return false;
+    };
+    let Some(name_len) = read_u8(name_len_offset).map(usize::from) else {
+        return false;
+    };
+    let Some(total_len) = read_u8(total_len_offset).map(usize::from) else {
+        return false;
+    };
+    if total_len <= name_len {
+        return false;
+    }
+    let Some(start) = generated::STORED_STATE_PAIR_BLOB_OFFSET.checked_add(blob_offset) else {
+        return false;
+    };
+    let Some(pair) = bytes_at(start, total_len) else {
+        return false;
+    };
+    pair.get(..name_len) == Some(property.name.as_bytes())
+        && pair.get(name_len) == Some(&b'=')
+        && pair.get(name_len + 1..) == Some(property.value.as_bytes())
+}
+
+fn scaled_offset(base: usize, index: usize, stride: usize) -> Option<usize> {
+    base.checked_add(index.checked_mul(stride)?)
+}
+
+fn splitmix64(mut value: u64) -> u64 {
+    value = value.wrapping_add(SPLITMIX_INCREMENT);
+    value = (value ^ (value >> 30)).wrapping_mul(SPLITMIX_MIX1);
+    value = (value ^ (value >> 27)).wrapping_mul(SPLITMIX_MIX2);
+    value ^ (value >> 31)
+}
+
 fn hash_byte(hash: u64, byte: u8) -> u64 {
     (hash ^ u64::from(byte)).wrapping_mul(FNV_PRIME)
 }
@@ -164,191 +215,115 @@ fn hash_bytes(mut hash: u64, bytes: &[u8]) -> u64 {
     hash
 }
 
-fn canonical_key_matches(expected: &str, name: &str, properties: &[BlockProperty<'_>]) -> bool {
-    let Some(expected_len) = canonical_key_len(name, properties) else {
-        return false;
-    };
-    if expected.len() != expected_len {
-        return false;
-    }
-
-    let bytes = expected.as_bytes();
-    let mut cursor = 0_usize;
-    if !consume(bytes, &mut cursor, name.as_bytes()) {
-        return false;
-    }
-    if properties.is_empty() {
-        return cursor == bytes.len();
-    }
-    if !consume(bytes, &mut cursor, b"[") {
-        return false;
-    }
-    for (index, property) in properties.iter().enumerate() {
-        if index != 0 && !consume(bytes, &mut cursor, b",") {
-            return false;
-        }
-        if !consume(bytes, &mut cursor, property.name.as_bytes())
-            || !consume(bytes, &mut cursor, b"=")
-            || !consume(bytes, &mut cursor, property.value.as_bytes())
-        {
-            return false;
-        }
-    }
-    consume(bytes, &mut cursor, b"]") && cursor == bytes.len()
+fn read_u8(offset: usize) -> Option<u8> {
+    generated::STORED_STATE_LOOKUP_DATA.get(offset).copied()
 }
 
-fn canonical_key_len(name: &str, properties: &[BlockProperty<'_>]) -> Option<usize> {
-    let mut len = name.len();
-    if properties.is_empty() {
-        return Some(len);
-    }
-    len = len.checked_add(2)?;
-    for (index, property) in properties.iter().enumerate() {
-        if index != 0 {
-            len = len.checked_add(1)?;
-        }
-        len = len.checked_add(property.name.len())?;
-        len = len.checked_add(1)?;
-        len = len.checked_add(property.value.len())?;
-    }
-    Some(len)
+fn read_u16(offset: usize) -> Option<u16> {
+    let bytes = generated::STORED_STATE_LOOKUP_DATA.get(offset..offset.checked_add(2)?)?;
+    Some(u16::from_le_bytes([bytes[0], bytes[1]]))
 }
 
-fn consume(bytes: &[u8], cursor: &mut usize, fragment: &[u8]) -> bool {
-    let Some(end) = (*cursor).checked_add(fragment.len()) else {
-        return false;
-    };
-    if bytes.get(*cursor..end) != Some(fragment) {
-        return false;
-    }
-    *cursor = end;
-    true
+fn read_u32(offset: usize) -> Option<u32> {
+    let bytes = generated::STORED_STATE_LOOKUP_DATA.get(offset..offset.checked_add(4)?)?;
+    Some(u32::from_le_bytes([
+        bytes[0], bytes[1], bytes[2], bytes[3],
+    ]))
+}
+
+fn bytes_at(offset: usize, len: usize) -> Option<&'static [u8]> {
+    generated::STORED_STATE_LOOKUP_DATA.get(offset..offset.checked_add(len)?)
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        FNV_OFFSET_BASIS, StoredStateLookup, StoredStateLookupRow, canonical_state_fingerprint,
-        hash_bytes,
+        Target262BlockStateResolver, canonical_state_fingerprint,
+        resolve_target_26_2_block_state, splitmix64,
     };
-    use crate::stored_blocks::BlockProperty;
+    use crate::{
+        generated_state_lookup as generated,
+        stored_blocks::{BlockProperty, BlockStateResolver},
+    };
+    use helve_generated::{AIR, STATE_DATA_INPUT_SHA256};
 
     #[test]
-    fn row_layout_is_exactly_eight_bytes() {
-        assert_eq!(core::mem::size_of::<StoredStateLookupRow>(), 8);
-    }
-
-    #[test]
-    fn structured_fingerprint_matches_exact_canonical_bytes() {
-        let properties = [
-            BlockProperty {
-                name: "axis",
-                value: "y",
-            },
-            BlockProperty {
-                name: "waterlogged",
-                value: "false",
-            },
-        ];
-        let structured = canonical_state_fingerprint("minecraft:oak_log", &properties);
-        let canonical = hash_bytes(
-            FNV_OFFSET_BASIS,
-            b"minecraft:oak_log[axis=y,waterlogged=false]",
-        );
-        assert_eq!(structured, canonical);
-    }
-
-    #[test]
-    fn exact_lookup_resolves_property_free_and_property_states() {
-        let air = "minecraft:air";
-        let log = "minecraft:oak_log[axis=y]";
-        let blob = "minecraft:airminecraft:oak_log[axis=y]";
-        let mut pairs = [
-            (
-                canonical_state_fingerprint("minecraft:air", &[]),
-                StoredStateLookupRow::new(
-                    0,
-                    u16::try_from(air.len()).expect("test key length"),
-                    0,
-                ),
-            ),
-            (
-                canonical_state_fingerprint(
-                    "minecraft:oak_log",
-                    &[BlockProperty {
-                        name: "axis",
-                        value: "y",
-                    }],
-                ),
-                StoredStateLookupRow::new(
-                    u32::try_from(air.len()).expect("test offset"),
-                    u16::try_from(log.len()).expect("test key length"),
-                    7,
-                ),
-            ),
-        ];
-        pairs.sort_unstable_by_key(|pair| pair.0);
-        let fingerprints = pairs.map(|pair| pair.0);
-        let rows = pairs.map(|pair| pair.1);
-        let lookup = StoredStateLookup::new(blob, &fingerprints, &rows);
-
-        assert_eq!(lookup.resolve_raw("minecraft:air", &[]), Some(0));
+    fn target_and_lookup_provenance_are_identical() {
         assert_eq!(
-            lookup.resolve_raw(
+            generated::STORED_STATE_LOOKUP_INPUT_SHA256,
+            STATE_DATA_INPUT_SHA256
+        );
+        assert_eq!(
+            generated::STORED_STATE_LOOKUP_DATA.len(),
+            generated::STORED_STATE_LOOKUP_BYTES
+        );
+        assert_eq!(generated::STORED_STATE_LOOKUP_BINARY_SHA256.len(), 64);
+    }
+
+    #[test]
+    fn stable_hash_witnesses_hold() {
+        assert_eq!(
+            canonical_state_fingerprint("minecraft:air", &[]),
+            0xc480_b16a_4005_8ec2
+        );
+        assert_eq!(
+            canonical_state_fingerprint(
                 "minecraft:oak_log",
                 &[BlockProperty {
                     name: "axis",
                     value: "y",
                 }],
             ),
-            Some(7)
+            0xa628_dde6_f223_4d1f,
+        );
+        assert_eq!(splitmix64(0), 0xe220_a839_7b1d_cdaf);
+    }
+
+    #[test]
+    fn generated_target_resolver_accepts_exact_air_and_rejects_unknown() {
+        assert_eq!(
+            resolve_target_26_2_block_state("minecraft:air", &[]),
+            Some(AIR)
         );
         assert_eq!(
-            lookup.resolve_raw(
+            resolve_target_26_2_block_state("minecraft:not_a_real_block", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn resolver_trait_uses_the_same_exact_target_table() {
+        let resolver = Target262BlockStateResolver;
+        assert_eq!(resolver.resolve("minecraft:air", &[]), Some(AIR));
+    }
+
+    #[test]
+    fn noncanonical_or_near_match_properties_fail_closed() {
+        assert!(
+            resolve_target_26_2_block_state(
                 "minecraft:oak_log",
                 &[BlockProperty {
                     name: "axis",
-                    value: "x",
+                    value: "not-a-real-axis",
                 }],
-            ),
-            None
+            )
+            .is_none()
         );
-    }
-
-    #[test]
-    fn fingerprint_collision_still_requires_exact_key() {
-        let blob = "minecraft:airminecraft:stone";
-        let fingerprints = [7, 7];
-        let rows = [
-            StoredStateLookupRow::new(0, 13, 1),
-            StoredStateLookupRow::new(13, 15, 2),
-        ];
-        let lookup = StoredStateLookup::new(blob, &fingerprints, &rows);
-
-        assert_eq!(
-            lookup.resolve_with_fingerprint(7, "minecraft:stone", &[]),
-            Some(2)
-        );
-        assert_eq!(
-            lookup.resolve_with_fingerprint(7, "minecraft:dirt", &[]),
-            None
-        );
-    }
-
-    #[test]
-    fn malformed_generated_ranges_fail_closed() {
-        let fingerprints = [1];
-        let rows = [StoredStateLookupRow::new(u32::MAX, 10, 9)];
-        let lookup = StoredStateLookup::new("minecraft:air", &fingerprints, &rows);
-        assert_eq!(
-            lookup.resolve_with_fingerprint(1, "minecraft:air", &[]),
-            None
-        );
-
-        let lookup = StoredStateLookup::new("minecraft:air", &[1, 1], &rows);
-        assert_eq!(
-            lookup.resolve_with_fingerprint(1, "minecraft:air", &[]),
-            None
+        assert!(
+            resolve_target_26_2_block_state(
+                "minecraft:oak_log",
+                &[
+                    BlockProperty {
+                        name: "waterlogged",
+                        value: "false",
+                    },
+                    BlockProperty {
+                        name: "axis",
+                        value: "y",
+                    },
+                ],
+            )
+            .is_none()
         );
     }
 }
