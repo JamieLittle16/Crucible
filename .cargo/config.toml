@@ -1,3 +1,6 @@
+[alias]
+xtask = "run --package xtask --"
+
 [source.crates-io]
 replace-with = "vendored-sources"
 
