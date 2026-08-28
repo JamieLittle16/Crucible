@@ -30,8 +30,8 @@ const GZIP_RESERVED_FLAGS: u8 = 0xe0;
 
 /// Production candidate for gzip/zlib/uncompressed Anvil payloads.
 ///
-/// The decoder retains one initialized output buffer at its historical high-water mark and one
-/// allocation-free DEFLATE state. Construct it once per cold loading session and reuse it across
+/// The decoder retains one initialized output buffer at the caller-selected decompressed bound and
+/// one allocation-free DEFLATE state. Construct it once per cold loading session and reuse it across
 /// chunks. LZ4 remains deliberately unadmitted.
 pub struct DeflateChunkPayloadDecoder {
     output: Vec<u8>,
