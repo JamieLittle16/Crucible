@@ -310,6 +310,7 @@ jobs:
         with:
           name: minecraft-26.2-section-representative-member
           path: |
+            /tmp/26.2-block-states.qualified.json
             /tmp/representative-plan.json
             /tmp/world-evidence.json
             /tmp/extraction-evidence.json
