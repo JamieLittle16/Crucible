@@ -233,10 +233,7 @@ pub enum BlockSectionImportError {
     /// A multi-state palette requires packed `data`.
     MissingPackedData { section_index: usize },
     /// A uniform palette may omit `data` or carry an empty long array only.
-    UniformSectionHasPackedData {
-        section_index: usize,
-        words: usize,
-    },
+    UniformSectionHasPackedData { section_index: usize, words: usize },
     /// Packed long count disagrees with the non-spanning 26.2 palette law.
     PackedLongCount {
         section_index: usize,
@@ -606,7 +603,10 @@ where
 {
     let mut name = None;
     let mut properties_seen = false;
-    let empty = BlockProperty { name: "", value: "" };
+    let empty = BlockProperty {
+        name: "",
+        value: "",
+    };
     let mut properties = [empty; HARD_MAX_PROPERTIES_PER_STATE];
     let mut property_count = 0_usize;
 
@@ -820,10 +820,12 @@ mod tests {
                 ("minecraft:stone", []) => Some(1),
                 (
                     "minecraft:oak_log",
-                    [BlockProperty {
-                        name: "axis",
-                        value: "x",
-                    }],
+                    [
+                        BlockProperty {
+                            name: "axis",
+                            value: "x",
+                        },
+                    ],
                 ) => Some(2),
                 (
                     "minecraft:test",
@@ -1035,7 +1037,8 @@ mod tests {
                 Some(&indices),
             )),
         );
-        let result = decode(&chunk_nbt(position, &[section]), position).expect("valid packed chunk");
+        let result =
+            decode(&chunk_nbt(position, &[section]), position).expect("valid packed chunk");
         assert_eq!(result.sections[0].section.len(), BLOCK_SECTION_CELLS);
         for (cell, &state) in result.sections[0].section.iter().enumerate() {
             assert_eq!(usize::from(state), cell % 3);
