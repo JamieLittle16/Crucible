@@ -14,7 +14,9 @@ crucible-connection-driver = { path = "../../network/crucible-connection-driver"
 crucible-packet-core = { path = "../../network/crucible-packet-core" }
 crucible-protocol-core = { path = "../../network/crucible-protocol-core" }
 crucible-publication-core = { path = "../../network/crucible-publication-core" }
+crucible-server = { path = "../../crucible-server" }
 crucible-session-core = { path = "../../network/crucible-session-core" }
+crucible-target-26-2 = { path = "../../network/crucible-target-26-2" }
 
 [lints]
 workspace = true
