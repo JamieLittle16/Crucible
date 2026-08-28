@@ -15,6 +15,8 @@ def summary(count: int) -> dict[str, int]:
 def raw_artifact(cpu: str = "3", measured_rounds: int = 2) -> dict[str, object]:
     chunks = 2
     region_files = 1
+    dense_sections = 1
+    uniform_sections = 3
     return {
         "schema": 1,
         "kind": runner.BENCHMARK_KIND,
@@ -33,6 +35,12 @@ def raw_artifact(cpu: str = "3", measured_rounds: int = 2) -> dict[str, object]:
             "region_files": region_files,
             "region_file_bytes": 7,
             "chunks": chunks,
+        },
+        "builder": {
+            "uniform_sections": uniform_sections,
+            "dense_sections": dense_sections,
+            "dense_cells_copied": dense_sections * 4096,
+            "retained_cells_written": (uniform_sections + dense_sections) * 4096,
         },
         "scratch": {
             "grew_during_measurement": False,
@@ -140,6 +148,17 @@ class R2cImportResidentTargetRunTests(unittest.TestCase):
         scratch["scratch"]["grew_during_measurement"] = True
         with self.assertRaisesRegex(runner.TargetRunError, "scratch grew"):
             runner.annotate_artifact(scratch, "3", world_identity(), 1, 2)
+
+    def test_annotation_rejects_builder_and_sample_accounting_drift(self) -> None:
+        builder = raw_artifact()
+        builder["builder"]["dense_cells_copied"] -= 1
+        with self.assertRaisesRegex(runner.TargetRunError, "dense section copy"):
+            runner.annotate_artifact(builder, "3", world_identity(), 1, 2)
+
+        samples = raw_artifact()
+        samples["samples_ns"]["whole_chunk"]["count"] -= 1
+        with self.assertRaisesRegex(runner.TargetRunError, "whole_chunk.count"):
+            runner.annotate_artifact(samples, "3", world_identity(), 1, 2)
 
     def test_annotation_rejects_world_and_config_drift_or_double_stamp(self) -> None:
         wrong_world = raw_artifact()
