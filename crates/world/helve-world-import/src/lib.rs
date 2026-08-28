@@ -9,9 +9,15 @@
 pub mod anvil;
 pub mod chunk;
 pub mod nbt;
+pub mod stored_blocks;
 
 pub use anvil::{ChunkCompression, RegionChunk, RegionError, RegionLimits, RegionView};
 pub use chunk::{
     ChunkImportError, StoredChunkHeader, TARGET_DATA_VERSION_26_2, inspect_chunk_header,
 };
 pub use nbt::{ListHeader, NamedTag, NbtError, NbtLimits, NbtReader, TagType};
+pub use stored_blocks::{
+    BlockProperty, BlockSectionDecodeScratch, BlockSectionImportError,
+    BlockSectionScratchCapacities, BlockStateResolver, ImportedBlockSection,
+    ImportedBlockSectionBuilder, ImportedChunkBlocks, decode_chunk_block_sections,
+};
