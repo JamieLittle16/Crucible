@@ -24,6 +24,6 @@ pub use stored_blocks::{
 };
 pub use transaction::{
     ChunkPayloadDecoder, ChunkPayloadLimits, ExternalChunkPayload, ImportedStoredChunk,
-    StoredChunkImportError, StoredChunkSourceMetadata, UncompressedChunkPayloadDecoder,
-    UncompressedPayloadError, import_region_chunk_blocks,
+    StoredBlockImporter, StoredChunkImportError, StoredChunkSourceMetadata,
+    UncompressedChunkPayloadDecoder, UncompressedPayloadError,
 };

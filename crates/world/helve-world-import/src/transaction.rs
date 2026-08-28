@@ -160,88 +160,126 @@ impl<DecodeError> From<BlockSectionImportError> for StoredChunkImportError<Decod
     }
 }
 
-/// Imports one local region slot through the complete persisted block transaction.
+/// Reusable cold block importer with its mechanism set bound once per loading session.
 ///
-/// The caller supplies external bytes only when the Anvil record carries the external flag. Inline
-/// records ignore `external_payload`. Semantic section objects are returned uninstalled so any failure
-/// remains transactional and cannot partially mutate resident world authority.
-///
-/// # Errors
-///
-/// Returns an explicit error for empty/malformed region framing, missing/oversized external payload,
-/// decoder failure, bounded NBT failure, target/version/coordinate mismatch, or invalid block-state
-/// palette/data semantics.
-pub fn import_region_chunk_blocks<R, B, D>(
-    region: &RegionView<'_>,
-    local_x: u8,
-    local_z: u8,
-    external_payload: Option<ExternalChunkPayload<'_>>,
-    payload_limits: ChunkPayloadLimits,
-    nbt_limits: NbtLimits,
-    decoder: &mut D,
-    resolver: &R,
-    builder: &mut B,
-    section_scratch: &mut BlockSectionDecodeScratch<R::State>,
-) -> Result<ImportedStoredChunk<B::Section>, StoredChunkImportError<D::Error>>
+/// Keeping the decoder, resolver, builder, and section scratch here makes reuse the default and keeps
+/// per-chunk calls small. This object is not live world authority: successful sections remain
+/// uninstalled until a later residency transaction commits them.
+#[derive(Debug)]
+pub struct StoredBlockImporter<'a, R, B, D>
 where
     R: BlockStateResolver,
     B: ImportedBlockSectionBuilder<R::State>,
     D: ChunkPayloadDecoder,
 {
-    let Some(chunk) = region.chunk(local_x, local_z)? else {
-        return Err(StoredChunkImportError::EmptyRegionSlot { local_x, local_z });
-    };
+    payload_limits: ChunkPayloadLimits,
+    nbt_limits: NbtLimits,
+    decoder: &'a mut D,
+    resolver: &'a R,
+    builder: &'a mut B,
+    section_scratch: &'a mut BlockSectionDecodeScratch<R::State>,
+}
 
-    let payload = if chunk.external {
-        let external_payload =
-            external_payload.ok_or(StoredChunkImportError::MissingExternalPayload {
-                position: chunk.position,
-            })?;
-        if external_payload.bytes.len() > payload_limits.max_external_payload_bytes {
-            return Err(StoredChunkImportError::ExternalPayloadExceedsLimit {
-                position: chunk.position,
-                actual: external_payload.bytes.len(),
-                limit: payload_limits.max_external_payload_bytes,
-            });
+impl<'a, R, B, D> StoredBlockImporter<'a, R, B, D>
+where
+    R: BlockStateResolver,
+    B: ImportedBlockSectionBuilder<R::State>,
+    D: ChunkPayloadDecoder,
+{
+    /// Binds one reusable cold-import mechanism set.
+    #[must_use]
+    pub const fn new(
+        payload_limits: ChunkPayloadLimits,
+        nbt_limits: NbtLimits,
+        decoder: &'a mut D,
+        resolver: &'a R,
+        builder: &'a mut B,
+        section_scratch: &'a mut BlockSectionDecodeScratch<R::State>,
+    ) -> Self {
+        Self {
+            payload_limits,
+            nbt_limits,
+            decoder,
+            resolver,
+            builder,
+            section_scratch,
         }
-        external_payload.bytes
-    } else {
-        debug_assert!(chunk.inline_payload.is_some());
-        chunk.inline_payload.unwrap_or_default()
-    };
+    }
 
-    let decompressed = decoder
-        .decode(
-            chunk.compression,
-            payload,
-            payload_limits.max_decompressed_bytes,
-        )
-        .map_err(StoredChunkImportError::Decode)?;
-    let blocks = decode_chunk_block_sections(
-        decompressed,
-        chunk.position,
-        nbt_limits,
-        resolver,
-        builder,
-        section_scratch,
-    )?;
+    /// Imports one local region slot through the complete persisted block transaction.
+    ///
+    /// The caller supplies external bytes only when the Anvil record carries the external flag.
+    /// Inline records ignore `external_payload`. Semantic section objects are returned uninstalled so
+    /// any failure remains transactional and cannot partially mutate resident world authority.
+    ///
+    /// # Errors
+    ///
+    /// Returns an explicit error for empty/malformed region framing, missing/oversized external
+    /// payload, decoder failure, bounded NBT failure, target/version/coordinate mismatch, or invalid
+    /// block-state palette/data semantics.
+    pub fn import_region_chunk(
+        &mut self,
+        region: &RegionView<'_>,
+        local_x: u8,
+        local_z: u8,
+        external_payload: Option<ExternalChunkPayload<'_>>,
+    ) -> Result<ImportedStoredChunk<B::Section>, StoredChunkImportError<D::Error>> {
+        let Some(chunk) = region.chunk(local_x, local_z)? else {
+            return Err(StoredChunkImportError::EmptyRegionSlot { local_x, local_z });
+        };
 
-    Ok(ImportedStoredChunk {
-        blocks,
-        source: StoredChunkSourceMetadata {
-            region_timestamp: chunk.timestamp,
-            compression: chunk.compression,
-            external: chunk.external,
-        },
-    })
+        let payload = if chunk.external {
+            let external_payload =
+                external_payload.ok_or(StoredChunkImportError::MissingExternalPayload {
+                    position: chunk.position,
+                })?;
+            if external_payload.bytes.len() > self.payload_limits.max_external_payload_bytes {
+                return Err(StoredChunkImportError::ExternalPayloadExceedsLimit {
+                    position: chunk.position,
+                    actual: external_payload.bytes.len(),
+                    limit: self.payload_limits.max_external_payload_bytes,
+                });
+            }
+            external_payload.bytes
+        } else {
+            debug_assert!(chunk.inline_payload.is_some());
+            chunk.inline_payload.unwrap_or_default()
+        };
+
+        let decompressed = self
+            .decoder
+            .decode(
+                chunk.compression,
+                payload,
+                self.payload_limits.max_decompressed_bytes,
+            )
+            .map_err(StoredChunkImportError::Decode)?;
+        let blocks = decode_chunk_block_sections(
+            decompressed,
+            chunk.position,
+            self.nbt_limits,
+            self.resolver,
+            self.builder,
+            self.section_scratch,
+        )?;
+
+        Ok(ImportedStoredChunk {
+            blocks,
+            source: StoredChunkSourceMetadata {
+                region_timestamp: chunk.timestamp,
+                compression: chunk.compression,
+                external: chunk.external,
+            },
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         ChunkPayloadDecoder, ChunkPayloadLimits, ExternalChunkPayload, ImportedStoredChunk,
-        StoredChunkImportError, StoredChunkSourceMetadata, UncompressedChunkPayloadDecoder,
-        UncompressedPayloadError, import_region_chunk_blocks,
+        StoredBlockImporter, StoredChunkImportError, StoredChunkSourceMetadata,
+        UncompressedChunkPayloadDecoder, UncompressedPayloadError,
     };
     use crate::{
         anvil::{ChunkCompression, REGION_HEADER_BYTES, RegionLimits, RegionView, SECTOR_BYTES},
@@ -348,23 +386,37 @@ mod tests {
         bytes
     }
 
+    fn import_with_decoder<D: ChunkPayloadDecoder>(
+        region: &RegionView<'_>,
+        external_payload: Option<ExternalChunkPayload<'_>>,
+        payload_limits: ChunkPayloadLimits,
+        decoder: &mut D,
+    ) -> Result<ImportedStoredChunk<Vec<u16>>, StoredChunkImportError<D::Error>> {
+        let resolver = Resolver;
+        let mut builder = VecBuilder;
+        let mut scratch = BlockSectionDecodeScratch::new();
+        StoredBlockImporter::new(
+            payload_limits,
+            nbt_limits(),
+            decoder,
+            &resolver,
+            &mut builder,
+            &mut scratch,
+        )
+        .import_region_chunk(region, 0, 0, external_payload)
+    }
+
     #[test]
     fn uncompressed_region_to_semantic_section_is_one_transaction() {
         let position = ChunkPos { x: 0, z: 0 };
         let nbt = chunk_nbt(position, "minecraft:stone");
         let bytes = region_bytes(3, &nbt, 77);
         let region = RegionView::new(&bytes, 0, 0, REGION_LIMITS).expect("valid region");
-        let result = import_region_chunk_blocks(
+        let result = import_with_decoder(
             &region,
-            0,
-            0,
             None,
             PAYLOAD_LIMITS,
-            nbt_limits(),
             &mut UncompressedChunkPayloadDecoder,
-            &Resolver,
-            &mut VecBuilder,
-            &mut BlockSectionDecodeScratch::new(),
         )
         .expect("complete uncompressed import");
 
@@ -394,17 +446,11 @@ mod tests {
         let nbt = chunk_nbt(position, "minecraft:air");
         let bytes = region_bytes(0x80 | 3, b"inline padding is not payload", 9);
         let region = RegionView::new(&bytes, 0, 0, REGION_LIMITS).expect("valid external record");
-        let result = import_region_chunk_blocks(
+        let result = import_with_decoder(
             &region,
-            0,
-            0,
             Some(ExternalChunkPayload { bytes: &nbt }),
             PAYLOAD_LIMITS,
-            nbt_limits(),
             &mut UncompressedChunkPayloadDecoder,
-            &Resolver,
-            &mut VecBuilder,
-            &mut BlockSectionDecodeScratch::new(),
         )
         .expect("external payload imported");
         assert!(
@@ -420,17 +466,11 @@ mod tests {
     fn missing_and_oversized_external_payloads_fail_before_semantic_decode() {
         let bytes = region_bytes(0x80 | 3, b"padding", 0);
         let region = RegionView::new(&bytes, 0, 0, REGION_LIMITS).expect("valid external record");
-        let missing = import_region_chunk_blocks(
+        let missing = import_with_decoder(
             &region,
-            0,
-            0,
             None,
             PAYLOAD_LIMITS,
-            nbt_limits(),
             &mut UncompressedChunkPayloadDecoder,
-            &Resolver,
-            &mut VecBuilder,
-            &mut BlockSectionDecodeScratch::new(),
         );
         assert_eq!(
             missing,
@@ -440,17 +480,11 @@ mod tests {
         );
 
         let external = [0_u8; 9];
-        let oversized = import_region_chunk_blocks(
+        let oversized = import_with_decoder(
             &region,
-            0,
-            0,
             Some(ExternalChunkPayload { bytes: &external }),
             ChunkPayloadLimits::new(8, 64),
-            nbt_limits(),
             &mut UncompressedChunkPayloadDecoder,
-            &Resolver,
-            &mut VecBuilder,
-            &mut BlockSectionDecodeScratch::new(),
         );
         assert_eq!(
             oversized,
@@ -468,17 +502,11 @@ mod tests {
         let nbt = chunk_nbt(position, "minecraft:air");
         let bytes = region_bytes(2, &nbt, 0);
         let region = RegionView::new(&bytes, 0, 0, REGION_LIMITS).expect("valid zlib framing");
-        let result = import_region_chunk_blocks(
+        let result = import_with_decoder(
             &region,
-            0,
-            0,
             None,
             PAYLOAD_LIMITS,
-            nbt_limits(),
             &mut UncompressedChunkPayloadDecoder,
-            &Resolver,
-            &mut VecBuilder,
-            &mut BlockSectionDecodeScratch::new(),
         );
         assert_eq!(
             result,
@@ -516,19 +544,8 @@ mod tests {
         let bytes = region_bytes(2, &nbt, 0);
         let region = RegionView::new(&bytes, 0, 0, REGION_LIMITS).expect("valid region framing");
         let mut decoder = RecordingDecoder::default();
-        let result: ImportedStoredChunk<Vec<u16>> = import_region_chunk_blocks(
-            &region,
-            0,
-            0,
-            None,
-            PAYLOAD_LIMITS,
-            nbt_limits(),
-            &mut decoder,
-            &Resolver,
-            &mut VecBuilder,
-            &mut BlockSectionDecodeScratch::new(),
-        )
-        .expect("injected decoder transaction");
+        let result = import_with_decoder(&region, None, PAYLOAD_LIMITS, &mut decoder)
+            .expect("injected decoder transaction");
         assert_eq!(decoder.observed, Some(ChunkCompression::Zlib));
         assert!(
             result.blocks.sections[0]
