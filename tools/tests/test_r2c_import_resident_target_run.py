@@ -172,6 +172,26 @@ class R2cImportResidentTargetRunTests(unittest.TestCase):
                 runner.run_target_process("1", root, output, 1, 2, command)
             self.assertEqual(calls, [])
 
+    def test_target_process_rejects_world_mutation_during_measurement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            dimension = root / "dimension"
+            region = dimension / "region"
+            region.mkdir(parents=True)
+            region_file = region / "r.0.0.mca"
+            region_file.write_bytes(b"region0")
+            output = root / "evidence.json"
+
+            def command(command: list[str], check: bool) -> None:
+                self.assertTrue(check)
+                raw = Path(command[command.index("--output") + 1])
+                raw.write_text(json.dumps(raw_artifact("1")), encoding="utf-8")
+                region_file.write_bytes(b"region1")
+
+            with self.assertRaisesRegex(runner.TargetRunError, "changed during target measurement"):
+                runner.run_target_process("1", dimension, output, 1, 2, command)
+            self.assertFalse(output.exists())
+
     def test_target_process_writes_only_valid_annotated_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
