@@ -8,6 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+helve-generated = { path = "../../data/helve-generated" }
 helve-types = { path = "../../helve-types" }
 
 [lints]
