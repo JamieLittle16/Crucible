@@ -219,6 +219,19 @@ pub trait BlockSection<S: Copy + Eq> {
     fn maybe_contains<P: FnMut(S) -> bool>(&self, predicate: P) -> bool;
 }
 
+/// Semantic biome-section behavior shared by reference and future production implementations.
+///
+/// The contract deliberately freezes only the source-backed 4×4×4 semantic lattice and its local
+/// coordinate law. Palette shape, registry resolution, packed storage and protocol encoding remain
+/// mechanism/boundary concerns. Implementations are expected to use static dispatch in HOT paths.
+pub trait BiomeSection<B: Copy + Eq> {
+    /// Returns the exact semantic biome identity at one local 4×4×4 lattice coordinate.
+    fn get(&self, pos: SectionBiomePos) -> B;
+
+    /// Replaces one semantic biome identity and returns the previous identity.
+    fn replace(&mut self, pos: SectionBiomePos, biome: B) -> B;
+}
+
 #[cfg(test)]
 mod tests {
     use super::{BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, SectionBiomePos, SectionBlockPos};
