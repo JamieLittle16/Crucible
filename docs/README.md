@@ -19,14 +19,16 @@ If you are new to the project, do not try to read everything in repository order
 
 ### I want to work on the current milestone
 
-1. [`architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — architectural law and implementation order for R2 persistent world and R3 walkability.
-2. [`architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md`](architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md) — performance completeness review for regionization, scheduling, world layout, generated facts, dirty state, client projection, networking, persistence and hardware locality.
-3. [`architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md`](architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md) — unresolved choices that must not become permanent without representative semantic/performance evidence.
-4. [`milestones/R1X_FIRST_VISIBLE_WORLD.md`](milestones/R1X_FIRST_VISIBLE_WORLD.md) — historical client-join/visible-world evidence and replay-scaffold claim limits.
-5. [`architecture/OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) — authority, migration, staged effects and schedule-invariance law used by the regionized engine.
-6. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — world/section implementation and HOT-path constraints.
-7. [`qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md`](qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md) — resolve-once dense chunk-window access versus repeated world routing.
-8. [`qualification/SECTION_REPRESENTATION_LAB.md`](qualification/SECTION_REPRESENTATION_LAB.md) — section representation candidates and the performance questions they must answer.
+1. [`architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md`](architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md) — normative R2C implementation contract: world import, dimension/chunk ownership, derived state, source-admitted 26.2 projection, bounded publication and production mechanism tournaments.
+2. [`execution/R2C_EXECUTION_PLAN.md`](execution/R2C_EXECUTION_PLAN.md) — concrete R2C.0–R2C.8 implementation sequence from source-law closure through the stock-client native-world gate.
+3. [`qualification/R2C_WORLD_PROJECTION_QUALIFICATION.md`](qualification/R2C_WORLD_PROJECTION_QUALIFICATION.md) — R2C correctness, differential, fuzz, backpressure, resource and controlled-hardware performance qualification programme.
+4. [`architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — parent architectural law and implementation order for R2 persistent world and R3 walkability.
+5. [`architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md`](architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md) — performance completeness review for regionization, scheduling, world layout, generated facts, dirty state, client projection, networking, persistence and hardware locality.
+6. [`architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md`](architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md) — unresolved choices that must not become permanent without representative semantic/performance evidence.
+7. [`architecture/OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) — authority, migration, staged effects and schedule-invariance law used by the regionized engine.
+8. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — world/section implementation and HOT-path constraints.
+9. [`qualification/CHUNK_PUBLICATION_REFERENCE.md`](qualification/CHUNK_PUBLICATION_REFERENCE.md) — full-copy immutable chunk publication correctness oracle that R2C production projection candidates must beat rather than silently adopt.
+10. [`qualification/section/SECTION_CANDIDATE_REGISTRY.md`](qualification/section/SECTION_CANDIDATE_REGISTRY.md) — current section-representation candidate state; production R2C must consume the eventual M0.3D decision rather than choosing a networking-specific second representation.
 
 ### I want to understand how claims become evidence
 
@@ -54,6 +56,7 @@ Milestone records are durable black-box/product evidence. They do not silently p
 | --- | --- |
 | [`CRUCIBLE_MASTER_BLUEPRINT.md`](architecture/CRUCIBLE_MASTER_BLUEPRINT.md) | End-to-end architectural narrative. Stable historical filename retained across the Helve rename. |
 | [`R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) | Persistent live-server design: R2/R3 gates, region cells, dimensions, chunk/section locality, generated lookup policy, revision-keyed projection/fan-out and client-work minimization. |
+| [`R2C_WORLD_PROJECTION_IMPLEMENTATION.md`](architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md) | Detailed current-milestone implementation contract for Helve-owned pregenerated-world import, dimension/chunk/derived state, source-admitted target projection, caching/freshness and same-driver bounded publication. |
 | [`R2_R3_PERFORMANCE_SEARCH_PLAN.md`](architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md) | R2/R3 optimization search and red-team plan: two-tier world addressing, region/scheduler design, logical time/RNG firewall, active sets, generated facts, incremental derived state, client-interest/projection sharing, network/persistence cost and qualification matrix. |
 | [`R2_R3_PERFORMANCE_DECISION_REGISTER.md`](architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md) | Mandatory unresolved-mechanism register and evidence gates for high-risk performance choices. |
 | [`OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) | Singular authority, migration generations, staged effects and schedule invariance. |
@@ -69,6 +72,8 @@ Architecture documents should separate **semantic laws** from **replaceable mech
 
 | Document | Purpose |
 | --- | --- |
+| [`R2C_WORLD_PROJECTION_QUALIFICATION.md`](qualification/R2C_WORLD_PROJECTION_QUALIFICATION.md) | Current-milestone source, semantic-world, reference-projector, optimized-equivalence, backpressure/resource, performance and stock-client qualification programme. |
+| [`CHUNK_PUBLICATION_REFERENCE.md`](qualification/CHUNK_PUBLICATION_REFERENCE.md) | Immutable semantic chunk-publication correctness/freshness oracle and explicit non-decision on the production snapshot/projection mechanism. |
 | [`EVIDENCE_AND_EXPERIMENT_RECORDS.md`](qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md) | Evidence identity, experiment records and decision provenance. |
 | [`PERFORMANCE_QUALIFICATION_STANDARD.md`](qualification/PERFORMANCE_QUALIFICATION_STANDARD.md) | Normative machine-state, warm-up, topology/cache/counter, tail and whole-cost rules for performance claims. |
 | [`WORLD_ACCESS_BENCHMARK_HARNESS.md`](qualification/WORLD_ACCESS_BENCHMARK_HARNESS.md) | Whole-cost qualification for resolved local chunk windows versus repeated general world lookup. |
@@ -86,6 +91,7 @@ The qualification tree is intentionally detailed. Correctness and performance ev
 
 | Document | Purpose |
 | --- | --- |
+| [`R2C_EXECUTION_PLAN.md`](execution/R2C_EXECUTION_PLAN.md) | Current R2C implementation sequence, PR decomposition, dependency graph, CI progression and milestone anti-goals. |
 | [`EXECUTION_MASTER_PLAN.md`](execution/EXECUTION_MASTER_PLAN.md) | Milestones, workstreams and scope-control rules. |
 | [`FIRST_30_DAYS.md`](execution/FIRST_30_DAYS.md) | Initial execution plan retained as project-history context. |
 | [`CI_QUALIFICATION_ROADMAP.md`](execution/CI_QUALIFICATION_ROADMAP.md) | Evidence rings, CI activation and repository governance. |

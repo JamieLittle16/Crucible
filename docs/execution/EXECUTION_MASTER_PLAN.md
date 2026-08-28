@@ -1,6 +1,6 @@
-# Crucible Execution Master Plan
+# Helve Execution Master Plan
 
-Crucible advances by qualified vertical slices, not by accumulating partially implemented subsystems.
+Helve advances by qualified vertical slices, not by accumulating partially implemented subsystems.
 
 ## Priority order
 
@@ -34,22 +34,25 @@ Broad redstone, villagers, advanced AI, complete worldgen, package registry UX, 
 
 ## Current boundary
 
-`milestone-r1x-first-visible-world` established that an unmodified Minecraft Java 26.2 client can complete Handshake -> Login -> Configuration -> Play through Crucible and render world data using the explicitly experimental finite R1X Play replay.
+R2B has removed captured Play publication from the admitted bootstrap path: an unmodified Minecraft Java 26.2 client now reaches Play through Helve-owned semantic bootstrap, while the same bounded connection driver remains live through the explicit `WorldProjection` handoff.
 
-The next work converts that convergence scaffold into a live engine. R2/R3 implementation is governed by:
+**R2C is the current implementation milestone.** It replaces the remaining capture-era world/chunk/light role with a pregenerated Helve-owned semantic world and source-admitted 26.2 projection. R2C implementation is governed directly by:
 
+- `docs/architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md`;
+- `docs/execution/R2C_EXECUTION_PLAN.md`;
+- `docs/qualification/R2C_WORLD_PROJECTION_QUALIFICATION.md`;
 - `docs/architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`;
 - `docs/architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md`;
 - `docs/architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md`;
 - the existing ownership/world/section/protocol qualification laws.
 
-R2 is not permitted to become a disposable global-main-thread architecture that R3 later has to replace.
+R2C is not permitted to become a disposable global-main-thread, full-copy-everything or networking-specific-world architecture that R3 later has to replace.
 
 ## R2 — persistent visible world
 
 ### R2A — live Play control plane
 
-Goal: the stock client remains connected using real Crucible Play liveness/control semantics.
+Goal: the stock client remains connected using real Helve Play liveness/control semantics.
 
 Required:
 
@@ -73,28 +76,36 @@ Required:
 - resumable bounded publication;
 - zero captured Play bodies in the admitted path.
 
-### R2C — Crucible-owned world projection
+**Status:** complete for the admitted fresh/default 26.2 profile; R2C consumes its live `WorldProjection` handoff.
 
-Goal: import a pregenerated world into Crucible state and produce the client's chunk/light world image.
+### R2C — Helve-owned world projection
+
+Goal: import a pregenerated world into Helve state and produce the client's chunk/light world image without captured world publication.
+
+The detailed plan is split into R2C.0–R2C.8 in `R2C_EXECUTION_PLAN.md`; the normative implementation and qualification contracts live in `R2C_WORLD_PROJECTION_IMPLEMENTATION.md` and `R2C_WORLD_PROJECTION_QUALIFICATION.md`.
 
 Required:
 
-- `DimensionRuntimeProfile`/`DimensionInstance` boundary;
+- `DimensionRuntimeProfile`/`DimensionInstance` boundary with compact resolved dimension facts;
 - exact chunk/section ownership and generation/revision identity;
-- pregenerated chunk import toward selected Crucible section representation;
-- source-backed light/height/derived-state semantics required for client projection;
+- pregenerated chunk import directly toward final Helve semantic state rather than a Mojang-shaped live object graph;
+- source-backed biome/light/height/derived-state semantics required for client projection;
 - revision-bound target-26.2 chunk/light projection;
-- bounded projection cache/publication policy.
+- a permanent transparent reference projector;
+- an explicit production mechanism tournament for snapshot/copy/cache/share/compression choices;
+- bounded initial observation/publication through the continuing R2B connection driver;
+- zero captured world/chunk/light Play bodies in the admitted R2C path;
+- stock client renders the admitted pregenerated Helve world.
 
-R2C should establish the permanent two-tier world access shape: sparse lifecycle directory at the boundary, dense region/local handles/windows in hot work.
+R2C establishes the permanent two-tier world access shape: sparse lifecycle directory at the boundary, dense region/local handles/windows in hot work. It also consumes the existing M0.3D section-production decision rather than creating a networking-specific second section representation.
 
 ### R2D — top-level R2 qualification
 
-Goal: persistent visible world with no Play capture dependency.
+Goal: red-team the complete persistent visible world after R2C has made terrain native.
 
 Required:
 
-- full Crucible-owned Handshake/Login/Configuration/Play path;
+- full Helve-owned Handshake/Login/Configuration/Play path;
 - zero captured Play replay;
 - stock client renders the pregenerated world;
 - indefinite ordinary liveness;
@@ -199,9 +210,9 @@ qualified world substrate
 → protocol/configuration
 → R1X visible-world convergence
 → live Play control
-→ replay-free bootstrap
-→ pregenerated Crucible world + chunk/light projection
-→ persistent visible world (R2)
+→ replay-free bootstrap (R2B)
+→ pregenerated Helve world + native chunk/light projection (R2C)
+→ persistent visible world qualification (R2D / top-level R2)
 → movement/collision
 → incremental chunk interest
 → regionized execution
