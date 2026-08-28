@@ -3,11 +3,11 @@ name: R0 Server Gate
 on:
   pull_request:
     paths:
-      - "crates/crucible-server/**"
-      - "crates/network/crucible-target-26-2/**"
-      - "crates/network/crucible-preplay-io/**"
-      - "crates/network/crucible-preplay-core/**"
-      - "crates/network/crucible-connection-*/**"
+      - "crates/helve-server/**"
+      - "crates/network/helve-target-26-2/**"
+      - "crates/network/helve-preplay-io/**"
+      - "crates/network/helve-preplay-core/**"
+      - "crates/network/helve-connection-*/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/r0-server.yml"
@@ -31,13 +31,13 @@ jobs:
         run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
 
       - name: Format server composition
-        run: cargo fmt --package crucible-server -- --check
+        run: cargo fmt --package helve-server -- --check
 
       - name: Check server composition
-        run: cargo check --package crucible-server --all-targets --all-features --locked
+        run: cargo check --package helve-server --all-targets --all-features --locked
 
       - name: Clippy server composition
-        run: cargo clippy --package crucible-server --all-targets --all-features --locked -- -D warnings
+        run: cargo clippy --package helve-server --all-targets --all-features --locked -- -D warnings
 
       - name: R0 localhost black-box qualification
-        run: cargo test --package crucible-server --locked
+        run: cargo test --package helve-server --locked

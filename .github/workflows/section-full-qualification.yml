@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - crates/qualification/crucible-section-qualification/**
-      - crates/world/crucible-world-contract/**
-      - crates/world/crucible-world-reference/**
-      - crates/world/crucible-world-section/**
-      - crates/data/crucible-generated/**
+      - crates/qualification/helve-section-qualification/**
+      - crates/world/helve-world-contract/**
+      - crates/world/helve-world-reference/**
+      - crates/world/helve-world-section/**
+      - crates/data/helve-generated/**
       - tools/xtask/**
       - tools/section_correctness_bundle.py
       - vanilla/state-data/**
@@ -16,11 +16,11 @@ on:
       - .github/workflows/section-full-qualification.yml
   pull_request:
     paths:
-      - crates/qualification/crucible-section-qualification/**
-      - crates/world/crucible-world-contract/**
-      - crates/world/crucible-world-reference/**
-      - crates/world/crucible-world-section/**
-      - crates/data/crucible-generated/**
+      - crates/qualification/helve-section-qualification/**
+      - crates/world/helve-world-contract/**
+      - crates/world/helve-world-reference/**
+      - crates/world/helve-world-section/**
+      - crates/data/helve-generated/**
       - tools/xtask/**
       - tools/section_correctness_bundle.py
       - vanilla/state-data/**
@@ -63,8 +63,8 @@ jobs:
       - name: Upload full qualification evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: crucible-section-full-${{ matrix.candidate }}
-          path: target/crucible-qualification/section/full.json
+          name: helve-section-full-${{ matrix.candidate }}
+          path: target/helve-qualification/section/full.json
           if-no-files-found: error
           retention-days: 30
 
@@ -88,12 +88,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          root=target/crucible-qualification/section/full-bundle
+          root=target/helve-qualification/section/full-bundle
           for candidate in direct adaptive fast-local packed-local; do
             cargo run --release --locked -p xtask -- \
               qualify section --full --candidate "$candidate"
             mkdir -p "$root/$candidate"
-            cp target/crucible-qualification/section/full.json "$root/$candidate/full.json"
+            cp target/helve-qualification/section/full.json "$root/$candidate/full.json"
           done
 
       - name: Validate and seal correctness bundle
@@ -102,14 +102,14 @@ jobs:
           set -euo pipefail
           python3 tools/section_correctness_bundle.py \
             --repo-root . \
-            --input-root target/crucible-qualification/section/full-bundle \
+            --input-root target/helve-qualification/section/full-bundle \
             --expected-commit "$(git rev-parse HEAD)" \
-            --output target/crucible-qualification/section/full-bundle/bundle-manifest.json
+            --output target/helve-qualification/section/full-bundle/bundle-manifest.json
 
       - name: Upload validated correctness bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: crucible-section-full-bundle
-          path: target/crucible-qualification/section/full-bundle
+          name: helve-section-full-bundle
+          path: target/helve-qualification/section/full-bundle
           if-no-files-found: error
           retention-days: 30

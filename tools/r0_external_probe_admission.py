@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Admit the final unmodified-client R0 probe against a runnable Crucible commit."""
+"""Admit the final unmodified-client R0 probe against a runnable Helve commit."""
 
 from __future__ import annotations
 
@@ -191,9 +191,9 @@ def _read_admission(path: Path) -> dict[str, str]:
 
 
 def _server_session(repo_root: Path) -> str:
-    path = repo_root / "crates/crucible-server/src/lib.rs"
+    path = repo_root / "crates/helve-server/src/lib.rs"
     if path.is_symlink() or not path.is_file():
-        raise ExternalProbeError("current checkout does not contain the R0 Crucible server")
+        raise ExternalProbeError("current checkout does not contain the R0 Helve server")
     text = path.read_text(encoding="utf-8")
     matches = SERVER_SESSION.findall(text)
     if len(matches) != 1:
@@ -202,7 +202,7 @@ def _server_session(repo_root: Path) -> str:
 
 
 def _generated_digest(repo_root: Path) -> str:
-    path = repo_root / "crates/network/crucible-target-26-2/src/generated/status_26_2.rs"
+    path = repo_root / "crates/network/helve-target-26-2/src/generated/status_26_2.rs"
     if path.is_symlink() or not path.is_file():
         raise ExternalProbeError("current checkout is missing generated Minecraft 26.2 packet facts")
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -260,7 +260,7 @@ def admit_external_probe(
             records_root=records_root,
         )
     except (EvidenceConvergenceError, OSError) as error:
-        raise ExternalProbeError(f"Crucible client capture failed convergence: {error}") from error
+        raise ExternalProbeError(f"Helve client capture failed convergence: {error}") from error
 
     expected_summary = {
         "contract_id": EXPECTED_CONTRACT_ID,
@@ -273,11 +273,11 @@ def admit_external_probe(
     for key, expected in expected_summary.items():
         if convergence_summary.get(key) != expected:
             raise ExternalProbeError(
-                f"Crucible client convergence {key} mismatch: expected {expected!r}, "
+                f"Helve client convergence {key} mismatch: expected {expected!r}, "
                 f"got {convergence_summary.get(key)!r}"
             )
     capture_sha = _sha256(
-        convergence_summary.get("capture_sha256"), "Crucible client convergence capture_sha256"
+        convergence_summary.get("capture_sha256"), "Helve client convergence capture_sha256"
     )
 
     report: dict[str, object] = {

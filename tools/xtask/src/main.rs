@@ -8,7 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-use crucible_section_qualification::{Candidate, QualificationMode};
+use helve_section_qualification::{Candidate, QualificationMode};
 
 const PINNED_RUST: &str = "1.97.1";
 
@@ -183,7 +183,7 @@ fn vanilla_state_data(root: &Path, args: &[OsString]) -> ExitCode {
                     OsString::from("generate"),
                     args[1].clone(),
                     OsString::from("--output"),
-                    OsString::from("crates/data/crucible-generated/src/lib.rs"),
+                    OsString::from("crates/data/helve-generated/src/lib.rs"),
                     OsString::from("--manifest"),
                     OsString::from("vanilla/state-data/26.2-state-data-manifest.json"),
                 ],
@@ -268,7 +268,7 @@ fn qualify(args: &[OsString]) -> ExitCode {
         return failure("--runtime-data is only valid together with --vanilla");
     }
 
-    let report = match crucible_section_qualification::qualify(mode, candidate) {
+    let report = match helve_section_qualification::qualify(mode, candidate) {
         Ok(report) => report,
         Err(error) => return failure(&format!("section qualification failed: {error}")),
     };
@@ -278,7 +278,7 @@ fn qualify(args: &[OsString]) -> ExitCode {
         Ok(sha) => sha,
         Err(error) => return failure(&error),
     };
-    let output_dir = root.join("target/crucible-qualification/section");
+    let output_dir = root.join("target/helve-qualification/section");
     if let Err(error) = fs::create_dir_all(&output_dir) {
         return failure(&format!(
             "could not create qualification output directory: {error}"
@@ -309,7 +309,7 @@ fn qualify_section_fixture(fixture: &OsString, runtime_data: Option<&OsString>) 
         Ok(sha) => sha,
         Err(error) => return failure(&error),
     };
-    let output_dir = root.join("target/crucible-qualification/section");
+    let output_dir = root.join("target/helve-qualification/section");
     if let Err(error) = fs::create_dir_all(&output_dir) {
         return failure(&format!(
             "could not create qualification output directory: {error}"
@@ -323,7 +323,7 @@ fn qualify_section_fixture(fixture: &OsString, runtime_data: Option<&OsString>) 
             "--quiet",
             "--locked",
             "-p",
-            "crucible-section-qualification",
+            "helve-section-qualification",
             "--bin",
             "section_fixture",
             "--",

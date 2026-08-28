@@ -53,7 +53,7 @@ cargo xtask guard
 
 Subsystem work may require additional qualification commands. Follow the relevant document under [`docs/qualification/`](docs/qualification/) and do not substitute a lightweight smoke test for evidence explicitly required by that subsystem's gate.
 
-The internal Cargo package/crate namespace still contains `crucible-*` names during the first rebrand phase. Treat those as compatibility identifiers, not the public product name; do not introduce new public-facing Crucible copy merely because an internal import still uses that namespace.
+Current Cargo packages and Rust crate identifiers use the `helve-*` / `helve_*` namespace. Historical evidence and durable qualification identifiers may retain the former Crucible name where renaming them would rewrite provenance rather than current project identity.
 
 ## PR evidence
 

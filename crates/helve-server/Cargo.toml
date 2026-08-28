@@ -1,0 +1,30 @@
+[package]
+name = "helve-server"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+autobins = false
+
+[dependencies]
+helve-connection-core = { path = "../network/helve-connection-core" }
+helve-connection-driver = { path = "../network/helve-connection-driver" }
+helve-packet-core = { path = "../network/helve-packet-core" }
+helve-preplay-core = { path = "../network/helve-preplay-core" }
+helve-preplay-io = { path = "../network/helve-preplay-io" }
+helve-publication-core = { path = "../network/helve-publication-core" }
+helve-session-core = { path = "../network/helve-session-core" }
+helve-target-26-2 = { path = "../network/helve-target-26-2" }
+
+[[bin]]
+name = "helve"
+path = "src/main.rs"
+
+[[bench]]
+name = "r2b_join_arrival"
+harness = false
+
+[lints]
+workspace = true

@@ -1,0 +1,13 @@
+[package]
+name = "helve-world-reference"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.97.1"
+license.workspace = true
+publish = false
+
+[dependencies]
+helve-world-contract = { path = "../helve-world-contract" }
+
+[lints]
+workspace = true

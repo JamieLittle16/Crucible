@@ -6,7 +6,7 @@ fidelity = "strict"
 optimize = "debuggability"
 
 [engine]
-"world.section-store" = "crucible-section-reference"
+"world.section-store" = "helve-section-reference"
 
 [security]
 allow_unqualified = false

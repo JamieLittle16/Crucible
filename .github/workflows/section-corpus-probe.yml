@@ -12,11 +12,11 @@ on:
       - tools/tests/test_vanilla_section_extractor.py
       - tools/tests/test_section_corpus.py
       - tools/tests/test_section_corpus_import_evidence.py
-      - crates/qualification/crucible-section-qualification/src/bin/section_bench/**
-      - crates/data/crucible-generated/**
-      - crates/world/crucible-world-contract/**
-      - crates/world/crucible-world-reference/**
-      - crates/world/crucible-world-section/**
+      - crates/qualification/helve-section-qualification/src/bin/section_bench/**
+      - crates/data/helve-generated/**
+      - crates/world/helve-world-contract/**
+      - crates/world/helve-world-reference/**
+      - crates/world/helve-world-section/**
       - vanilla/state-data/**
       - vanilla/vanilla.lock.toml
       - Cargo.toml
@@ -90,14 +90,14 @@ jobs:
         run: |
           python3 tools/official_section_world.py \
             --version 26.2 \
-            --work-dir /tmp/crucible-section-world \
-            --cache /tmp/crucible-vanilla-downloads \
+            --work-dir /tmp/helve-section-world \
+            --cache /tmp/helve-vanilla-downloads \
             --evidence /tmp/official-world-evidence.json
 
       - name: Extract stored overworld sections
         run: |
           python3 tools/vanilla_section_extractor.py \
-            --world /tmp/crucible-section-world/world \
+            --world /tmp/helve-section-world/world \
             --qualified-states /tmp/26.2-block-states.qualified.json \
             --dimension minecraft:overworld \
             --output /tmp/26.2-spawn-sections.corpus \
@@ -112,7 +112,7 @@ jobs:
       - name: Reconstruct official corpus through every Rust candidate
         run: |
           cargo run --release --locked \
-            -p crucible-section-qualification \
+            -p helve-section-qualification \
             --bin section_bench -- \
             --corpus-check /tmp/26.2-spawn-sections.corpus \
             --output /tmp/26.2-spawn-sections.rust-import.json
@@ -121,7 +121,7 @@ jobs:
         run: |
           set +e
           cargo run --release --locked \
-            -p crucible-section-qualification \
+            -p helve-section-qualification \
             --bin section_bench -- \
             --corpus-decision-check /tmp/26.2-spawn-sections.corpus \
             > /tmp/26.2-spawn-sections.decision-rejection.log 2>&1

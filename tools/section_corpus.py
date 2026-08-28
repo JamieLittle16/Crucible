@@ -453,7 +453,7 @@ def _parser() -> argparse.ArgumentParser:
         sub.add_argument(
             "--generated-rust",
             type=Path,
-            default=Path("crates/data/crucible-generated/src/lib.rs"),
+            default=Path("crates/data/helve-generated/src/lib.rs"),
         )
         if command == "validate":
             sub.add_argument("--manifest", type=Path)

@@ -453,7 +453,7 @@ def _controlled_build(
             "--release",
             "--locked",
             "-p",
-            "crucible-section-qualification",
+            "helve-section-qualification",
             "--bin",
             "section_bench",
         ],

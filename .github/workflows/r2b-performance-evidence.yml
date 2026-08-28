@@ -3,10 +3,10 @@ name: R2B Performance Evidence
 on:
   pull_request:
     paths:
-      - crates/network/crucible-target-26-2/**
-      - crates/crucible-server/src/r2b_server.rs
-      - crates/crucible-server/benches/r2b_join_arrival.rs
-      - crates/qualification/crucible-client-spine-qualification/src/bin/r2b_bootstrap_arena_bench.rs
+      - crates/network/helve-target-26-2/**
+      - crates/helve-server/src/r2b_server.rs
+      - crates/helve-server/benches/r2b_join_arrival.rs
+      - crates/qualification/helve-client-spine-qualification/src/bin/r2b_bootstrap_arena_bench.rs
       - docs/qualification/R2B_PERFORMANCE_EVIDENCE.md
       - docs/qualification/R2B_PREPARE_SCRATCH_SWEEP.md
       - docs/qualification/R2B_JOIN_ARRIVAL_SMOOTHNESS.md
@@ -40,18 +40,18 @@ jobs:
           first="${allowed%%,*}"
           first="${first%%-*}"
           test -n "${first}"
-          echo "CRUCIBLE_BENCH_CPU=${first}" >> "${GITHUB_ENV}"
+          echo "HELVE_BENCH_CPU=${first}" >> "${GITHUB_ENV}"
           echo "benchmark cpu: ${first} (allowed: ${allowed})"
 
       - name: Run shared-artifact paired smoke
         run: |
           for repetition in 1 2 3; do
-            taskset -c "${CRUCIBLE_BENCH_CPU}" \
+            taskset -c "${HELVE_BENCH_CPU}" \
               cargo bench --locked \
-              --package crucible-target-26-2 \
+              --package helve-target-26-2 \
               --bench r2b_shared_artifact -- \
               --smoke \
-              --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/shared-artifact-smoke-${repetition}.json"
+              --output "${GITHUB_WORKSPACE}/target/helve-qualification/r2b/shared-artifact-smoke-${repetition}.json"
           done
 
       - name: Validate shared-artifact evidence
@@ -60,7 +60,7 @@ jobs:
           import json
           from pathlib import Path
 
-          paths = sorted(Path('target/crucible-qualification/r2b').glob('shared-artifact-smoke-*.json'))
+          paths = sorted(Path('target/helve-qualification/r2b').glob('shared-artifact-smoke-*.json'))
           assert len(paths) == 3
           rows = [json.loads(path.read_text()) for path in paths]
           checksums = {row['semantic_checksum'] for row in rows}
@@ -116,12 +116,12 @@ jobs:
       - name: Run preparation-scratch reservation smoke
         run: |
           for repetition in 1 2 3; do
-            taskset -c "${CRUCIBLE_BENCH_CPU}" \
+            taskset -c "${HELVE_BENCH_CPU}" \
               cargo bench --locked \
-              --package crucible-target-26-2 \
+              --package helve-target-26-2 \
               --bench r2b_prepare_scratch -- \
               --smoke \
-              --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/prepare-scratch-smoke-${repetition}.json"
+              --output "${GITHUB_WORKSPACE}/target/helve-qualification/r2b/prepare-scratch-smoke-${repetition}.json"
           done
 
       - name: Validate preparation-scratch evidence
@@ -131,7 +131,7 @@ jobs:
           from collections import defaultdict
           from pathlib import Path
 
-          paths = sorted(Path('target/crucible-qualification/r2b').glob('prepare-scratch-smoke-*.json'))
+          paths = sorted(Path('target/helve-qualification/r2b').glob('prepare-scratch-smoke-*.json'))
           assert len(paths) == 3
           rows = [json.loads(path.read_text()) for path in paths]
           reservations = {64, 128, 256, 512, 1024, 2048, 4096}
@@ -187,12 +187,12 @@ jobs:
 
       - name: Run join-arrival smoothness smoke
         run: >-
-          taskset -c "${CRUCIBLE_BENCH_CPU}"
+          taskset -c "${HELVE_BENCH_CPU}"
           cargo bench --locked
-          --package crucible-server
+          --package helve-server
           --bench r2b_join_arrival --
           --smoke
-          --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/join-arrival-smoke.json"
+          --output "${GITHUB_WORKSPACE}/target/helve-qualification/r2b/join-arrival-smoke.json"
 
       - name: Validate join-arrival evidence
         run: |
@@ -200,7 +200,7 @@ jobs:
           import json
           from pathlib import Path
 
-          path = Path('target/crucible-qualification/r2b/join-arrival-smoke.json')
+          path = Path('target/helve-qualification/r2b/join-arrival-smoke.json')
           data = json.loads(path.read_text())
           assert data['schema'] == 1
           assert data['benchmark'] == 'r2b-join-arrival-smoothness'
@@ -279,12 +279,12 @@ jobs:
 
       - name: Run dynamic-arena structural smoke
         run: >-
-          taskset -c "${CRUCIBLE_BENCH_CPU}"
+          taskset -c "${HELVE_BENCH_CPU}"
           cargo run --release --locked
-          --package crucible-client-spine-qualification
+          --package helve-client-spine-qualification
           --bin r2b_bootstrap_arena_bench --
           --smoke
-          --output "${GITHUB_WORKSPACE}/target/crucible-qualification/r2b/bootstrap-arena-smoke.json"
+          --output "${GITHUB_WORKSPACE}/target/helve-qualification/r2b/bootstrap-arena-smoke.json"
 
       - name: Validate dynamic-arena evidence
         run: |
@@ -292,7 +292,7 @@ jobs:
           import json
           from pathlib import Path
 
-          path = Path('target/crucible-qualification/r2b/bootstrap-arena-smoke.json')
+          path = Path('target/helve-qualification/r2b/bootstrap-arena-smoke.json')
           data = json.loads(path.read_text())
           assert data['benchmark'] == 'r2b-dynamic-bootstrap-storage'
           assert data['mode'] == 'smoke'
@@ -309,7 +309,7 @@ jobs:
       - name: Upload diagnostic R2B evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: crucible-r2b-performance-evidence
-          path: target/crucible-qualification/r2b/*.json
+          name: helve-r2b-performance-evidence
+          path: target/helve-qualification/r2b/*.json
           if-no-files-found: error
           retention-days: 7

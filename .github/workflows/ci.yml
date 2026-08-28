@@ -48,7 +48,7 @@ jobs:
           --repo-root .
           --profile profiles/reference.toml
 
-      # crucible-generated and crucible-composition are byte-for-byte owned by
+      # helve-generated and helve-composition are byte-for-byte owned by
       # their generators. Keep them in the workspace for check/clippy/test/doc,
       # but never let rustfmt become a second writer of generated artifacts.
       # The 26.2 target's generated facts are included! from a generated path;
@@ -56,28 +56,28 @@ jobs:
       - name: Format handwritten Rust
         run: >-
           cargo fmt
-          --package crucible-types
-          --package crucible-component
-          --package crucible-connection-core
-          --package crucible-connection-driver
-          --package crucible-publication-core
-          --package crucible-packet-core
-          --package crucible-preplay-core
-          --package crucible-preplay-io
-          --package crucible-protocol-core
-          --package crucible-session-core
-          --package crucible-target-26-2
-          --package crucible-benchmark-support
-          --package crucible-client-spine-qualification
-          --package crucible-composition-qualification
-          --package crucible-executor-baseline
-          --package crucible-ownership-qualification
-          --package crucible-section-qualification
-          --package crucible-world-access-qualification
-          --package crucible-world-chunk
-          --package crucible-world-contract
-          --package crucible-world-reference
-          --package crucible-world-section
+          --package helve-types
+          --package helve-component
+          --package helve-connection-core
+          --package helve-connection-driver
+          --package helve-publication-core
+          --package helve-packet-core
+          --package helve-preplay-core
+          --package helve-preplay-io
+          --package helve-protocol-core
+          --package helve-session-core
+          --package helve-target-26-2
+          --package helve-benchmark-support
+          --package helve-client-spine-qualification
+          --package helve-composition-qualification
+          --package helve-executor-baseline
+          --package helve-ownership-qualification
+          --package helve-section-qualification
+          --package helve-world-access-qualification
+          --package helve-world-chunk
+          --package helve-world-contract
+          --package helve-world-reference
+          --package helve-world-section
           --package xtask
           -- --check
 
@@ -88,34 +88,34 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
       - name: Protocol wire qualification
-        run: cargo test --package crucible-protocol-core --locked
+        run: cargo test --package helve-protocol-core --locked
 
       - name: Packet body qualification
-        run: cargo test --package crucible-packet-core --locked
+        run: cargo test --package helve-packet-core --locked
 
       - name: Connection buffer qualification
-        run: cargo test --package crucible-connection-core --locked
+        run: cargo test --package helve-connection-core --locked
 
       - name: Connection driver qualification
-        run: cargo test --package crucible-connection-driver --locked
+        run: cargo test --package helve-connection-driver --locked
 
       - name: Bounded publication qualification
-        run: cargo test --package crucible-publication-core --locked
+        run: cargo test --package helve-publication-core --locked
 
       - name: Pre-play production binder qualification
-        run: cargo test --package crucible-preplay-core --locked
+        run: cargo test --package helve-preplay-core --locked
 
       - name: Pre-play I/O adapter qualification
-        run: cargo test --package crucible-preplay-io --locked
+        run: cargo test --package helve-preplay-io --locked
 
       - name: Session state qualification
-        run: cargo test --package crucible-session-core --locked
+        run: cargo test --package helve-session-core --locked
 
       - name: Minecraft 26.2 R0 target qualification
-        run: cargo test --package crucible-target-26-2 --locked
+        run: cargo test --package helve-target-26-2 --locked
 
       - name: Client spine integration qualification
-        run: cargo test --package crucible-client-spine-qualification --locked
+        run: cargo test --package helve-client-spine-qualification --locked
 
       # Hosted timing is diagnostic only. Production stays on the admitted two-stage
       # PacketWriter -> EgressBuffer path until controlled target-hardware evidence
@@ -123,7 +123,7 @@ jobs:
       - name: Fused outbound benchmark smoke
         run: |
           cargo run --release --locked \
-            --package crucible-client-spine-qualification \
+            --package helve-client-spine-qualification \
             --bin fused_outbound_bench -- \
             --smoke \
             --output target/fused-outbound-smoke.json
@@ -150,7 +150,7 @@ jobs:
       - name: Configuration publication benchmark smoke
         run: |
           cargo run --release --locked \
-            --package crucible-client-spine-qualification \
+            --package helve-client-spine-qualification \
             --bin config_publication_bench -- \
             --smoke \
             --output target/config-publication-smoke.json
@@ -184,7 +184,7 @@ jobs:
       - name: Liveness deadline benchmark smoke
         run: |
           cargo run --release --locked \
-            --package crucible-client-spine-qualification \
+            --package helve-client-spine-qualification \
             --bin liveness_deadline_bench -- \
             --smoke \
             --output target/liveness-deadline-smoke.json
@@ -217,7 +217,7 @@ jobs:
       - name: Composition HOT benchmark smoke
         run: |
           cargo run --release --locked \
-            --package crucible-composition-qualification \
+            --package helve-composition-qualification \
             --bin composition_hot_bench -- \
             --smoke \
             --output target/composition-hot-smoke.json
@@ -240,7 +240,7 @@ jobs:
       - name: Executor worker baseline smoke
         run: |
           cargo run --release --locked \
-            --package crucible-executor-baseline \
+            --package helve-executor-baseline \
             --bin executor_baseline_bench -- \
             --smoke \
             --output target/executor-baseline-smoke.json
@@ -268,7 +268,7 @@ jobs:
       - name: World-access benchmark smoke
         run: |
           cargo run --release --locked \
-            --package crucible-world-access-qualification \
+            --package helve-world-access-qualification \
             --bin world_access_bench -- \
             --smoke \
             --output target/world-access-smoke.json
@@ -293,7 +293,7 @@ jobs:
       - name: Spatial address benchmark smoke
         run: |
           cargo run --release --locked \
-            --package crucible-world-access-qualification \
+            --package helve-world-access-qualification \
             --bin spatial_address_bench -- \
             --smoke \
             --output target/spatial-address-smoke.json

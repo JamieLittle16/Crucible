@@ -11,9 +11,9 @@ on:
       - "tools/tests/test_section_target_hardware.py"
       - "tools/tests/test_section_target_synthetic_evidence.py"
       - "docs/qualification/section/SECTION_TARGET_HARDWARE_COMBINED.md"
-      - "crates/qualification/crucible-section-qualification/**"
+      - "crates/qualification/helve-section-qualification/**"
       - "crates/world/**"
-      - "crates/data/crucible-generated/**"
+      - "crates/data/helve-generated/**"
       - "vanilla/state-data/26.2-state-data-manifest.json"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -45,7 +45,7 @@ jobs:
 
       - name: Build content-addressed three-dimension smoke packs
         env:
-          PACK_ROOT: ${{ runner.temp }}/crucible-section-combined-packs
+          PACK_ROOT: ${{ runner.temp }}/helve-section-combined-packs
         run: |
           set -euo pipefail
           rm -rf "$PACK_ROOT"
@@ -144,8 +144,8 @@ jobs:
 
       - name: Run one combined session and all 20 child processes
         env:
-          PACK_ROOT: ${{ runner.temp }}/crucible-section-combined-packs
-          OUTPUT_ROOT: ${{ runner.temp }}/crucible-section-combined-output
+          PACK_ROOT: ${{ runner.temp }}/helve-section-combined-packs
+          OUTPUT_ROOT: ${{ runner.temp }}/helve-section-combined-output
           QUAL_CPU: ${{ steps.cpu.outputs.cpu }}
         run: |
           set -euo pipefail
@@ -160,7 +160,7 @@ jobs:
 
       - name: Validate combined smoke evidence boundary
         env:
-          OUTPUT_ROOT: ${{ runner.temp }}/crucible-section-combined-output
+          OUTPUT_ROOT: ${{ runner.temp }}/helve-section-combined-output
         run: |
           python3 - <<'PY'
           import hashlib
@@ -243,6 +243,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: section-target-combined-smoke
-          path: ${{ runner.temp }}/crucible-section-combined-output
+          path: ${{ runner.temp }}/helve-section-combined-output
           if-no-files-found: error
           retention-days: 7

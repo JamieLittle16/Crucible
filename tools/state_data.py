@@ -203,7 +203,7 @@ pub fn from_vanilla_state_id(raw: u32) -> Option<BlockStateId> {{
 
 #![forbid(unsafe_code)]
 
-use crucible_world_contract::{{BlockStateFacts, SectionStateFacts}};
+use helve_world_contract::{{BlockStateFacts, SectionStateFacts}};
 
 pub type BlockStateRepr = {representation};
 pub const BLOCK_STATE_COUNT: usize = {state_count};

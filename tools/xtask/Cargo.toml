@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-crucible-section-qualification = { path = "../../crates/qualification/crucible-section-qualification" }
+helve-section-qualification = { path = "../../crates/qualification/helve-section-qualification" }
 
 [lints]
 workspace = true

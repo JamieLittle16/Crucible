@@ -287,7 +287,7 @@ def run_qualification(
         root=representative_root,
         output_dir=pack_root,
         state_manifest=repo_root / "vanilla/state-data/26.2-state-data-manifest.json",
-        generated_rust=repo_root / "crates/data/crucible-generated/src/lib.rs",
+        generated_rust=repo_root / "crates/data/helve-generated/src/lib.rs",
     )
     _require_scope(pack_record, "benchmark pack")
     pack_manifest_sha = _verify_digest_field(

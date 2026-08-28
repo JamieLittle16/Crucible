@@ -3,210 +3,210 @@
 version = 4
 
 [[package]]
-name = "crucible-benchmark-support"
+name = "helve-benchmark-support"
 version = "0.0.0"
 
 [[package]]
-name = "crucible-client-spine-qualification"
+name = "helve-client-spine-qualification"
 version = "0.0.0"
 dependencies = [
- "crucible-benchmark-support",
- "crucible-connection-core",
- "crucible-connection-driver",
- "crucible-packet-core",
- "crucible-protocol-core",
- "crucible-publication-core",
- "crucible-session-core",
+ "helve-benchmark-support",
+ "helve-connection-core",
+ "helve-connection-driver",
+ "helve-packet-core",
+ "helve-protocol-core",
+ "helve-publication-core",
+ "helve-session-core",
 ]
 
 [[package]]
-name = "crucible-component"
+name = "helve-component"
 version = "0.0.0"
 
 [[package]]
-name = "crucible-composition"
+name = "helve-composition"
 version = "0.0.0"
 dependencies = [
- "crucible-world-reference",
+ "helve-world-reference",
 ]
 
 [[package]]
-name = "crucible-composition-qualification"
+name = "helve-composition-qualification"
 version = "0.0.0"
 dependencies = [
- "crucible-benchmark-support",
- "crucible-composition",
- "crucible-generated",
- "crucible-world-contract",
- "crucible-world-reference",
+ "helve-benchmark-support",
+ "helve-composition",
+ "helve-generated",
+ "helve-world-contract",
+ "helve-world-reference",
 ]
 
 [[package]]
-name = "crucible-connection-core"
+name = "helve-connection-core"
 version = "0.0.0"
 dependencies = [
- "crucible-protocol-core",
+ "helve-protocol-core",
 ]
 
 [[package]]
-name = "crucible-connection-driver"
+name = "helve-connection-driver"
 version = "0.0.0"
 dependencies = [
- "crucible-connection-core",
+ "helve-connection-core",
 ]
 
 [[package]]
-name = "crucible-executor-baseline"
+name = "helve-executor-baseline"
 version = "0.0.0"
 dependencies = [
- "crucible-benchmark-support",
- "crucible-generated",
- "crucible-ownership-qualification",
- "crucible-world-contract",
- "crucible-world-reference",
+ "helve-benchmark-support",
+ "helve-generated",
+ "helve-ownership-qualification",
+ "helve-world-contract",
+ "helve-world-reference",
 ]
 
 [[package]]
-name = "crucible-generated"
+name = "helve-generated"
 version = "0.0.0"
 dependencies = [
- "crucible-world-contract",
+ "helve-world-contract",
 ]
 
 [[package]]
-name = "crucible-ownership-qualification"
+name = "helve-ownership-qualification"
 version = "0.0.0"
 
 [[package]]
-name = "crucible-packet-core"
+name = "helve-packet-core"
 version = "0.0.0"
 dependencies = [
- "crucible-protocol-core",
+ "helve-protocol-core",
 ]
 
 [[package]]
-name = "crucible-preplay-core"
+name = "helve-preplay-core"
 version = "0.0.0"
 dependencies = [
- "crucible-connection-core",
- "crucible-connection-driver",
- "crucible-packet-core",
- "crucible-publication-core",
- "crucible-session-core",
+ "helve-connection-core",
+ "helve-connection-driver",
+ "helve-packet-core",
+ "helve-publication-core",
+ "helve-session-core",
 ]
 
 [[package]]
-name = "crucible-preplay-io"
+name = "helve-preplay-io"
 version = "0.0.0"
 dependencies = [
- "crucible-connection-core",
- "crucible-connection-driver",
- "crucible-packet-core",
- "crucible-preplay-core",
- "crucible-session-core",
+ "helve-connection-core",
+ "helve-connection-driver",
+ "helve-packet-core",
+ "helve-preplay-core",
+ "helve-session-core",
 ]
 
 [[package]]
-name = "crucible-protocol-core"
+name = "helve-protocol-core"
 version = "0.0.0"
 
 [[package]]
-name = "crucible-publication-core"
+name = "helve-publication-core"
 version = "0.0.0"
 dependencies = [
- "crucible-connection-core",
- "crucible-connection-driver",
+ "helve-connection-core",
+ "helve-connection-driver",
 ]
 
 [[package]]
-name = "crucible-server"
+name = "helve-server"
 version = "0.0.0"
 dependencies = [
- "crucible-connection-core",
- "crucible-connection-driver",
- "crucible-packet-core",
- "crucible-preplay-core",
- "crucible-preplay-io",
- "crucible-publication-core",
- "crucible-session-core",
- "crucible-target-26-2",
+ "helve-connection-core",
+ "helve-connection-driver",
+ "helve-packet-core",
+ "helve-preplay-core",
+ "helve-preplay-io",
+ "helve-publication-core",
+ "helve-session-core",
+ "helve-target-26-2",
 ]
 
 [[package]]
-name = "crucible-session-core"
+name = "helve-session-core"
 version = "0.0.0"
 
 [[package]]
-name = "crucible-target-26-2"
+name = "helve-target-26-2"
 version = "0.0.0"
 dependencies = [
- "crucible-connection-core",
- "crucible-connection-driver",
- "crucible-packet-core",
- "crucible-preplay-core",
- "crucible-publication-core",
- "crucible-session-core",
+ "helve-connection-core",
+ "helve-connection-driver",
+ "helve-packet-core",
+ "helve-preplay-core",
+ "helve-publication-core",
+ "helve-session-core",
 ]
 
 [[package]]
-name = "crucible-section-qualification"
+name = "helve-section-qualification"
 version = "0.0.0"
 dependencies = [
- "crucible-benchmark-support",
- "crucible-generated",
- "crucible-world-contract",
- "crucible-world-reference",
- "crucible-world-section",
+ "helve-benchmark-support",
+ "helve-generated",
+ "helve-world-contract",
+ "helve-world-reference",
+ "helve-world-section",
 ]
 
 [[package]]
-name = "crucible-types"
+name = "helve-types"
 version = "0.0.0"
 
 [[package]]
-name = "crucible-world-access-qualification"
+name = "helve-world-access-qualification"
 version = "0.0.0"
 dependencies = [
- "crucible-benchmark-support",
- "crucible-generated",
- "crucible-types",
- "crucible-world-chunk",
- "crucible-world-reference",
+ "helve-benchmark-support",
+ "helve-generated",
+ "helve-types",
+ "helve-world-chunk",
+ "helve-world-reference",
 ]
 
 [[package]]
-name = "crucible-world-chunk"
+name = "helve-world-chunk"
 version = "0.0.0"
 dependencies = [
- "crucible-generated",
- "crucible-types",
- "crucible-world-contract",
- "crucible-world-reference",
+ "helve-generated",
+ "helve-types",
+ "helve-world-contract",
+ "helve-world-reference",
 ]
 
 [[package]]
-name = "crucible-world-contract"
+name = "helve-world-contract"
 version = "0.0.0"
 
 [[package]]
-name = "crucible-world-reference"
+name = "helve-world-reference"
 version = "0.0.0"
 dependencies = [
- "crucible-world-contract",
+ "helve-world-contract",
 ]
 
 [[package]]
-name = "crucible-world-section"
+name = "helve-world-section"
 version = "0.0.0"
 dependencies = [
- "crucible-generated",
- "crucible-world-contract",
- "crucible-world-reference",
+ "helve-generated",
+ "helve-world-contract",
+ "helve-world-reference",
 ]
 
 [[package]]
 name = "xtask"
 version = "0.0.0"
 dependencies = [
- "crucible-section-qualification",
+ "helve-section-qualification",
 ]

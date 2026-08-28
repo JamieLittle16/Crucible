@@ -17,11 +17,11 @@ on:
       - tools/tests/test_official_representative_section_world.py
       - tools/tests/test_representative_section_corpus.py
       - tools/tests/test_section_corpus_set.py
-      - crates/qualification/crucible-section-qualification/src/bin/section_bench/**
-      - crates/data/crucible-generated/**
-      - crates/world/crucible-world-contract/**
-      - crates/world/crucible-world-reference/**
-      - crates/world/crucible-world-section/**
+      - crates/qualification/helve-section-qualification/src/bin/section_bench/**
+      - crates/data/helve-generated/**
+      - crates/world/helve-world-contract/**
+      - crates/world/helve-world-reference/**
+      - crates/world/helve-world-section/**
       - vanilla/state-data/**
       - vanilla/vanilla.lock.toml
       - Cargo.toml
@@ -116,7 +116,7 @@ jobs:
             --version 26.2 \
             --plan /tmp/representative-plan.json \
             --seed-index 0 \
-            --work-dir /tmp/crucible-representative-seed-0 \
+            --work-dir /tmp/helve-representative-seed-0 \
             --cache .crucible/vanilla/downloads \
             --timeout-seconds 900 \
             --batch-size 8 \
@@ -126,7 +126,7 @@ jobs:
       - name: Extract exact selected representative member
         run: |
           python3 tools/representative_section_corpus.py \
-            --world /tmp/crucible-representative-seed-0/world \
+            --world /tmp/helve-representative-seed-0/world \
             --plan /tmp/representative-plan.json \
             --seed-index 0 \
             --qualified-states /tmp/26.2-block-states.qualified.json \
@@ -142,7 +142,7 @@ jobs:
       - name: Reconstruct representative member through every Rust candidate
         run: |
           cargo run --release --locked \
-            -p crucible-section-qualification \
+            -p helve-section-qualification \
             --bin section_bench -- \
             --corpus-check /tmp/representative-seed-0.corpus \
             --output /tmp/rust-import.json
@@ -151,7 +151,7 @@ jobs:
         run: |
           set +e
           cargo run --release --locked \
-            -p crucible-section-qualification \
+            -p helve-section-qualification \
             --bin section_bench -- \
             --corpus-decision-check /tmp/representative-seed-0.corpus \
             > /tmp/decision-rejection.log 2>&1
@@ -316,7 +316,7 @@ jobs:
             /tmp/corpus-manifest.json
             /tmp/rust-import.json
             /tmp/decision-rejection.log
-            /tmp/crucible-representative-seed-0/server.log
+            /tmp/helve-representative-seed-0/server.log
             /tmp/representative-seed-0.corpus
           if-no-files-found: error
           retention-days: 14
@@ -328,7 +328,7 @@ jobs:
           name: minecraft-26.2-section-representative-member-failure
           path: |
             /tmp/representative-plan.json
-            /tmp/crucible-representative-seed-0/server.log
+            /tmp/helve-representative-seed-0/server.log
             /tmp/world-evidence.json
           if-no-files-found: warn
           retention-days: 7

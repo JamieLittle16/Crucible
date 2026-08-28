@@ -18,8 +18,8 @@ def load_module(name: str, path: Path):
     return module
 
 
-binder = load_module("crucible_qualify_state_data", ROOT / "tools" / "qualify_state_data.py")
-generator = load_module("crucible_state_data_for_binding", ROOT / "tools" / "state_data.py")
+binder = load_module("helve_qualify_state_data", ROOT / "tools" / "qualify_state_data.py")
+generator = load_module("helve_state_data_for_binding", ROOT / "tools" / "state_data.py")
 
 
 class QualifiedStateDataTests(unittest.TestCase):

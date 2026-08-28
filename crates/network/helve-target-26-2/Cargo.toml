@@ -1,0 +1,27 @@
+[package]
+name = "helve-target-26-2"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+helve-connection-core = { path = "../helve-connection-core" }
+helve-connection-driver = { path = "../helve-connection-driver" }
+helve-packet-core = { path = "../helve-packet-core" }
+helve-preplay-core = { path = "../helve-preplay-core" }
+helve-publication-core = { path = "../helve-publication-core" }
+helve-session-core = { path = "../helve-session-core" }
+
+[[bench]]
+name = "r2b_shared_artifact"
+harness = false
+
+[[bench]]
+name = "r2b_prepare_scratch"
+harness = false
+
+[lints]
+workspace = true

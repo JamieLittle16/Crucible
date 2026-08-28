@@ -4,9 +4,9 @@ on:
   pull_request:
     paths:
       - ".github/workflows/section-target-synthetic-smoke.yml"
-      - "crates/qualification/crucible-section-qualification/**"
+      - "crates/qualification/helve-section-qualification/**"
       - "crates/world/**"
-      - "crates/data/crucible-generated/**"
+      - "crates/data/helve-generated/**"
       - "docs/qualification/section/SECTION_TARGET_HARDWARE_SYNTHETIC.md"
       - "docs/qualification/section/SECTION_TARGET_HARDWARE_SYNTHETIC_ADMISSION.md"
       - "Cargo.toml"
@@ -37,12 +37,12 @@ jobs:
       - name: Run all candidate-isolated release smokes
         run: |
           set -euo pipefail
-          root=target/crucible-qualification/section/target-synthetic-smoke
+          root=target/helve-qualification/section/target-synthetic-smoke
           rm -rf "$root"
           mkdir -p "$root"
           for candidate in direct-reference direct adaptive fast-local packed-local; do
             cargo run --release --locked \
-              -p crucible-section-qualification \
+              -p helve-section-qualification \
               --bin section_bench -- \
               --synthetic-candidate "$candidate" \
               --synthetic-target-smoke \
@@ -56,7 +56,7 @@ jobs:
           from collections import Counter
           from pathlib import Path
 
-          root = Path('target/crucible-qualification/section/target-synthetic-smoke')
+          root = Path('target/helve-qualification/section/target-synthetic-smoke')
           candidates = ['direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local']
           replacements = {
               'same-state-replace',
@@ -140,6 +140,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: section-target-synthetic-smoke
-          path: target/crucible-qualification/section/target-synthetic-smoke
+          path: target/helve-qualification/section/target-synthetic-smoke
           if-no-files-found: error
           retention-days: 7

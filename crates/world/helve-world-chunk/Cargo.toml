@@ -1,0 +1,19 @@
+[package]
+name = "helve-world-chunk"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+helve-types = { path = "../../helve-types" }
+helve-world-contract = { path = "../helve-world-contract" }
+
+[dev-dependencies]
+helve-generated = { path = "../../data/helve-generated" }
+helve-world-reference = { path = "../helve-world-reference" }
+
+[lints]
+workspace = true

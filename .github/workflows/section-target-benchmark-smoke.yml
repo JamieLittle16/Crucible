@@ -4,9 +4,9 @@ on:
   pull_request:
     paths:
       - ".github/workflows/section-target-benchmark-smoke.yml"
-      - "crates/qualification/crucible-section-qualification/**"
+      - "crates/qualification/helve-section-qualification/**"
       - "crates/world/**"
-      - "crates/data/crucible-generated/**"
+      - "crates/data/helve-generated/**"
       - "tools/section_benchmark_pack.py"
       - "tools/tests/test_section_benchmark_pack.py"
       - "docs/qualification/section/SECTION_TARGET_HARDWARE_QUALIFICATION.md"
@@ -40,13 +40,13 @@ jobs:
 
       - name: Build tiny transition-covering smoke pack
         run: |
-          mkdir -p target/crucible-qualification/section/target-smoke
+          mkdir -p target/helve-qualification/section/target-smoke
           python3 - <<'PY'
           import json
           import struct
           from pathlib import Path
 
-          root = Path('target/crucible-qualification/section/target-smoke')
+          root = Path('target/helve-qualification/section/target-smoke')
           manifest = json.loads(Path('vanilla/state-data/26.2-state-data-manifest.json').read_text())
           target = manifest['target']
           state_count = manifest['state_count']
@@ -80,10 +80,10 @@ jobs:
       - name: Run all candidate-isolated release smokes
         run: |
           set -euo pipefail
-          root=target/crucible-qualification/section/target-smoke
+          root=target/helve-qualification/section/target-smoke
           for candidate in direct-reference direct adaptive fast-local packed-local; do
             cargo run --release --locked \
-              -p crucible-section-qualification \
+              -p helve-section-qualification \
               --bin section_bench -- \
               --population-pack "$root/smoke.section-pack" \
               --candidate "$candidate" \
@@ -97,7 +97,7 @@ jobs:
           import json
           from pathlib import Path
 
-          root = Path('target/crucible-qualification/section/target-smoke')
+          root = Path('target/helve-qualification/section/target-smoke')
           candidates = ['direct-reference', 'direct', 'adaptive', 'fast-local', 'packed-local']
           workloads = {
               'random-read',
@@ -165,6 +165,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: section-target-benchmark-smoke
-          path: target/crucible-qualification/section/target-smoke
+          path: target/helve-qualification/section/target-smoke
           if-no-files-found: error
           retention-days: 7

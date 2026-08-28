@@ -1,0 +1,20 @@
+[package]
+name = "helve-client-spine-qualification"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+helve-benchmark-support = { path = "../helve-benchmark-support" }
+helve-connection-core = { path = "../../network/helve-connection-core" }
+helve-connection-driver = { path = "../../network/helve-connection-driver" }
+helve-packet-core = { path = "../../network/helve-packet-core" }
+helve-protocol-core = { path = "../../network/helve-protocol-core" }
+helve-publication-core = { path = "../../network/helve-publication-core" }
+helve-session-core = { path = "../../network/helve-session-core" }
+
+[lints]
+workspace = true
