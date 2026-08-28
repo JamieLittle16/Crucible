@@ -25,6 +25,7 @@ members = [
     "crates/world/helve-world-chunk",
     "crates/world/helve-world-contract",
     "crates/world/helve-world-reference",
+    "crates/world/helve-world-runtime",
     "crates/world/helve-world-section",
     "tools/xtask",
 ]
@@ -53,6 +54,7 @@ default-members = [
     "crates/world/helve-world-chunk",
     "crates/world/helve-world-contract",
     "crates/world/helve-world-reference",
+    "crates/world/helve-world-runtime",
     "crates/world/helve-world-section",
     "tools/xtask",
 ]

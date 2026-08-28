@@ -196,6 +196,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "helve-world-runtime"
+version = "0.0.0"
+dependencies = [
+ "helve-types",
+ "helve-world-chunk",
+ "helve-world-contract",
+ "helve-world-reference",
+]
+
+[[package]]
 name = "helve-world-section"
 version = "0.0.0"
 dependencies = [
