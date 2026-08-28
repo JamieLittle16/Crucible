@@ -193,11 +193,10 @@ where
     };
 
     let payload = if chunk.external {
-        let external_payload = external_payload.ok_or(
-            StoredChunkImportError::MissingExternalPayload {
+        let external_payload =
+            external_payload.ok_or(StoredChunkImportError::MissingExternalPayload {
                 position: chunk.position,
-            },
-        )?;
+            })?;
         if external_payload.bytes.len() > payload_limits.max_external_payload_bytes {
             return Err(StoredChunkImportError::ExternalPayloadExceedsLimit {
                 position: chunk.position,
@@ -245,9 +244,7 @@ mod tests {
         UncompressedPayloadError, import_region_chunk_blocks,
     };
     use crate::{
-        anvil::{
-            ChunkCompression, REGION_HEADER_BYTES, RegionLimits, RegionView, SECTOR_BYTES,
-        },
+        anvil::{ChunkCompression, REGION_HEADER_BYTES, RegionLimits, RegionView, SECTOR_BYTES},
         nbt::{NbtLimits, TagType},
         stored_blocks::{
             BlockProperty, BlockSectionDecodeScratch, BlockStateResolver,
@@ -375,7 +372,12 @@ mod tests {
         assert_eq!(result.blocks.header.data_version, 4903);
         assert_eq!(result.blocks.header.stored_section_count, 1);
         assert_eq!(result.blocks.sections.len(), 1);
-        assert!(result.blocks.sections[0].section.iter().all(|&state| state == 1));
+        assert!(
+            result.blocks.sections[0]
+                .section
+                .iter()
+                .all(|&state| state == 1)
+        );
         assert_eq!(
             result.source,
             StoredChunkSourceMetadata {
@@ -405,7 +407,12 @@ mod tests {
             &mut BlockSectionDecodeScratch::new(),
         )
         .expect("external payload imported");
-        assert!(result.blocks.sections[0].section.iter().all(|&state| state == 0));
+        assert!(
+            result.blocks.sections[0]
+                .section
+                .iter()
+                .all(|&state| state == 0)
+        );
         assert!(result.source.external);
     }
 
@@ -523,6 +530,11 @@ mod tests {
         )
         .expect("injected decoder transaction");
         assert_eq!(decoder.observed, Some(ChunkCompression::Zlib));
-        assert!(result.blocks.sections[0].section.iter().all(|&state| state == 1));
+        assert!(
+            result.blocks.sections[0]
+                .section
+                .iter()
+                .all(|&state| state == 1)
+        );
     }
 }
