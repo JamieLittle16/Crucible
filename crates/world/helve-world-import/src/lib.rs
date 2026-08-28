@@ -18,9 +18,7 @@ pub use chunk::{
     ChunkImportError, StoredChunkHeader, TARGET_DATA_VERSION_26_2, inspect_chunk_header,
 };
 pub use nbt::{ListHeader, NamedTag, NbtError, NbtLimits, NbtReader, TagType};
-pub use state_lookup::{
-    StoredStateLookup, StoredStateLookupEntry, canonical_state_fingerprint,
-};
+pub use state_lookup::{StoredStateLookup, StoredStateLookupEntry, canonical_state_fingerprint};
 pub use stored_blocks::{
     BlockProperty, BlockSectionDecodeScratch, BlockSectionImportError,
     BlockSectionScratchCapacities, BlockStateResolver, ImportedBlockSection,
