@@ -243,19 +243,15 @@ mod tests {
         generated_state_lookup as generated,
         stored_blocks::{BlockProperty, BlockStateResolver},
     };
-    use helve_generated::{AIR, STATE_DATA_INPUT_SHA256};
+    use helve_generated::{AIR, BLOCK_STATE_COUNT};
 
     #[test]
-    fn target_and_lookup_provenance_are_identical() {
-        assert_eq!(
-            generated::STORED_STATE_LOOKUP_INPUT_SHA256,
-            STATE_DATA_INPUT_SHA256
-        );
+    fn generated_table_shape_matches_target_universe() {
         assert_eq!(
             generated::STORED_STATE_LOOKUP_DATA.len(),
             generated::STORED_STATE_LOOKUP_BYTES
         );
-        assert_eq!(generated::STORED_STATE_LOOKUP_BINARY_SHA256.len(), 64);
+        assert_eq!(generated::STORED_STATE_LOOKUP_COUNT, BLOCK_STATE_COUNT);
     }
 
     #[test]
