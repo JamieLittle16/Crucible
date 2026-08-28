@@ -189,6 +189,13 @@ name = "helve-world-contract"
 version = "0.0.0"
 
 [[package]]
+name = "helve-world-import"
+version = "0.0.0"
+dependencies = [
+ "helve-types",
+]
+
+[[package]]
 name = "helve-world-reference"
 version = "0.0.0"
 dependencies = [
