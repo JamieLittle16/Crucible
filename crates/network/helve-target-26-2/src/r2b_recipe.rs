@@ -2,7 +2,7 @@
 //!
 //! Vanilla represents the initial recipe-book settings as four `TypeSettings` values, each holding
 //! `(open, filtering)`, and serializes those eight booleans in crafting/furnace/blast-furnace/smoker
-//! order. Crucible keeps the same observable state in one typed byte and expands it only at the wire
+//! order. Helve keeps the same observable state in one typed byte and expands it only at the wire
 //! boundary. This avoids carrying eight booleans or a Mojang-shaped object graph per player.
 
 use helve_packet_core::{PacketCodecError, PacketWriter};

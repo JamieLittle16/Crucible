@@ -1,4 +1,4 @@
-//! Runtime-neutral bounded connection driving for Crucible.
+//! Runtime-neutral bounded connection driving for Helve.
 //!
 //! This crate sits above `helve-connection-core` and below target-version packet semantics. It
 //! provides a small, statically dispatched processing loop over borrowed frame views while keeping
@@ -425,7 +425,7 @@ mod tests {
 
     #[test]
     fn byte_at_a_time_fragmentation_commits_only_complete_frame() {
-        let encoded = encoded_stream(&[(7, b"crucible")]);
+        let encoded = encoded_stream(&[(7, b"helve")]);
         let mut driver = ConnectionDriver::new(limits(4_096));
 
         for &byte in &encoded[..encoded.len() - 1] {
@@ -447,7 +447,7 @@ mod tests {
                 Ok::<_, ()>(FrameFlow::Continue)
             })
             .expect("complete frame");
-        assert_eq!(observed, Some((7, b"crucible".to_vec())));
+        assert_eq!(observed, Some((7, b"helve".to_vec())));
         assert_eq!(report.frames, 1);
         assert_eq!(report.stop, StopReason::Incomplete);
         assert_eq!(driver.buffered_ingress(), 0);

@@ -283,7 +283,7 @@ class CompositionResolverTests(unittest.TestCase):
             fixture = FixtureRepo(Path(raw))
             fixture.add_component("section-reference")
             resolution = fixture.resolution()
-            lock = fixture.root / "Crucible.lock"
+            lock = fixture.root / "Helve.lock"
             crate = fixture.root / "crates/helve-composition"
 
             resolver.generate(resolution=resolution, lock_path=lock, crate_dir=crate)

@@ -6,7 +6,7 @@
 
 A high-performance, parity-focused Minecraft: Java Edition server engine written in Rust.
 
-[![CI](https://github.com/JamieLittle16/Crucible/actions/workflows/ci.yml/badge.svg)](https://github.com/JamieLittle16/Crucible/actions/workflows/ci.yml)
+[![CI](https://github.com/JamieLittle16/Helve/actions/workflows/ci.yml/badge.svg)](https://github.com/JamieLittle16/Helve/actions/workflows/ci.yml)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 [![Rust 1.97.1](https://img.shields.io/badge/Rust-1.97.1-orange.svg)](rust-toolchain.toml)
 [![Status: R2B replay-free Play entry](https://img.shields.io/badge/status-R2B%20replay--free%20Play%20entry-6f42c1.svg)](docs/README.md)
@@ -143,18 +143,18 @@ Start with the [documentation index](docs/README.md) rather than browsing the tr
 
 ## Working on Helve
 
-The pinned toolchain is declared in [`rust-toolchain.toml`](rust-toolchain.toml). Until the repository itself is renamed, a normal contributor loop starts with:
+The pinned toolchain is declared in [`rust-toolchain.toml`](rust-toolchain.toml). A normal contributor loop starts with:
 
 ```bash
-git clone https://github.com/JamieLittle16/Crucible.git
-cd Crucible
+git clone https://github.com/JamieLittle16/Helve.git
+cd Helve
 
 cargo check --workspace --all-targets --all-features --locked
 cargo test --workspace --all-features --locked
 cargo xtask guard
 ```
 
-The repository URL/path will become `Helve` in the repository-rename follow-up; the internal `crucible-*` Cargo namespace is intentionally retained for now to avoid mixing product identity with dependency-graph churn.
+The repository and active Cargo/Rust namespaces now use **Helve** / `helve-*` / `helve_*`. Historical `CRUCIBLE_*` document filenames and sealed evidence identifiers are retained where renaming them would rewrite durable provenance rather than current project identity.
 
 The ordinary CI lane additionally runs formatting, Clippy, source-backed section qualification, Python tooling tests and rustdoc with warnings denied.
 

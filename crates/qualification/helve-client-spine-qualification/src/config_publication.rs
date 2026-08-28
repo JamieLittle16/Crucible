@@ -2,7 +2,7 @@
 //!
 //! This module intentionally contains no Minecraft packet identity. It supplies the lab's immutable
 //! shared-image representation while exercising the production `helve-publication-core` cursor
-//! directly against Crucible's real bounded `ConnectionDriver` egress path.
+//! directly against Helve's real bounded `ConnectionDriver` egress path.
 
 #![forbid(unsafe_code)]
 
