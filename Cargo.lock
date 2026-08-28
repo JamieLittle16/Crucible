@@ -204,6 +204,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "helve-world-load"
+version = "0.0.0"
+dependencies = [
+ "helve-types",
+ "helve-world-contract",
+ "helve-world-import",
+ "helve-world-reference",
+ "helve-world-runtime",
+]
+
+[[package]]
 name = "helve-world-reference"
 version = "0.0.0"
 dependencies = [

@@ -1,0 +1,20 @@
+[package]
+name = "helve-world-load"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+helve-world-contract = { path = "../helve-world-contract" }
+helve-world-import = { path = "../helve-world-import" }
+helve-world-runtime = { path = "../helve-world-runtime" }
+
+[dev-dependencies]
+helve-types = { path = "../../helve-types" }
+helve-world-reference = { path = "../helve-world-reference" }
+
+[lints]
+workspace = true
