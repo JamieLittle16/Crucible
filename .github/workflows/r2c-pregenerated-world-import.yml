@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   import-boundary:
-    name: Bounded Anvil / NBT import boundary
+    name: Bounded stored-world import transaction
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
