@@ -74,7 +74,7 @@ def manifest(data: dict[str, object]) -> dict[str, object]:
 
 
 class StoredStateLookupTests(unittest.TestCase):
-    def test_fingerprint_is_stable_fnv1a64(self) -> None:
+    def test_hash_witnesses_are_stable(self) -> None:
         self.assertEqual(
             stored_state_lookup.canonical_state_fingerprint("minecraft:air"),
             0xC480B16A40058EC2,
@@ -85,96 +85,86 @@ class StoredStateLookupTests(unittest.TestCase):
             ),
             0xA628DDE6F2234D1F,
         )
+        self.assertEqual(stored_state_lookup.splitmix64(0), 0xE220A8397B1DCDAF)
 
-    def test_generation_is_deterministic_sorted_and_compact(self) -> None:
+    def test_generation_is_deterministic_compact_and_exact(self) -> None:
         data = fixture()
-        first_code, first_manifest = stored_state_lookup.render_rust(
-            data, manifest(data)
-        )
-        second_code, second_manifest = stored_state_lookup.render_rust(
-            data, manifest(data)
-        )
-        self.assertEqual(first_code, second_code)
-        self.assertEqual(first_manifest, second_manifest)
-        fingerprints = [
-            stored_state_lookup.canonical_state_fingerprint(str(state["key"]))
-            for state in data["states"]
-        ]
-        for fingerprint in sorted(fingerprints):
-            self.assertIn(f"0x{fingerprint:016x}", first_code)
-        self.assertEqual(first_manifest["state_count"], 3)
-        self.assertEqual(first_manifest["fingerprint_bytes"], 24)
-        self.assertEqual(first_manifest["metadata_bytes"], 24)
+        first = stored_state_lookup.build_artifacts(data, manifest(data))
+        second = stored_state_lookup.build_artifacts(data, manifest(data))
+        self.assertEqual(first, second)
+        rust, binary, result = first
+        self.assertIn("include_bytes!", rust)
+        self.assertEqual(result["state_count"], 3)
+        self.assertEqual(result["layout"], stored_state_lookup.LAYOUT)
+        self.assertEqual(result["state_data_input_sha256"], state_data.digest(data))
+        self.assertEqual(result["binary_bytes"], len(binary))
         self.assertEqual(
-            first_manifest["layout"],
-            "soa-u64-fingerprint-u32-offset-u16-length-u16-state-v1",
+            result["binary_sha256"], stored_state_lookup.sha256_bytes(binary)
         )
-        self.assertEqual(
-            first_manifest["state_data_input_sha256"], state_data.digest(data)
+        self.assertLess(len(binary), 1024)
+
+    def test_perfect_hash_has_one_exact_candidate_per_fixture_state(self) -> None:
+        data = fixture()
+        _, _, result = stored_state_lookup.build_artifacts(data, manifest(data))
+        self.assertEqual(result["slot_count"], 4)
+        self.assertEqual(result["bucket_count"], 1)
+        self.assertLessEqual(
+            result["max_displacement"], stored_state_lookup.MAX_U16
         )
+
+    def test_fingerprint_collision_fails_closed(self) -> None:
+        with self.assertRaises(ValueError):
+            stored_state_lookup.build_perfect_hash([7, 7])
+
+    def test_noncanonical_property_order_fails_closed(self) -> None:
+        data = fixture()
+        states = data["states"]
+        assert isinstance(states, list)
+        states[1]["key"] = "minecraft:test[z=1,a=2]"
+        with self.assertRaises(ValueError):
+            stored_state_lookup.build_artifacts(data, manifest(data))
+
+    def test_non_identity_assignment_is_rejected(self) -> None:
+        data = fixture()
+        selected = manifest(data)
+        selected["assignment_policy"] = "canonical-key"
+        with self.assertRaises(ValueError):
+            stored_state_lookup.build_artifacts(data, selected)
 
     def test_manifest_input_mismatch_fails_closed(self) -> None:
         data = fixture()
         wrong = manifest(data)
         wrong["input_digest"] = "0" * 64
         with self.assertRaises(ValueError):
-            stored_state_lookup.render_rust(data, wrong)
+            stored_state_lookup.build_artifacts(data, wrong)
 
-    def test_assignment_policy_is_bound_to_state_manifest(self) -> None:
-        data = fixture()
-        changed = copy.deepcopy(data)
-        states = changed["states"]
-        assert isinstance(states, list)
-        states[1]["key"] = "minecraft:z"
-        states[2]["key"] = "minecraft:a"
-        selected_manifest = manifest(changed)
-        selected_manifest["assignment_policy"] = "canonical-key"
-        code, _ = stored_state_lookup.render_rust(changed, selected_manifest)
-
-        assigned = state_data.assign(states, "canonical-key")
-        rows = sorted(
-            (
-                stored_state_lookup.canonical_state_fingerprint(str(state["key"])),
-                str(state["key"]),
-                state_id,
-            )
-            for state_id, state in enumerate(assigned)
+    def test_nine_bit_packing_covers_every_bit_alignment(self) -> None:
+        values = [index % 435 for index in range(64)]
+        packed = stored_state_lookup.pack_nine_bit(values)
+        self.assertEqual(
+            [
+                stored_state_lookup.read_nine_bit(packed, index)
+                for index in range(len(values))
+            ],
+            values,
         )
-        target_index = next(
-            index for index, (_, key, _) in enumerate(rows) if key == "minecraft:a"
-        )
-        metadata_lines = [
-            line.strip()
-            for line in code.splitlines()
-            if "StoredStateLookupRow::new(" in line
-        ]
-        self.assertTrue(metadata_lines[target_index].endswith(", 0),"))
 
-    def test_key_length_over_u16_is_rejected(self) -> None:
+    def test_target_cardinality_overflow_is_rejected(self) -> None:
         data = fixture()
         states = data["states"]
         assert isinstance(states, list)
-        states[1]["key"] = "minecraft:" + ("x" * 65_536)
-        selected_manifest = manifest(data)
-        with self.assertRaises(ValueError):
-            stored_state_lookup.render_rust(data, selected_manifest)
-
-    def test_more_than_u16_state_universe_is_rejected(self) -> None:
-        data = fixture()
-        states = data["states"]
-        assert isinstance(states, list)
-        prototype = dict(states[1])
+        prototype = copy.deepcopy(states[1])
         states.clear()
-        for index in range(65_537):
-            state = dict(prototype)
+        for index in range(65_536):
+            state = copy.deepcopy(prototype)
             state["key"] = f"minecraft:s{index}"
             state["vanilla_id"] = index
             states.append(state)
         data["air_key"] = "minecraft:s0"
-        selected_manifest = manifest(data)
-        selected_manifest["state_count"] = 65_537
+        selected = manifest(data)
+        selected["state_count"] = len(states)
         with self.assertRaises(ValueError):
-            stored_state_lookup.render_rust(data, selected_manifest)
+            stored_state_lookup.build_artifacts(data, selected)
 
 
 if __name__ == "__main__":
