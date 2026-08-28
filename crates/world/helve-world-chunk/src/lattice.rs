@@ -119,6 +119,21 @@ impl VerticalSectionLattice {
         self.resolve_block_y(block_y).map(|(_, local_y)| local_y)
     }
 
+    /// Resolves one logical section Y directly into its zero-based contiguous slot.
+    ///
+    /// This is the section-space counterpart of [`Self::resolve_block_y`]. It avoids converting a
+    /// section identity back into block coordinates and therefore performs only a checked range
+    /// subtraction plus one integer conversion on the admitted path.
+    #[inline]
+    #[must_use]
+    pub fn section_index_for_section_y(self, section_y: i32) -> Option<usize> {
+        let relative = section_y.checked_sub(self.min_section_y)?;
+        if relative < 0 || relative >= i32::from(self.section_count) {
+            return None;
+        }
+        usize::try_from(relative).ok()
+    }
+
     /// Returns the logical section Y represented by one zero-based slot.
     #[must_use]
     pub fn section_y_for_index(self, index: usize) -> Option<i32> {
@@ -211,9 +226,12 @@ mod tests {
         let lattice = VerticalSectionLattice::new(-64, 257).expect("wide lattice");
         for index in 0..lattice.section_count() {
             let section_y = lattice.section_y_for_index(index).expect("valid index");
+            assert_eq!(lattice.section_index_for_section_y(section_y), Some(index));
             let block_y = section_y.checked_mul(16).expect("test block y");
             assert_eq!(lattice.resolve_block_y(block_y), Some((index, 0)));
         }
         assert_eq!(lattice.section_y_for_index(lattice.section_count()), None);
+        assert_eq!(lattice.section_index_for_section_y(-65), None);
+        assert_eq!(lattice.section_index_for_section_y(193), None);
     }
 }

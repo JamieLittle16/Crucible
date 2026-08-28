@@ -6,8 +6,8 @@
 #![forbid(unsafe_code)]
 
 use helve_world_contract::{
-    BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBiomePos,
-    SectionBlockPos, SectionStateFacts, SectionSummary,
+    BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, BiomeSection, BlockSection, BlockStateFacts,
+    SectionBiomePos, SectionBlockPos, SectionStateFacts, SectionSummary,
 };
 
 /// Direct 4096-cell reference block section with independently maintained summary witnesses.
@@ -172,12 +172,26 @@ impl<B: Copy + Eq> DirectBiomeSection<B> {
     }
 }
 
+impl<B: Copy + Eq> BiomeSection<B> for DirectBiomeSection<B> {
+    #[inline]
+    fn get(&self, pos: SectionBiomePos) -> B {
+        self.cells[pos.index()]
+    }
+
+    #[inline]
+    fn replace(&mut self, pos: SectionBiomePos, biome: B) -> B {
+        let previous = self.cells[pos.index()];
+        self.cells[pos.index()] = biome;
+        previous
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{DirectBiomeSection, DirectBlockSection};
     use helve_world_contract::{
-        BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBiomePos, SectionBlockPos,
-        SectionStateFacts, SectionSummary,
+        BIOME_SECTION_CELLS, BLOCK_SECTION_CELLS, BiomeSection, BlockSection, BlockStateFacts,
+        SectionBiomePos, SectionBlockPos, SectionStateFacts, SectionSummary,
     };
 
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -203,6 +217,14 @@ mod tests {
                 State::BothRandom => SectionStateFacts::new(true, true, true, true),
             }
         }
+    }
+
+    fn replace_through_biome_contract<Section: BiomeSection<u8>>(
+        section: &mut Section,
+        pos: SectionBiomePos,
+        biome: u8,
+    ) -> u8 {
+        section.replace(pos, biome)
     }
 
     #[test]
@@ -300,6 +322,7 @@ mod tests {
             (y << 4) | (z << 2) | x
         });
 
+        assert_eq!(calls.len(), BIOME_SECTION_CELLS);
         assert_eq!(calls[0], (0, 0, 0));
         assert_eq!(calls[1], (0, 0, 1));
         assert_eq!(calls[4], (0, 1, 0));
@@ -313,6 +336,14 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn direct_biome_reference_satisfies_semantic_contract() {
+        let mut section = DirectBiomeSection::filled(3_u8);
+        let pos = SectionBiomePos::new(2, 1, 3).expect("bounded");
+        assert_eq!(replace_through_biome_contract(&mut section, pos, 9), 3);
+        assert_eq!(BiomeSection::get(&section, pos), 9);
     }
 
     #[test]

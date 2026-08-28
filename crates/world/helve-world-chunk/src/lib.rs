@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+mod biomes;
 mod lattice;
 mod publication;
 mod region_cell;
@@ -16,6 +17,7 @@ use core::marker::PhantomData;
 use helve_types::{BlockPos, ChunkGeneration, ChunkPos, ChunkRevision, ChunkStamp};
 use helve_world_contract::{BlockSection, BlockStateFacts, SectionBlockPos, SectionSummary};
 
+pub use biomes::{ChunkBiomeColumn, ChunkBiomeColumnError};
 pub use lattice::{VerticalSectionLattice, VerticalSectionLatticeError};
 pub use publication::PublishedChunk;
 pub use region_cell::{RegionCellAddress, RegionCellCoord, RegionCellLayout};
