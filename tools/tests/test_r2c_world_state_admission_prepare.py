@@ -155,7 +155,9 @@ class R2cWorldStateAdmissionPrepareTests(unittest.TestCase):
             source, output, value = self.write_fixture(Path(temporary))
             value["groups"][1]["selected_sources"][0]["source"]["body_sha256"] = "0" * 64
             source.write_bytes(pretty(value))
-            with self.assertRaisesRegex(prepare.PrepareError, "metadata differs across groups"):
+            with self.assertRaisesRegex(
+                prepare.PrepareError, "selected source metadata differs across groups"
+            ):
                 prepare.prepare(source, output)
 
     def test_duplicate_candidate_suffix_cannot_create_duplicate_var_id(self) -> None:
