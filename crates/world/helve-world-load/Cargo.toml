@@ -13,7 +13,6 @@ helve-world-import = { path = "../helve-world-import" }
 helve-world-runtime = { path = "../helve-world-runtime" }
 
 [dev-dependencies]
-helve-benchmark-support = { path = "../../qualification/helve-benchmark-support" }
 helve-types = { path = "../../helve-types" }
 helve-world-reference = { path = "../helve-world-reference" }
 
