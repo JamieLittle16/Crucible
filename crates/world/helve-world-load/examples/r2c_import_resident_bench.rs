@@ -1,4 +1,4 @@
-use std::{env, hint::black_box, time::Instant};
+use std::{env, fs, hint::black_box, path::PathBuf, time::Instant};
 
 use helve_benchmark_support::collect_hardware_metadata;
 use helve_generated::{AIR, BlockStateId, GeneratedStateFacts};
@@ -57,6 +57,64 @@ impl Mode {
     }
 }
 
+#[derive(Debug)]
+enum FixtureInput {
+    EmbeddedUniform,
+    Packed4Region(PathBuf),
+}
+
+struct Config {
+    mode: Mode,
+    require_single_cpu: bool,
+    fixture: FixtureInput,
+}
+
+#[derive(Clone, Copy)]
+enum Witness {
+    UniformGap,
+    PackedBinary,
+}
+
+#[derive(Clone, Copy)]
+struct CaseSpec {
+    label: &'static str,
+    region_x: i32,
+    region_z: i32,
+    local_x: u8,
+    local_z: u8,
+    min_block_y: i32,
+    height: u32,
+    witness: Witness,
+}
+
+impl CaseSpec {
+    const fn embedded_uniform() -> Self {
+        Self {
+            label: "embedded-uniform-zlib",
+            region_x: 0,
+            region_z: 0,
+            local_x: 0,
+            local_z: 0,
+            min_block_y: 0,
+            height: 48,
+            witness: Witness::UniformGap,
+        }
+    }
+
+    const fn packed4() -> Self {
+        Self {
+            label: "differential-packed4-gzip",
+            region_x: 0,
+            region_z: 0,
+            local_x: 1,
+            local_z: 0,
+            min_block_y: -64,
+            height: 16,
+            witness: Witness::PackedBinary,
+        }
+    }
+}
+
 struct DirectBuilder;
 
 impl ImportedBlockSectionBuilder<BlockStateId> for DirectBuilder {
@@ -107,23 +165,26 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    let (mode, require_single_cpu) = parse_args()?;
+    let config = parse_args()?;
     let hardware = collect_hardware_metadata()?;
-    if require_single_cpu && hardware.single_allowed_cpu().is_none() {
+    if config.require_single_cpu && hardware.single_allowed_cpu().is_none() {
         return Err(format!(
             "--require-single-cpu requested but affinity is {}",
             hardware.cpus_allowed_list
         ));
     }
 
-    let region_bytes = synthetic_region();
+    let (region_bytes, case) = match &config.fixture {
+        FixtureInput::EmbeddedUniform => (synthetic_region(), CaseSpec::embedded_uniform()),
+        FixtureInput::Packed4Region(path) => (read_region(path)?, CaseSpec::packed4()),
+    };
     let region = RegionView::new(
         &region_bytes,
-        0,
-        0,
+        case.region_x,
+        case.region_z,
         RegionLimits::new(MAX_REGION_BYTES, MAX_INLINE_COMPRESSED_BYTES),
     )
-    .map_err(|error| format!("synthetic region rejected: {error:?}"))?;
+    .map_err(|error| format!("benchmark region rejected: {error:?}"))?;
     let nbt_limits = NbtLimits::new(1024, 1024, 8192, 32)
         .map_err(|error| format!("invalid NBT limits: {error:?}"))?;
     let payload_limits =
@@ -133,9 +194,10 @@ fn run() -> Result<(), String> {
     let mut builder = DirectBuilder;
     let mut scratch = BlockSectionDecodeScratch::new();
 
-    for _ in 0..mode.warmups() {
+    for _ in 0..config.mode.warmups() {
         black_box(run_sample(
             &region,
+            case,
             payload_limits,
             nbt_limits,
             &mut decoder,
@@ -144,11 +206,12 @@ fn run() -> Result<(), String> {
         )?);
     }
 
-    let mut samples = Vec::with_capacity(mode.rounds());
+    let mut samples = Vec::with_capacity(config.mode.rounds());
     let mut semantic_checksum = None;
-    for _ in 0..mode.rounds() {
+    for _ in 0..config.mode.rounds() {
         let (sample, checksum) = run_sample(
             &region,
+            case,
             payload_limits,
             nbt_limits,
             &mut decoder,
@@ -169,8 +232,9 @@ fn run() -> Result<(), String> {
     let install = summarize(samples.iter().map(|sample| sample.install).collect());
     let whole = summarize(samples.iter().map(|sample| sample.whole).collect());
     println!(
-        "{{\"schema\":1,\"kind\":\"r2c-import-resident-whole-path\",\"mode\":\"{}\",\"performance_admitted\":false,\"section_mechanism\":\"transparent-reference\",\"rounds\":{},\"semantic_checksum\":{},\"import_ns\":{},\"install_ns\":{},\"whole_ns\":{},\"hardware\":{}}}",
-        mode.as_str(),
+        "{{\"schema\":1,\"kind\":\"r2c-import-resident-whole-path\",\"mode\":\"{}\",\"fixture\":\"{}\",\"performance_admitted\":false,\"section_mechanism\":\"transparent-reference\",\"rounds\":{},\"semantic_checksum\":{},\"import_ns\":{},\"install_ns\":{},\"whole_ns\":{},\"hardware\":{}}}",
+        config.mode.as_str(),
+        case.label,
         samples.len(),
         semantic_checksum.unwrap_or_default(),
         summary_json(import),
@@ -183,6 +247,7 @@ fn run() -> Result<(), String> {
 
 fn run_sample(
     region: &RegionView<'_>,
+    case: CaseSpec,
     payload_limits: ChunkPayloadLimits,
     nbt_limits: NbtLimits,
     decoder: &mut DeflateChunkPayloadDecoder,
@@ -200,12 +265,13 @@ fn run_sample(
     );
     let import_start = Instant::now();
     let stored_chunk = block_importer
-        .import_region_chunk(region, 0, 0, None)
+        .import_region_chunk(region, case.local_x, case.local_z, None)
         .map_err(|error| format!("import failed: {error:?}"))?;
     let import = import_start.elapsed().as_nanos();
 
-    let profile = DimensionRuntimeProfile::new(DimensionTypeId(1), 0, 48, true)
-        .map_err(|error| format!("dimension profile failed: {error:?}"))?;
+    let profile =
+        DimensionRuntimeProfile::new(DimensionTypeId(1), case.min_block_y, case.height, true)
+            .map_err(|error| format!("dimension profile failed: {error:?}"))?;
     let mut dimension = DimensionInstance::new(DimensionId(1), profile);
     let install_start = Instant::now();
     let installed = install_imported_chunk(&mut dimension, stored_chunk, || {
@@ -214,31 +280,7 @@ fn run_sample(
     .map_err(|error| format!("resident install failed: {error:?}"))?;
     let install = install_start.elapsed().as_nanos();
 
-    let chunk = dimension
-        .resolve_chunk(installed.handle)
-        .map_err(|error| format!("resident resolve failed: {error:?}"))?;
-    if chunk.section_count() != 3 || chunk.masks().non_air_bits() != 0b001 {
-        return Err(format!(
-            "unexpected resident shape: sections={} non_air_mask={:#b}",
-            chunk.section_count(),
-            chunk.masks().non_air_bits()
-        ));
-    }
-    let low = chunk
-        .get_block(BlockPos { x: 0, y: 0, z: 0 })
-        .map_err(|error| format!("low block read failed: {error:?}"))?;
-    let middle = chunk
-        .get_block(BlockPos { x: 0, y: 16, z: 0 })
-        .map_err(|error| format!("middle block read failed: {error:?}"))?;
-    let high = chunk
-        .get_block(BlockPos { x: 0, y: 32, z: 0 })
-        .map_err(|error| format!("high block read failed: {error:?}"))?;
-    if low == AIR || middle != AIR || high != AIR {
-        return Err("resident semantic witness disagrees with fixture".to_owned());
-    }
-    let checksum = (low.as_usize() as u64)
-        .wrapping_mul(0x9E37_79B1)
-        .wrapping_add(chunk.masks().non_air_bits());
+    let checksum = validate_resident(&dimension, installed.handle, case)?;
     let unloaded = dimension
         .unload_chunk(installed.handle)
         .map_err(|error| format!("resident unload failed: {error:?}"))?;
@@ -257,27 +299,138 @@ fn run_sample(
     ))
 }
 
-fn parse_args() -> Result<(Mode, bool), String> {
+fn validate_resident(
+    dimension: &DimensionInstance<BlockStateId, DirectBlockSection<BlockStateId>>,
+    handle: helve_world_runtime::ResidentChunkHandle,
+    case: CaseSpec,
+) -> Result<u64, String> {
+    let chunk = dimension
+        .resolve_chunk(handle)
+        .map_err(|error| format!("resident resolve failed: {error:?}"))?;
+    match case.witness {
+        Witness::UniformGap => {
+            if chunk.section_count() != 3 || chunk.masks().non_air_bits() != 0b001 {
+                return Err(format!(
+                    "unexpected uniform resident shape: sections={} non_air_mask={:#b}",
+                    chunk.section_count(),
+                    chunk.masks().non_air_bits()
+                ));
+            }
+            let low = read_block(chunk, BlockPos { x: 0, y: 0, z: 0 })?;
+            let middle = read_block(chunk, BlockPos { x: 0, y: 16, z: 0 })?;
+            let high = read_block(chunk, BlockPos { x: 0, y: 32, z: 0 })?;
+            if low == AIR || middle != AIR || high != AIR {
+                return Err("uniform resident semantic witness disagrees with fixture".to_owned());
+            }
+            Ok((low.as_usize() as u64)
+                .wrapping_mul(0x9E37_79B1)
+                .wrapping_add(chunk.masks().non_air_bits()))
+        }
+        Witness::PackedBinary => {
+            if chunk.section_count() != 1 || chunk.masks().non_air_bits() != 0b1 {
+                return Err(format!(
+                    "unexpected packed resident shape: sections={} non_air_mask={:#b}",
+                    chunk.section_count(),
+                    chunk.masks().non_air_bits()
+                ));
+            }
+            let stone = BlockStateId::new(1).ok_or_else(|| "state id 1 missing".to_owned())?;
+            let first = read_block(
+                chunk,
+                BlockPos {
+                    x: 16,
+                    y: -64,
+                    z: 0,
+                },
+            )?;
+            let second = read_block(
+                chunk,
+                BlockPos {
+                    x: 17,
+                    y: -64,
+                    z: 0,
+                },
+            )?;
+            let row_next = read_block(
+                chunk,
+                BlockPos {
+                    x: 16,
+                    y: -64,
+                    z: 1,
+                },
+            )?;
+            if first != AIR || second != stone || row_next != stone {
+                return Err(format!(
+                    "packed resident witness mismatch: first={} second={} row_next={}",
+                    first.as_usize(),
+                    second.as_usize(),
+                    row_next.as_usize()
+                ));
+            }
+            Ok((second.as_usize() as u64)
+                .wrapping_mul(0xD6E8_FEB8_6659_FD93)
+                .wrapping_add(row_next.as_usize() as u64)
+                .wrapping_add(chunk.masks().non_air_bits()))
+        }
+    }
+}
+
+fn read_block(
+    chunk: &helve_world_chunk::LiveChunkCore<BlockStateId, DirectBlockSection<BlockStateId>>,
+    pos: BlockPos,
+) -> Result<BlockStateId, String> {
+    chunk
+        .get_block(pos)
+        .map_err(|error| format!("block read {pos:?} failed: {error:?}"))
+}
+
+fn read_region(path: &PathBuf) -> Result<Vec<u8>, String> {
+    let bytes =
+        fs::read(path).map_err(|error| format!("could not read {}: {error}", path.display()))?;
+    if bytes.len() > MAX_REGION_BYTES {
+        return Err(format!(
+            "benchmark region exceeds {MAX_REGION_BYTES} bytes: {}",
+            bytes.len()
+        ));
+    }
+    Ok(bytes)
+}
+
+fn parse_args() -> Result<Config, String> {
     let mut mode = None;
     let mut require_single_cpu = false;
-    for arg in env::args().skip(1) {
+    let mut fixture = FixtureInput::EmbeddedUniform;
+    let mut packed_region_seen = false;
+    let mut args = env::args().skip(1);
+    while let Some(arg) = args.next() {
         match arg.as_str() {
             "--smoke" => set_mode(&mut mode, Mode::Smoke)?,
             "--full" => set_mode(&mut mode, Mode::Full)?,
             "--require-single-cpu" => require_single_cpu = true,
+            "--packed4-region" => {
+                if packed_region_seen {
+                    return Err("--packed4-region may be specified only once".to_owned());
+                }
+                let path = args
+                    .next()
+                    .ok_or_else(|| "--packed4-region requires a path".to_owned())?;
+                fixture = FixtureInput::Packed4Region(PathBuf::from(path));
+                packed_region_seen = true;
+            }
             "--help" | "-h" => {
                 return Err(
-                    "usage: r2c_import_resident_bench (--smoke|--full) [--require-single-cpu]"
+                    "usage: r2c_import_resident_bench (--smoke|--full) [--require-single-cpu] [--packed4-region PATH]"
                         .to_owned(),
                 );
             }
             _ => return Err(format!("unknown argument: {arg}")),
         }
     }
-    Ok((
-        mode.ok_or_else(|| "exactly one of --smoke or --full is required".to_owned())?,
+    Ok(Config {
+        mode: mode.ok_or_else(|| "exactly one of --smoke or --full is required".to_owned())?,
         require_single_cpu,
-    ))
+        fixture,
+    })
 }
 
 fn set_mode(slot: &mut Option<Mode>, mode: Mode) -> Result<(), String> {
@@ -327,7 +480,7 @@ fn synthetic_region() -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ZLIB_NBT, synthetic_region};
+    use super::{FixtureInput, ZLIB_NBT, parse_args, synthetic_region};
 
     #[test]
     fn synthetic_region_has_one_zlib_record() {
@@ -335,5 +488,12 @@ mod tests {
         assert_eq!(&bytes[0..4], &[0, 0, 2, 1]);
         assert_eq!(bytes[8192 + 4], 2);
         assert_eq!(&bytes[8192 + 5..8192 + 5 + ZLIB_NBT.len()], ZLIB_NBT);
+    }
+
+    #[test]
+    fn packed_fixture_variant_remains_distinct() {
+        let input = FixtureInput::Packed4Region("fixture.mca".into());
+        assert!(matches!(input, FixtureInput::Packed4Region(_)));
+        let _ = parse_args;
     }
 }
