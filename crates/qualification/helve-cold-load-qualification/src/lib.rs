@@ -17,9 +17,9 @@ use helve_world_contract::{
     BLOCK_SECTION_CELLS, BlockSection, BlockStateFacts, SectionBlockPos, SectionSummary,
 };
 use helve_world_import::{
-    BlockProperty, BlockSectionDecodeScratch, BlockSectionScratchCapacities,
-    DeflateChunkPayloadDecoder, ImportedBlockSectionBuilder, NbtLimits, RegionLimits, RegionView,
-    StoredBlockImporter, Target262BlockStateResolver, resolve_target_26_2_block_state,
+    BlockSectionDecodeScratch, BlockSectionScratchCapacities, DeflateChunkPayloadDecoder,
+    ImportedBlockSectionBuilder, NbtLimits, RegionLimits, RegionView, StoredBlockImporter,
+    Target262BlockStateResolver, resolve_target_26_2_block_state,
 };
 use helve_world_load::install_imported_chunk;
 use helve_world_runtime::{DimensionInstance, DimensionRuntimeProfile};
@@ -364,7 +364,6 @@ impl ColdLoadHarness {
                 ));
             }
         }
-        drop(chunk);
         let unloaded = self
             .dimension
             .unload_chunk(installed.handle)
@@ -461,9 +460,9 @@ fn summarize<F: BlockStateFacts<BlockStateId>>(
 #[cfg(test)]
 mod tests {
     use super::{
-        ColdLoadHarness, DENSE_CELL_COPIES, DENSE_SECTION_COUNT, FIXTURE_COMPRESSED_BYTES,
-        FIXTURE_DECOMPRESSED_BYTES, IMPORTED_SECTION_COUNT, OMITTED_SECTION_COUNT,
-        STORED_SECTION_COUNT, UNIFORM_SECTION_COUNT,
+        BLOCK_SECTION_CELLS, ColdLoadHarness, DENSE_CELL_COPIES, DENSE_SECTION_COUNT,
+        FIXTURE_COMPRESSED_BYTES, FIXTURE_DECOMPRESSED_BYTES, IMPORTED_SECTION_COUNT,
+        OMITTED_SECTION_COUNT, STORED_SECTION_COUNT, UNIFORM_SECTION_COUNT,
     };
 
     #[test]
@@ -495,7 +494,9 @@ mod tests {
         assert_eq!(structure.resident_sections, 24);
         assert_eq!(structure.dense_semantic_cell_copies, 24_576);
         assert!(structure.decoder_retained_output_bytes >= FIXTURE_DECOMPRESSED_BYTES);
-        assert!(structure.decoder_retained_output_capacity >= structure.decoder_retained_output_bytes);
+        assert!(
+            structure.decoder_retained_output_capacity >= structure.decoder_retained_output_bytes
+        );
         assert!(structure.section_scratch.palette >= 3);
         assert!(structure.section_scratch.packed_words >= 256);
         assert!(structure.section_scratch.states >= BLOCK_SECTION_CELLS);
