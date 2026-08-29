@@ -207,6 +207,8 @@ dependencies = [
 name = "helve-world-load"
 version = "0.0.0"
 dependencies = [
+ "helve-benchmark-support",
+ "helve-generated",
  "helve-types",
  "helve-world-contract",
  "helve-world-import",
