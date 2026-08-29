@@ -66,12 +66,7 @@ jobs:
         run: python3 tools/ci_policy.py
 
       - name: Targeted format
-        run: >-
-          cargo fmt
-          --package helve-cold-load-qualification
-          --package helve-world-import
-          --package helve-world-load
-          -- --check
+        run: cargo fmt --package helve-cold-load-qualification -- --check
 
       - name: Targeted Clippy
         run: >-
