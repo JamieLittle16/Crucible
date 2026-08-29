@@ -1,6 +1,11 @@
-use std::{env, fs, hint::black_box, path::PathBuf, time::Instant};
+use std::{
+    env, fs,
+    hint::black_box,
+    path::PathBuf,
+    process::Command,
+    time::Instant,
+};
 
-use helve_benchmark_support::collect_hardware_metadata;
 use helve_types::{BlockPos, ChunkPos, DimensionId, DimensionTypeId};
 use helve_world_contract::{BlockSection, BlockStateFacts, SectionBlockPos, SectionStateFacts};
 use helve_world_import::{
@@ -11,7 +16,7 @@ use helve_world_import::{
 };
 use helve_world_load::install_imported_chunk;
 use helve_world_reference::DirectBlockSection;
-use helve_world_runtime::{DimensionInstance, DimensionRuntimeProfile};
+use helve_world_runtime::{DimensionInstance, DimensionRuntimeProfile, ResidentChunkHandle};
 
 const SCHEMA: u32 = 1;
 const COMPRESSED_NBT: &[u8] = &[
@@ -127,6 +132,43 @@ struct Summary {
     max: u128,
 }
 
+#[derive(Debug)]
+struct Hardware {
+    commit_sha: String,
+    rustc: String,
+    cpu_model: String,
+    cpus_allowed_list: String,
+    kernel: String,
+}
+
+impl Hardware {
+    fn collect() -> Result<Self, String> {
+        Ok(Self {
+            commit_sha: required_command("git", &["rev-parse", "HEAD"]),
+            rustc: required_command("rustc", &["--version", "--verbose"]),
+            cpu_model: cpuinfo_value("model name"),
+            cpus_allowed_list: status_value("Cpus_allowed_list:")
+                .unwrap_or_else(|| "unknown".to_owned()),
+            kernel: optional_command("uname", &["-srmo"]),
+        })
+    }
+
+    fn single_allowed_cpu(&self) -> Option<u32> {
+        self.cpus_allowed_list.parse().ok()
+    }
+
+    fn to_json(&self) -> String {
+        format!(
+            "{{\"commit_sha\":{},\"rustc\":{},\"cpu_model\":{},\"cpus_allowed_list\":{},\"kernel\":{}}}",
+            json_string(&self.commit_sha),
+            json_string(&self.rustc),
+            json_string(&self.cpu_model),
+            json_string(&self.cpus_allowed_list),
+            json_string(&self.kernel),
+        )
+    }
+}
+
 fn main() {
     if let Err(error) = run() {
         eprintln!("import residency benchmark failed: {error}");
@@ -136,7 +178,7 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let config = parse_args(env::args().skip(1))?;
-    let hardware = collect_hardware_metadata()?;
+    let hardware = Hardware::collect()?;
     if config.require_single_cpu && hardware.single_allowed_cpu().is_none() {
         return Err(format!(
             "target qualification requires exactly one allowed logical CPU; observed {}",
@@ -156,9 +198,8 @@ fn run() -> Result<(), String> {
     let stone = resolver
         .resolve("minecraft:stone", &[])
         .ok_or_else(|| "target resolver did not resolve minecraft:stone".to_owned())?;
-    let mut builder = DirectBuilder {
-        facts: FixtureFacts { air },
-    };
+    let facts = FixtureFacts { air };
+    let mut builder = DirectBuilder { facts };
     let mut scratch = BlockSectionDecodeScratch::new();
     let mut decoder = DeflateChunkPayloadDecoder::try_with_output_limit(MAX_DECOMPRESSED_BYTES)
         .map_err(|error| format!("decoder initialization failed: {error:?}"))?;
@@ -179,7 +220,7 @@ fn run() -> Result<(), String> {
         .map_err(|error| format!("fixture import rejected: {error:?}"))?;
     validate_imported(&preflight)?;
     let installed = install_imported_chunk(&mut dimension, preflight, || {
-        DirectBlockSection::filled(air, &FixtureFacts { air })
+        DirectBlockSection::filled(air, &facts)
     })
     .map_err(|error| format!("preflight install rejected: {error:?}"))?;
     validate_resident(&dimension, installed.handle, air, stone)?;
@@ -194,6 +235,7 @@ fn run() -> Result<(), String> {
             &mut importer,
             &mut dimension,
             air,
+            facts,
         )?);
     }
 
@@ -209,6 +251,7 @@ fn run() -> Result<(), String> {
             &mut importer,
             &mut dimension,
             air,
+            facts,
         )?;
         whole_ns.push(started.elapsed().as_nanos());
         first_generation.get_or_insert(handle.generation);
@@ -221,12 +264,14 @@ fn run() -> Result<(), String> {
             .map_err(|error| format!("fixture import rejected: {error:?}"))?;
         let started = Instant::now();
         let installed = install_imported_chunk(&mut dimension, imported, || {
-            DirectBlockSection::filled(air, &FixtureFacts { air })
+            DirectBlockSection::filled(air, &facts)
         })
         .map_err(|error| format!("install-only round rejected: {error:?}"))?;
-        dimension
-            .unload_chunk(installed.handle)
-            .map_err(|error| format!("install-only unload rejected: {error:?}"))?;
+        black_box(
+            dimension
+                .unload_chunk(installed.handle)
+                .map_err(|error| format!("install-only unload rejected: {error:?}"))?,
+        );
         install_ns.push(started.elapsed().as_nanos());
         last_generation = Some(installed.handle.generation);
     }
@@ -291,17 +336,23 @@ fn run() -> Result<(), String> {
 fn run_whole_round(
     region_bytes: &[u8],
     region_limits: RegionLimits,
-    importer: &mut StoredBlockImporter<'_, Target262BlockStateResolver, DirectBuilder, DeflateChunkPayloadDecoder>,
+    importer: &mut StoredBlockImporter<
+        '_,
+        Target262BlockStateResolver,
+        DirectBuilder,
+        DeflateChunkPayloadDecoder,
+    >,
     dimension: &mut DimensionInstance<State, DirectBlockSection<State>>,
     air: State,
-) -> Result<helve_world_runtime::ResidentChunkHandle, String> {
+    facts: FixtureFacts,
+) -> Result<ResidentChunkHandle, String> {
     let region = RegionView::new(region_bytes, 0, 0, region_limits)
         .map_err(|error| format!("region framing failed: {error:?}"))?;
     let imported = importer
         .import_region_chunk(&region, 0, 0, None)
         .map_err(|error| format!("stored import failed: {error:?}"))?;
     let installed = install_imported_chunk(dimension, imported, || {
-        DirectBlockSection::filled(air, &FixtureFacts { air })
+        DirectBlockSection::filled(air, &facts)
     })
     .map_err(|error| format!("resident install failed: {error:?}"))?;
     let handle = installed.handle;
@@ -341,7 +392,7 @@ fn validate_imported(imported: &ImportedStoredChunk<DirectBlockSection<State>>) 
 
 fn validate_resident(
     dimension: &DimensionInstance<State, DirectBlockSection<State>>,
-    handle: helve_world_runtime::ResidentChunkHandle,
+    handle: ResidentChunkHandle,
     air: State,
     stone: State,
 ) -> Result<(), String> {
@@ -401,7 +452,8 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Config, String> 
             "--require-single-cpu" => require_single_cpu = true,
             "--output" => {
                 output = Some(PathBuf::from(
-                    args.next().ok_or_else(|| "--output requires a path".to_owned())?,
+                    args.next()
+                        .ok_or_else(|| "--output requires a path".to_owned())?,
                 ));
             }
             _ => return Err(format!("unknown argument: {arg}")),
@@ -453,9 +505,73 @@ fn render_summary(summary: Summary) -> String {
     )
 }
 
+fn required_command(program: &str, args: &[&str]) -> String {
+    let output = Command::new(program)
+        .args(args)
+        .output()
+        .unwrap_or_else(|error| panic!("could not execute {program}: {error}"));
+    assert!(output.status.success(), "{program} exited unsuccessfully");
+    String::from_utf8(output.stdout)
+        .unwrap_or_else(|_| panic!("{program} output was not UTF-8"))
+        .trim()
+        .to_owned()
+}
+
+fn optional_command(program: &str, args: &[&str]) -> String {
+    Command::new(program)
+        .args(args)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map_or_else(|| "unknown".to_owned(), |value| value.trim().to_owned())
+}
+
+fn cpuinfo_value(key: &str) -> String {
+    fs::read_to_string("/proc/cpuinfo")
+        .ok()
+        .and_then(|contents| {
+            contents.lines().find_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                (name.trim() == key).then(|| value.trim().to_owned())
+            })
+        })
+        .unwrap_or_else(|| "unknown".to_owned())
+}
+
+fn status_value(prefix: &str) -> Option<String> {
+    fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|contents| {
+            contents.lines().find_map(|line| {
+                line.strip_prefix(prefix)
+                    .map(|value| value.trim().to_owned())
+            })
+        })
+}
+
+fn json_string(value: &str) -> String {
+    let mut output = String::from("\"");
+    for character in value.chars() {
+        match character {
+            '\"' => output.push_str("\\\""),
+            '\\' => output.push_str("\\\\"),
+            '\n' => output.push_str("\\n"),
+            '\r' => output.push_str("\\r"),
+            '\t' => output.push_str("\\t"),
+            character if character <= '\u{1f}' => {
+                output.push_str(&format!("\\u{:04x}", u32::from(character)));
+            }
+            character => output.push(character),
+        }
+    }
+    output.push('\"');
+    output
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{COMPRESSED_NBT, fixture_region, parse_args, summarize};
+    use super::{COMPRESSED_NBT, fixture_region, json_string, parse_args, summarize};
     use helve_world_import::{RegionLimits, RegionView, anvil::SECTOR_BYTES};
 
     #[test]
@@ -468,7 +584,10 @@ mod tests {
             RegionLimits::new(bytes.len(), SECTOR_BYTES),
         )
         .expect("fixture region");
-        let chunk = region.chunk(0, 0).expect("slot parse").expect("occupied slot");
+        let chunk = region
+            .chunk(0, 0)
+            .expect("slot parse")
+            .expect("occupied slot");
         assert_eq!(chunk.inline_payload, Some(COMPRESSED_NBT));
         assert_eq!(chunk.position.x, 0);
         assert_eq!(chunk.position.z, 0);
@@ -489,5 +608,10 @@ mod tests {
         assert!(parse_args(["--full".to_owned()]).is_ok());
         assert!(parse_args(Vec::<String>::new()).is_err());
         assert!(parse_args(["--smoke".to_owned(), "--full".to_owned()]).is_err());
+    }
+
+    #[test]
+    fn json_string_escaping_is_stable() {
+        assert_eq!(json_string("a\"b\\c\n"), "\"a\\\"b\\\\c\\n\"");
     }
 }
