@@ -1,0 +1,94 @@
+name: R2C Import Residency Qualification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "crates/world/helve-world-import/**"
+      - "crates/world/helve-world-load/**"
+      - "crates/world/helve-world-runtime/**"
+      - "crates/world/helve-world-reference/**"
+      - "docs/qualification/R2C_IMPORT_RESIDENCY_QUALIFICATION.md"
+      - ".github/workflows/r2c-import-residency.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: r2c-import-residency-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  import-residency:
+    name: Stored bytes to resident chunk
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: Format world-load harness
+        run: cargo fmt --package helve-world-load -- --check
+
+      - name: Check world-load all targets
+        run: cargo check --package helve-world-load --all-targets --locked
+
+      - name: Clippy world-load all targets
+        run: cargo clippy --package helve-world-load --all-targets --locked -- -D warnings
+
+      - name: Unit and lifecycle qualification
+        run: cargo test --package helve-world-load --all-targets --locked
+
+      - name: Hosted import-to-residency smoke
+        run: |
+          cargo run --release --locked \
+            --package helve-world-load \
+            --example import_residency_bench -- \
+            --smoke \
+            --output target/r2c-import-residency-smoke.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(Path("target/r2c-import-residency-smoke.json").read_text())
+          assert artifact["schema"] == 1
+          assert artifact["benchmark"] == "r2c-import-residency"
+          assert artifact["mode"] == "smoke"
+          assert artifact["hosted_ci_is_diagnostic_only"] is True
+          assert artifact["performance_admitted"] is False
+          assert artifact["reference_section_storage_only"] is True
+          assert artifact["fixture"]["compression"] == "zlib"
+          assert artifact["fixture"]["stored_sections"] == 3
+          assert artifact["fixture"]["resident_sections"] == 3
+          assert artifact["fixture"]["semantic_cells"] == 12288
+          assert artifact["structure"]["install_cell_copy_count"] == 0
+          assert artifact["structure"]["resident_directory_probes_per_successful_install"] == 1
+          assert artifact["structure"]["resident_count_after_rounds"] == 0
+          assert artifact["structure"]["decoder_retained_output_bytes"] == 65536
+          assert artifact["generation"]["monotonic"] is True
+          assert artifact["generation"]["last_measured"] > artifact["generation"]["first_measured"]
+          assert len(artifact["whole_decode_install_unload_ns"]) == artifact["measured_rounds"]
+          assert len(artifact["install_unload_ns"]) == artifact["measured_rounds"]
+          assert all(sample > 0 for sample in artifact["whole_decode_install_unload_ns"])
+          assert all(sample > 0 for sample in artifact["install_unload_ns"])
+          for key in ("whole_summary_ns", "install_summary_ns"):
+              summary = artifact[key]
+              assert 0 < summary["p50"] <= summary["p95"] <= summary["p99"] <= summary["p99_9"] <= summary["max"]
+          assert artifact["hardware"]["commit_sha"]
+          assert artifact["hardware"]["rustc"]
+          assert artifact["hardware"]["cpus_allowed_list"]
+          PY
+
+      - name: Upload diagnostic artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: r2c-import-residency-smoke
+          path: target/r2c-import-residency-smoke.json
+          retention-days: 7
