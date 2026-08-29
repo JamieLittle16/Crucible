@@ -136,7 +136,10 @@ impl DirectBuilder {
     }
 
     fn record_build(&mut self, start: Instant) {
-        self.metrics.elapsed = self.metrics.elapsed.saturating_add(start.elapsed().as_nanos());
+        self.metrics.elapsed = self
+            .metrics
+            .elapsed
+            .saturating_add(start.elapsed().as_nanos());
         self.metrics.calls += 1;
     }
 }
@@ -270,7 +273,12 @@ fn run() -> Result<(), String> {
 
     let import = summarize(samples.iter().map(|sample| sample.import).collect());
     let section_build = summarize(samples.iter().map(|sample| sample.section_build).collect());
-    let import_residual = summarize(samples.iter().map(|sample| sample.import_residual).collect());
+    let import_residual = summarize(
+        samples
+            .iter()
+            .map(|sample| sample.import_residual)
+            .collect(),
+    );
     let install = summarize(samples.iter().map(|sample| sample.install).collect());
     let whole = summarize(samples.iter().map(|sample| sample.whole).collect());
     println!(
