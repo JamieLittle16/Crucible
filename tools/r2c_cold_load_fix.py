@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 
+# One-shot branch-local cleanup; removed after materialization.
 PATH = Path("crates/qualification/helve-cold-load-qualification/src/lib.rs")
 text = PATH.read_text(encoding="utf-8")
 
