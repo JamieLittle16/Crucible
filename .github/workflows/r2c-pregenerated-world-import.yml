@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - "crates/world/helve-world-import/**"
+      - "crates/world/helve-world-load/**"
       - "docs/qualification/R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md"
       - "docs/qualification/R2C_IMPORT_DIFFERENTIAL.md"
       - "tools/r2c_import_differential.py"
@@ -54,22 +55,50 @@ jobs:
           CARGO_HOME="$empty_home" cargo check \
             --offline --locked \
             --package helve-world-import \
+            --package helve-world-load \
             --all-targets
           CARGO_HOME="$empty_home" cargo test \
             --offline --locked \
-            --package helve-world-import
+            --package helve-world-import \
+            --package helve-world-load
 
-      - name: Format import crate
-        run: cargo fmt --package helve-world-import -- --check
+      - name: Format import and whole-path harness
+        run: |
+          cargo fmt --package helve-world-import -- --check
+          rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_import_resident_bench.rs
 
-      - name: Check import crate
-        run: cargo check --package helve-world-import --all-targets --locked
+      - name: Check import and load crates
+        run: >-
+          cargo check
+          --package helve-world-import
+          --package helve-world-load
+          --all-targets
+          --locked
 
-      - name: Clippy import crate
-        run: cargo clippy --package helve-world-import --all-targets --locked -- -D warnings
+      - name: Clippy import and load crates
+        run: >-
+          cargo clippy
+          --package helve-world-import
+          --package helve-world-load
+          --all-targets
+          --locked
+          -- -D warnings
 
-      - name: Rust import qualification
-        run: cargo test --package helve-world-import --locked
+      - name: Rust import and resident qualification
+        run: >-
+          cargo test
+          --package helve-world-import
+          --package helve-world-load
+          --locked
+
+      - name: Whole-path import to resident benchmark smoke
+        run: >-
+          cargo run
+          --release
+          --locked
+          --package helve-world-load
+          --example r2c_import_resident_bench
+          -- --smoke
 
       - name: Build production-import fact emitter
         run: cargo build --package helve-world-import --bin r2c_import_section_facts --locked
