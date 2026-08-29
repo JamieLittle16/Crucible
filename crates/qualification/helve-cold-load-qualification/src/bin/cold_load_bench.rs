@@ -317,12 +317,14 @@ mod tests {
         assert!(parse_args(["--full".to_owned()]).is_ok());
         assert!(parse_args(Vec::<String>::new()).is_err());
         assert!(parse_args(["--smoke".to_owned(), "--full".to_owned()]).is_err());
-        assert!(parse_args([
-            "--smoke".to_owned(),
-            "--measured-rounds".to_owned(),
-            "0".to_owned()
-        ])
-        .is_err());
+        assert!(
+            parse_args([
+                "--smoke".to_owned(),
+                "--measured-rounds".to_owned(),
+                "0".to_owned()
+            ])
+            .is_err()
+        );
         let parsed = parse_args([
             "--smoke".to_owned(),
             "--warmup-rounds".to_owned(),
