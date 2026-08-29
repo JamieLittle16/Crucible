@@ -309,20 +309,21 @@ fn run_sample(
 ) -> Result<(Sample, u64), String> {
     builder.reset_metrics();
     let resolver = Target262BlockStateResolver;
-    let mut block_importer = StoredBlockImporter::new(
-        payload_limits,
-        nbt_limits,
-        decoder,
-        &resolver,
-        builder,
-        scratch,
-    );
     let import_start = Instant::now();
-    let stored_chunk = block_importer
-        .import_region_chunk(region, case.local_x, case.local_z, None)
-        .map_err(|error| format!("import failed: {error:?}"))?;
+    let stored_chunk = {
+        let mut block_importer = StoredBlockImporter::new(
+            payload_limits,
+            nbt_limits,
+            decoder,
+            &resolver,
+            builder,
+            scratch,
+        );
+        block_importer
+            .import_region_chunk(region, case.local_x, case.local_z, None)
+            .map_err(|error| format!("import failed: {error:?}"))?
+    };
     let import = import_start.elapsed().as_nanos();
-    drop(block_importer);
     let builder_metrics = builder.metrics();
     if builder_metrics.calls == 0 {
         return Err("section builder was not invoked".to_owned());
