@@ -1,0 +1,219 @@
+name: R2C Cold Load Qualification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "crates/data/helve-generated/**"
+      - "crates/qualification/helve-benchmark-support/**"
+      - "crates/qualification/helve-cold-load-qualification/**"
+      - "crates/world/helve-world-contract/**"
+      - "crates/world/helve-world-import/**"
+      - "crates/world/helve-world-load/**"
+      - "crates/world/helve-world-runtime/**"
+      - "vendor/adler2-2.0.1/**"
+      - "vendor/miniz_oxide-0.8.9/**"
+      - ".cargo/config.toml"
+      - "config/dependency-allowlist.txt"
+      - "docs/qualification/R2C_COLD_LOAD_QUALIFICATION.md"
+      - ".github/workflows/r2c-cold-load-qualification.yml"
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "crates/data/helve-generated/**"
+      - "crates/qualification/helve-benchmark-support/**"
+      - "crates/qualification/helve-cold-load-qualification/**"
+      - "crates/world/helve-world-contract/**"
+      - "crates/world/helve-world-import/**"
+      - "crates/world/helve-world-load/**"
+      - "crates/world/helve-world-runtime/**"
+      - "vendor/adler2-2.0.1/**"
+      - "vendor/miniz_oxide-0.8.9/**"
+      - ".cargo/config.toml"
+      - "config/dependency-allowlist.txt"
+      - "docs/qualification/R2C_COLD_LOAD_QUALIFICATION.md"
+      - ".github/workflows/r2c-cold-load-qualification.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: r2c-cold-load-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cold-load:
+    name: Stored bytes to resident chunk
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: Dependency policy
+        run: python3 tools/ci_policy.py
+
+      - name: Targeted format
+        run: cargo fmt --package helve-cold-load-qualification -- --check
+
+      - name: Targeted Clippy
+        run: >-
+          cargo clippy
+          --package helve-cold-load-qualification
+          --all-targets
+          --all-features
+          --locked
+          -- -D warnings
+
+      - name: Cold load semantic and structural tests
+        run: cargo test --package helve-cold-load-qualification --locked
+
+      - name: Build release benchmark once
+        run: >-
+          cargo build --release --locked
+          --package helve-cold-load-qualification
+          --bin cold_load_bench
+
+      - name: Select one diagnostic benchmark CPU
+        run: |
+          allowed="$(awk '/^Cpus_allowed_list:/ {print $2}' /proc/self/status)"
+          first="${allowed%%,*}"
+          first="${first%%-*}"
+          test -n "${first}"
+          echo "HELVE_R2C_COLD_LOAD_CPU=${first}" >> "${GITHUB_ENV}"
+          echo "R2C cold-load diagnostic cpu: ${first} (allowed: ${allowed})"
+
+      # Hosted timings are diagnostic only. The permanent gate is semantic + structural: exact
+      # fixture shape, exact final resident lattice and stable explicit work counters.
+      - name: Run three independent cold-load smoke processes
+        run: |
+          mkdir -p target/helve-qualification/r2c-cold-load
+          for repetition in 1 2 3; do
+            taskset -c "${HELVE_R2C_COLD_LOAD_CPU}" \
+              target/release/cold_load_bench \
+                --smoke \
+                --require-single-cpu \
+                --output "target/helve-qualification/r2c-cold-load/smoke-${repetition}.json"
+          done
+
+      - name: Validate cold-load smoke evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          paths = sorted(Path("target/helve-qualification/r2c-cold-load").glob("smoke-*.json"))
+          assert len(paths) == 3
+          artifacts = [json.loads(path.read_text()) for path in paths]
+
+          def validate_summary(summary):
+              assert 0 < summary["p50"] <= summary["p95"] <= summary["p99"] <= summary["max"]
+
+          witnesses = []
+          for artifact in artifacts:
+              assert artifact["schema"] == 1
+              assert artifact["benchmark"] == "r2c-cold-load-to-residency"
+              assert artifact["mode"] == "smoke"
+              assert artifact["hosted_ci_is_diagnostic_only"] is True
+              assert artifact["timing_threshold_selected"] is False
+              assert artifact["performance_admitted"] is False
+              assert artifact["production_section_policy_selected"] is False
+              assert artifact["filesystem_io_included"] is False
+              assert artifact["semantic_validation_passed"] is True
+              assert artifact["measured_rounds"] == 20
+              assert len(artifact["samples_ns"]) == 20
+
+              fixture = artifact["fixture"]
+              assert fixture["compression"] == "zlib"
+              assert fixture["compressed_bytes"] == 367
+              assert fixture["decompressed_bytes"] == 13848
+              assert len(fixture["nbt_sha256"]) == 64
+              assert len(fixture["zlib_sha256"]) == 64
+
+              structural = artifact["structural"]
+              expected = {
+                  "stored_sections": 24,
+                  "imported_block_sections": 18,
+                  "uniform_sections": 12,
+                  "dense_sections": 6,
+                  "synthesized_empty_sections": 6,
+                  "resident_sections": 24,
+                  "dense_semantic_cell_copies_per_load": 24576,
+                  "resident_column_allocations_per_load": 1,
+              }
+              for key, value in expected.items():
+                  assert structural[key] == value, (key, structural[key], value)
+              assert structural["decoder_retained_output_bytes"] == 16384
+              assert structural["decoder_retained_output_capacity"] >= 16384
+              assert structural["scratch_palette_capacity"] >= 3
+              assert structural["scratch_packed_word_capacity"] >= 256
+              assert structural["scratch_state_capacity"] >= 4096
+
+              for sample in artifact["samples_ns"]:
+                  assert sample["import"] > 0
+                  assert sample["install"] > 0
+                  assert sample["total"] >= sample["import"]
+                  assert sample["unload_drop"] > 0
+              for summary in artifact["summary_ns"].values():
+                  validate_summary(summary)
+              witnesses.append((fixture, structural))
+
+          assert all(witness == witnesses[0] for witness in witnesses)
+          for index, artifact in enumerate(artifacts, start=1):
+              summaries = artifact["summary_ns"]
+              print(
+                  f"diagnostic run {index}: "
+                  f"total p50={summaries['total']['p50']}ns p99={summaries['total']['p99']}ns; "
+                  f"import p50={summaries['import']['p50']}ns; "
+                  f"install p50={summaries['install']['p50']}ns; "
+                  f"unload p50={summaries['unload_drop']['p50']}ns"
+              )
+          PY
+
+      - name: Exercise full-mode evidence shape
+        run: >-
+          taskset -c "${HELVE_R2C_COLD_LOAD_CPU}"
+          target/release/cold_load_bench
+          --full
+          --require-single-cpu
+          --warmup-rounds 1
+          --measured-rounds 3
+          --output target/helve-qualification/r2c-cold-load/full-structural.json
+
+      - name: Validate full-mode structural evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(
+              Path("target/helve-qualification/r2c-cold-load/full-structural.json").read_text()
+          )
+          assert artifact["schema"] == 1
+          assert artifact["mode"] == "full"
+          assert artifact["measured_rounds"] == 3
+          assert artifact["semantic_validation_passed"] is True
+          assert artifact["structural"]["dense_semantic_cell_copies_per_load"] == 24576
+          assert len(artifact["samples_ns"]) == 3
+          print("R2C cold-load full-mode structural smoke: PASS")
+          PY
+
+      - name: Upload cold-load diagnostic evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: helve-r2c-cold-load-diagnostics
+          path: target/helve-qualification/r2c-cold-load/*.json
+          if-no-files-found: error
+          retention-days: 7

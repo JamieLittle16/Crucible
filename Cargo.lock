@@ -26,6 +26,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "helve-cold-load-qualification"
+version = "0.0.0"
+dependencies = [
+ "helve-benchmark-support",
+ "helve-generated",
+ "helve-types",
+ "helve-world-contract",
+ "helve-world-import",
+ "helve-world-load",
+ "helve-world-runtime",
+]
+
+[[package]]
 name = "helve-component"
 version = "0.0.0"
 
