@@ -91,7 +91,7 @@ jobs:
           --package helve-world-load
           --locked
 
-      - name: Whole-path import to resident benchmark smoke
+      - name: Whole-path uniform import to resident benchmark smoke
         run: >-
           cargo run
           --release
@@ -99,6 +99,30 @@ jobs:
           --package helve-world-load
           --example r2c_import_resident_bench
           -- --smoke
+
+      - name: Generate independent packed benchmark fixture
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from tools import r2c_import_differential as fixture
+
+          root = Path('/tmp/helve-r2c-packed-benchmark')
+          fixture._fixture_regions(root)
+          path = root / 'region' / 'r.0.0.mca'
+          if not path.is_file():
+              raise SystemExit(f'packed benchmark fixture missing: {path}')
+          print(path)
+          PY
+
+      - name: Whole-path packed import to resident benchmark smoke
+        run: >-
+          cargo run
+          --release
+          --locked
+          --package helve-world-load
+          --example r2c_import_resident_bench
+          -- --smoke
+          --packed4-region /tmp/helve-r2c-packed-benchmark/region/r.0.0.mca
 
       - name: Build production-import fact emitter
         run: cargo build --package helve-world-import --bin r2c_import_section_facts --locked

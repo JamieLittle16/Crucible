@@ -16,6 +16,7 @@ helve-world-runtime = { path = "../helve-world-runtime" }
 helve-benchmark-support = { path = "../../qualification/helve-benchmark-support" }
 helve-generated = { path = "../../data/helve-generated" }
 helve-types = { path = "../../helve-types" }
+helve-world-chunk = { path = "../helve-world-chunk" }
 helve-world-reference = { path = "../helve-world-reference" }
 
 [lints]
