@@ -115,16 +115,47 @@ impl CaseSpec {
     }
 }
 
-struct DirectBuilder;
+#[derive(Clone, Copy, Default)]
+struct BuilderMetrics {
+    elapsed: u128,
+    calls: usize,
+}
+
+#[derive(Default)]
+struct DirectBuilder {
+    metrics: BuilderMetrics,
+}
+
+impl DirectBuilder {
+    fn reset_metrics(&mut self) {
+        self.metrics = BuilderMetrics::default();
+    }
+
+    const fn metrics(&self) -> BuilderMetrics {
+        self.metrics
+    }
+
+    fn record_build(&mut self, start: Instant) {
+        self.metrics.elapsed = self
+            .metrics
+            .elapsed
+            .saturating_add(start.elapsed().as_nanos());
+        self.metrics.calls += 1;
+    }
+}
 
 impl ImportedBlockSectionBuilder<BlockStateId> for DirectBuilder {
     type Section = DirectBlockSection<BlockStateId>;
 
     fn build_uniform(&mut self, state: BlockStateId) -> Self::Section {
-        DirectBlockSection::filled(state, &GeneratedStateFacts)
+        let start = Instant::now();
+        let section = DirectBlockSection::filled(state, &GeneratedStateFacts);
+        self.record_build(start);
+        section
     }
 
     fn build_states(&mut self, states: &[BlockStateId]) -> Self::Section {
+        let start = Instant::now();
         let first = states.first().copied().unwrap_or(AIR);
         let mut section = DirectBlockSection::filled(first, &GeneratedStateFacts);
         for y in 0_u8..16 {
@@ -138,6 +169,7 @@ impl ImportedBlockSectionBuilder<BlockStateId> for DirectBuilder {
                 }
             }
         }
+        self.record_build(start);
         section
     }
 }
@@ -145,8 +177,11 @@ impl ImportedBlockSectionBuilder<BlockStateId> for DirectBuilder {
 #[derive(Clone, Copy)]
 struct Sample {
     import: u128,
+    section_build: u128,
+    import_residual: u128,
     install: u128,
     whole: u128,
+    build_calls: usize,
 }
 
 #[derive(Clone, Copy)]
@@ -191,7 +226,7 @@ fn run() -> Result<(), String> {
         ChunkPayloadLimits::new(MAX_INLINE_COMPRESSED_BYTES, MAX_DECOMPRESSED_BYTES);
     let mut decoder = DeflateChunkPayloadDecoder::try_with_output_limit(MAX_DECOMPRESSED_BYTES)
         .map_err(|error| format!("decoder init failed: {error:?}"))?;
-    let mut builder = DirectBuilder;
+    let mut builder = DirectBuilder::default();
     let mut scratch = BlockSectionDecodeScratch::new();
 
     for _ in 0..config.mode.warmups() {
@@ -208,6 +243,7 @@ fn run() -> Result<(), String> {
 
     let mut samples = Vec::with_capacity(config.mode.rounds());
     let mut semantic_checksum = None;
+    let mut section_build_calls = None;
     for _ in 0..config.mode.rounds() {
         let (sample, checksum) = run_sample(
             &region,
@@ -225,19 +261,36 @@ fn run() -> Result<(), String> {
         } else {
             semantic_checksum = Some(checksum);
         }
+        if let Some(expected) = section_build_calls {
+            if expected != sample.build_calls {
+                return Err("section builder call count changed across benchmark rounds".to_owned());
+            }
+        } else {
+            section_build_calls = Some(sample.build_calls);
+        }
         samples.push(sample);
     }
 
     let import = summarize(samples.iter().map(|sample| sample.import).collect());
+    let section_build = summarize(samples.iter().map(|sample| sample.section_build).collect());
+    let import_residual = summarize(
+        samples
+            .iter()
+            .map(|sample| sample.import_residual)
+            .collect(),
+    );
     let install = summarize(samples.iter().map(|sample| sample.install).collect());
     let whole = summarize(samples.iter().map(|sample| sample.whole).collect());
     println!(
-        "{{\"schema\":1,\"kind\":\"r2c-import-resident-whole-path\",\"mode\":\"{}\",\"fixture\":\"{}\",\"performance_admitted\":false,\"section_mechanism\":\"transparent-reference\",\"rounds\":{},\"semantic_checksum\":{},\"import_ns\":{},\"install_ns\":{},\"whole_ns\":{},\"hardware\":{}}}",
+        "{{\"schema\":1,\"kind\":\"r2c-import-resident-whole-path\",\"mode\":\"{}\",\"fixture\":\"{}\",\"performance_admitted\":false,\"section_mechanism\":\"transparent-reference\",\"rounds\":{},\"semantic_checksum\":{},\"section_build_calls\":{},\"import_ns\":{},\"section_build_ns\":{},\"import_residual_ns\":{},\"install_ns\":{},\"whole_ns\":{},\"hardware\":{}}}",
         config.mode.as_str(),
         case.label,
         samples.len(),
         semantic_checksum.unwrap_or_default(),
+        section_build_calls.unwrap_or_default(),
         summary_json(import),
+        summary_json(section_build),
+        summary_json(import_residual),
         summary_json(install),
         summary_json(whole),
         hardware.to_json(),
@@ -254,20 +307,27 @@ fn run_sample(
     builder: &mut DirectBuilder,
     scratch: &mut BlockSectionDecodeScratch<BlockStateId>,
 ) -> Result<(Sample, u64), String> {
+    builder.reset_metrics();
     let resolver = Target262BlockStateResolver;
-    let mut block_importer = StoredBlockImporter::new(
-        payload_limits,
-        nbt_limits,
-        decoder,
-        &resolver,
-        builder,
-        scratch,
-    );
     let import_start = Instant::now();
-    let stored_chunk = block_importer
-        .import_region_chunk(region, case.local_x, case.local_z, None)
-        .map_err(|error| format!("import failed: {error:?}"))?;
+    let stored_chunk = {
+        let mut block_importer = StoredBlockImporter::new(
+            payload_limits,
+            nbt_limits,
+            decoder,
+            &resolver,
+            builder,
+            scratch,
+        );
+        block_importer
+            .import_region_chunk(region, case.local_x, case.local_z, None)
+            .map_err(|error| format!("import failed: {error:?}"))?
+    };
     let import = import_start.elapsed().as_nanos();
+    let builder_metrics = builder.metrics();
+    if builder_metrics.calls == 0 {
+        return Err("section builder was not invoked".to_owned());
+    }
 
     let profile =
         DimensionRuntimeProfile::new(DimensionTypeId(1), case.min_block_y, case.height, true)
@@ -292,8 +352,11 @@ fn run_sample(
     Ok((
         Sample {
             import,
+            section_build: builder_metrics.elapsed,
+            import_residual: import.saturating_sub(builder_metrics.elapsed),
             install,
             whole: import + install,
+            build_calls: builder_metrics.calls,
         },
         checksum,
     ))
