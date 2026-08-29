@@ -1,0 +1,20 @@
+[package]
+name = "helve-cold-load-qualification"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+helve-benchmark-support = { path = "../helve-benchmark-support" }
+helve-generated = { path = "../../data/helve-generated" }
+helve-types = { path = "../../helve-types" }
+helve-world-contract = { path = "../../world/helve-world-contract" }
+helve-world-import = { path = "../../world/helve-world-import" }
+helve-world-load = { path = "../../world/helve-world-load" }
+helve-world-runtime = { path = "../../world/helve-world-runtime" }
+
+[lints]
+workspace = true
