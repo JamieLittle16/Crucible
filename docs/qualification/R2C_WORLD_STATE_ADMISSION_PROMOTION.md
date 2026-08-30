@@ -109,7 +109,7 @@ After the review result and human-authored worksheet are complete:
 cd ~/Helve
 
 SRC="$HOME/Documents/mc-source/mc-src.zip"
-DB=".helve/vanilla/atlas.sqlite"
+DB=".crucible/vanilla/atlas.sqlite"
 STAGE="/tmp/helve-r2c-world-state-admission"
 REPORT="/tmp/helve-r2c-world-state-source-gate.json"
 
@@ -138,7 +138,7 @@ python3 tools/r2c_world_state_admission_promote.py \
   --repo-root .
 ```
 
-The example source/Atlas paths are operator-local. They are not repository dependencies and must not be embedded in runtime code or committed evidence.
+`.crucible/vanilla/atlas.sqlite` is the repository's stable historical local-cache path and remains intentionally uncommitted despite the Helve rename. The example source/Atlas paths are operator-local. They are not repository dependencies and must not be embedded in runtime code or committed evidence.
 
 ## Promotion manifest claim boundary
 
