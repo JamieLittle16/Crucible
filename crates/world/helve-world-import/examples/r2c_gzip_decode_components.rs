@@ -6,8 +6,7 @@ use helve_world_import::{
 use miniz_oxide::inflate::{
     TINFLStatus,
     core::{
-        DecompressorOxide, decompress,
-        inflate_flags::TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF,
+        DecompressorOxide, decompress, inflate_flags::TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF,
     },
 };
 
@@ -114,12 +113,8 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let config = parse_args()?;
-    let region_bytes = fs::read(&config.packed_region).map_err(|error| {
-        format!(
-            "could not read {}: {error}",
-            config.packed_region.display()
-        )
-    })?;
+    let region_bytes = fs::read(&config.packed_region)
+        .map_err(|error| format!("could not read {}: {error}", config.packed_region.display()))?;
     if region_bytes.len() > MAX_REGION_BYTES {
         return Err(format!(
             "packed region exceeds {MAX_REGION_BYTES} bytes: {}",
@@ -159,20 +154,12 @@ fn run() -> Result<(), String> {
     let mut diagnostic_output = vec![0_u8; MAX_DECOMPRESSED_BYTES];
 
     let production_output = production
-        .decode(
-            ChunkCompression::Gzip,
-            payload,
-            MAX_DECOMPRESSED_BYTES,
-        )
+        .decode(ChunkCompression::Gzip, payload, MAX_DECOMPRESSED_BYTES)
         .map_err(|error| format!("production gzip decode failed: {error:?}"))?;
     let production_len = production_output.len();
     let production_checksum = byte_checksum(production_output);
 
-    let diagnostic_len = inflate_raw(
-        &mut diagnostic_decompressor,
-        body,
-        &mut diagnostic_output,
-    )?;
+    let diagnostic_len = inflate_raw(&mut diagnostic_decompressor, body, &mut diagnostic_output)?;
     validate_trailer(member, &diagnostic_output[..diagnostic_len])?;
     if diagnostic_len != production_len
         || byte_checksum(&diagnostic_output[..diagnostic_len]) != production_checksum
@@ -362,8 +349,8 @@ fn validate_trailer(member: GzipMember, output: &[u8]) -> Result<(), String> {
             member.expected_crc32, actual_crc
         ));
     }
-    let actual_size =
-        u32::try_from(output.len()).map_err(|_| "diagnostic output length exceeds u32".to_owned())?;
+    let actual_size = u32::try_from(output.len())
+        .map_err(|_| "diagnostic output length exceeds u32".to_owned())?;
     if actual_size != member.expected_size {
         return Err(format!(
             "diagnostic gzip ISIZE mismatch: expected={} actual={actual_size}",
