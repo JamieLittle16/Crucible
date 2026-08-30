@@ -43,8 +43,9 @@ const CRC32_BYTE_TABLE: [u32; 256] = make_crc32_byte_table();
 const fn make_crc32_byte_table() -> [u32; 256] {
     let mut table = [0_u32; 256];
     let mut index = 0_usize;
+    let mut seed = 0_u32;
     while index < table.len() {
-        let mut crc = index as u32;
+        let mut crc = seed;
         let mut bit = 0_u8;
         while bit < 8 {
             crc = if crc & 1 != 0 {
@@ -56,6 +57,7 @@ const fn make_crc32_byte_table() -> [u32; 256] {
         }
         table[index] = crc;
         index += 1;
+        seed += 1;
     }
     table
 }
@@ -237,7 +239,7 @@ fn crc32_nibble(bytes: &[u8]) -> u32 {
 fn crc32_byte(bytes: &[u8]) -> u32 {
     let mut crc = u32::MAX;
     for &byte in bytes {
-        let index = usize::from((crc as u8) ^ byte);
+        let index = usize::from(crc.to_le_bytes()[0] ^ byte);
         crc = CRC32_BYTE_TABLE[index] ^ (crc >> 8);
     }
     !crc
