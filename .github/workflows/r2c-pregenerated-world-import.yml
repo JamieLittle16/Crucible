@@ -67,6 +67,7 @@ jobs:
           cargo fmt --package helve-world-import -- --check
           rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_import_resident_bench.rs
           rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_packed_import_components.rs
+          rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_packed_unpack_probe.rs
 
       - name: Check import and load crates
         run: >-
@@ -134,6 +135,15 @@ jobs:
           --example r2c_packed_import_components
           -- --smoke
           --packed4-region /tmp/helve-r2c-packed-benchmark/region/r.0.0.mca
+
+      - name: Packed unpack loop diagnostic smoke
+        run: >-
+          cargo run
+          --release
+          --locked
+          --package helve-world-load
+          --example r2c_packed_unpack_probe
+          -- --smoke
 
       - name: Build production-import fact emitter
         run: cargo build --package helve-world-import --bin r2c_import_section_facts --locked
