@@ -64,7 +64,6 @@ struct SectionWitness {
     cells: usize,
 }
 
-#[derive(Default)]
 struct NoCopyBuilder;
 
 impl ImportedBlockSectionBuilder<BlockStateId> for NoCopyBuilder {
@@ -236,8 +235,7 @@ fn load_packed_nbt(path: &Path) -> Result<(Vec<u8>, ChunkPos), String> {
 }
 
 fn nbt_limits() -> Result<NbtLimits, String> {
-    NbtLimits::new(1024, 1024, 8192, 32)
-        .map_err(|error| format!("invalid NBT limits: {error:?}"))
+    NbtLimits::new(1024, 1024, 8192, 32).map_err(|error| format!("invalid NBT limits: {error:?}"))
 }
 
 fn validate_semantic_decode(
@@ -382,12 +380,7 @@ fn scan_nbt(
                 require_type("sections[]", list.element_type, TagType::Compound)?;
                 witness.section_compounds = list.len;
                 for section_index in 0..list.len {
-                    scan_section(
-                        &mut reader,
-                        section_index,
-                        long_array_mode,
-                        &mut witness,
-                    )?;
+                    scan_section(&mut reader, section_index, long_array_mode, &mut witness)?;
                 }
                 have_sections = true;
             }
@@ -436,16 +429,15 @@ fn scan_section(
                 have_y = true;
             }
             "block_states" => {
-                require_type(
-                    "sections[].block_states",
-                    field.tag_type,
-                    TagType::Compound,
-                )?;
+                require_type("sections[].block_states", field.tag_type, TagType::Compound)?;
                 scan_block_states(reader, section_index, long_array_mode, witness)?;
                 witness.block_sections += 1;
             }
             _ => reader.skip_payload(field.tag_type).map_err(|error| {
-                format!("section {section_index} skip failed for {}: {error:?}", field.name)
+                format!(
+                    "section {section_index} skip failed for {}: {error:?}",
+                    field.name
+                )
             })?,
         }
     }
@@ -472,7 +464,11 @@ fn scan_block_states(
                 let list = reader
                     .read_list_header()
                     .map_err(|error| format!("palette list failed: {error:?}"))?;
-                require_type("block_states.palette[]", list.element_type, TagType::Compound)?;
+                require_type(
+                    "block_states.palette[]",
+                    list.element_type,
+                    TagType::Compound,
+                )?;
                 witness.palette_entries = witness.palette_entries.saturating_add(list.len);
                 for palette_index in 0..list.len {
                     scan_palette_entry(reader, section_index, palette_index, witness)?;
@@ -487,12 +483,12 @@ fn scan_block_states(
                             .read_long_array_len()
                             .map_err(|error| format!("packed long length failed: {error:?}"))?;
                         witness.packed_words = witness.packed_words.saturating_add(words);
-                        for word_index in 0..words {
+                        for _ in 0..words {
                             let word = reader
                                 .read_i64()
                                 .map_err(|error| format!("packed word read failed: {error:?}"))?;
                             let unsigned = u64::from_be_bytes(word.to_be_bytes());
-                            witness.word_mix ^= unsigned.rotate_left((word_index % 64) as u32);
+                            witness.word_mix = witness.word_mix.rotate_left(1) ^ unsigned;
                         }
                     }
                     LongArrayMode::SkipPayload => reader
@@ -565,10 +561,7 @@ fn scan_palette_entry(
     Ok(())
 }
 
-fn validate_read_witness(
-    witness: ScanWitness,
-    expected_position: ChunkPos,
-) -> Result<(), String> {
+fn validate_read_witness(witness: ScanWitness, expected_position: ChunkPos) -> Result<(), String> {
     if witness.data_version != TARGET_DATA_VERSION_26_2
         || witness.x_pos != expected_position.x
         || witness.z_pos != expected_position.z
@@ -581,10 +574,7 @@ fn validate_read_witness(
     Ok(())
 }
 
-fn validate_skip_witness(
-    witness: ScanWitness,
-    expected_position: ChunkPos,
-) -> Result<(), String> {
+fn validate_skip_witness(witness: ScanWitness, expected_position: ChunkPos) -> Result<(), String> {
     if witness.data_version != TARGET_DATA_VERSION_26_2
         || witness.x_pos != expected_position.x
         || witness.z_pos != expected_position.z
