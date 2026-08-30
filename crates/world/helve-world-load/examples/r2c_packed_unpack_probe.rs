@@ -80,21 +80,14 @@ fn run() -> Result<(), String> {
     let checksum = checksum(&cell_major_out);
 
     for _ in 0..config.mode.warmups() {
-        black_box(run_once(
-            &words,
-            &mut cell_major_out,
-            &mut word_major_out,
-        )?);
+        black_box(run_once(&words, &mut cell_major_out, &mut word_major_out)?);
     }
 
     let mut cell_major_ns = Vec::with_capacity(config.mode.rounds());
     let mut word_major_ns = Vec::with_capacity(config.mode.rounds());
     for _ in 0..config.mode.rounds() {
-        let (cell_ns, word_ns, observed) = run_once(
-            &words,
-            &mut cell_major_out,
-            &mut word_major_out,
-        )?;
+        let (cell_ns, word_ns, observed) =
+            run_once(&words, &mut cell_major_out, &mut word_major_out)?;
         if observed != checksum {
             return Err("packed checksum changed across rounds".to_owned());
         }
