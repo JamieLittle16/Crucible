@@ -66,6 +66,7 @@ jobs:
         run: |
           cargo fmt --package helve-world-import -- --check
           rustfmt --edition 2024 --check crates/world/helve-world-import/examples/r2c_gzip_decode_components.rs
+          rustfmt --edition 2024 --check crates/world/helve-world-import/examples/r2c_crc32_table_probe.rs
           rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_import_resident_bench.rs
           rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_packed_import_components.rs
           rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_packed_unpack_probe.rs
@@ -153,6 +154,16 @@ jobs:
           --locked
           --package helve-world-import
           --example r2c_gzip_decode_components
+          -- --smoke
+          --packed4-region /tmp/helve-r2c-packed-benchmark/region/r.0.0.mca
+
+      - name: CRC32 table candidate diagnostic smoke
+        run: >-
+          cargo run
+          --release
+          --locked
+          --package helve-world-import
+          --example r2c_crc32_table_probe
           -- --smoke
           --packed4-region /tmp/helve-r2c-packed-benchmark/region/r.0.0.mca
 
