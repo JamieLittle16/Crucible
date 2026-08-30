@@ -180,8 +180,9 @@ jobs:
           uniform_ratio = ratio_milli('head_uniform', 'base_uniform')
 
           report = {
-              'schema': 1,
+              'schema': 2,
               'kind': 'r2c-packed-four-bit-production-controlled-ab',
+              'policy_revision': 2,
               'diagnostic_only': True,
               'performance_admitted': False,
               'cpu': cpu,
@@ -201,7 +202,11 @@ jobs:
           }
           print(json.dumps(report, separators=(',', ':')))
 
-          if semantic_ratio > 850:
+          # Revision 2 is documented before this run in
+          # docs/qualification/R2C_PACKED_FOUR_BIT_PRODUCTION_AB_POLICY.md.
+          # Both improvement metrics use the same round 5% materiality floor;
+          # uniform remains a regression guard.
+          if semantic_ratio > 950:
               raise SystemExit(
                   f'four-bit production semantic path did not improve enough: {semantic_ratio} milli'
               )
