@@ -50,20 +50,21 @@ LIGHT = "net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData#Cl
 
 def review_result() -> dict[str, object]:
     biome = candidate("DISC-NET-R2C-WORLD-0001", BIOME, "biome")
-    shared = candidate("DISC-NET-R2C-WORLD-0002", SHARED, "shared")
+    shared_biomes = candidate("DISC-NET-R2C-WORLD-0002", SHARED, "shared")
+    shared_heightmaps = candidate("DISC-NET-R2C-WORLD-0002", SHARED, "shared")
     height = candidate("DISC-NET-R2C-WORLD-0003", HEIGHT, "height")
     light = candidate("DISC-NET-R2C-WORLD-0004", LIGHT, "light")
     groups = [
         {
             "group_id": "R2C-BIOMES",
-            "selected_sources": [biome, shared],
+            "selected_sources": [biome, shared_biomes],
             "rejected_source_identities": [],
             "hazards_reviewed": ["CODEC"],
             "semantic_observations": ["reviewed biome law"],
         },
         {
             "group_id": "R2C-HEIGHTMAPS",
-            "selected_sources": [shared, height],
+            "selected_sources": [shared_heightmaps, height],
             "rejected_source_identities": [],
             "hazards_reviewed": ["CODEC"],
             "semantic_observations": ["reviewed height law"],
