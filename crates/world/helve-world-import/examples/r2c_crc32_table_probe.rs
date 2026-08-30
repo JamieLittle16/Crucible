@@ -262,7 +262,8 @@ fn parse_args() -> Result<Config, String> {
             }
             "--help" | "-h" => {
                 return Err(
-                    "usage: r2c_crc32_table_probe (--smoke|--full) --packed4-region PATH".to_owned(),
+                    "usage: r2c_crc32_table_probe (--smoke|--full) --packed4-region PATH"
+                        .to_owned(),
                 );
             }
             _ => return Err(format!("unknown argument: {arg}")),
