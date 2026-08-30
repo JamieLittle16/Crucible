@@ -156,7 +156,7 @@ fn run() -> Result<(), String> {
         &decompressed,
         expected_position,
         limits,
-        &resolver,
+        resolver,
         &mut builder,
         &mut scratch,
     )?;
@@ -167,7 +167,7 @@ fn run() -> Result<(), String> {
             &decompressed,
             expected_position,
             limits,
-            &resolver,
+            resolver,
             &mut builder,
             &mut scratch,
         )?);
@@ -184,7 +184,7 @@ fn run() -> Result<(), String> {
             &decompressed,
             expected_position,
             limits,
-            &resolver,
+            resolver,
             &mut builder,
             &mut scratch,
         )?;
@@ -242,7 +242,7 @@ fn validate_semantic_decode(
     decompressed: &[u8],
     expected_position: ChunkPos,
     limits: NbtLimits,
-    resolver: &Target262BlockStateResolver,
+    resolver: Target262BlockStateResolver,
     builder: &mut NoCopyBuilder,
     scratch: &mut BlockSectionDecodeScratch<BlockStateId>,
 ) -> Result<(), String> {
@@ -250,7 +250,7 @@ fn validate_semantic_decode(
         decompressed,
         expected_position,
         limits,
-        resolver,
+        &resolver,
         builder,
         scratch,
     )
@@ -276,7 +276,7 @@ fn measure_round(
     decompressed: &[u8],
     expected_position: ChunkPos,
     limits: NbtLimits,
-    resolver: &Target262BlockStateResolver,
+    resolver: Target262BlockStateResolver,
     builder: &mut NoCopyBuilder,
     scratch: &mut BlockSectionDecodeScratch<BlockStateId>,
 ) -> Result<[u128; 3], String> {
@@ -290,7 +290,7 @@ fn measure_round(
                         black_box(decompressed),
                         expected_position,
                         limits,
-                        resolver,
+                        &resolver,
                         builder,
                         scratch,
                     )
