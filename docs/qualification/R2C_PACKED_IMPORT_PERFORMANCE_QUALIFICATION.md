@@ -1,6 +1,6 @@
 # R2C Packed Import Performance Qualification
 
-Status: **diagnostic baseline established; word-major unpack candidate rejected; production performance admission still open**  
+Status: **component baselines established; word-major unpack rejected; gzip CRC identified as the next qualified candidate; production performance admission still open**  
 Target: **Minecraft: Java Edition 26.2 / DataVersion 4903**  
 Parent qualification: `R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md`
 
@@ -72,7 +72,7 @@ Absolute values differ because this is a different hosted CPU. The useful repeat
 
 - state resolution is negligible and is **not** an optimization target;
 - the transparent builder is substantial but is deliberately a correctness/reference mechanism;
-- decompression is the largest measured importer component;
+- compressed-payload decode is the largest measured importer component;
 - roughly 9--10 us remains in NBT, packed-cell decode and transaction framing on these hosted fixtures.
 
 ## Candidate P1: word-major non-spanning packed decode
@@ -130,41 +130,106 @@ The reported p50 ratio was `1006` milli, i.e. the word-major candidate was about
 
 `98cf921d050b0270c305138664d8fadd9fb85966f2e71a9eb7337cc9a4c24b12`
 
+A later EPYC 7763 run (`33309493746` / `99251847080`) again failed to show a win: cell-major p50 **6.963 us** versus word-major **6.973 us**. The direction is therefore not an artifact of the first hosted CPU.
+
 ### Decision
 
 **Reject P1. Do not modify production packed decode to word-major traversal.**
 
-The transformation removes visible division/modulo from source but does not improve the compiled loop on the measured hosted target. LLVM can already optimize the fixed arithmetic effectively, and the alternative introduces its own loop/state costs. A source-level operation count is not sufficient evidence.
+The transformation removes visible division/modulo from source but does not improve the compiled loop on the measured hosted targets. LLVM can already optimize the fixed arithmetic effectively, and the alternative introduces its own loop/state costs. A source-level operation count is not sufficient evidence.
 
 The existing simpler cell-major loop remains selected until a different candidate demonstrates a real whole-import gain.
 
-## Current next target: decompression
+## Gzip decode decomposition
 
-The largest measured packed-import component is now payload decode/decompression, approximately **14.8--16.5 us p50** across the two hosted component runs.
+PR #223 decomposes the largest measured importer component without instrumenting production. The qualification-only `r2c_gzip_decode_components` example obtains the same packed fixture's inline gzip payload through `RegionView`, runs the real production decoder, and compares it with a transparent diagnostic implementation before timing.
 
-The next experiment should decompose the gzip path without instrumenting production:
+The diagnostic path reproduces:
 
-1. exact gzip framing/header work;
-2. raw `miniz_oxide` DEFLATE inflate into a preinitialized bounded output buffer;
-3. Helve-owned gzip CRC32 verification;
-4. ISIZE/exact-consumption checks;
-5. any retained-buffer/high-water policy cost.
+- bounded gzip framing and optional-header parsing;
+- raw `miniz_oxide` DEFLATE into a preinitialized 64 KiB output buffer;
+- exact compressed-body consumption;
+- Helve's current CRC32 calculation;
+- gzip ISIZE verification.
 
-The benchmark should live in qualification/example code and use the import crate's already-pinned `miniz_oxide` dependency. It must compare against the complete production `DeflateChunkPayloadDecoder` on identical bytes and verify identical decompressed output before reporting timings.
+Before any benchmark samples are accepted, the diagnostic decompressed bytes must match `DeflateChunkPayloadDecoder` byte-for-byte. Measurements are batched 32 calls at a time so `Instant` overhead does not dominate the nanosecond-scale framing and size checks.
 
-Potential optimizations are not selected in advance. In particular, checksum policy, bounds checks, exact-consumption validation and fail-closed malformed-input behavior are semantic/safety requirements and may not be removed for speed.
+### Result
+
+Workflow run `33309493746`, job `99251847080`, AMD EPYC 7763, measured the exact packed payload:
+
+- gzip payload: **216 bytes**;
+- raw DEFLATE body: **198 bytes**;
+- decompressed NBT: **2204 bytes**;
+- stable output checksum: `10557295020060451044`.
+
+| Gzip stage | p50 | p95 | p99 |
+| --- | ---: | ---: | ---: |
+| production complete decode | **14.840 us** | 15.053 us | 15.301 us |
+| diagnostic complete decode | **14.762 us** | 15.233 us | 15.318 us |
+| framing / header parse | **0.005 us** | 0.006 us | 0.006 us |
+| raw DEFLATE inflate | **4.488 us** | 4.741 us | 5.123 us |
+| current nibble-table CRC32 | **10.165 us** | 10.426 us | 10.643 us |
+| ISIZE check | **0.001 us** | 0.001 us | 0.001 us |
+
+The sum of component p50 values is **14.659 us**. The complete diagnostic path is `994` milli of production p50, so the decomposition tracks the actual decoder closely enough to select the next experiment.
+
+On the same runner, the outer importer diagnostic reported payload decode p50 **14.898 us**, which independently agrees with the direct production-decoder measurement above.
+
+### Interpretation
+
+The primary gzip cost is **not raw DEFLATE**. The current 16-entry nibble-table CRC32 performs two table lookups/shifts per output byte and accounts for roughly **69% of complete gzip decode p50** on this fixture. Framing and ISIZE are effectively negligible.
+
+CRC verification itself is non-negotiable: gzip checksum failure must remain fail-closed. The optimization opportunity is solely the checksum implementation.
+
+## Candidate P2: byte-table CRC32
+
+### Hypothesis
+
+Replace the 16-entry nibble table with a compile-time 256-entry CRC32 table so the same polynomial update consumes one byte per iteration instead of two nibbles. This increases static table footprint from **64 bytes to 1024 bytes** but does not require allocation, dynamic dispatch, unsafe code, a new dependency, or a change to gzip semantics.
+
+The candidate must be benchmarked before production selection.
+
+### Required isolated evidence
+
+The qualification harness should compare the current nibble implementation with the candidate byte implementation on the exact 2204-byte decompressed fixture while requiring identical CRC output. Timing methodology should use batching and enough rounds to make sub-microsecond differences visible.
+
+If useful, a larger slicing implementation may be tested later, but it should not be introduced until the 256-entry mechanism establishes how much value remains. Table size is part of the cost model even on this cold path.
+
+### Required production requalification if selected
+
+A production CRC change is accepted only if all of these remain true:
+
+- the known CRC fixture remains `0x338169e5`;
+- valid gzip and zlib decode regressions remain green;
+- corrupted gzip CRC still yields `GzipCrcMismatch`;
+- corrupted ISIZE still yields `GzipSizeMismatch`;
+- optional gzip header CRC remains checked with the same CRC32 semantics;
+- trailing compressed bytes and output bounds remain fail-closed;
+- the independent seven-section importer differential digest remains `98cf921d050b0270c305138664d8fadd9fb85966f2e71a9eb7337cc9a4c24b12`;
+- the real-save corpus qualification remains green;
+- packed whole-import p50 improves on the same run rather than only the isolated checksum microbenchmark;
+- uniform/zlib import does not materially regress.
 
 ## Whole-path baseline retained for requalification
 
-On workflow run `33309061607` / job `99250701235`, the same AMD EPYC 9V74 runner reported:
+On workflow run `33309493746` / job `99251847080`, the AMD EPYC 7763 runner reported:
 
-- uniform import p50: **4.407 us**;
-- uniform whole import + install p50: **4.617 us**;
-- packed import p50: **37.385 us**;
-- packed transparent builder p50: **11.747 us**;
-- packed importer residual p50: **25.638 us**;
-- packed resident install p50: **0.090 us**;
-- packed whole import + install p50: **37.465 us**.
+- uniform import p50: **4.549 us**;
+- uniform whole import + install p50: **4.769 us**;
+- packed import p50: **36.698 us**;
+- packed transparent builder p50: **11.361 us**;
+- packed importer residual p50: **25.327 us**;
+- packed resident install p50: **0.080 us**;
+- packed whole import + install p50: **36.779 us**.
+
+The nested component diagnostic on that same runner reported:
+
+- packed import p50: **35.666 us**;
+- payload decode p50: **14.898 us**;
+- state resolve p50: **0.131 us**;
+- transparent builder p50: **11.290 us**;
+- NBT / packed / transaction residual p50: **9.308 us**.
 
 These values are diagnostic anchors for that exact run only. Future production candidates should be compared on the same runner/run whenever possible, and final mechanism selection still requires controlled target-hardware evidence.
 
@@ -173,6 +238,7 @@ These values are diagnostic anchors for that exact run only. Future production c
 Re-run the affected performance evidence when any of these change materially:
 
 - gzip/zlib decoder implementation or dependency version/features;
+- CRC32 implementation or table shape;
 - output-buffer sizing/reuse policy;
 - NBT cursor or packed-state decoding;
 - persisted-state resolver generation/lookup;
@@ -189,7 +255,9 @@ This evidence does **not** mean:
 - the transparent reference builder is the eventual production section representation;
 - gzip/zlib performance is production-selected;
 - hosted CI timings are a target-hardware throughput guarantee;
-- the remaining 9--10 us residual is wholly packed-cell decoding;
+- the remaining 9--10 us importer residual is wholly packed-cell decoding;
+- CRC verification may be weakened or removed;
+- the byte-table CRC candidate is selected before its own benchmark and whole-path evidence;
 - microbenchmark speed can override vanilla semantic parity or hostile-input guarantees.
 
-It does establish that Helve has enough instrumentation-free decomposition to avoid optimizing the wrong layer, and that one plausible packed-loop rewrite was tested rigorously and rejected rather than cargo-culted into production.
+It does establish that Helve has enough instrumentation-free decomposition to avoid optimizing the wrong layer: one plausible packed-loop rewrite was rigorously rejected, and the next large cost is now localized to the implementation of a mandatory gzip checksum rather than to decompression itself.
