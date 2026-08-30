@@ -10,7 +10,8 @@ SEM Markdown as well.
 
 All validation and destination-collision checks happen before the first repository file is written.
 The staged VAR records, semantic Markdown, gate, and source-gate report are copied verbatim. Only the
-content-addressed admitted-bundle manifest is newly generated here.
+content-addressed admitted-bundle manifest is newly generated here. If a filesystem error occurs after
+preflight, every repository file attempted by this promotion is removed before failure is reported.
 """
 from __future__ import annotations
 
@@ -345,6 +346,22 @@ def _destination_files(
     return result
 
 
+def _write_file_exclusive(path: Path, raw: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("xb") as stream:
+        stream.write(raw)
+
+
+def _rollback_attempted_files(paths: Sequence[Path]) -> list[str]:
+    failures: list[str] = []
+    for path in reversed(paths):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as error:
+            failures.append(f"{path}: {error}")
+    return failures
+
+
 def promote(staging_dir: Path, gate_report: Path, repo_root: Path) -> dict[str, object]:
     staged, materialization_manifest_raw, materialization_manifest = _validate_staging(staging_dir)
     report, report_raw = _read_json(gate_report, "source-gate report")
@@ -399,19 +416,24 @@ def promote(staging_dir: Path, gate_report: Path, repo_root: Path) -> dict[str, 
     }
     manifest_raw = _pretty_bytes(manifest)
 
+    attempted: list[Path] = []
     try:
         for relative, raw in destination.items():
             path = repo_root.joinpath(*relative.parts)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open("xb") as stream:
-                stream.write(raw)
+            attempted.append(path)
+            _write_file_exclusive(path, raw)
         manifest_path = repo_root.joinpath(*MANIFEST_PATH.parts)
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
-        with manifest_path.open("xb") as stream:
-            stream.write(manifest_raw)
+        attempted.append(manifest_path)
+        _write_file_exclusive(manifest_path, manifest_raw)
     except OSError as error:
+        rollback_failures = _rollback_attempted_files(attempted)
+        suffix = (
+            f"; rollback failures: {'; '.join(rollback_failures)}"
+            if rollback_failures
+            else "; attempted repository files rolled back"
+        )
         raise PromoteError(
-            f"repository promotion write failed after successful preflight: {error}"
+            f"repository promotion write failed after successful preflight: {error}{suffix}"
         ) from error
 
     return {
