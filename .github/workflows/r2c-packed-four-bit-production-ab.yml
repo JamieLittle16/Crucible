@@ -1,0 +1,204 @@
+name: R2C Packed Four-Bit Production A/B
+
+on:
+  pull_request:
+    paths:
+      - "crates/world/helve-world-import/**"
+      - "crates/world/helve-world-load/**"
+      - ".github/workflows/r2c-packed-four-bit-production-ab.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: r2c-packed-four-bit-production-ab-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  controlled-ab:
+    name: Base/head packed import A/B
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout base
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+
+      - name: Checkout head
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Verify dependency policy
+        working-directory: head
+        run: python3 tools/ci_policy.py
+
+      - name: Generate identical packed fixture
+        working-directory: head
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from tools import r2c_import_differential as fixture
+
+          root = Path('/tmp/helve-r2c-four-bit-ab-fixture')
+          fixture._fixture_regions(root)
+          path = root / 'region' / 'r.0.0.mca'
+          if not path.is_file():
+              raise SystemExit(f'packed A/B fixture missing: {path}')
+          print(path)
+          PY
+
+      - name: Build base benchmark binaries
+        working-directory: base
+        run: |
+          CARGO_TARGET_DIR=/tmp/helve-r2c-four-bit-ab/base-target \
+            cargo build --release --offline --locked \
+            --package helve-world-load --example r2c_import_resident_bench
+          CARGO_TARGET_DIR=/tmp/helve-r2c-four-bit-ab/base-target \
+            cargo build --release --offline --locked \
+            --package helve-world-import --example r2c_packed_residual_components
+
+      - name: Build head benchmark binaries
+        working-directory: head
+        run: |
+          CARGO_TARGET_DIR=/tmp/helve-r2c-four-bit-ab/head-target \
+            cargo build --release --offline --locked \
+            --package helve-world-load --example r2c_import_resident_bench
+          CARGO_TARGET_DIR=/tmp/helve-r2c-four-bit-ab/head-target \
+            cargo build --release --offline --locked \
+            --package helve-world-import --example r2c_packed_residual_components
+
+      - name: Select one allowed CPU
+        run: |
+          allowed="$(awk '/Cpus_allowed_list/ {print $2}' /proc/self/status)"
+          first="${allowed%%,*}"
+          cpu="${first%%-*}"
+          test -n "$cpu"
+          echo "R2C_AB_CPU=$cpu" >> "$GITHUB_ENV"
+          echo "Pinned A/B CPU: $cpu (allowed: $allowed)"
+
+      - name: Controlled alternating production A/B
+        env:
+          FIXTURE: /tmp/helve-r2c-four-bit-ab-fixture/region/r.0.0.mca
+          BASE_IMPORT: /tmp/helve-r2c-four-bit-ab/base-target/release/examples/r2c_import_resident_bench
+          HEAD_IMPORT: /tmp/helve-r2c-four-bit-ab/head-target/release/examples/r2c_import_resident_bench
+          BASE_RESIDUAL: /tmp/helve-r2c-four-bit-ab/base-target/release/examples/r2c_packed_residual_components
+          HEAD_RESIDUAL: /tmp/helve-r2c-four-bit-ab/head-target/release/examples/r2c_packed_residual_components
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import statistics
+          import subprocess
+
+          cpu = os.environ['R2C_AB_CPU']
+          fixture = os.environ['FIXTURE']
+          binaries = {
+              'base_import': os.environ['BASE_IMPORT'],
+              'head_import': os.environ['HEAD_IMPORT'],
+              'base_residual': os.environ['BASE_RESIDUAL'],
+              'head_residual': os.environ['HEAD_RESIDUAL'],
+          }
+
+          def run_json(binary, args):
+              completed = subprocess.run(
+                  ['taskset', '-c', cpu, binary, *args],
+                  check=True,
+                  text=True,
+                  capture_output=True,
+              )
+              lines = [line for line in completed.stdout.splitlines() if line.startswith('{')]
+              if len(lines) != 1:
+                  raise SystemExit(
+                      f'{binary} emitted {len(lines)} JSON records; stdout={completed.stdout!r}'
+                  )
+              return json.loads(lines[0])
+
+          packed_args = ['--smoke', '--require-single-cpu', '--packed4-region', fixture]
+          uniform_args = ['--smoke', '--require-single-cpu']
+          residual_args = ['--smoke', '--packed4-region', fixture]
+
+          # Untimed process/cache warmups. These are intentionally symmetric.
+          for side in ('base', 'head'):
+              run_json(binaries[f'{side}_import'], packed_args)
+              run_json(binaries[f'{side}_import'], uniform_args)
+              run_json(binaries[f'{side}_residual'], residual_args)
+
+          samples = {
+              'base_packed': [],
+              'head_packed': [],
+              'base_uniform': [],
+              'head_uniform': [],
+              'base_semantic': [],
+              'head_semantic': [],
+          }
+          checksums = set()
+
+          for round_index in range(7):
+              order = ('base', 'head') if round_index % 2 == 0 else ('head', 'base')
+              for side in order:
+                  packed = run_json(binaries[f'{side}_import'], packed_args)
+                  uniform = run_json(binaries[f'{side}_import'], uniform_args)
+                  residual = run_json(binaries[f'{side}_residual'], residual_args)
+                  samples[f'{side}_packed'].append(packed['import_ns']['p50'])
+                  samples[f'{side}_uniform'].append(uniform['import_ns']['p50'])
+                  samples[f'{side}_semantic'].append(residual['semantic_no_copy_ns']['p50'])
+                  checksums.add(packed['semantic_checksum'])
+
+          if checksums != {15485907386658061717}:
+              raise SystemExit(f'packed semantic checksum changed across A/B: {sorted(checksums)}')
+
+          medians = {key: int(statistics.median(values)) for key, values in samples.items()}
+
+          def ratio_milli(head_key, base_key):
+              base = medians[base_key]
+              return (medians[head_key] * 1000) // base if base else 0
+
+          packed_ratio = ratio_milli('head_packed', 'base_packed')
+          semantic_ratio = ratio_milli('head_semantic', 'base_semantic')
+          uniform_ratio = ratio_milli('head_uniform', 'base_uniform')
+
+          report = {
+              'schema': 1,
+              'kind': 'r2c-packed-four-bit-production-controlled-ab',
+              'diagnostic_only': True,
+              'performance_admitted': False,
+              'cpu': cpu,
+              'alternating_order': True,
+              'process_rounds_per_side': 7,
+              'base_packed_import_p50_ns_median': medians['base_packed'],
+              'head_packed_import_p50_ns_median': medians['head_packed'],
+              'packed_ratio_milli': packed_ratio,
+              'base_semantic_no_copy_p50_ns_median': medians['base_semantic'],
+              'head_semantic_no_copy_p50_ns_median': medians['head_semantic'],
+              'semantic_ratio_milli': semantic_ratio,
+              'base_uniform_import_p50_ns_median': medians['base_uniform'],
+              'head_uniform_import_p50_ns_median': medians['head_uniform'],
+              'uniform_ratio_milli': uniform_ratio,
+              'semantic_checksum': 15485907386658061717,
+              'samples': samples,
+          }
+          print(json.dumps(report, separators=(',', ':')))
+
+          if semantic_ratio > 850:
+              raise SystemExit(
+                  f'four-bit production semantic path did not improve enough: {semantic_ratio} milli'
+              )
+          if packed_ratio > 950:
+              raise SystemExit(
+                  f'four-bit production whole packed import did not improve enough: {packed_ratio} milli'
+              )
+          if uniform_ratio > 1100:
+              raise SystemExit(
+                  f'uniform import regressed materially: {uniform_ratio} milli'
+              )
+          PY
