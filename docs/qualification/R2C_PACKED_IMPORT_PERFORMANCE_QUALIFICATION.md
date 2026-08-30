@@ -1,6 +1,6 @@
 # R2C Packed Import Performance Qualification
 
-Status: **component baselines established; word-major unpack rejected; byte-table gzip CRC selected; post-CRC bottleneck map established; target-hardware performance admission still open**  
+Status: **component baselines established; word-major unpack rejected; byte-table gzip CRC selected; packed residual localized away from NBT; target-hardware performance admission still open**  
 Target: **Minecraft: Java Edition 26.2 / DataVersion 4903**  
 Parent qualification: `R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md`
 
@@ -182,15 +182,75 @@ The byte-table CRC materially changes what is worth optimizing next. On the same
 
 The same run's isolated packed-loop probe reported cell-major **4.010 us** and word-major **4.013 us**, again confirming that word-major traversal is not the answer.
 
-The next optimization target must therefore be selected carefully:
+The next optimization target had to be selected carefully:
 
 - **do not** optimize state resolution; it is already negligible;
 - **do not** replace the transparent/reference builder merely to improve a qualification number unless the R2C architecture is explicitly ready to select a production section-construction mechanism;
 - decompression is no longer dominated by CRC, so further gzip work must separately justify itself;
-- the remaining **6.6 us** residual should be decomposed before changing NBT or packed-cell production code;
-- if/when a Helve-native production section builder is introduced, benchmark it against the transparent reference while requiring identical section semantics.
+- the residual needed decomposition before changing NBT or packed-cell production code.
 
-The most conservative next performance experiment is to split the residual into schema-directed NBT cursor work, packed long-array ingestion/unpack, and transaction/framing overhead using qualification-only wrappers or equivalent static seams. That avoids prematurely optimizing the reference builder or guessing that all residual time belongs to packed-cell arithmetic.
+## Residual decomposition: NBT versus packed state materialization
+
+PR #226 adds a qualification-only probe without changing production importer code. Decompression happens once before timing. The exact 2204-byte packed fixture is then measured through three rotating-order paths:
+
+1. `semantic_no_copy`: real `decode_chunk_block_sections`, real target resolver, real reusable scratch and real packed-cell decode, with only the final transparent/reference section copy replaced by an opaque no-copy builder;
+2. `nbt_read_words`: bounded `NbtReader` traverses the same root/section/palette structure and reads every one of the 256 packed longs, but performs no state resolution or 4096-cell unpack;
+3. `nbt_skip_words`: the same structural traversal fast-skips the long-array payload.
+
+The probe validates DataVersion 4903, exact chunk position, one block-bearing section, two palette entries, 256 packed words and the 2204-byte decompressed length before measurement. Smoke mode runs 256 rounds, batches 32 operations and rotates measurement order.
+
+Workflow `33318092579`, job `99275098440`, AMD EPYC 9V74:
+
+| Residual probe path | p50 | p95 | p99 |
+| --- | ---: | ---: | ---: |
+| real semantic decode, no final section copy | **10.095 us** | 10.386 us | 10.825 us |
+| NBT/schema scan, reading all packed longs | **0.335 us** | 0.347 us | 0.575 us |
+| NBT/schema scan, fast-skipping packed longs | **0.157 us** | 0.166 us | 0.172 us |
+| packed-long read delta | **0.178 us** | — | — |
+
+The same run provides useful surrounding anchors:
+
+| Same-run component | p50 |
+| --- | ---: |
+| production packed import | **31.267 us** |
+| production payload decode | **9.975 us** |
+| state resolve | **0.150 us** |
+| transparent/reference section build | **11.688 us** |
+| component residual | **9.425 us** |
+| isolated cell-major packed loop | **5.738 us** |
+| isolated word-major packed loop | **5.829 us** |
+
+The independent importer differential remained exactly:
+
+`98cf921d050b0270c305138664d8fadd9fb85966f2e71a9eb7337cc9a4c24b12`
+
+and the complete R2C import qualification was green through hermetic build/tests, rustfmt, Clippy `-D warnings`, Rust regressions, state-lookup regressions and the vanilla-save extractor regressions.
+
+### Interpretation
+
+This result rules out two tempting but incorrect optimization targets:
+
+- **schema-directed NBT traversal is not materially expensive on this fixture**: even a scan that reads every packed word is only about 0.335 us p50;
+- **packed-long ingestion/endian reading is not materially expensive**: reading 256 longs adds only about 0.178 us over fast skipping.
+
+The large work is after structural NBT traversal: packed-state materialization and its surrounding semantic machinery. The no-copy semantic path is roughly 10 us, while the isolated packed loop alone is roughly 5.7 us on the same runner. Those p50 values are directional evidence, not additive accounting, because the probes have different code shape and optimization context.
+
+The old word-major hypothesis is again rejected on this runner: **5.829 us versus 5.738 us** for cell-major.
+
+### Decision after #226
+
+**Do not optimize `NbtReader`, field dispatch, long-array skipping, or persisted-state lookup next.** Their measured contribution is too small to justify architectural churn.
+
+The next candidate should target the production packed-state materialization mechanism. The most promising hypothesis to test before changing production is a **four-bit specialization**: the independent packed fixture uses the minimum four-bit encoding, but production derives `bits_per_entry`, `values_per_word` and the mask at runtime. A qualification-only A/B can compare the current runtime-generic cell-major arithmetic against an explicitly four-bit-specialized cell-major loop while retaining:
+
+- checked palette lookup;
+- exact 4096-cell output;
+- exact cell-indexed out-of-range errors;
+- identical non-spanning word layout;
+- reusable output storage;
+- alternating measurement order.
+
+Only a material isolated win should justify a small production specialization branch. If specialization does not win, the next decomposition should move to scratch/result materialization rather than revisiting NBT.
 
 ## Requalification triggers
 
@@ -214,9 +274,10 @@ This evidence does **not** mean:
 - the transparent reference builder is the eventual production section representation;
 - the selected CRC table proves the rest of gzip/DEFLATE is globally optimal;
 - hosted CI timings are a target-hardware throughput guarantee;
-- the remaining residual is wholly packed-cell decoding;
+- the ~10 us no-copy semantic path is entirely the 4096-cell loop;
+- p50 values from separate probes may be subtracted as exact accounting;
 - CRC verification may be weakened or removed;
 - a larger slicing-by-N CRC table would necessarily improve whole import;
 - microbenchmark speed can override vanilla semantic parity or hostile-input guarantees.
 
-It does establish a disciplined sequence: the importer was decomposed, a plausible packed-loop rewrite was rejected, the actual gzip bottleneck was localized, a CRC candidate was isolated before production, the complete decoder improvement was then measured, and semantic closure was re-proved against both synthetic and regenerated official-world evidence.
+It does establish a disciplined sequence: the importer was decomposed, a plausible packed-loop rewrite was rejected, the actual gzip bottleneck was localized, a CRC candidate was isolated before production, the complete decoder improvement was measured and semantically closed, and the remaining packed residual was then localized away from NBT before selecting the next candidate.
