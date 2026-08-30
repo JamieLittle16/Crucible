@@ -1,6 +1,6 @@
 # R2C Gzip CRC32 Qualification
 
-Status: **256-entry byte-table selected by isolated and production-path evidence; final real-save corpus closure pending**  
+Status: **256-entry byte-table selected for R2C production; semantic and hosted performance qualification complete**  
 Target: **Minecraft: Java Edition 26.2 / DataVersion 4903**  
 Parent: `R2C_PACKED_IMPORT_PERFORMANCE_QUALIFICATION.md`
 
@@ -25,7 +25,7 @@ That made checksum implementation the largest identified gzip cost and justified
 - two nibble lookups and two shifts per input byte;
 - reversed CRC32 polynomial `0xedb8_8320`.
 
-### Selected candidate P2
+### Selected mechanism P2
 
 - 256-entry table;
 - 1024 bytes of static table data;
@@ -37,7 +37,7 @@ That made checksum implementation the largest identified gzip cost and justified
 - no unsafe code;
 - no new dependency.
 
-The candidate therefore trades **960 additional static bytes** for lower checksum work.
+The selected mechanism therefore trades **960 additional static bytes** for lower checksum work.
 
 ## Isolated benchmark methodology
 
@@ -121,7 +121,7 @@ The seven-section independent importer differential remains exactly:
 
 `98cf921d050b0270c305138664d8fadd9fb85966f2e71a9eb7337cc9a4c24b12`
 
-The separately regenerated official 26.2 corpus workflow `33317192512` has already passed:
+The separately regenerated official 26.2 corpus workflow `33317192512`, job `99272688526`, completed successfully through every gate:
 
 - corpus/extractor regressions;
 - official runtime-state identity extraction and binding;
@@ -129,27 +129,32 @@ The separately regenerated official 26.2 corpus workflow `33317192512` has alrea
 - deterministic official spawn-world generation;
 - stored-overworld section extraction;
 - production raw-Anvil fact-emitter build;
-- production importer comparison against the official-save oracle.
-
-Final normalized-corpus reconstruction and cross-evidence identity stages remain the last outstanding gate at the time of this record.
+- production importer comparison against the official-save oracle;
+- independent normalized-corpus validation;
+- reconstruction through every Rust candidate;
+- parser-admission corpus rejection by the production-decision gate;
+- independent Python/Rust evidence cross-check;
+- real-target evidence identity verification;
+- normalized corpus evidence upload.
 
 ## Selection decision
 
-**P2 is selected as Helve's R2C production CRC32 mechanism, conditional only on completion of the final regenerated real-save corpus stages.**
+**P2 is selected as Helve's R2C production CRC32 mechanism.**
 
-The evidence is now stronger than the original isolated benchmark:
+The evidence is stronger than the original isolated benchmark:
 
 1. the byte-table recurrence wins materially in an alternating-order CRC A/B;
 2. that result reproduces on a second CPU architecture;
 3. the exact production decoder is materially faster than an old-equivalent diagnostic decoder on the same bytes and runner;
 4. the packed importer invokes that decoder exactly once per measured chunk;
-5. all checksum/error semantics exercised so far remain unchanged.
+5. checksum and malformed-input semantics remain unchanged;
+6. the regenerated official 26.2 real-save corpus remains exact through the production importer and independent oracle checks.
 
 The added 960 bytes of static table footprint are justified by the measured complete-decoder reduction. No runtime allocation or initialization cost is introduced.
 
 ## Production acceptance criteria
 
-The production experiment is accepted only if all of the following hold:
+The production experiment required all of the following:
 
 1. `crc32_fixture_is_stable` remains green with the existing expected CRC;
 2. valid gzip and zlib decode regressions remain green;
@@ -166,7 +171,9 @@ The production experiment is accepted only if all of the following hold:
 13. uniform/zlib import does not acquire any CRC-path work or architectural regression;
 14. the final result and static-table tradeoff are recorded in qualification documentation.
 
-Criteria 1--9 and 11--14 are satisfied by the production branch. Criterion 10 awaits only the final stages of workflow `33317192512`.
+**All fourteen criteria are satisfied.**
+
+`performance_admitted` remains false because hosted CI is mechanism-selection evidence, not controlled target-hardware throughput admission.
 
 ## Requalification triggers
 
