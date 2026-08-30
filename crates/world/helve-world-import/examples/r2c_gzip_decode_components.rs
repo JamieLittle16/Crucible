@@ -1,4 +1,9 @@
-use std::{env, fs, hint::black_box, path::PathBuf, time::Instant};
+use std::{
+    env, fs,
+    hint::black_box,
+    path::{Path, PathBuf},
+    time::Instant,
+};
 
 use helve_world_import::{
     ChunkCompression, ChunkPayloadDecoder, DeflateChunkPayloadDecoder, RegionLimits, RegionView,
@@ -113,15 +118,53 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let config = parse_args()?;
-    let region_bytes = fs::read(&config.packed_region)
-        .map_err(|error| format!("could not read {}: {error}", config.packed_region.display()))?;
+    let payload = load_packed_gzip(&config.packed_region)?;
+    let member = parse_gzip_member(&payload)?;
+    let body = payload
+        .get(member.body_start..member.trailer_start)
+        .ok_or_else(|| "gzip body slice is invalid".to_owned())?;
+
+    let mut production = DeflateChunkPayloadDecoder::try_with_output_limit(MAX_DECOMPRESSED_BYTES)
+        .map_err(|error| format!("production decoder init failed: {error:?}"))?;
+    let mut diagnostic_decompressor = DecompressorOxide::new();
+    let mut diagnostic_output = vec![0_u8; MAX_DECOMPRESSED_BYTES];
+    let (production_len, production_checksum) = validate_equivalence(
+        &payload,
+        member,
+        body,
+        &mut production,
+        &mut diagnostic_decompressor,
+        &mut diagnostic_output,
+    )?;
+
+    let samples = collect_samples(
+        config.mode,
+        &payload,
+        member,
+        &mut production,
+        &mut diagnostic_decompressor,
+        &mut diagnostic_output,
+    )?;
+    report(
+        config.mode,
+        payload.len(),
+        body.len(),
+        production_len,
+        production_checksum,
+        samples,
+    );
+    Ok(())
+}
+
+fn load_packed_gzip(path: &Path) -> Result<Vec<u8>, String> {
+    let region_bytes =
+        fs::read(path).map_err(|error| format!("could not read {}: {error}", path.display()))?;
     if region_bytes.len() > MAX_REGION_BYTES {
         return Err(format!(
             "packed region exceeds {MAX_REGION_BYTES} bytes: {}",
             region_bytes.len()
         ));
     }
-
     let region = RegionView::new(
         &region_bytes,
         0,
@@ -139,60 +182,70 @@ fn run() -> Result<(), String> {
             chunk.compression, chunk.external
         ));
     }
-    let payload = chunk
+    chunk
         .inline_payload
-        .ok_or_else(|| "inline packed chunk omitted payload".to_owned())?;
+        .map(<[u8]>::to_vec)
+        .ok_or_else(|| "inline packed chunk omitted payload".to_owned())
+}
 
-    let member = parse_gzip_member(payload)?;
-    let body = payload
-        .get(member.body_start..member.trailer_start)
-        .ok_or_else(|| "gzip body slice is invalid".to_owned())?;
-
-    let mut production = DeflateChunkPayloadDecoder::try_with_output_limit(MAX_DECOMPRESSED_BYTES)
-        .map_err(|error| format!("production decoder init failed: {error:?}"))?;
-    let mut diagnostic_decompressor = DecompressorOxide::new();
-    let mut diagnostic_output = vec![0_u8; MAX_DECOMPRESSED_BYTES];
-
+fn validate_equivalence(
+    payload: &[u8],
+    member: GzipMember,
+    body: &[u8],
+    production: &mut DeflateChunkPayloadDecoder,
+    diagnostic_decompressor: &mut DecompressorOxide,
+    diagnostic_output: &mut [u8],
+) -> Result<(usize, u64), String> {
     let production_output = production
         .decode(ChunkCompression::Gzip, payload, MAX_DECOMPRESSED_BYTES)
         .map_err(|error| format!("production gzip decode failed: {error:?}"))?;
     let production_len = production_output.len();
     let production_checksum = byte_checksum(production_output);
 
-    let diagnostic_len = inflate_raw(&mut diagnostic_decompressor, body, &mut diagnostic_output)?;
+    let diagnostic_len = inflate_raw(diagnostic_decompressor, body, diagnostic_output)?;
     validate_trailer(member, &diagnostic_output[..diagnostic_len])?;
     if diagnostic_len != production_len
         || byte_checksum(&diagnostic_output[..diagnostic_len]) != production_checksum
-        || diagnostic_output[..diagnostic_len] != *production_output
+        || &diagnostic_output[..diagnostic_len] != production_output
     {
         return Err("diagnostic gzip path disagrees with production output".to_owned());
     }
+    Ok((production_len, production_checksum))
+}
 
-    for _ in 0..config.mode.warmups() {
+fn collect_samples(
+    mode: Mode,
+    payload: &[u8],
+    member: GzipMember,
+    production: &mut DeflateChunkPayloadDecoder,
+    diagnostic_decompressor: &mut DecompressorOxide,
+    diagnostic_output: &mut [u8],
+) -> Result<Samples, String> {
+    for _ in 0..mode.warmups() {
         black_box(measure_round(
             payload,
             member,
-            &mut production,
-            &mut diagnostic_decompressor,
-            &mut diagnostic_output,
+            production,
+            diagnostic_decompressor,
+            diagnostic_output,
         )?);
     }
 
     let mut samples = Samples {
-        production_total: Vec::with_capacity(config.mode.rounds()),
-        diagnostic_total: Vec::with_capacity(config.mode.rounds()),
-        framing: Vec::with_capacity(config.mode.rounds()),
-        raw_inflate: Vec::with_capacity(config.mode.rounds()),
-        crc32: Vec::with_capacity(config.mode.rounds()),
-        size_check: Vec::with_capacity(config.mode.rounds()),
+        production_total: Vec::with_capacity(mode.rounds()),
+        diagnostic_total: Vec::with_capacity(mode.rounds()),
+        framing: Vec::with_capacity(mode.rounds()),
+        raw_inflate: Vec::with_capacity(mode.rounds()),
+        crc32: Vec::with_capacity(mode.rounds()),
+        size_check: Vec::with_capacity(mode.rounds()),
     };
-    for _ in 0..config.mode.rounds() {
+    for _ in 0..mode.rounds() {
         let round = measure_round(
             payload,
             member,
-            &mut production,
-            &mut diagnostic_decompressor,
-            &mut diagnostic_output,
+            production,
+            diagnostic_decompressor,
+            diagnostic_output,
         )?;
         samples.production_total.push(round[0]);
         samples.diagnostic_total.push(round[1]);
@@ -201,7 +254,17 @@ fn run() -> Result<(), String> {
         samples.crc32.push(round[4]);
         samples.size_check.push(round[5]);
     }
+    Ok(samples)
+}
 
+fn report(
+    mode: Mode,
+    payload_len: usize,
+    body_len: usize,
+    output_len: usize,
+    output_checksum: u64,
+    samples: Samples,
+) {
     let production_total = summarize(samples.production_total);
     let diagnostic_total = summarize(samples.diagnostic_total);
     let framing = summarize(samples.framing);
@@ -216,13 +279,13 @@ fn run() -> Result<(), String> {
 
     println!(
         "{{\"schema\":1,\"kind\":\"r2c-gzip-decode-components\",\"mode\":\"{}\",\"fixture\":\"differential-packed4-gzip\",\"diagnostic_only\":true,\"performance_admitted\":false,\"rounds\":{},\"batch\":{},\"compressed_bytes\":{},\"deflate_bytes\":{},\"decompressed_bytes\":{},\"output_checksum\":{},\"production_total_ns\":{},\"diagnostic_total_ns\":{},\"framing_ns\":{},\"raw_inflate_ns\":{},\"crc32_ns\":{},\"size_check_ns\":{},\"accounted_p50_ns\":{},\"diagnostic_to_production_p50_milli\":{}}}",
-        config.mode.as_str(),
-        config.mode.rounds(),
+        mode.as_str(),
+        mode.rounds(),
         BATCH,
-        payload.len(),
-        body.len(),
-        production_len,
-        production_checksum,
+        payload_len,
+        body_len,
+        output_len,
+        output_checksum,
         summary_json(production_total),
         summary_json(diagnostic_total),
         summary_json(framing),
@@ -232,7 +295,6 @@ fn run() -> Result<(), String> {
         accounted_p50,
         ratio_milli(diagnostic_total.p50, production_total.p50),
     );
-    Ok(())
 }
 
 fn measure_round(
