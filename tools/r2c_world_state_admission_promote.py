@@ -3,8 +3,10 @@
 
 This step is source-free and performs no semantic inference. It consumes the exact external staging
 bundle produced by ``r2c_world_state_admission_materialize.py`` plus the exact JSON report emitted by
-``vanilla_source_gate.py``. Promotion is allowed only when the report admits the byte-identical staged
-gate and every byte-identical staged VAR record against the pinned Minecraft 26.2 source identity.
+``r2c_world_state_source_gate.py``. Promotion is allowed only when the report admits the
+byte-identical staged gate and every byte-identical staged VAR record against the pinned Minecraft
+26.2 source identity, and binds the exact materialization manifest that content-addresses the staged
+SEM Markdown as well.
 
 All validation and destination-collision checks happen before the first repository file is written.
 The staged VAR records, semantic Markdown, gate, and source-gate report are copied verbatim. Only the
@@ -101,7 +103,12 @@ def _lower_sha(value: object, label: str) -> str:
 def _safe_relative(value: object, label: str) -> PurePosixPath:
     raw = _string(value, label)
     path = PurePosixPath(raw)
-    if path.is_absolute() or raw != path.as_posix() or not path.parts or any(part in {"", ".", ".."} for part in path.parts):
+    if (
+        path.is_absolute()
+        or raw != path.as_posix()
+        or not path.parts
+        or any(part in {"", ".", ".."} for part in path.parts)
+    ):
         raise PromoteError(f"{label} must be a canonical safe relative POSIX path")
     return path
 
@@ -121,14 +128,25 @@ def _validate_staging(staging_dir: Path) -> tuple[dict[str, bytes], bytes, dict[
         "independent_gate_required": True,
         "production_admitted": False,
     }
-    mismatches = {key: {"expected": wanted, "actual": manifest.get(key)} for key, wanted in expected.items() if manifest.get(key) != wanted}
+    mismatches = {
+        key: {"expected": wanted, "actual": manifest.get(key)}
+        for key, wanted in expected.items()
+        if manifest.get(key) != wanted
+    }
     if mismatches:
-        raise PromoteError(f"materialization manifest identity mismatch: {json.dumps(mismatches, sort_keys=True)}")
+        raise PromoteError(
+            f"materialization manifest identity mismatch: {json.dumps(mismatches, sort_keys=True)}"
+        )
     _lower_sha(manifest.get("review_result_sha256"), "manifest.review_result_sha256")
     _lower_sha(manifest.get("admission_worksheet_sha256"), "manifest.admission_worksheet_sha256")
     var_count = manifest.get("var_records")
     rule_count = manifest.get("semantic_rules")
-    if type(var_count) is not int or var_count < 1 or type(rule_count) is not int or rule_count < 1:
+    if (
+        type(var_count) is not int
+        or var_count < 1
+        or type(rule_count) is not int
+        or rule_count < 1
+    ):
         raise PromoteError("materialization manifest must contain positive VAR and SEM counts")
 
     entries = _array(manifest.get("files"), "manifest.files")
@@ -151,8 +169,15 @@ def _validate_staging(staging_dir: Path) -> tuple[dict[str, bytes], bytes, dict[
             raise PromoteError(f"staged file differs from materialization manifest: {relative_text}")
         files[relative_text] = raw
 
-    record_paths = sorted(path for path in files if path.startswith("records/") and path.endswith(".json"))
-    expected_paths = set(record_paths) | {f"semantics/{materialize.SEMANTICS_FILE}", "gate.json"}
+    record_paths = sorted(
+        path for path in files if path.startswith("records/") and path.endswith(".json")
+    )
+    if any(PurePosixPath(path).parent != PurePosixPath("records") for path in record_paths):
+        raise PromoteError("staged VAR records must live directly under records/")
+    expected_paths = set(record_paths) | {
+        f"semantics/{materialize.SEMANTICS_FILE}",
+        "gate.json",
+    }
     if set(files) != expected_paths or len(record_paths) != var_count:
         raise PromoteError("staged file set/count differs from canonical materialization layout")
 
@@ -165,7 +190,9 @@ def _validate_staging(staging_dir: Path) -> tuple[dict[str, bytes], bytes, dict[
     if actual_files != set(files) | {"manifest.json"}:
         extra = sorted(actual_files - set(files) - {"manifest.json"})
         missing = sorted((set(files) | {"manifest.json"}) - actual_files)
-        raise PromoteError(f"staging bundle file inventory mismatch: extra={extra} missing={missing}")
+        raise PromoteError(
+            f"staging bundle file inventory mismatch: extra={extra} missing={missing}"
+        )
 
     return files, manifest_raw, manifest
 
@@ -186,14 +213,25 @@ def _record_identity(raw: bytes, label: str) -> tuple[str, dict[str, object]]:
     _lower_sha(source.get("body_sha256"), f"{label}.source.body_sha256")
     semantic = record.get("semantic_rules")
     hazards = record.get("hazards_reviewed")
-    if not isinstance(semantic, list) or not semantic or any(not isinstance(item, str) or not item for item in semantic):
+    if (
+        not isinstance(semantic, list)
+        or not semantic
+        or any(not isinstance(item, str) or not item for item in semantic)
+    ):
         raise PromoteError(f"{label}.semantic_rules must contain non-empty rule ids")
-    if not isinstance(hazards, list) or any(not isinstance(item, str) or not item for item in hazards):
+    if not isinstance(hazards, list) or any(
+        not isinstance(item, str) or not item for item in hazards
+    ):
         raise PromoteError(f"{label}.hazards_reviewed must contain strings")
     return var_id, record
 
 
-def _validate_gate_report(report: Mapping[str, object], report_raw: bytes, staged: Mapping[str, bytes]) -> dict[str, dict[str, object]]:
+def _validate_gate_report(
+    report: Mapping[str, object],
+    report_raw: bytes,
+    staged: Mapping[str, bytes],
+    materialization_manifest_raw: bytes,
+) -> dict[str, dict[str, object]]:
     if report.get("schema") != 1 or report.get("gate_id") != materialize.GATE_ID:
         raise PromoteError("source-gate report identity mismatch")
     if report.get("admitted") is not True or report.get("failures") != []:
@@ -202,6 +240,14 @@ def _validate_gate_report(report: Mapping[str, object], report_raw: bytes, stage
         raise PromoteError("source-gate report minimum status mismatch")
     if report.get("gate_sha256") != _sha256(staged["gate.json"]):
         raise PromoteError("source-gate report was not evaluated against the exact staged gate")
+    if report.get("materialization_id") != materialize.ID:
+        raise PromoteError("source-gate report materialization identity mismatch")
+    if report.get("source_free_bundle_bound") is not True:
+        raise PromoteError("source-gate report is not bound to the source-free staging bundle")
+    if report.get("materialization_manifest_sha256") != _sha256(materialization_manifest_raw):
+        raise PromoteError(
+            "source-gate report was not evaluated against the exact materialization manifest"
+        )
 
     source = _object(report.get("source"), "source-gate report source")
     expected_source = {
@@ -227,6 +273,8 @@ def _validate_gate_report(report: Mapping[str, object], report_raw: bytes, stage
         if not path.startswith("records/"):
             continue
         var_id, record = _record_identity(raw, path)
+        if PurePosixPath(path).name != f"{var_id}.json":
+            raise PromoteError(f"staged VAR filename does not match record id: {path}")
         if var_id in staged_records:
             raise PromoteError(f"duplicate staged VAR id: {var_id}")
         staged_records[var_id] = (raw, record)
@@ -250,16 +298,28 @@ def _validate_gate_report(report: Mapping[str, object], report_raw: bytes, stage
         source_identity = f"{source_record.get('type')}#{source_record.get('signature')}"
         if method.get("source") != source_identity:
             raise PromoteError(f"source-gate report source identity mismatch for {var_id}")
-        if method.get("normalized_sha256") != source_record.get("normalized_sha256") or method.get("body_sha256") != source_record.get("body_sha256"):
+        if (
+            method.get("normalized_sha256") != source_record.get("normalized_sha256")
+            or method.get("body_sha256") != source_record.get("body_sha256")
+        ):
             raise PromoteError(f"source-gate report source fingerprints mismatch for {var_id}")
-        for report_key, record_key in (("semantic_rules", "semantic_rules"), ("reviewed_hazards", "hazards_reviewed")):
+        for report_key, record_key in (
+            ("semantic_rules", "semantic_rules"),
+            ("reviewed_hazards", "hazards_reviewed"),
+        ):
             observed = method.get(report_key)
             expected = record.get(record_key)
-            if not isinstance(observed, list) or sorted(str(item) for item in observed) != sorted(str(item) for item in expected if isinstance(expected, list)):
+            if not isinstance(observed, list) or sorted(str(item) for item in observed) != sorted(
+                str(item) for item in expected if isinstance(expected, list)
+            ):
                 raise PromoteError(f"source-gate report {report_key} mismatch for {var_id}")
         observed_hazards = method.get("observed_hazards")
         reviewed_hazards = method.get("reviewed_hazards")
-        if not isinstance(observed_hazards, list) or not isinstance(reviewed_hazards, list) or not set(map(str, observed_hazards)).issubset(set(map(str, reviewed_hazards))):
+        if (
+            not isinstance(observed_hazards, list)
+            or not isinstance(reviewed_hazards, list)
+            or not set(map(str, observed_hazards)).issubset(set(map(str, reviewed_hazards)))
+        ):
             raise PromoteError(f"source-gate report hazard closure mismatch for {var_id}")
         admitted[var_id] = method
 
@@ -270,7 +330,9 @@ def _validate_gate_report(report: Mapping[str, object], report_raw: bytes, stage
     return admitted
 
 
-def _destination_files(staged: Mapping[str, bytes], report_raw: bytes) -> dict[PurePosixPath, bytes]:
+def _destination_files(
+    staged: Mapping[str, bytes], report_raw: bytes
+) -> dict[PurePosixPath, bytes]:
     result: dict[PurePosixPath, bytes] = {
         SEMANTICS_PATH: staged[f"semantics/{materialize.SEMANTICS_FILE}"],
         GATE_PATH: staged["gate.json"],
@@ -286,12 +348,19 @@ def _destination_files(staged: Mapping[str, bytes], report_raw: bytes) -> dict[P
 def promote(staging_dir: Path, gate_report: Path, repo_root: Path) -> dict[str, object]:
     staged, materialization_manifest_raw, materialization_manifest = _validate_staging(staging_dir)
     report, report_raw = _read_json(gate_report, "source-gate report")
-    admitted = _validate_gate_report(report, report_raw, staged)
+    admitted = _validate_gate_report(
+        report,
+        report_raw,
+        staged,
+        materialization_manifest_raw,
+    )
 
     if repo_root.is_symlink() or not repo_root.is_dir():
         raise PromoteError(f"repository root must be a real non-symlink directory: {repo_root}")
     if not (repo_root / "vanilla").is_dir() or not (repo_root / "tools").is_dir():
-        raise PromoteError("repository root does not contain the expected vanilla/ and tools/ boundaries")
+        raise PromoteError(
+            "repository root does not contain the expected vanilla/ and tools/ boundaries"
+        )
 
     destination = _destination_files(staged, report_raw)
     for relative in list(destination) + [MANIFEST_PATH]:
@@ -341,7 +410,9 @@ def promote(staging_dir: Path, gate_report: Path, repo_root: Path) -> dict[str, 
         with manifest_path.open("xb") as stream:
             stream.write(manifest_raw)
     except OSError as error:
-        raise PromoteError(f"repository promotion write failed after successful preflight: {error}") from error
+        raise PromoteError(
+            f"repository promotion write failed after successful preflight: {error}"
+        ) from error
 
     return {
         "id": ID,
