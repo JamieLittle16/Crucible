@@ -31,9 +31,11 @@ human-authored semantic admission worksheet
         ↓
 r2c_world_state_admission_materialize.py
         ↓
-external source-free staging bundle
+external source-free staging bundle + content-addressed manifest
         ↓
-vanilla_source_gate.py against pinned Atlas
+r2c_world_state_source_gate.py against pinned Atlas
+        ↓
+generic Vanilla source gate + exact staging-manifest binding
         ↓
 JSON report with admitted=true
         ↓
@@ -42,7 +44,9 @@ r2c_world_state_admission_promote.py
 canonical committed VAR / SEM / gate / report / admitted-bundle manifest
 ```
 
-The source archive remains outside the repository throughout. Promotion consumes only source identities, fingerprints, reviewed hazards, authored semantic rules and the independent gate result.
+The source archive remains outside the repository throughout. Promotion consumes only source identities, fingerprints, reviewed hazards, authored semantic rules and the independently bound gate result.
+
+The R2C-specific source-gate wrapper is required because the generic Vanilla source gate directly binds the candidate gate and every VAR record, while the #220 materialization manifest additionally content-addresses the staged SEM Markdown. `r2c_world_state_source_gate.py` hashes that exact manifest into the source-gate report, so the complete source-free staging bundle—including SEM text—is inside the admitted cryptographic envelope.
 
 ## Canonical promotion destinations
 
@@ -72,6 +76,7 @@ Before the first repository byte is written, promotion requires all of the follo
 - `production_admitted=false` at the pre-gate stage;
 - positive VAR and SEM counts;
 - every manifest path, byte size and SHA-256 matches the staged file;
+- VAR records live directly under `records/` and their filenames equal their VAR ids;
 - no extra, missing or symlinked staged file exists.
 
 ### Independent source gate
@@ -83,6 +88,9 @@ The report must prove:
 - empty failure list;
 - minimum status `VAR_REVIEWED`;
 - exact staged `gate.json` SHA-256;
+- exact materialization id;
+- exact materialization-manifest SHA-256;
+- `source_free_bundle_bound=true`;
 - Minecraft `26.2`, protocol `776`, DataVersion `4903`;
 - exact pinned source-archive SHA-256 and fingerprint algorithm;
 - exact `r2c-world-projection` frontier;
@@ -91,6 +99,8 @@ The report must prove:
 - source identity and normalized/body fingerprints match the staged record;
 - SEM linkage matches the staged record;
 - reviewed hazards match and cover all currently observed Atlas hazards.
+
+Because the manifest hashes the staged SEM Markdown as well as the VAR/gate files, requiring the exact manifest digest closes the whole source-free bundle rather than only the method records.
 
 ### Repository destination
 
@@ -126,10 +136,9 @@ python3 tools/vanilla_atlas.py \
   verify-source "$SRC" \
   --lock vanilla/vanilla.lock.toml
 
-python3 tools/vanilla_source_gate.py \
+python3 tools/r2c_world_state_source_gate.py \
   --db "$DB" \
-  --gate "$STAGE/gate.json" \
-  --records "$STAGE/records" \
+  --staging-dir "$STAGE" \
   --output "$REPORT"
 
 python3 tools/r2c_world_state_admission_promote.py \
@@ -139,6 +148,12 @@ python3 tools/r2c_world_state_admission_promote.py \
 ```
 
 `.crucible/vanilla/atlas.sqlite` is the repository's stable historical local-cache path and remains intentionally uncommitted despite the Helve rename. The example source/Atlas paths are operator-local. They are not repository dependencies and must not be embedded in runtime code or committed evidence.
+
+## Durable committed-evidence verification
+
+Once the real admitted bundle is committed, `tools/r2c_world_state_admission_verify.py` re-hashes every promoted file against `r2c-world-state-admitted-bundle-manifest.json`. The dedicated `R2C World-State Admission Evidence` workflow runs this verifier automatically whenever the admitted evidence changes.
+
+This source-free verifier detects repository drift. It does **not** replace a new Atlas qualification when the source archive, selected source methods, fingerprints, hazards or SEM contract changes.
 
 ## Promotion manifest claim boundary
 
@@ -150,7 +165,7 @@ production_implementation_authorized = true
 runtime_behavior_implemented = false
 ```
 
-`source_admitted=true` means the reviewed SEM/VAR evidence passed the independent source gate.
+`source_admitted=true` means the reviewed SEM/VAR evidence passed the independent source gate with the exact materialization manifest bound into the gate report.
 
 `production_implementation_authorized=true` means Helve may now implement those admitted laws behind the semantic contract.
 
