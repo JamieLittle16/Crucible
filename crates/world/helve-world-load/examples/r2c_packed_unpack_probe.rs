@@ -18,15 +18,15 @@ enum Mode {
 impl Mode {
     const fn rounds(self) -> usize {
         match self {
-            Self::Smoke => 64,
-            Self::Full => 2048,
+            Self::Smoke => 1024,
+            Self::Full => 16_384,
         }
     }
 
     const fn warmups(self) -> usize {
         match self {
-            Self::Smoke => 16,
-            Self::Full => 256,
+            Self::Smoke => 128,
+            Self::Full => 1024,
         }
     }
 
@@ -79,15 +79,24 @@ fn run() -> Result<(), String> {
     }
     let checksum = checksum(&cell_major_out);
 
-    for _ in 0..config.mode.warmups() {
-        black_box(run_once(&words, &mut cell_major_out, &mut word_major_out)?);
+    for round in 0..config.mode.warmups() {
+        black_box(run_once(
+            &words,
+            &mut cell_major_out,
+            &mut word_major_out,
+            round % 2 == 0,
+        )?);
     }
 
     let mut cell_major_ns = Vec::with_capacity(config.mode.rounds());
     let mut word_major_ns = Vec::with_capacity(config.mode.rounds());
-    for _ in 0..config.mode.rounds() {
-        let (cell_ns, word_ns, observed) =
-            run_once(&words, &mut cell_major_out, &mut word_major_out)?;
+    for round in 0..config.mode.rounds() {
+        let (cell_ns, word_ns, observed) = run_once(
+            &words,
+            &mut cell_major_out,
+            &mut word_major_out,
+            round % 2 == 0,
+        )?;
         if observed != checksum {
             return Err("packed checksum changed across rounds".to_owned());
         }
@@ -98,7 +107,7 @@ fn run() -> Result<(), String> {
     let cell = summarize(cell_major_ns);
     let word = summarize(word_major_ns);
     println!(
-        "{{\"schema\":1,\"kind\":\"r2c-packed-unpack-loop-probe\",\"mode\":\"{}\",\"diagnostic_only\":true,\"performance_admitted\":false,\"rounds\":{},\"cells\":{},\"bits_per_entry\":{},\"checksum\":{},\"cell_major_ns\":{},\"word_major_ns\":{},\"p50_ratio_milli\":{},\"hardware\":{}}}",
+        "{{\"schema\":1,\"kind\":\"r2c-packed-unpack-loop-probe\",\"mode\":\"{}\",\"diagnostic_only\":true,\"performance_admitted\":false,\"alternating_order\":true,\"rounds\":{},\"cells\":{},\"bits_per_entry\":{},\"checksum\":{},\"cell_major_ns\":{},\"word_major_ns\":{},\"p50_ratio_milli\":{},\"hardware\":{}}}",
         config.mode.as_str(),
         config.mode.rounds(),
         CELLS,
@@ -116,16 +125,17 @@ fn run_once(
     words: &[u64; WORDS],
     cell_major_out: &mut Vec<u16>,
     word_major_out: &mut Vec<u16>,
+    cell_first: bool,
 ) -> Result<(u128, u128, u64), String> {
-    cell_major_out.clear();
-    let start = Instant::now();
-    decode_cell_major(black_box(words), cell_major_out)?;
-    let cell_ns = start.elapsed().as_nanos();
-
-    word_major_out.clear();
-    let start = Instant::now();
-    decode_word_major(black_box(words), word_major_out)?;
-    let word_ns = start.elapsed().as_nanos();
+    let (cell_ns, word_ns) = if cell_first {
+        let cell_ns = measure_cell_major(words, cell_major_out)?;
+        let word_ns = measure_word_major(words, word_major_out)?;
+        (cell_ns, word_ns)
+    } else {
+        let word_ns = measure_word_major(words, word_major_out)?;
+        let cell_ns = measure_cell_major(words, cell_major_out)?;
+        (cell_ns, word_ns)
+    };
 
     if cell_major_out != word_major_out {
         return Err("word-major decode diverged during measurement".to_owned());
@@ -133,6 +143,20 @@ fn run_once(
     let observed = checksum(black_box(word_major_out));
     black_box(cell_major_out);
     Ok((cell_ns, word_ns, observed))
+}
+
+fn measure_cell_major(words: &[u64; WORDS], out: &mut Vec<u16>) -> Result<u128, String> {
+    out.clear();
+    let start = Instant::now();
+    decode_cell_major(black_box(words), out)?;
+    Ok(start.elapsed().as_nanos())
+}
+
+fn measure_word_major(words: &[u64; WORDS], out: &mut Vec<u16>) -> Result<u128, String> {
+    out.clear();
+    let start = Instant::now();
+    decode_word_major(black_box(words), out)?;
+    Ok(start.elapsed().as_nanos())
 }
 
 fn decode_cell_major(words: &[u64; WORDS], out: &mut Vec<u16>) -> Result<(), String> {
