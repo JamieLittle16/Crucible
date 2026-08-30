@@ -194,12 +194,8 @@ fn run() -> Result<(), String> {
         ));
     }
 
-    let region_bytes = fs::read(&config.packed_region).map_err(|error| {
-        format!(
-            "could not read {}: {error}",
-            config.packed_region.display()
-        )
-    })?;
+    let region_bytes = fs::read(&config.packed_region)
+        .map_err(|error| format!("could not read {}: {error}", config.packed_region.display()))?;
     if region_bytes.len() > MAX_REGION_BYTES {
         return Err(format!(
             "packed benchmark region exceeds {MAX_REGION_BYTES} bytes: {}",
@@ -259,24 +255,9 @@ fn run() -> Result<(), String> {
     }
 
     let import = summarize(samples.iter().map(|sample| sample.import).collect());
-    let payload_decode = summarize(
-        samples
-            .iter()
-            .map(|sample| sample.payload_decode)
-            .collect(),
-    );
-    let state_resolve = summarize(
-        samples
-            .iter()
-            .map(|sample| sample.state_resolve)
-            .collect(),
-    );
-    let section_build = summarize(
-        samples
-            .iter()
-            .map(|sample| sample.section_build)
-            .collect(),
-    );
+    let payload_decode = summarize(samples.iter().map(|sample| sample.payload_decode).collect());
+    let state_resolve = summarize(samples.iter().map(|sample| sample.state_resolve).collect());
+    let section_build = summarize(samples.iter().map(|sample| sample.section_build).collect());
     let residual = summarize(samples.iter().map(|sample| sample.residual).collect());
 
     println!(
@@ -361,9 +342,7 @@ fn run_sample(
         .saturating_add(resolve.elapsed)
         .saturating_add(build.elapsed);
     let residual = import.checked_sub(measured).ok_or_else(|| {
-        format!(
-            "component timings exceed import total: import={import} components={measured}"
-        )
+        format!("component timings exceed import total: import={import} components={measured}")
     })?;
 
     Ok(Sample {
