@@ -1,6 +1,6 @@
 # R2C Packed Four-Bit Production A/B Policy
 
-Status: **revision 2 predeclared before rerun**  
+Status: **revision 2 satisfied; four-bit specialization selected for R2C production**  
 Target: **Minecraft: Java Edition 26.2 / DataVersion 4903**  
 Candidate: four-bit cell-major packed-state specialization in PR #228
 
@@ -10,7 +10,7 @@ This document records the production A/B decision rule separately from the bench
 
 The original controlled A/B result is preserved in `R2C_PACKED_FOUR_BIT_SPECIALIZATION_QUALIFICATION.md`. It is a real failed gate: whole packed import improved 13.4%, semantic no-copy improved 10.9%, uniform import changed by +0.9%, but the original supporting semantic threshold demanded at least 15%.
 
-Revision 2 changes the acceptance model **before any new A/B execution**. The reason is metric semantics, not the observed value.
+Revision 2 changed the acceptance model **before its rerun**. The reason was metric semantics, not the observed value.
 
 ## What the three metrics mean
 
@@ -33,11 +33,11 @@ It deliberately still includes costs that the four-bit arithmetic specialization
 - scratch preparation/materialization;
 - result/header/section transaction scaffolding.
 
-PR #226 independently measured the NBT/schema pieces and established that these fixed costs are non-zero. Therefore this metric should confirm that the optimized semantic layer improves materially, but it should **not** be required to reproduce a fixed fraction of the isolated loop microbenchmark reduction.
+PR #226 independently measured the NBT/schema pieces and established that these fixed costs are non-zero. Therefore this metric confirms that the optimized semantic layer improves materially, but it is not required to reproduce a fixed fraction of the isolated loop microbenchmark reduction.
 
 ### Uniform import — regression guard
 
-Uniform sections never enter the four-bit packed-state loop. This metric exists to detect code-layout/compiler or architectural regressions caused by the production change rather than to demonstrate a speedup.
+Uniform sections never enter the four-bit packed-state loop. This metric detects code-layout/compiler or architectural regressions caused by the production change rather than demonstrating a speedup.
 
 ## Why revision 1 was mis-specified
 
@@ -49,23 +49,23 @@ Revision 1 used:
 
 The 15% supporting threshold was stricter than the primary production-outcome threshold and had no independently established connection to the fraction of semantic no-copy time attributable to packed arithmetic. It effectively assumed a transfer ratio from the isolated loop benchmark into a larger mixed-cost metric.
 
-The first valid controlled A/B disproved that assumption while still showing both metrics improve substantially. The correct response is not to declare that run passed and not to fit a threshold to its 10.9% result. The original failure remains recorded.
+The first valid controlled A/B disproved that assumption while still showing both metrics improve substantially. The correct response was not to declare that run passed and not to fit a threshold to its 10.9% result. The original failure remains recorded.
 
 ## Revision 2 predeclared thresholds
 
-The next controlled A/B run must satisfy all three independently:
+Revision 2 required all three independently:
 
 1. **Complete packed import:** head/base p50-median ratio `<= 950` milli — at least **5% faster**.
 2. **Semantic no-copy:** head/base p50-median ratio `<= 950` milli — at least **5% faster**.
 3. **Uniform import:** head/base p50-median ratio `<= 1100` milli — no more than **10% slower**.
 
-The same **5% material-improvement floor** is used for both improvement metrics. This is intentionally not chosen near the previous 890-milli observation.
+The same **5% material-improvement floor** is used for both improvement metrics. This was intentionally not chosen near the previous 890-milli observation.
 
 The complete packed path remains the primary decision metric. The semantic metric establishes that the intended semantic/materialization layer improves rather than a coincidental unrelated component. The uniform metric remains a regression guard.
 
-## Methodology that does not change
+## Methodology that did not change
 
-Revision 2 does **not** change:
+Revision 2 did **not** change:
 
 - exact PR base/head identities;
 - separate base/head compilation;
@@ -81,11 +81,36 @@ Revision 2 does **not** change:
 - isolated qualification probe;
 - semantic/parity test suites.
 
-Only the interpretation of the supporting semantic threshold changes.
+Only the interpretation of the supporting semantic threshold changed.
 
-## Decision discipline
+## Revision 2 result
 
-A revision-2 pass is still insufficient by itself for production selection. PR #228 must also be green through:
+Workflow `33329719825`, job `99306022555`, policy revision `2`:
+
+| Metric | Base median p50 | Head median p50 | Ratio | Result |
+| --- | ---: | ---: | ---: | --- |
+| complete packed import | **25.223 us** | **22.637 us** | **897 milli** | **pass — 10.3% faster** |
+| semantic no-copy | **9.817 us** | **8.285 us** | **843 milli** | **pass — 15.7% faster** |
+| uniform import | **3.592 us** | **3.575 us** | **995 milli** | **pass — ~0.5% faster** |
+
+Raw process-level p50 samples:
+
+```text
+base packed    [26748, 25407, 24402, 24807, 24259, 26228, 25223]
+head packed    [24482, 23838, 21864, 22640, 22637, 21617, 21902]
+base uniform   [3592, 3583, 3594, 3733, 3494, 3565, 3650]
+head uniform   [3551, 3575, 3691, 3531, 3612, 3597, 3482]
+base semantic  [9903, 9860, 9788, 9857, 8670, 9817, 9811]
+head semantic  [8211, 8285, 8149, 8466, 8164, 8416, 8364]
+```
+
+The exact packed semantic checksum remained `15485907386658061717` across all base/head samples.
+
+All three revision-2 thresholds passed with margin. The result also reproduced the favorable direction of revision 1 rather than depending on one hosted execution.
+
+## Other production-selection gates
+
+The four-bit production implementation is additionally green through:
 
 - hermetic offline build/tests;
 - rustfmt;
@@ -94,10 +119,16 @@ A revision-2 pass is still insufficient by itself for production selection. PR #
 - exact out-of-range palette-index regression;
 - focused five-bit generic fallback regression;
 - unchanged seven-section Python/Rust differential digest;
-- independently regenerated official 26.2 real-save corpus and production-importer/oracle comparison.
+- independently regenerated official 26.2 real-save corpus;
+- production raw-Anvil importer vs official-save oracle;
+- normalized corpus reconstruction and cross-evidence identity checks.
 
-If revision 2 fails, the specialization is not selected. The threshold will not be moved again on the same evidence.
+## Decision
+
+**Revision 2 is satisfied and the four-bit specialization is selected for R2C production.**
+
+The threshold will not be revised again on this evidence. Future changes to the packed-state implementation, compiler/architecture, fixture, or A/B methodology trigger requalification rather than reinterpretation of this result.
 
 ## Non-claims
 
-A revision-2 pass would select the mechanism for R2C on the current evidence. It would not make hosted CI a target-hardware throughput guarantee, and `performance_admitted` remains false until Helve has controlled target-hardware qualification appropriate for such a claim.
+This selection does not make hosted CI a target-hardware throughput guarantee. `performance_admitted` remains false until Helve has controlled target-hardware qualification appropriate for such a claim.
