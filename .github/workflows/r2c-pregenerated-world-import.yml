@@ -71,6 +71,7 @@ jobs:
           rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_import_resident_bench.rs
           rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_packed_import_components.rs
           rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_packed_unpack_probe.rs
+          rustfmt --edition 2024 --check crates/world/helve-world-load/examples/r2c_packed_four_bit_probe.rs
 
       - name: Check import and load crates
         run: >-
@@ -146,6 +147,15 @@ jobs:
           --locked
           --package helve-world-load
           --example r2c_packed_unpack_probe
+          -- --smoke
+
+      - name: Four-bit specialization diagnostic smoke
+        run: >-
+          cargo run
+          --release
+          --locked
+          --package helve-world-load
+          --example r2c_packed_four_bit_probe
           -- --smoke
 
       - name: Gzip decode component diagnostic smoke
