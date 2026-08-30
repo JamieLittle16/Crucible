@@ -172,10 +172,7 @@ fn measure_runtime_generic(words: &[u64; WORDS], out: &mut Vec<u16>) -> Result<u
     Ok(start.elapsed().as_nanos())
 }
 
-fn measure_four_bit_specialized(
-    words: &[u64; WORDS],
-    out: &mut Vec<u16>,
-) -> Result<u128, String> {
+fn measure_four_bit_specialized(words: &[u64; WORDS], out: &mut Vec<u16>) -> Result<u128, String> {
     out.clear();
     let start = Instant::now();
     decode_four_bit_specialized(black_box(words), &PALETTE, out)
@@ -197,14 +194,15 @@ fn decode_runtime_generic(
         let raw_palette_index = (word >> shift) & mask;
         let palette_index =
             usize::try_from(raw_palette_index).map_err(|_| ProbeError::ArithmeticOverflow)?;
-        let state = palette
-            .get(palette_index)
-            .copied()
-            .ok_or(ProbeError::PaletteIndexOutOfRange {
-                cell,
-                palette_index,
-                palette_entries: palette.len(),
-            })?;
+        let state =
+            palette
+                .get(palette_index)
+                .copied()
+                .ok_or(ProbeError::PaletteIndexOutOfRange {
+                    cell,
+                    palette_index,
+                    palette_entries: palette.len(),
+                })?;
         out.push(state);
     }
     Ok(())
@@ -221,14 +219,15 @@ fn decode_four_bit_specialized(
         let raw_palette_index = (word >> shift) & FOUR_MASK;
         let palette_index =
             usize::try_from(raw_palette_index).map_err(|_| ProbeError::ArithmeticOverflow)?;
-        let state = palette
-            .get(palette_index)
-            .copied()
-            .ok_or(ProbeError::PaletteIndexOutOfRange {
-                cell,
-                palette_index,
-                palette_entries: palette.len(),
-            })?;
+        let state =
+            palette
+                .get(palette_index)
+                .copied()
+                .ok_or(ProbeError::PaletteIndexOutOfRange {
+                    cell,
+                    palette_index,
+                    palette_entries: palette.len(),
+                })?;
         out.push(state);
     }
     Ok(())
@@ -247,12 +246,7 @@ fn validate_error_equivalence(mut words: [u64; WORDS]) -> Result<(), String> {
     };
     let mut generic_out = Vec::with_capacity(CELLS);
     let mut specialized_out = Vec::with_capacity(CELLS);
-    let generic = decode_runtime_generic(
-        &words,
-        &PALETTE,
-        black_box(FOUR_BITS),
-        &mut generic_out,
-    );
+    let generic = decode_runtime_generic(&words, &PALETTE, black_box(FOUR_BITS), &mut generic_out);
     let specialized = decode_four_bit_specialized(&words, &PALETTE, &mut specialized_out);
     if generic != Err(expected) || specialized != Err(expected) {
         return Err(format!(
