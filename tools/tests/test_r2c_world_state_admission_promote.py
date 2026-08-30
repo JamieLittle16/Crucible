@@ -71,7 +71,9 @@ class PromotionFixture:
         (self.staging / "semantics").mkdir()
         (self.staging / self.record_path).write_bytes(self.record_raw)
         (self.staging / "gate.json").write_bytes(self.gate_raw)
-        (self.staging / "semantics" / materialize.SEMANTICS_FILE).write_bytes(self.semantics_raw)
+        (self.staging / "semantics" / materialize.SEMANTICS_FILE).write_bytes(
+            self.semantics_raw
+        )
         files = []
         for relative, raw in (
             (self.record_path, self.record_raw),
@@ -96,7 +98,8 @@ class PromotionFixture:
             "files": files,
             "next_step": "independent source gate",
         }
-        (self.staging / "manifest.json").write_bytes(pretty(manifest))
+        self.manifest_raw = pretty(manifest)
+        (self.staging / "manifest.json").write_bytes(self.manifest_raw)
 
     def _report_value(self) -> dict[str, object]:
         return {
@@ -106,6 +109,9 @@ class PromotionFixture:
             "gate_path": str(self.staging / "gate.json"),
             "gate_sha256": digest(self.gate_raw),
             "minimum_status": "VAR_REVIEWED",
+            "materialization_id": materialize.ID,
+            "materialization_manifest_sha256": digest(self.manifest_raw),
+            "source_free_bundle_bound": True,
             "source": {
                 "minecraft_version": "26.2",
                 "protocol_version": "776",
@@ -170,6 +176,9 @@ class WorldStateAdmissionPromotionTests(unittest.TestCase):
             self.assertFalse(manifest["runtime_behavior_implemented"])
             self.assertFalse(manifest["contains_official_source_text"])
             self.assertEqual(manifest["var_records"], 1)
+            self.assertEqual(
+                manifest["materialization_manifest_sha256"], digest(fixture.manifest_raw)
+            )
             self.assertEqual(summary["manifest_sha256"], digest(manifest_dest.read_bytes()))
 
     def test_non_admitted_gate_report_fails_closed(self) -> None:
@@ -187,6 +196,22 @@ class WorldStateAdmissionPromotionTests(unittest.TestCase):
             fixture.report_value["gate_sha256"] = "a" * 64
             fixture.rewrite_report()
             with self.assertRaisesRegex(promote.PromoteError, "exact staged gate"):
+                promote.promote(fixture.staging, fixture.report, fixture.repo)
+
+    def test_materialization_manifest_digest_drift_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = PromotionFixture(Path(tmp))
+            fixture.report_value["materialization_manifest_sha256"] = "a" * 64
+            fixture.rewrite_report()
+            with self.assertRaisesRegex(promote.PromoteError, "exact materialization manifest"):
+                promote.promote(fixture.staging, fixture.report, fixture.repo)
+
+    def test_unbound_source_free_bundle_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = PromotionFixture(Path(tmp))
+            fixture.report_value["source_free_bundle_bound"] = False
+            fixture.rewrite_report()
+            with self.assertRaisesRegex(promote.PromoteError, "source-free staging bundle"):
                 promote.promote(fixture.staging, fixture.report, fixture.repo)
 
     def test_record_digest_drift_fails_closed(self) -> None:
@@ -235,6 +260,28 @@ class WorldStateAdmissionPromotionTests(unittest.TestCase):
             fixture.report_value["required_methods"] = []
             fixture.rewrite_report()
             with self.assertRaisesRegex(promote.PromoteError, "exactly the staged VAR set"):
+                promote.promote(fixture.staging, fixture.report, fixture.repo)
+
+    def test_staged_var_filename_must_match_record_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = PromotionFixture(Path(tmp))
+            old_path = fixture.staging / fixture.record_path
+            wrong_relative = "records/VAR-NET-R2C-WORLD-WRONG-001.json"
+            wrong_path = fixture.staging / wrong_relative
+            old_path.rename(wrong_path)
+
+            manifest = json.loads(fixture.manifest_raw)
+            for entry in manifest["files"]:
+                if entry["path"] == fixture.record_path:
+                    entry["path"] = wrong_relative
+            fixture.manifest_raw = pretty(manifest)
+            (fixture.staging / "manifest.json").write_bytes(fixture.manifest_raw)
+            fixture.report_value["materialization_manifest_sha256"] = digest(
+                fixture.manifest_raw
+            )
+            fixture.rewrite_report()
+
+            with self.assertRaisesRegex(promote.PromoteError, "filename does not match record id"):
                 promote.promote(fixture.staging, fixture.report, fixture.repo)
 
 
