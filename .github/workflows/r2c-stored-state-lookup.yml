@@ -1,0 +1,114 @@
+name: R2C Stored State Lookup Qualification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "tools/official_state_data.py"
+      - "tools/qualify_state_data.py"
+      - "tools/state_data.py"
+      - "tools/stored_state_lookup.py"
+      - "tools/tests/test_state_data.py"
+      - "tools/tests/test_stored_state_lookup.py"
+      - "crates/world/helve-world-import/Cargo.toml"
+      - "crates/world/helve-world-import/src/state_lookup.rs"
+      - "crates/world/helve-world-import/src/generated_state_lookup.rs"
+      - "crates/world/helve-world-import/src/generated/**"
+      - "vanilla/state-data/**"
+      - "vanilla/vanilla.lock.toml"
+      - "Cargo.lock"
+      - ".github/workflows/r2c-stored-state-lookup.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: r2c-stored-state-lookup-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    name: Exact 26.2 stored-state lookup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: State and lookup generator regressions
+        run: |
+          python3 -m unittest tools.tests.test_state_data -v
+          python3 -m unittest tools.tests.test_stored_state_lookup -v
+
+      - name: Extract official runtime state identities
+        run: |
+          python3 tools/official_state_data.py \
+            --version 26.2 \
+            --output /tmp/26.2-block-states.raw.json
+
+      - name: Bind runtime identities to committed source qualification
+        run: |
+          python3 tools/qualify_state_data.py \
+            --runtime-data /tmp/26.2-block-states.raw.json \
+            --source-qualification vanilla/state-data/26.2-source-qualification.json \
+            --output /tmp/26.2-block-states.qualified.json
+
+      - name: Verify exact frozen state input
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          import state_data
+
+          qualified = json.loads(Path('/tmp/26.2-block-states.qualified.json').read_text())
+          manifest = json.loads(Path('vanilla/state-data/26.2-state-data-manifest.json').read_text())
+          actual = state_data.digest(qualified)
+          expected = manifest['input_digest']
+          if actual != expected:
+              raise SystemExit(
+                  f'qualified-state digest mismatch: expected {expected}, got {actual}'
+              )
+          if len(qualified['states']) != manifest['state_count']:
+              raise SystemExit('qualified-state count differs from frozen manifest')
+          print(
+              f"qualified state input PASS: states={len(qualified['states'])} digest={actual}"
+          )
+          PY
+
+      - name: Byte-verify committed exact lookup
+        run: |
+          python3 tools/stored_state_lookup.py verify \
+            /tmp/26.2-block-states.qualified.json \
+            --state-manifest vanilla/state-data/26.2-state-data-manifest.json \
+            --output crates/world/helve-world-import/src/generated_state_lookup.rs \
+            --binary-output crates/world/helve-world-import/src/generated/26.2-stored-state-lookup.bin \
+            --manifest vanilla/state-data/26.2-stored-state-lookup-manifest.json
+
+      - name: Rust exact lookup qualification
+        run: |
+          cargo fmt --package helve-world-import -- --check
+          cargo test --locked -p helve-world-import state_lookup
+          cargo clippy --locked -p helve-world-import --all-targets -- -D warnings
+
+      - name: Upload exact qualified state input
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: minecraft-26.2-qualified-state-input
+          path: /tmp/26.2-block-states.qualified.json
+          if-no-files-found: error
+          retention-days: 7

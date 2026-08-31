@@ -1,0 +1,61 @@
+{
+  "assignment_policy": "vanilla-identity",
+  "binary_bytes": 416665,
+  "binary_sha256": "da3050ec355349d4ec448be1a44d443dc57dc170d58c9b4f6cb17bd8e986f758",
+  "bucket_count": 8192,
+  "generator_version": "0.3.0",
+  "hash_algorithm": "fnv1a64-canonical-state-key-v1",
+  "layout": "mph-fnv1a64-splitmix64-structured-v2",
+  "lookup_digest": "fdc286b3dba002eba9bbed2d066e18ba196cdd7e7b7f040ad2b5e8f09fbb435a",
+  "max_displacement": 5086,
+  "max_properties_per_state": 7,
+  "name_count": 1196,
+  "offsets": {
+    "displacements": {
+      "bytes": 16384,
+      "offset": 0
+    },
+    "name_blob": {
+      "bytes": 30795,
+      "offset": 380488
+    },
+    "name_index": {
+      "bytes": 3588,
+      "offset": 375160
+    },
+    "pair_blob": {
+      "bytes": 5382,
+      "offset": 411283
+    },
+    "pair_index": {
+      "bytes": 1740,
+      "offset": 378748
+    },
+    "property_ids": {
+      "bytes": 163776,
+      "offset": 211384
+    },
+    "slots": {
+      "bytes": 65536,
+      "offset": 16384
+    },
+    "state_descriptors": {
+      "bytes": 129464,
+      "offset": 81920
+    }
+  },
+  "property_occurrences": 145577,
+  "property_pair_count": 435,
+  "rust_sha256": "9c0919a65cbc73ed43289f0e439c35f3a9214cf1645a4626901516f518214244",
+  "schema": 2,
+  "slot_count": 32768,
+  "slot_hash_algorithm": "splitmix64-xor-displacement-v1",
+  "state_count": 32366,
+  "state_data_generation_sha256": "79e5803347d6fb6f7ffccea4cef783998a1c6469ed869d26fa48ab5f2328cd3b",
+  "state_data_input_sha256": "2cbdfa96881be3f47dee8afdb5c4006e42cf2a718c440bf8ae76761a6acd31af",
+  "target": {
+    "data_version": 4903,
+    "minecraft_version": "26.2",
+    "protocol_version": 776
+  }
+}
