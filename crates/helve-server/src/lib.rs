@@ -17,6 +17,7 @@ mod r1x_image;
 mod r1x_server;
 mod r2b_playtest;
 mod r2b_server;
+mod r2c_publication;
 
 pub use login_server::{
     R1AConnectionExit, ServerSessionEpoch, ServerSessionEpochParseError,
