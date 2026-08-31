@@ -381,41 +381,49 @@ fn skip_zero_terminated(
         .ok_or(CompressedPayloadError::MalformedGzipHeader)
 }
 
-// Two table lookups per byte keep gzip CRC inexpensive without a third dependency or a 1 KiB table.
-const CRC32_NIBBLE_TABLE: [u32; 16] = [
-    0x0000_0000,
-    0x1db7_1064,
-    0x3b6e_20c8,
-    0x26d9_30ac,
-    0x76dc_4190,
-    0x6b6b_51f4,
-    0x4db2_6158,
-    0x5005_713c,
-    0xedb8_8320,
-    0xf00f_9344,
-    0xd6d6_a3e8,
-    0xcb61_b38c,
-    0x9b64_c2b0,
-    0x86d3_d2d4,
-    0xa00a_e278,
-    0xbdbd_f21c,
-];
+// Qualification showed that one byte lookup per input byte halves checksum cost on the packed
+// world-import fixture. The extra 960 bytes of static table data are cold-path code/data footprint;
+// no allocation, runtime initialization, dependency, or dynamic dispatch is introduced.
+const CRC32_POLYNOMIAL: u32 = 0xedb8_8320;
+const CRC32_BYTE_TABLE: [u32; 256] = make_crc32_byte_table();
+
+const fn make_crc32_byte_table() -> [u32; 256] {
+    let mut table = [0_u32; 256];
+    let mut index = 0_usize;
+    let mut seed = 0_u32;
+    while index < table.len() {
+        let mut crc = seed;
+        let mut bit = 0_u8;
+        while bit < 8 {
+            crc = if crc & 1 != 0 {
+                CRC32_POLYNOMIAL ^ (crc >> 1)
+            } else {
+                crc >> 1
+            };
+            bit += 1;
+        }
+        table[index] = crc;
+        index += 1;
+        seed += 1;
+    }
+    table
+}
 
 fn crc32(bytes: &[u8]) -> u32 {
     let mut crc = u32::MAX;
     for &byte in bytes {
-        crc ^= u32::from(byte);
-        let low = usize::from(crc.to_le_bytes()[0] & 0x0f);
-        crc = CRC32_NIBBLE_TABLE[low] ^ (crc >> 4);
-        let high = usize::from(crc.to_le_bytes()[0] & 0x0f);
-        crc = CRC32_NIBBLE_TABLE[high] ^ (crc >> 4);
+        let index = usize::from(crc.to_le_bytes()[0] ^ byte);
+        crc = CRC32_BYTE_TABLE[index] ^ (crc >> 8);
     }
     !crc
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{CompressedPayloadError, DeflateChunkPayloadDecoder, GZIP_FLAG_NAME, crc32};
+    use super::{
+        CompressedPayloadError, DeflateChunkPayloadDecoder, GZIP_FLAG_HEADER_CRC, GZIP_FLAG_NAME,
+        crc32,
+    };
     use crate::{ChunkCompression, ChunkPayloadDecoder};
 
     const PLAIN: &[u8] = b"Helve bounded codec fixture";
@@ -471,6 +479,32 @@ mod tests {
                 .expect("valid named gzip"),
             PLAIN
         );
+    }
+
+    #[test]
+    fn gzip_optional_header_crc_is_verified() {
+        let mut header = GZIP[..10].to_vec();
+        header[3] = GZIP_FLAG_HEADER_CRC;
+        let header_crc = crc32(&header).to_le_bytes();
+
+        let mut with_header_crc = Vec::with_capacity(GZIP.len() + 2);
+        with_header_crc.extend_from_slice(&header);
+        with_header_crc.extend_from_slice(&header_crc[..2]);
+        with_header_crc.extend_from_slice(&GZIP[10..]);
+
+        let mut decoder = DeflateChunkPayloadDecoder::new();
+        assert_eq!(
+            decoder
+                .decode(ChunkCompression::Gzip, &with_header_crc, 128)
+                .expect("valid gzip header CRC"),
+            PLAIN
+        );
+
+        with_header_crc[10] ^= 1;
+        assert!(matches!(
+            decoder.decode(ChunkCompression::Gzip, &with_header_crc, 128),
+            Err(CompressedPayloadError::GzipHeaderCrcMismatch { .. })
+        ));
     }
 
     #[test]
