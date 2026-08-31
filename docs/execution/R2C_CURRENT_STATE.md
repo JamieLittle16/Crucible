@@ -1,100 +1,148 @@
 # R2C Current State — Native World Projection
 
 Status: **live engineering ledger**  
-Target: **Minecraft: Java Edition 26.2 / protocol 776**  
+Target: **Minecraft: Java Edition 26.2 / protocol 776 / DataVersion 4903**  
 Canonical plan: `R2C_EXECUTION_PLAN.md`  
 Architecture: `../architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md`  
 Milestone qualification: `../qualification/R2C_WORLD_PROJECTION_QUALIFICATION.md`
 
-This file records the current implementation/evidence boundary so contributors do not infer milestone
-status from whichever branch or benchmark they happen to encounter. The canonical architecture and
-exit criteria remain in the documents above; this ledger answers **what is actually established now,
-what is only a qualified candidate, and what remains blocked**.
+This file records the implementation/evidence boundary actually present on `main`. The canonical architecture and exit criteria remain in the documents above; this ledger exists so contributors do not infer status from historical branches or benchmark experiments.
 
 ## Current boundary
 
-R2B is complete: the stock 26.2 client can reach replay-free Play and the same bounded connection
-driver remains live through the explicit `WorldProjection` handoff. R2C now owns the transition from
-that seam to Helve-owned visible terrain.
+R2B is complete: the stock 26.2 client reaches replay-free Play and the same bounded connection driver remains live through the explicit `WorldProjection` handoff.
 
-The active R2C engineering stack deliberately advances two mostly independent fronts:
+R2C has now crossed the world-import boundary. `main` owns resident chunk lifecycle, exact target block-state import, genuine-save differential evidence, import-to-residency qualification, selected cold-import optimizations, and target-neutral biome semantic storage. The remaining milestone work is concentrated in source-admitted biome/heightmap/light/world-wire law, semantic composition, projection, and publication.
 
 ```text
-source-backed 26.2 world-wire discovery/admission
-                    +
-resident world ownership / access substrate
-                    ↓
-pregenerated-world semantic import
-                    ↓
-biome / height / light semantic ownership
-                    ↓
+pinned 26.2 source review/admission
+          +
+resident world + exact stored-block import + biome substrate
+          ↓
+heightmap/light semantic ownership
+          ↓
 reference projection
-                    ↓
-production projection + same-driver publication
+          ↓
+production projection mechanism
+          ↓
+same-driver bounded publication
+          ↓
+stock-client native Helve world
 ```
 
-Packet/wire facts are not guessed merely because world-runtime work can proceed independently.
+Packet/wire facts are never guessed merely because the world-runtime substrate exists.
 
 ## Slice ledger
 
 | Slice | State | Evidence / boundary |
 | --- | --- | --- |
-| R2C.0 frontier/contracts | **ESTABLISHED** | R2C architecture, execution and qualification contracts exist; selected profile is pregenerated-world-first and worldgen is not a prerequisite. |
-| R2C.1 source discovery | **TOOLING QUALIFIED; SEMANTIC ADMISSION PENDING** | Source-review/discovery tooling is green, but the exact 26.2 chunk/light/world publication law still requires the pinned local Mojang source/runtime review and independent admission. No production packet fact may be inferred from captures. |
-| R2C.2 resident-world substrate | **IMPLEMENTATION CANDIDATE QUALIFIED; MERGE PENDING** | `DimensionInstance`, compact resident identity/generation handling, direct resolved access and stale-handle rejection are implemented on the R2C stack. The substrate is independent of networking and worker placement. |
-| R2C.2 resident qualification | **HOSTED QUALIFICATION ACTIVE; TARGET BASELINE PENDING** | Dedicated lifecycle/HOT-path qualification, generated-state integration tests, full 1/9/25/81-chunk structural matrix, retained hosted diagnostics and fail-closed target-hardware evidence tooling exist. Hosted timings are not production decision evidence. |
-| R2C.2S section production policy | **PENDING CONTROLLED SELECTION** | Existing section candidates remain correctness-qualified, but the production storage winner still requires controlled target-hardware/Pareto decision evidence. R2C must not select a representation by convenience. |
-| R2C.3 pregenerated-world import | **NEXT IMPLEMENTATION FRONTIER** | May build on the resident-world contract, but exact persisted fields/data-version assumptions must be source-backed and import correctness must be independently checkable. |
-| R2C.4 biome/height/light state | **PENDING PREREQUISITES** | Depends on admitted wire/persisted semantics and imported semantic state. |
-| R2C.5 reference projector | **PENDING PREREQUISITES** | Must consume transparent Helve semantic state and become the permanent correctness oracle before projection optimization. |
-| R2C.6 production projector | **NOT STARTED BY DESIGN** | Mechanism tournament is intentionally blocked until the reference path and representative corpus exist. |
-| R2C.7 same-driver publication | **NOT STARTED BY DESIGN** | Must preserve the existing R2B driver/egress/backpressure ownership and publish bounded world work. |
+| R2C.0 frontier/contracts | **ESTABLISHED** | Finite pregenerated-world-first profile, ownership boundaries and qualification contracts are frozen. World generation and movement-driven interest are not prerequisites for the first R2C gate. |
+| R2C.1 source review/admission | **PIPELINE IMPLEMENTED; ACTUAL ADMISSION PENDING** | Focused review, source-free finalization, human SEM authoring, manifest-bound Atlas gating, atomic promotion, committed-evidence verification and readiness diagnostics are CI-qualified. The pinned 26.2 biome/heightmap/light/world-wire review itself still must be completed; unadmitted packet IDs, packing, masks and ordering remain forbidden. |
+| R2C.2 resident-world substrate | **LANDED** | `DimensionInstance`, compact chunk generations, direct resolved access, unload/reload and stale-handle rejection are on `main`. |
+| R2C.2 resident qualification | **CORRECTNESS/HOSTED DIAGNOSTICS LANDED; TARGET PERFORMANCE ADMISSION SEPARATE** | Lifecycle/HOT-path qualification exists. Hosted numbers validate the harness and rough direction only; they are not target-hardware throughput claims. |
+| R2C.2S block-section production policy | **NOT FROZEN** | Direct, adaptive-local, fast-local and packed candidates are correctness-qualified, but M0.3D/issue #19 still requires controlled target-hardware CPU/tail/memory evidence and a committed Pareto decision. `SEC-REF-DIRECT` remains reference-only and must not silently become production storage. |
+| R2C.3 pregenerated-world block import | **LANDED AND GENUINE-SAVE DIFFERENTIAL GREEN** | Bounded Anvil framing, DEFLATE, schema-directed NBT, exact 26.2 persisted-state resolution and final section construction are on `main`. Independent official-save comparison currently covers 12,696 block-bearing sections / 52,002,816 block cells exactly. |
+| R2C.3 import → residency qualification | **LANDED** | Genuine official save is imported through resident admission with exact corpus identity, section/cell accounting and scratch high-water gates. A recent hosted run exercised 529 resident chunks; timing remains diagnostic rather than decision-grade. |
+| R2C.3 selected cold-import mechanisms | **LANDED** | Byte-table gzip CRC32 and four-bit packed-state specialization are selected by semantic + performance evidence. Generic five-bit-and-wider packed decoding remains intact and regression-covered. |
+| R2C.4 biome semantics | **TARGET-NEUTRAL SUBSTRATE LANDED** | One 4×4×4 biome lattice per logical chunk section with exact Y-Z-X semantics and signed section routing is on `main`; it deliberately assigns no target registry IDs or wire/persistence law. |
+| R2C.4 heightmap/light semantics | **BLOCKED ON SOURCE ADMISSION** | Production implementation must wait for the finite pinned source review and source-free SEM/gate promotion. Unsupported required state must fail closed rather than being fabricated. |
+| R2C.5 reference projector | **PENDING R2C.4 CLOSURE** | Must consume transparent Helve semantic state and become the permanent correctness oracle before projection optimization. |
+| R2C.6 production projector | **PENDING REFERENCE PATH + MECHANISM EVIDENCE** | Production projection/cache/snapshot choices remain a mechanism tournament, not protocol semantics. |
+| R2C.7 same-driver publication | **PENDING PROJECTOR** | Must continue the existing R2B driver/egress/backpressure ownership with bounded work and no second socket/egress queue. |
 | R2C.8 stock-client native world | **MILESTONE EXIT** | Complete only when an unmodified 26.2 client renders Helve-owned terrain with zero captured world/chunk/light replay. |
 
-## Active pull-request stack
+## Permanent evidence currently on `main`
 
-The current development stack is intentionally reviewable rather than one large R2C branch:
+### Stored-world semantic import
 
-- **#200 — resident-world substrate**: minimal permanent dimension/resident chunk ownership and access
-  contract. It has already reached a fully green repository workflow set on a clean squashed candidate
-  identity, but remains unmerged until explicitly accepted.
-- **#201 — R2C.1 source discovery/frontier tooling**: source-review machinery for the finite 26.2
-  world-projection frontier. Tooling is green; this is not the same thing as admitting the missing
-  Mojang semantic facts.
-- **#202 — resident-world qualification**: stacked on #200. Owns correctness integration, lifecycle and
-  HOT-path benchmark evidence, hosted diagnostic retention, target-run provenance and cross-process
-  evidence analysis.
+The production importer is compared against an independent normalized official-save oracle, not only against synthetic Rust fixtures. The current genuine-save gate covers:
 
-PR numbers are navigation aids, not evidence identities. Final milestone/selection records must cite
-immutable merged commits and retained artifact/digest identities.
+- 12,696 stored block-bearing sections;
+- 52,002,816 semantic block cells;
+- exact target state-data identity;
+- exact section coordinates and 4096-cell Y-Z-X ordering;
+- malformed/bounds/unknown-state fail-closed behavior.
 
-## R2C.2 resident-world evidence now required
+### Import through residency
 
-The resident-world substrate may not be described as performance-qualified from one local or hosted
-number. Its evidence ladder is defined in
-`../qualification/R2C_RESIDENT_WORLD_QUALIFICATION.md`:
+The permanent qualification path exercises:
 
 ```text
-hosted diagnostic
-  -> explicit target-run artifact
-  -> >=3 matching independent target processes
-  -> mechanical cross-process report
-  -> human baseline review / later decision
+preloaded official Anvil region bytes
+ -> validated RegionView
+ -> bounded decompression
+ -> schema-directed semantic import
+ -> final qualification section construction
+ -> install_imported_chunk
+ -> DimensionInstance residency
 ```
 
-Permanent correctness facts include:
+CI also requires importer/decompressor scratch to stop growing after warm-up and makes dense/reference materialization costs explicit rather than hiding them inside an aggregate timing number.
 
-- resident discovery returns the exact live generation handle;
-- unload/reload advances generation identity;
-- stale generations fail closed;
-- generated 26.2 block-state IDs survive real mutation/revision paths;
-- signed/negative chunk coordinates are exercised;
-- repeated directory routing and resolve-once HOT access are semantically identical;
-- ordinary bounded HOT work can retain direct `LiveChunkCore` access rather than re-entering the sparse
-  lifecycle directory per block read.
+### Selected importer optimizations
 
-The last point is an architectural contract. Diagnostic timing may illustrate its cost, but semantic
-equivalence plus the counted routing operations are the permanent CI evidence.
+Two cold-path mechanisms have crossed Helve's benchmark-first gate:
+
+1. **256-entry byte-table CRC32** for mandatory gzip checksum verification. It preserves CRC/FHCRC/ISIZE/framing failure semantics and adds no allocation, dependency, unsafe code or runtime initialization.
+2. **Four-bit cell-major packed-state specialization**. It branches once per section, keeps checked palette access and exact error indices, and retains the generic non-spanning path for five-bit and wider palettes with a focused 17-entry regression.
+
+The detailed selection evidence and requalification triggers live under `docs/qualification/`.
+
+### Biome semantic substrate
+
+World code now has a target-neutral biome contract and direct reference implementation:
+
+- 64 biome samples per logical section;
+- exact local Y-Z-X index law;
+- contiguous signed logical-section routing;
+- static dispatch and no target registry/wire identity in world storage;
+- range errors rather than implicit normalization.
+
+This is semantic storage only. It is not evidence for the 26.2 persisted or clientbound biome codec.
+
+## R2C.1 source-admission boundary
+
+The committed tooling can take the finite selected world-state review through:
+
+```text
+bounded source discovery/review pack
+ -> reviewer-completed selected/rejected/hazard closure
+ -> source-free finalized review result
+ -> structured human-authored SEM worksheet
+ -> source-free materialization bundle
+ -> manifest-bound independent Vanilla Atlas gate
+ -> atomic repository promotion
+ -> source-free committed-bundle verification
+```
+
+The tooling is deliberately incapable of converting method names, call graphs or free-form observations into semantic rules. Actual reviewer-authored source closure remains required.
+
+The pinned source identity for the current R2C frontier is:
+
+- Minecraft 26.2;
+- protocol 776;
+- DataVersion 4903;
+- source archive SHA-256 `1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750`.
+
+Until promotion succeeds for the relevant groups, production code may not invent biome registry IDs, heightmap identities/packing, light masks/arrays, clientbound packet IDs, or publication ordering.
+
+## R2C.2S section-policy gate
+
+The section representation laboratory is still an independent blocker for the final production composition. The current registry explicitly has **no production winner frozen**.
+
+The final R2C server must therefore not confuse the transparent direct/reference section used by qualification with the eventual production storage mechanism. M0.3D/issue #19 owns the selection and requires controlled target-hardware CPU/tail/memory/allocation evidence over realistic workloads and a real vanilla-derived corpus.
+
+This gate can advance in parallel with R2C.1/R2C.4 source work.
+
+## Immediate next engineering moves
+
+1. Complete and independently admit the finite pinned R2C source review required for biome/heightmap/light and selected world publication law. Do not infer missing facts from captures or implementation names.
+2. In parallel, finish the M0.3D section Pareto decision using the existing target-run/evidence tooling rather than creating another benchmark stack.
+3. Once the required source groups are promoted, implement heightmap/light semantic ownership as Helve-native world state with reference/differential tests first.
+4. Build R2C.5 as a transparent reference projector from semantic chunk state into admitted 26.2 projection law.
+5. Only then qualify optimized projection/cache/snapshot candidates and select production mechanisms by whole-path cost.
+6. Integrate the selected projector into the existing R2B `WorldProjection` handoff and bounded connection driver; no second egress path is permitted.
+7. Close R2C with an unmodified 26.2 stock-client test that renders the Helve-owned pregenerated world with zero captured world/chunk/light replay.
 
 ## Evidence classes: do not conflate them
 
@@ -102,38 +150,26 @@ equivalence plus the counted routing operations are the permanent CI evidence.
 | --- | --- | --- |
 | unit/integration test | local semantic/structural invariant | vanilla parity or production performance |
 | source/runtime admission | exact selected vanilla law | fastest Helve mechanism |
-| hosted benchmark diagnostic | harness health, semantic equivalence, rough direction | production threshold or winner |
-| qualified target-run artifact | controlled single-process measurement with provenance | cross-process stability or winner |
+| hosted benchmark diagnostic | harness health, semantic equivalence, rough direction | target-hardware throughput guarantee |
+| qualified target-run artifact | controlled single-process measurement with provenance | cross-process stability or automatic winner |
 | cross-process report | consistent target-hardware distribution/direction | automatic performance admission |
 | decision record | selected production mechanism/profile after review | future validity after a requalification trigger |
 
-A lower class never substitutes for a higher one.
+A lower evidence class never substitutes for a higher one.
 
-## Immediate next engineering moves
+## Explicitly not yet proved
 
-1. Keep #202 green, including the target-runner and evidence-combiner tests.
-2. Freeze #202 to one clean squashed candidate commit and rerun the exact identity before merge.
-3. Complete the pinned R2C.1 Mojang source review and materialize source-free admitted world-wire facts;
-   do not block independent importer/runtime work on guesses.
-4. Begin R2C.3 with a transparent typed/reference pregenerated-world import path before optimizing NBT
-   decoding/storage construction.
-5. Give the importer its own semantic digest, malformed-input/bounds tests, allocation/copy accounting
-   and controlled performance protocol before any streaming optimization is selected.
-6. Preserve the section-policy gate: importer/reference work may use the `BlockSection` contract, but
-   the final R2C production composition must not silently freeze an unselected storage candidate.
+Current `main` does **not** yet prove:
 
-## Things that are explicitly not yet proved
-
-Current R2C resident-world evidence does **not** prove:
-
-- exact 26.2 chunk/light packet bodies or ordering;
-- NBT/Anvil import correctness for the selected R2C world;
-- biome/heightmap/light semantic ownership;
-- chunk serialization/publication throughput;
-- collision or walkability;
-- persistence/save/restart behaviour;
-- final listener/executor/region ownership topology;
+- complete admitted 26.2 chunk/light packet bodies or publication ordering;
+- persisted/clientbound biome codec parity;
+- selected heightmap identities/values/packing;
+- sky/block light mask/array semantics;
+- production block-section representation selection;
+- reference or optimized native chunk projection;
+- chunk publication throughput on target hardware;
+- movement/collision/walkability;
+- persistence/save/restart behavior;
 - R2C milestone completion.
 
-Those claims receive evidence only at their own layer. This keeps progress real: a green lower-level
-benchmark cannot accidentally turn into a claim that the server has already solved the next subsystem.
+Those claims become valid only at their own evidence gates.

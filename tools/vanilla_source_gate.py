@@ -17,7 +17,10 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-import vanilla_atlas as atlas
+try:
+    import vanilla_atlas as atlas
+except ModuleNotFoundError:
+    from tools import vanilla_atlas as atlas
 
 SCHEMA = 1
 
