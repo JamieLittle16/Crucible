@@ -8,6 +8,7 @@
 use std::convert::Infallible;
 
 use helve_connection_driver::DriverError;
+use helve_publication_core::{PublicationCursor, PublicationStep, publish_one};
 
 use crate::r2b_server::{R2bPlayError, R2bPlaySession};
 
@@ -35,6 +36,34 @@ impl R2bPlaySession {
             .queue_batch::<Infallible, B>(bodies)
             .map_err(|error| map_publication_driver_error(&error))
     }
+
+    /// Services at most one body from an ordered immutable Play publication.
+    ///
+    /// The caller owns both the immutable publication and the allocation-free one-word cursor. This
+    /// wrapper deliberately reuses [`helve_publication_core::publish_one`] rather than introducing an
+    /// R2C-specific cursor or queue. A successful call admits at most one already target-encoded
+    /// body through the exact continuing Play driver and advances `cursor` exactly once. Egress
+    /// backpressure or frame rejection leaves both the cursor and existing egress unchanged.
+    ///
+    /// This is the fairness-oriented path for a potentially large world publication. Atomic groups
+    /// that genuinely require all-or-nothing egress admission may use
+    /// [`Self::admit_play_publication_batch`] instead.
+    ///
+    /// # Errors
+    ///
+    /// Returns the existing fail-closed Play/driver error without advancing `cursor` when the next
+    /// body violates framing or bounded-egress capacity.
+    pub fn service_play_publication_one<B>(
+        &mut self,
+        publication: &[B],
+        cursor: &mut PublicationCursor,
+    ) -> Result<PublicationStep, R2bPlayError>
+    where
+        B: AsRef<[u8]>,
+    {
+        publish_one::<Infallible, B>(publication, cursor, &mut self.driver)
+            .map_err(|error| map_publication_driver_error(&error))
+    }
 }
 
 fn map_publication_driver_error(error: &DriverError<Infallible>) -> R2bPlayError {
@@ -58,6 +87,7 @@ mod tests {
 
     use helve_connection_core::ConnectionLimits;
     use helve_connection_driver::ConnectionDriver;
+    use helve_publication_core::{PublicationCursor, PublicationStep};
     use helve_session_core::LivenessState;
     use helve_target_26_2::r2b::TeleportTransaction;
 
@@ -116,5 +146,59 @@ mod tests {
         assert!(matches!(error, R2bPlayError::Buffer(_)));
         assert_eq!(session.pending_play_egress(), before);
         assert_eq!(session.queued_egress(), before.len());
+    }
+
+    #[test]
+    fn publication_cursor_queues_at_most_one_body_per_service_opportunity() {
+        let publication = [vec![0x10, 1, 2], vec![0x11, 3, 4]];
+        let mut cursor = PublicationCursor::new();
+        let mut session = session(128);
+
+        assert_eq!(
+            session.service_play_publication_one(&publication, &mut cursor),
+            Ok(PublicationStep::Queued {
+                index: 0,
+                body_bytes: 3,
+            })
+        );
+        assert_eq!(cursor.next_index(), 1);
+        let first_egress = session.pending_play_egress().to_vec();
+
+        assert_eq!(
+            session.service_play_publication_one(&publication, &mut cursor),
+            Ok(PublicationStep::Queued {
+                index: 1,
+                body_bytes: 3,
+            })
+        );
+        assert_eq!(cursor.next_index(), 2);
+        assert!(cursor.is_complete(&publication));
+        assert!(session.pending_play_egress().starts_with(&first_egress));
+
+        assert_eq!(
+            session.service_play_publication_one(&publication, &mut cursor),
+            Ok(PublicationStep::Complete)
+        );
+        assert_eq!(cursor.next_index(), 2);
+    }
+
+    #[test]
+    fn publication_cursor_backpressure_does_not_advance_progress() {
+        let publication = [vec![0x10, 1, 2, 3, 4], vec![0x11, 5, 6, 7, 8]];
+        let mut cursor = PublicationCursor::new();
+        let mut session = session(10);
+
+        session
+            .service_play_publication_one(&publication, &mut cursor)
+            .expect("first framed body fits");
+        assert_eq!(cursor.next_index(), 1);
+        let before = session.pending_play_egress().to_vec();
+
+        let error = session
+            .service_play_publication_one(&publication, &mut cursor)
+            .expect_err("second framed body observes bounded backpressure");
+        assert!(matches!(error, R2bPlayError::Buffer(_)));
+        assert_eq!(cursor.next_index(), 1);
+        assert_eq!(session.pending_play_egress(), before);
     }
 }
