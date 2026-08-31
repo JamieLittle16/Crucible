@@ -27,10 +27,7 @@ impl R2bPlaySession {
     ///
     /// Returns the existing fail-closed Play/driver error when the batch violates framing or egress
     /// bounds. Rejection does not partially append the batch.
-    pub fn admit_play_publication_batch<B>(
-        &mut self,
-        bodies: &[B],
-    ) -> Result<(), R2bPlayError>
+    pub fn admit_play_publication_batch<B>(&mut self, bodies: &[B]) -> Result<(), R2bPlayError>
     where
         B: AsRef<[u8]>,
     {
@@ -89,11 +86,7 @@ mod tests {
 
     #[test]
     fn publication_batch_reuses_continuing_driver_and_preserves_body_order() {
-        let bodies = vec![
-            vec![0x11, 0xAA],
-            vec![0x22, 0xBB, 0xCC],
-            vec![0x33],
-        ];
+        let bodies = vec![vec![0x11, 0xAA], vec![0x22, 0xBB, 0xCC], vec![0x33]];
         let expected = independently_framed(128, &bodies);
         let mut session = session(128);
 
