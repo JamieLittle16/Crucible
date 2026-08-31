@@ -1,0 +1,67 @@
+name: R2C Pregenerated World Import Qualification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "crates/world/helve-world-import/**"
+      - "docs/qualification/R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md"
+      - "tools/stored_state_lookup.py"
+      - "tools/tests/test_stored_state_lookup.py"
+      - "tools/vanilla_section_extractor.py"
+      - "tools/tests/test_vanilla_section_extractor.py"
+      - ".github/workflows/r2c-pregenerated-world-import.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+  workflow_dispatch:
+
+concurrency:
+  group: r2c-pregenerated-world-import-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  import-boundary:
+    name: Bounded stored-world import transaction
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: Format import crate
+        run: cargo fmt --package helve-world-import -- --check
+
+      - name: Check import crate
+        run: cargo check --package helve-world-import --all-targets --locked
+
+      - name: Clippy import crate
+        run: cargo clippy --package helve-world-import --all-targets --locked -- -D warnings
+
+      - name: Rust import qualification
+        run: cargo test --package helve-world-import --locked
+
+      - name: Cold stored-state lookup generator regressions
+        run: python3 -m unittest tools.tests.test_stored_state_lookup -v
+
+      # This is intentionally independent implementation evidence. The Python extractor uses a
+      # transparent generic NBT oracle; production Rust uses a bounded schema cursor. Agreement will
+      # later be checked at the normalized semantic corpus boundary rather than by sharing parser code.
+      - name: Existing vanilla-save oracle regression
+        run: python3 -m unittest tools.tests.test_vanilla_section_extractor -v
+
+      - name: Python syntax
+        run: >-
+          python3 -m py_compile
+          tools/stored_state_lookup.py
+          tools/tests/test_stored_state_lookup.py
+          tools/vanilla_section_extractor.py
+          tools/tests/test_vanilla_section_extractor.py
