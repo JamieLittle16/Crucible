@@ -74,6 +74,7 @@ class R2cWorldStateSourceReviewBundleTests(unittest.TestCase):
             self.assertEqual(result["unique_candidate_methods"], 7)
             self.assertEqual(result["unique_source_records"], 5)
             self.assertEqual(result["source_excerpt_bytes"], 1234)
+            self.assertEqual(result["archive_regular_files"], 4)
             self.assertFalse(result["production_admitted"])
             self.assertTrue(result["contains_official_source_text"])
 
@@ -83,6 +84,78 @@ class R2cWorldStateSourceReviewBundleTests(unittest.TestCase):
             self.assertIn("world-state-review/review-pack.json", names)
             self.assertIn("world-state-review/worksheet.json", names)
             self.assertIn("world-state-review/manifest.json", names)
+
+    def test_packaging_failure_never_publishes_partial_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "bundle.tar.gz"
+
+            def fake_discovery_prepare(
+                output_dir: Path,
+                plan: Path,
+                db: Path,
+                source: Path,
+                lock: Path,
+            ) -> dict[str, object]:
+                del plan, db, source, lock
+                output_dir.mkdir()
+                (output_dir / "discovery.json").write_text("{}\n", encoding="utf-8")
+                return {
+                    "discovery_sha256": "d" * 64,
+                    "unique_candidate_methods": 1,
+                }
+
+            def fake_review_build(
+                discovery_path: Path,
+                source: Path,
+                lock: Path,
+                output_dir: Path,
+            ) -> dict[str, object]:
+                del discovery_path, source, lock
+                output_dir.mkdir()
+                (output_dir / "review-pack.json").write_text("{}\n", encoding="utf-8")
+                (output_dir / "worksheet.json").write_text("{}\n", encoding="utf-8")
+                (output_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
+                return {
+                    "review_pack_sha256": "r" * 64,
+                    "worksheet_sha256": "w" * 64,
+                    "unique_source_records": 1,
+                    "source_excerpt_bytes": 1,
+                }
+
+            original_add = tarfile.TarFile.add
+            calls = 0
+
+            def failing_add(self: tarfile.TarFile, *args: object, **kwargs: object) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    raise OSError("synthetic packaging failure")
+                original_add(self, *args, **kwargs)
+
+            with (
+                mock.patch.object(bundle.discovery, "prepare", side_effect=fake_discovery_prepare),
+                mock.patch.object(bundle.packer, "build", side_effect=fake_review_build),
+                mock.patch.object(tarfile.TarFile, "add", new=failing_add),
+                self.assertRaisesRegex(OSError, "synthetic packaging failure"),
+            ):
+                bundle.build_bundle(
+                    output=output,
+                    db=root / "atlas.sqlite",
+                    source=root / "mc-src.zip",
+                    lock=root / "vanilla.lock.toml",
+                    plan=root / "plan.json",
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_verify_archive_rejects_empty_tar(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "empty.tar.gz"
+            with tarfile.open(output, mode="w:gz"):
+                pass
+            with self.assertRaisesRegex(bundle.BundleError, "missing members"):
+                bundle._verify_archive(output)
 
 
 if __name__ == "__main__":
