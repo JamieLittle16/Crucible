@@ -7,16 +7,22 @@ on:
       - tools/qualify_state_data.py
       - tools/official_section_world.py
       - tools/vanilla_section_extractor.py
+      - tools/r2c_genuine_save_differential.py
       - tools/section_corpus.py
       - tools/section_corpus_import_evidence.py
       - tools/tests/test_vanilla_section_extractor.py
+      - tools/tests/test_r2c_genuine_save_differential.py
       - tools/tests/test_section_corpus.py
       - tools/tests/test_section_corpus_import_evidence.py
       - crates/qualification/helve-section-qualification/src/bin/section_bench/**
       - crates/data/helve-generated/**
       - crates/world/helve-world-contract/**
+      - crates/world/helve-world-import/**
       - crates/world/helve-world-reference/**
       - crates/world/helve-world-section/**
+      - vendor/adler2-2.0.1/**
+      - vendor/miniz_oxide-0.8.9/**
+      - .cargo/config.toml
       - vanilla/state-data/**
       - vanilla/vanilla.lock.toml
       - Cargo.toml
@@ -52,6 +58,7 @@ jobs:
           python3 -m unittest discover -s tools/tests -p 'test_section_corpus.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_vanilla_section_extractor.py' -v
           python3 -m unittest discover -s tools/tests -p 'test_section_corpus_import_evidence.py' -v
+          python3 -m unittest discover -s tools/tests -p 'test_r2c_genuine_save_differential.py' -v
 
       - name: Extract official runtime state identities
         run: |
@@ -102,6 +109,22 @@ jobs:
             --dimension minecraft:overworld \
             --output /tmp/26.2-spawn-sections.corpus \
             --inventory /tmp/26.2-spawn-sections.inventory.json
+
+      - name: Build production raw-Anvil fact emitter
+        run: >-
+          cargo build --release --offline --locked
+          --package helve-world-import
+          --bin r2c_import_section_facts
+
+      - name: Compare production importer with official-save oracle
+        run: |
+          python3 tools/r2c_genuine_save_differential.py \
+            --world /tmp/helve-section-world/world \
+            --corpus /tmp/26.2-spawn-sections.corpus \
+            --rust-emitter target/release/r2c_import_section_facts \
+            --work-dir /tmp/r2c-genuine-save-differential \
+            --dimension minecraft:overworld \
+            --evidence /tmp/26.2-production-import-differential.json
 
       - name: Independently validate normalized corpus
         run: |
@@ -156,6 +179,9 @@ jobs:
           inventory = json.loads(Path('/tmp/26.2-spawn-sections.inventory.json').read_text())
           corpus = json.loads(Path('/tmp/26.2-spawn-sections.manifest.json').read_text())
           rust = json.loads(Path('/tmp/26.2-spawn-sections.rust-import.json').read_text())
+          production_import = json.loads(
+              Path('/tmp/26.2-production-import-differential.json').read_text()
+          )
           with Path('vanilla/vanilla.lock.toml').open('rb') as handle:
               lock = tomllib.load(handle)
           state_manifest = json.loads(
@@ -185,13 +211,25 @@ jobs:
               raise SystemExit('Rust importer generation digest mismatch')
           if rust['state_data_input_sha256'] != state_manifest['input_digest']:
               raise SystemExit('Rust importer input digest mismatch')
+          if production_import['policy'] != 'production-anvil-vs-python-corpus-v1':
+              raise SystemExit('unexpected production importer differential policy')
+          if production_import['dimension'] != 'minecraft:overworld':
+              raise SystemExit('production importer differential dimension drifted')
+          if production_import['section_count'] != corpus['section_count']:
+              raise SystemExit('production importer did not compare every corpus section')
+          if production_import['cell_count'] != corpus['total_cells']:
+              raise SystemExit('production importer did not compare every corpus cell')
+          if production_import['corpus_sha256'] != corpus['corpus_sha256']:
+              raise SystemExit('production importer compared a different corpus identity')
 
           print(
               'official section corpus PASS: '
               f"sections={corpus['section_count']} "
+              f"cells={corpus['total_cells']} "
               f"states={corpus['distinct_state_ids']} "
               f"inventory={inventory['inventory_sha256']} "
-              f"corpus={corpus['corpus_sha256']}"
+              f"corpus={corpus['corpus_sha256']} "
+              f"production_semantic={production_import['semantic_sha256']}"
           )
           PY
 
@@ -204,6 +242,7 @@ jobs:
             /tmp/26.2-spawn-sections.inventory.json
             /tmp/26.2-spawn-sections.manifest.json
             /tmp/26.2-spawn-sections.rust-import.json
+            /tmp/26.2-production-import-differential.json
             /tmp/26.2-spawn-sections.decision-rejection.log
             /tmp/26.2-spawn-sections.corpus
           if-no-files-found: error

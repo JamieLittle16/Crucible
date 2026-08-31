@@ -1,6 +1,6 @@
 # R2C Pregenerated World Import Qualification
 
-Status: **R2C.3 bounded framing + exact 26.2 state resolver + bounded gzip/zlib semantic transaction qualified; real-save differential, resident install and whole-import performance decision pending**  
+Status: **R2C.3 block-state import qualified through genuine official 26.2 save differential; resident install and whole-import performance decision pending**  
 Target: **Minecraft: Java Edition 26.2 / DataVersion 4903**  
 Architecture: `../architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md`  
 Execution plan: `../execution/R2C_EXECUTION_PLAN.md`
@@ -217,8 +217,9 @@ Codec qualification currently establishes:
 - malformed/truncated/checksum/unsupported-wrapper regressions;
 - end-to-end zlib/gzip semantic import on deterministic 26.2 NBT fixtures.
 
-LZ4 remains explicitly unadmitted. Real-save differential evidence and whole-import target-hardware
-cost still remain before R2C.3 is considered fully production-selected.
+LZ4 remains explicitly unadmitted. Gzip/zlib semantic correctness is additionally exercised by the
+genuine official-save differential below. Whole-import target-hardware cost still remains before the
+codec/scratch policy is considered production-selected for performance.
 
 ## Target block-state resolver
 
@@ -238,27 +239,31 @@ so persisted-world compatibility adds no ordinary block-access tax.
 
 ## Differential qualification
 
-Synthetic unit tests are necessary but not sufficient. With the generated target resolver and gzip/zlib mechanism now qualified, the next permanent gate
-feeds the same pinned 26.2 region corpus to:
+The permanent differential boundary is documented in `R2C_IMPORT_DIFFERENTIAL.md`.
 
-```text
-Python qualification oracle ─┐
-                             ├─> normalized semantic digest / selected chunk facts must match
-Rust production importer ────┘
-```
+The synthetic gate compares independent Python and production Rust implementations over sector-aligned
+fixtures covering positive/negative coordinates, gzip/zlib/uncompressed records, an external payload,
+uniform sections and both four-bit and forced five-bit non-spanning packed palettes. It compares all
+4096 cells in every block-bearing section.
 
-Compare semantic facts, not internal byte/object layouts:
+The genuine gate then generates an actual overworld with the pinned official Minecraft Java 26.2
+server and fixed seed `6842363988700132471`. The same raw `.mca` files are independently decoded by the
+Python oracle and the production Rust importer. `Section Corpus Probe` run 373 qualified:
 
-- dimension and chunk position;
-- stored section Y lattice/presence;
-- all 4096 dense block-state IDs per imported block section;
-- biome IDs once admitted;
-- height/light semantic state once admitted;
-- selected block-entity semantic payloads once admitted.
+- `4` actual overworld region files;
+- `12,696` block-bearing sections;
+- `52,002,816` exact semantic cells;
+- `81` distinct dense state IDs observed;
+- semantic SHA-256 `2b012ebf055e7eecec15ee503aba6103a456bb78fe199a9fe57dac8bc4d7163f`;
+- normalized corpus SHA-256 `934b4d641fe016dcd51bebd6cf0dc05566719f6d26275fc3eae3b9e1e213b883` for that generated-save evidence run.
 
-The corpus must include negative coordinates, varied palette cardinalities, empty/single-state sections,
-multiple region files, inline/external payloads and minimized malformed fixtures for every fail-closed
-rule.
+The workflow validates every actual region, including regions with zero oracle block-bearing sections,
+so Rust-only extra output cannot hide. It also proves the official runtime state universe still binds
+to the committed source-qualified state data and that every compared section/cell belongs to the same
+corpus identity.
+
+This closes the block-state real-save differential for the admitted R2C.3 profile. Biome, height/light
+and selected block-entity semantics remain later admission work and are not implied by this result.
 
 ## Hostile-input qualification
 
@@ -314,7 +319,8 @@ an improved whole transaction without adding architecture tax to resident HOT ac
 | --- | --- | --- |
 | synthetic Rust unit tests | parser/transaction bounds and local schema invariants | real-save parity |
 | Python oracle tests | independent persisted-format interpretation | production Rust correctness by itself |
-| pinned cross-language corpus | normalized semantic agreement | production throughput |
+| synthetic cross-language differential | independent agreement on selected real-format packing/compression shapes | naturally emitted writer coverage |
+| genuine official-save cross-language differential | normalized block-state semantic agreement on actual 26.2 writer output | biome/light/height/block-entity parity or production throughput |
 | hosted whole-import benchmark | harness health / diagnostic direction | target-hardware winner |
 | controlled target-hardware run set | reproducible load-cost distribution | automatic mechanism selection |
 | decision record | selected production import/decompression mechanism | future validity after a trigger changes |
@@ -330,26 +336,31 @@ Re-run affected evidence when any of these changes materially:
 - selected section-construction policy;
 - import limits or unsupported-input policy;
 - codec source/version/build mechanism;
-- differential corpus identity;
+- differential corpus/generator identity;
 - whole-import benchmark workload/harness;
 - target hardware/toolchain for a numerical baseline.
 
 ## Explicit non-claims at the current R2C.3 boundary
 
-A green current R2C.3 means Helve has a bounded Rust Anvil/NBT path, exact semantic block-state decode,
-and a complete **uncompressed** stored-block transaction with replaceable static decoder/resolver/builder
-seams. It does **not** yet mean a complete arbitrary 26.2 world can be loaded or played.
+A green current R2C.3 block-state boundary means Helve has:
+
+- bounded Anvil/NBT framing;
+- qualified gzip/zlib and zero-copy uncompressed decoding;
+- exact generated 26.2 persisted-name/property -> `BlockStateId` resolution;
+- direct schema-directed decode toward final/reference section construction;
+- synthetic and genuine official-save Python/Rust semantic differential coverage through all imported
+  block cells;
+- no Mojang-shaped live object graph and no networking dependency in the importer.
+
+It does **not** yet mean a complete arbitrary 26.2 world can be loaded or played.
 
 Still pending:
 
-- hermetically admitted production gzip/zlib decompression;
-- generated full 26.2 persisted-name/property -> `BlockStateId` resolver;
-- pinned real-region Python/Rust semantic differential;
-- final selected/reference section construction wired into `LiveChunkCore`;
-- transactional `DimensionInstance` resident install;
+- final selected/reference section construction wired atomically into `LiveChunkCore` / `DimensionInstance`;
+- transactional resident install and load/unload/reload qualification;
 - biome import;
 - heightmap/light import or recomputation policy;
 - block entities;
-- whole-import performance baseline;
+- whole-import performance baseline and decompression scratch-policy decision;
 - arbitrary-world compatibility claim;
 - chunk/light network projection.
