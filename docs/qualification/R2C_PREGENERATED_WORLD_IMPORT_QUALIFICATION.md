@@ -1,6 +1,6 @@
 # R2C Pregenerated World Import Qualification
 
-Status: **R2C.3 bounded framing + semantic stored-block transaction qualified; compressed codec, full target resolver, real-save differential and resident install pending**  
+Status: **R2C.3 bounded framing + exact 26.2 state resolver + bounded gzip/zlib semantic transaction qualified; real-save differential, resident install and whole-import performance decision pending**  
 Target: **Minecraft: Java Edition 26.2 / DataVersion 4903**  
 Architecture: `../architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md`  
 Execution plan: `../execution/R2C_EXECUTION_PLAN.md`
@@ -165,68 +165,81 @@ become live world authority.
 The transaction remains atomic with respect to resident state: no `DimensionInstance` mutation occurs
 inside this crate, so a late schema/state failure cannot leave a partially installed chunk.
 
-The dependency-free `UncompressedChunkPayloadDecoder` is currently the only admitted Rust production
-mechanism. It returns uncompressed payloads zero-copy and enforces the decompressed-byte limit.
-Gzip, zlib and LZ4 fail closed under that decoder.
+`UncompressedChunkPayloadDecoder` remains the zero-copy reference mechanism for compression ID 3.
+The qualified `DeflateChunkPayloadDecoder` candidate admits uncompressed, zlib and gzip through the
+same static transaction boundary; LZ4 remains fail-closed. Its compressed path owns one fallibly
+allocated reusable output buffer sized to the caller-selected decompressed bound and reuses one
+allocation-free DEFLATE state between chunks. Once that buffer is initialized, a chunk decode performs
+no codec-side allocation or runtime decoder construction.
 
-Synthetic qualification covers both inline and separately supplied external uncompressed records. A
-static test decoder also proves that compression mechanism selection does not alter the semantic
-transaction shape.
+Synthetic qualification covers external uncompressed records plus complete inline zlib and gzip
+region -> decompression -> NBT -> semantic-section transactions. The same decoder instance is reused
+across both compressed wrappers without changing semantic output. Existing static decoder tests prove
+that mechanism selection does not alter the transaction shape.
 
 ## Compressed-codec admission and hermeticity
 
-Gzip/zlib support is still required for the selected pregenerated-world product path, but codec
-admission has a stronger constraint than an ordinary crates.io review.
+Gzip/zlib now have a qualified first production candidate without weakening Helve's hermetic build
+boundary. The exact reviewed dependency surface is:
 
-Helve's controlled section qualification creates a fresh empty `CARGO_HOME` and builds the selected
-section benchmark with `cargo --offline --locked`. Consequently, adding a registry dependency anywhere
-in the workspace can invalidate unrelated hermetic evidence even when that package is not on the
-selected benchmark's semantic path.
+- `miniz_oxide 0.8.9`, `default-features = false`;
+- `adler2 2.0.1` as its checksum dependency;
+- repository-owned Cargo vendor sources selected through `.cargo/config.toml`;
+- exact versions/checksums frozen by `Cargo.lock` and the dependency allowlist;
+- no git dependency, SIMD checksum feature or codec-side allocator feature.
 
-Therefore a production codec must satisfy **both**:
+The production wrapper calls the safe allocation-free `DecompressorOxide` core directly instead of
+miniz's vector or generic streaming convenience APIs. This avoids a per-loader streaming dictionary
+and writes decompressed bytes directly into one Helve-owned reusable output slice. The current
+single-pass candidate sizes that initialized slice to the caller-selected decompressed bound. An
+adaptive smaller retained scratch policy is a future mechanism candidate and must win on whole-import
+CPU + memory evidence before replacing this simpler baseline.
 
-1. source/license/advisory/version review; and
-2. workspace hermeticity under the existing empty-`CARGO_HOME` offline qualification boundary.
+Zlib admission requires exact stream consumption and the wrapper's Adler-32 check. Helve owns gzip
+framing and validates magic, DEFLATE method, reserved flags, bounded optional extra/name/comment
+fields, optional header CRC16, exact raw-DEFLATE consumption, CRC32 and ISIZE. Concatenated members or
+hidden trailing compressed bytes are not silently admitted. Output exhaustion fails as a hard
+`max_decompressed_bytes` violation, providing a decompression-bomb boundary before NBT parsing.
 
-Do not weaken or add network access to the section qualification merely to make a cold codec convenient.
-A future codec mechanism must instead be made hermetically available (for example through a separately
-reviewed vendored/path mechanism) or prove an equally strong architecture that preserves existing
-evidence guarantees.
+Hermeticity is permanent qualification, not a one-shot setup fact. The dedicated import workflow
+creates a fresh empty `CARGO_HOME` and performs `cargo check` plus `cargo test` with
+`--offline --locked`; therefore a missing vendor source or accidental registry dependency fails before
+normal cached qualification can mask it. The repository guard and dependency allowlist also remain
+active. Existing Helve Cargo aliases are preserved alongside the vendor source replacement.
 
-Codec qualification must additionally cover:
+Codec qualification currently establishes:
 
-- maximum compressed and decompressed sizes;
-- decompression-bomb behaviour;
+- maximum compressed-size enforcement in Anvil/external framing;
+- hard decompressed-size enforcement in the decoder;
 - exact EOF/trailing-data policy;
-- checksum/framing policy for admitted wrappers;
-- reusable scratch high-water mark;
-- malformed-input regression/fuzz corpus;
-- whole-import cost rather than codec-only throughput.
+- zlib Adler-32 and gzip header/CRC32/ISIZE policy;
+- reusable output-state behaviour;
+- malformed/truncated/checksum/unsupported-wrapper regressions;
+- end-to-end zlib/gzip semantic import on deterministic 26.2 NBT fixtures.
 
-LZ4 remains explicitly unadmitted.
+LZ4 remains explicitly unadmitted. Real-save differential evidence and whole-import target-hardware
+cost still remain before R2C.3 is considered fully production-selected.
 
 ## Target block-state resolver
 
-The importer core deliberately does not bake the 32,366 target states into generic NBT logic.
-`BlockStateResolver` receives a saved resource name plus already sorted property pairs and returns the
-existing semantic state identity or fails closed.
+The exact Minecraft Java 26.2 persisted-state resolver is qualified. It is generated from the same
+source/runtime-qualified state dataset that defines Helve's dense vanilla-identity `BlockStateId`
+universe and therefore does not invent a second numbering scheme.
 
-The production 26.2 resolver must be generated from the same source/runtime-qualified state dataset
-that already defines Helve's dense vanilla-identity `BlockStateId`s. It must not invent a second state
-numbering or derive an unchecked mapping from network data.
+The generated cold index covers all 32,366 admitted states in 416,665 bytes. Lookup hashes the already
+canonicalized saved name/properties without constructing a canonical key string, maps to one generated
+candidate, and then performs exact structured name/property verification before returning the existing
+`BlockStateId`. Hash equality is indexing only and never semantic authority on hostile input.
 
-The intended cold representation is a deterministic generated index that can locate a candidate
-without allocating a canonical key string and then exactly verify name/properties before returning the
-existing state ID. Hashing may narrow lookup, but hash equality alone is never semantic equality on
-hostile input.
-
-Keep this cold index separate from HOT mutation/state-fact tables so persisted-world compatibility does
-not tax ordinary block access.
+The committed table is reproducible from regenerated official 26.2 runtime identities bound to the
+frozen source qualification. The dedicated lookup workflow regenerates and byte-verifies the exact
+artifact before Rust qualification. Keep this cold index separate from HOT mutation/state-fact tables
+so persisted-world compatibility adds no ordinary block-access tax.
 
 ## Differential qualification
 
-Synthetic unit tests are necessary but not sufficient. Once the full generated target resolver and an
-admitted gzip/zlib mechanism exist, the permanent gate feeds the same pinned 26.2 region corpus to:
+Synthetic unit tests are necessary but not sufficient. With the generated target resolver and gzip/zlib mechanism now qualified, the next permanent gate
+feeds the same pinned 26.2 region corpus to:
 
 ```text
 Python qualification oracle ─┐
