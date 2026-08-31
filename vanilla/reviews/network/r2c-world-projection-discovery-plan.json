@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R2C-WORLD-PROJECTION-DISCOVERY-26_2-001",
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "frontier": "vanilla/frontiers/r2c-world-projection.json",
+  "scope": "Bounded source discovery for the selected R2C pregenerated-world initial-observation route. This plan inventories exact declarations and call structure only; it cannot admit semantics or packet law.",
+  "max_methods_per_type": 256,
+  "groups": [
+    {
+      "group_id": "R2C-WORLD-ENTRY",
+      "review_focus": "Initial player world-observation entry, selected chunk publication trigger and ordering after the R2B WorldProjection handoff.",
+      "root_types": [
+        "net.minecraft.server.level.ServerLevel",
+        "net.minecraft.server.network.PlayerChunkSender"
+      ]
+    },
+    {
+      "group_id": "R2C-CHUNK-SPAN",
+      "review_focus": "Chunk coordinates, section span/count and chunk payload envelope required by the selected client route.",
+      "root_types": [
+        "net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket",
+        "net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData"
+      ]
+    },
+    {
+      "group_id": "R2C-BLOCK-SECTIONS",
+      "review_focus": "Block-state section palette/container encoding and packed storage rules used by initial chunk publication.",
+      "root_types": [
+        "net.minecraft.world.level.chunk.LevelChunkSection",
+        "net.minecraft.world.level.chunk.PalettedContainer"
+      ]
+    },
+    {
+      "group_id": "R2C-BIOMES",
+      "review_focus": "Biome palette/container state carried by the initial section projection.",
+      "root_types": [
+        "net.minecraft.world.level.chunk.LevelChunkSection",
+        "net.minecraft.world.level.chunk.PalettedContainer"
+      ]
+    },
+    {
+      "group_id": "R2C-HEIGHTMAPS",
+      "review_focus": "Heightmap identities, predicates, values and serialized representation required by the selected chunk payload.",
+      "root_types": [
+        "net.minecraft.world.level.levelgen.Heightmap",
+        "net.minecraft.world.level.chunk.storage.SerializableChunkData"
+      ]
+    },
+    {
+      "group_id": "R2C-LIGHT",
+      "review_focus": "Sky/block light state, masks, empty/full/array semantics and initial light publication.",
+      "root_types": [
+        "net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData",
+        "net.minecraft.world.level.lighting.LevelLightEngine"
+      ]
+    },
+    {
+      "group_id": "R2C-BLOCK-ENTITIES",
+      "review_focus": "Selected qualification-world block-entity inclusion and payload construction; unsupported required cases remain fail-closed.",
+      "root_types": [
+        "net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData",
+        "net.minecraft.world.level.chunk.storage.SerializableChunkData"
+      ]
+    },
+    {
+      "group_id": "R2C-PACING",
+      "review_focus": "Chunk-send batching, acknowledgement, pacing and completion semantics material to the selected 26.2 initial observation route.",
+      "root_types": [
+        "net.minecraft.server.network.PlayerChunkSender"
+      ]
+    },
+    {
+      "group_id": "R2C-PACKET-IDS",
+      "review_focus": "Exact clientbound packet-type identities for the already-admitted selected world-projection packet families; registration law is reviewed separately from payload semantics.",
+      "root_types": [
+        "net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket",
+        "net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData"
+      ]
+    }
+  ]
+}
