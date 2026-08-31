@@ -8,6 +8,7 @@
 
 pub mod anvil;
 pub mod chunk;
+pub mod compression;
 mod generated_state_lookup;
 pub mod nbt;
 pub mod state_lookup;
@@ -18,6 +19,7 @@ pub use anvil::{ChunkCompression, RegionChunk, RegionError, RegionLimits, Region
 pub use chunk::{
     ChunkImportError, StoredChunkHeader, TARGET_DATA_VERSION_26_2, inspect_chunk_header,
 };
+pub use compression::{CompressedPayloadError, DeflateChunkPayloadDecoder, WrapperKind};
 pub use nbt::{ListHeader, NamedTag, NbtError, NbtLimits, NbtReader, TagType};
 pub use state_lookup::{
     Target262BlockStateResolver, canonical_state_fingerprint, resolve_target_26_2_block_state,

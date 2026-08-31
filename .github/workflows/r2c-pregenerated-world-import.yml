@@ -11,6 +11,11 @@ on:
       - "tools/tests/test_stored_state_lookup.py"
       - "tools/vanilla_section_extractor.py"
       - "tools/tests/test_vanilla_section_extractor.py"
+      - "tools/ci_policy.py"
+      - "config/dependency-allowlist.txt"
+      - ".cargo/config.toml"
+      - "vendor/adler2-2.0.1/**"
+      - "vendor/miniz_oxide-0.8.9/**"
       - ".github/workflows/r2c-pregenerated-world-import.yml"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -36,6 +41,20 @@ jobs:
 
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: Dependency policy
+        run: python3 tools/ci_policy.py
+
+      - name: Hermetic empty-CARGO_HOME import build
+        run: |
+          empty_home="$(mktemp -d)"
+          CARGO_HOME="$empty_home" cargo check \
+            --offline --locked \
+            --package helve-world-import \
+            --all-targets
+          CARGO_HOME="$empty_home" cargo test \
+            --offline --locked \
+            --package helve-world-import
 
       - name: Format import crate
         run: cargo fmt --package helve-world-import -- --check
