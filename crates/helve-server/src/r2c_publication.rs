@@ -184,10 +184,7 @@ mod tests {
 
     #[test]
     fn publication_cursor_backpressure_does_not_advance_progress() {
-        let publication = [
-            vec![0x10, 1, 2, 3, 4],
-            vec![0x11, 5, 6, 7, 8],
-        ];
+        let publication = [vec![0x10, 1, 2, 3, 4], vec![0x11, 5, 6, 7, 8]];
         let mut cursor = PublicationCursor::new();
         let mut session = session(10);
 
