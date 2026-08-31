@@ -158,7 +158,7 @@ mod tests {
             session.service_play_publication_one(&publication, &mut cursor),
             Ok(PublicationStep::Queued {
                 index: 0,
-                body_bytes: 4,
+                body_bytes: 3,
             })
         );
         assert_eq!(cursor.next_index(), 1);
@@ -168,7 +168,7 @@ mod tests {
             session.service_play_publication_one(&publication, &mut cursor),
             Ok(PublicationStep::Queued {
                 index: 1,
-                body_bytes: 4,
+                body_bytes: 3,
             })
         );
         assert_eq!(cursor.next_index(), 2);
