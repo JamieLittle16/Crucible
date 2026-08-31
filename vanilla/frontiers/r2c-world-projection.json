@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "description": "Bounded official-source discovery frontier for the first Helve-owned Minecraft Java 26.2 world projection. These roots seed review only; exact methods, delegates, packet identities and semantic obligations must be independently materialized and admitted before production use.",
+  "target": {
+    "minecraft_version": "26.2",
+    "protocol_version": 776,
+    "world_version": 4903
+  },
+  "selected_profile": {
+    "pregenerated_world": true,
+    "initial_spawn_observation_only": true,
+    "world_generation_required": false,
+    "movement_interest_required": false,
+    "captured_world_publication_allowed": false
+  },
+  "max_depth": 8,
+  "include_package_prefixes": ["net.minecraft"],
+  "exclude_package_prefixes": ["net.minecraft.data", "net.minecraft.gametest"],
+  "semantic_groups": [
+    "R2C-WORLD-ENTRY",
+    "R2C-CHUNK-SPAN",
+    "R2C-BLOCK-SECTIONS",
+    "R2C-BIOMES",
+    "R2C-HEIGHTMAPS",
+    "R2C-LIGHT",
+    "R2C-BLOCK-ENTITIES",
+    "R2C-PACING",
+    "R2C-PACKET-IDS"
+  ],
+  "root_queries": [
+    "net.minecraft.server.level.ServerLevel",
+    "net.minecraft.server.network.PlayerChunkSender",
+    "net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket",
+    "net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData",
+    "net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData",
+    "net.minecraft.world.level.chunk.LevelChunkSection",
+    "net.minecraft.world.level.chunk.PalettedContainer",
+    "net.minecraft.world.level.levelgen.Heightmap",
+    "net.minecraft.world.level.lighting.LevelLightEngine",
+    "net.minecraft.world.level.chunk.storage.SerializableChunkData"
+  ]
+}
