@@ -61,9 +61,10 @@ mod tests {
 
     use helve_connection_core::ConnectionLimits;
     use helve_connection_driver::ConnectionDriver;
+    use helve_session_core::LivenessState;
     use helve_target_26_2::r2b::TeleportTransaction;
 
-    use crate::r2b_server::{INITIAL_LIVENESS, R2bPlayError, R2bPlaySession};
+    use crate::r2b_server::{R2bPlayError, R2bPlaySession};
 
     fn limits(max_egress: usize) -> ConnectionLimits {
         ConnectionLimits::new(8, 128, max_egress).expect("valid test connection limits")
@@ -74,7 +75,7 @@ mod tests {
             driver: ConnectionDriver::new(limits(max_egress)),
             read_scratch: vec![0_u8; 32].into_boxed_slice(),
             teleport: TeleportTransaction::new(),
-            liveness: INITIAL_LIVENESS,
+            liveness: LivenessState::new(0, 0).expect("zero is a valid liveness origin"),
         }
     }
 
