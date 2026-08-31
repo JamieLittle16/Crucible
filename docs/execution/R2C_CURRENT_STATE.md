@@ -12,7 +12,7 @@ This file records the implementation/evidence boundary actually present on `main
 
 R2B is complete: the stock 26.2 client reaches replay-free Play and the same bounded connection driver remains live through the explicit `WorldProjection` handoff.
 
-R2C has now crossed the world-import boundary. `main` owns resident chunk lifecycle, exact target block-state import, genuine-save differential evidence, import-to-residency qualification, selected cold-import optimizations, and target-neutral biome semantic storage. The remaining milestone work is concentrated in source-admitted biome/heightmap/light/world-wire law, semantic composition, projection, and publication.
+R2C has now crossed the world-import boundary and established its final transport substrate. `main` owns resident chunk lifecycle, exact target block-state import, genuine-save differential evidence, import-to-residency qualification, selected cold-import optimizations, target-neutral biome semantic storage, atomic same-driver publication admission and allocation-free bounded publication progression. The remaining milestone work is concentrated in source-admitted biome/heightmap/light/world-wire law, composite semantic ownership, reference/production projection, and integration of admitted world output into that landed publication substrate.
 
 ```text
 pinned 26.2 source review/admission
@@ -25,22 +25,22 @@ reference projection
           ↓
 production projection mechanism
           ↓
-same-driver bounded publication
+landed same-driver bounded publication substrate
           ↓
 stock-client native Helve world
 ```
 
-Packet/wire facts are never guessed merely because the world-runtime substrate exists.
+Packet/wire facts are never guessed merely because the world-runtime or publication substrate exists.
 
 ## Slice ledger
 
 | Slice | State | Evidence / boundary |
 | --- | --- | --- |
 | R2C.0 frontier/contracts | **ESTABLISHED** | Finite pregenerated-world-first profile, ownership boundaries and qualification contracts are frozen. World generation and movement-driven interest are not prerequisites for the first R2C gate. |
-| R2C.1 source review/admission | **PIPELINE IMPLEMENTED; ACTUAL ADMISSION PENDING** | Focused review, source-free finalization, human SEM authoring, manifest-bound Atlas gating, atomic promotion, committed-evidence verification and readiness diagnostics are CI-qualified. The pinned 26.2 biome/heightmap/light/world-wire review itself still must be completed; unadmitted packet IDs, packing, masks and ordering remain forbidden. |
+| R2C.1 source review/admission | **PIPELINE + ONE-COMMAND LOCAL BUNDLE IMPLEMENTED; ACTUAL ADMISSION PENDING** | Focused discovery/review packing, source-free finalization, human SEM authoring, manifest-bound Atlas gating, atomic promotion, committed-evidence verification and readiness diagnostics are CI-qualified. `r2c_world_state_source_review_bundle.py` now produces one bounded uploadable local review archive outside the repository. The pinned 26.2 biome/heightmap/light/world-wire review itself still must be completed; unadmitted packet IDs, packing, masks and ordering remain forbidden. |
 | R2C.2 resident-world substrate | **LANDED** | `DimensionInstance`, compact chunk generations, direct resolved access, unload/reload and stale-handle rejection are on `main`. |
 | R2C.2 resident qualification | **CORRECTNESS/HOSTED DIAGNOSTICS LANDED; TARGET PERFORMANCE ADMISSION SEPARATE** | Lifecycle/HOT-path qualification exists. Hosted numbers validate the harness and rough direction only; they are not target-hardware throughput claims. |
-| R2C.2S block-section production policy | **NOT FROZEN** | Direct, adaptive-local, fast-local and packed candidates are correctness-qualified, but M0.3D/issue #19 still requires controlled target-hardware CPU/tail/memory evidence and a committed Pareto decision. `SEC-REF-DIRECT` remains reference-only and must not silently become production storage. |
+| R2C.2S block-section production policy | **DECISION PIPELINE LANDED; REAL EVIDENCE/POLICY NOT FROZEN** | Direct, adaptive-local, fast-local and packed candidates are correctness-qualified. M0.3D/issue #19 now has representative-population admission, same-commit correctness sealing, controlled-hardware orchestration, synthetic promotion-tail evidence, dimension-separated Pareto analysis and policy validation machinery. The remaining gate is the admitted four-seed population + exact-revision correctness bundle + controlled physical target-hardware runs + explicit human-reviewed winner/loser record. `SEC-REF-DIRECT` remains reference-only and must not silently become production storage. |
 | R2C.3 pregenerated-world block import | **LANDED AND GENUINE-SAVE DIFFERENTIAL GREEN** | Bounded Anvil framing, DEFLATE, schema-directed NBT, exact 26.2 persisted-state resolution and final section construction are on `main`. Independent official-save comparison currently covers 12,696 block-bearing sections / 52,002,816 block cells exactly. |
 | R2C.3 import → residency qualification | **LANDED** | Genuine official save is imported through resident admission with exact corpus identity, section/cell accounting and scratch high-water gates. A recent hosted run exercised 529 resident chunks; timing remains diagnostic rather than decision-grade. |
 | R2C.3 selected cold-import mechanisms | **LANDED** | Byte-table gzip CRC32 and four-bit packed-state specialization are selected by semantic + performance evidence. Generic five-bit-and-wider packed decoding remains intact and regression-covered. |
@@ -48,7 +48,7 @@ Packet/wire facts are never guessed merely because the world-runtime substrate e
 | R2C.4 heightmap/light semantics | **BLOCKED ON SOURCE ADMISSION** | Production implementation must wait for the finite pinned source review and source-free SEM/gate promotion. Unsupported required state must fail closed rather than being fabricated. |
 | R2C.5 reference projector | **PENDING R2C.4 CLOSURE** | Must consume transparent Helve semantic state and become the permanent correctness oracle before projection optimization. |
 | R2C.6 production projector | **PENDING REFERENCE PATH + MECHANISM EVIDENCE** | Production projection/cache/snapshot choices remain a mechanism tournament, not protocol semantics. |
-| R2C.7 same-driver publication | **PENDING PROJECTOR** | Must continue the existing R2B driver/egress/backpressure ownership with bounded work and no second socket/egress queue. |
+| R2C.7 same-driver publication | **TRANSPORT/FAIRNESS SUBSTRATE LANDED; PROJECTOR INTEGRATION PENDING** | `R2bPlaySession` now admits already target-encoded Play bodies through the exact continuing `ConnectionDriver`: atomic batches use existing transactional `queue_batch`, while large ordered publications reuse the generic one-word `PublicationCursor` and admit at most one body per service opportunity. Backpressure leaves egress and publication progress unchanged. No second queue/socket or R2C-specific cursor was introduced. Packet identities/order remain source-admission responsibilities. |
 | R2C.8 stock-client native world | **MILESTONE EXIT** | Complete only when an unmodified 26.2 client renders Helve-owned terrain with zero captured world/chunk/light replay. |
 
 ## Permanent evidence currently on `main`
@@ -100,12 +100,21 @@ World code now has a target-neutral biome contract and direct reference implemen
 
 This is semantic storage only. It is not evidence for the 26.2 persisted or clientbound biome codec.
 
+### Same-driver publication substrate
+
+World publication no longer needs a transport architecture decision. The server composition now exposes two source-independent paths over the exact R2B Play driver:
+
+- an atomic batch path for already target-encoded body groups that genuinely require all-or-nothing egress admission;
+- a fairness path backed by the existing one-machine-word `PublicationCursor`, admitting at most one immutable body per service opportunity.
+
+Both inherit the driver's bounded frame/egress law. Capacity or wire rejection leaves existing logical egress unchanged; the cursor path also leaves client publication progress unchanged. This proves the transport/progression mechanism only. It does not admit any 26.2 world packet identity, payload layout or ordering law.
+
 ## R2C.1 source-admission boundary
 
 The committed tooling can take the finite selected world-state review through:
 
 ```text
-bounded source discovery/review pack
+one-command bounded local source-review bundle
  -> reviewer-completed selected/rejected/hazard closure
  -> source-free finalized review result
  -> structured human-authored SEM worksheet
@@ -114,6 +123,8 @@ bounded source discovery/review pack
  -> atomic repository promotion
  -> source-free committed-bundle verification
 ```
+
+The local bundle wrapper is `tools/r2c_world_state_source_review_bundle.py`. It composes the existing discovery and focused review-pack tools, requires its source-rich archive to live outside the repository, and does not infer or admit semantics.
 
 The tooling is deliberately incapable of converting method names, call graphs or free-form observations into semantic rules. Actual reviewer-authored source closure remains required.
 
@@ -128,20 +139,26 @@ Until promotion succeeds for the relevant groups, production code may not invent
 
 ## R2C.2S section-policy gate
 
-The section representation laboratory is still an independent blocker for the final production composition. The current registry explicitly has **no production winner frozen**.
+The section representation laboratory remains an independent blocker for the final production composition, but the benchmark/decision infrastructure itself is no longer the missing piece. The current registry explicitly has **no production winner frozen**.
 
-The final R2C server must therefore not confuse the transparent direct/reference section used by qualification with the eventual production storage mechanism. M0.3D/issue #19 owns the selection and requires controlled target-hardware CPU/tail/memory/allocation evidence over realistic workloads and a real vanilla-derived corpus.
+M0.3D/issue #19 already has candidate-isolated population and synthetic-tail measurement, controlled repeated-run orchestration, exact-revision correctness sealing, dimension-separated Pareto analysis and a fail-closed human policy validator. The remaining decision evidence is:
 
-This gate can advance in parallel with R2C.1/R2C.4 source work.
+1. one admitted complete `vanilla-section-representative-v1` four-seed population artifact;
+2. a fresh sealed `crucible-section-full-bundle` from the exact source revision being measured;
+3. at least five balanced rounds of `tools/section_m03d_qualification.py` on controlled physical target hardware;
+4. inspection of the resulting per-dimension Pareto frontiers/noise state;
+5. an explicit reviewed production-policy record and durable loser/survivor rationales.
+
+The final R2C server must therefore not confuse the transparent direct/reference section used by qualification with the eventual production storage mechanism. This gate can advance in parallel with R2C.1/R2C.4 source work.
 
 ## Immediate next engineering moves
 
 1. Complete and independently admit the finite pinned R2C source review required for biome/heightmap/light and selected world publication law. Do not infer missing facts from captures or implementation names.
-2. In parallel, finish the M0.3D section Pareto decision using the existing target-run/evidence tooling rather than creating another benchmark stack.
-3. Once the required source groups are promoted, implement heightmap/light semantic ownership as Helve-native world state with reference/differential tests first.
+2. In parallel, finish the M0.3D evidence run and human Pareto decision using the already-landed target-run/evidence tooling; do not build another benchmark stack.
+3. Once the required source groups are promoted, implement heightmap/light semantic ownership as Helve-native world state with reference/differential tests first and compose biome/height/light under one authoritative resident freshness boundary.
 4. Build R2C.5 as a transparent reference projector from semantic chunk state into admitted 26.2 projection law.
 5. Only then qualify optimized projection/cache/snapshot candidates and select production mechanisms by whole-path cost.
-6. Integrate the selected projector into the existing R2B `WorldProjection` handoff and bounded connection driver; no second egress path is permitted.
+6. Integrate the selected projector into the existing R2B `WorldProjection` handoff using the landed atomic-batch / one-body cursor publication paths; no second egress path or R2C-specific cursor is permitted.
 7. Close R2C with an unmodified 26.2 stock-client test that renders the Helve-owned pregenerated world with zero captured world/chunk/light replay.
 
 ## Evidence classes: do not conflate them
@@ -167,7 +184,7 @@ Current `main` does **not** yet prove:
 - sky/block light mask/array semantics;
 - production block-section representation selection;
 - reference or optimized native chunk projection;
-- chunk publication throughput on target hardware;
+- final world-publication sequencing or throughput on target hardware;
 - movement/collision/walkability;
 - persistence/save/restart behavior;
 - R2C milestone completion.
