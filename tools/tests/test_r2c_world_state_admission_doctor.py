@@ -86,8 +86,11 @@ class WorldStateAdmissionDoctorTests(unittest.TestCase):
             review_path, worksheet_path = self.write_admission_fixture(Path(tmp))
             worksheet = json.loads(worksheet_path.read_text())
             worksheet["all_groups_admission_complete"] = False
-            worksheet["groups"][1]["admission_complete"] = False
-            worksheet["groups"][1]["semantic_rules"] = []
+            # Remove the biome group's rule: unlike the heightmap-only shared source,
+            # this leaves a biome-only selected source globally unsupported, matching
+            # the materializer's actual every-selected-source-must-support-a-rule law.
+            worksheet["groups"][0]["admission_complete"] = False
+            worksheet["groups"][0]["semantic_rules"] = []
             worksheet_path.write_text(json.dumps(worksheet), encoding="utf-8")
 
             result = doctor.diagnose_admission(review_path, worksheet_path)
