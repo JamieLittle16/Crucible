@@ -172,6 +172,7 @@ dependencies = [
  "helve-types",
  "helve-world-chunk",
  "helve-world-reference",
+ "helve-world-runtime",
 ]
 
 [[package]]

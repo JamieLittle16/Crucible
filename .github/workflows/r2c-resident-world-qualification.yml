@@ -1,0 +1,217 @@
+name: R2C Resident World Qualification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "crates/world/helve-world-runtime/**"
+      - "crates/world/helve-world-chunk/**"
+      - "crates/qualification/helve-world-access-qualification/**"
+      - ".github/workflows/r2c-resident-world-qualification.yml"
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "crates/world/helve-world-runtime/**"
+      - "crates/world/helve-world-chunk/**"
+      - "crates/qualification/helve-world-access-qualification/**"
+      - ".github/workflows/r2c-resident-world-qualification.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: r2c-resident-world-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  resident-world:
+    name: Resident world semantics and benchmark smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+
+      - name: Targeted format
+        run: >-
+          cargo fmt
+          --package helve-world-runtime
+          --package helve-world-access-qualification
+          -- --check
+
+      - name: Targeted Clippy
+        run: >-
+          cargo clippy
+          --package helve-world-runtime
+          --package helve-world-access-qualification
+          --all-targets
+          --all-features
+          --locked
+          -- -D warnings
+
+      - name: Resident runtime tests
+        run: cargo test --package helve-world-runtime --locked
+
+      - name: World qualification tests
+        run: cargo test --package helve-world-access-qualification --locked
+
+      - name: Select one diagnostic benchmark CPU
+        run: |
+          allowed="$(awk '/^Cpus_allowed_list:/ {print $2}' /proc/self/status)"
+          first="${allowed%%,*}"
+          first="${first%%-*}"
+          test -n "${first}"
+          echo "HELVE_R2C_BENCH_CPU=${first}" >> "${GITHUB_ENV}"
+          echo "R2C diagnostic benchmark cpu: ${first} (allowed: ${allowed})"
+
+      # Hosted timing is diagnostic only. Three independent process invocations reduce the chance
+      # that we mistake one warm/cache/scheduler episode for meaningful evidence. The permanent
+      # assertions below are semantic and structural, not timing wins.
+      - name: Run resident world lifecycle smoke repetitions
+        run: |
+          mkdir -p target/helve-qualification/r2c-resident-world
+          for repetition in 1 2 3; do
+            taskset -c "${HELVE_R2C_BENCH_CPU}" \
+              cargo run --release --locked \
+                --package helve-world-access-qualification \
+                --bin resident_world_lifecycle_bench -- \
+                --smoke \
+                --output "target/helve-qualification/r2c-resident-world/smoke-${repetition}.json"
+          done
+
+      - name: Validate resident world lifecycle smoke evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          paths = sorted(Path("target/helve-qualification/r2c-resident-world").glob("smoke-*.json"))
+          assert len(paths) == 3
+          artifacts = [json.loads(path.read_text()) for path in paths]
+
+          def validate_summary(summary):
+              assert 0 < summary["p50"] <= summary["p95"] <= summary["p99"] <= summary["max"]
+
+          semantic_witnesses = []
+          for artifact in artifacts:
+              assert artifact["schema"] == 1
+              assert artifact["benchmark"] == "r2c-resident-world-lifecycle"
+              assert artifact["mode"] == "smoke"
+              assert artifact["hosted_ci_is_diagnostic_only"] is True
+              assert artifact["timing_threshold_selected"] is False
+              assert artifact["production_path_unchanged"] is True
+              assert artifact["measured_rounds"] >= 8
+              assert artifact["hot_reads"] >= 4096
+
+              structural = artifact["structural"]
+              assert structural["resident_handle_bytes"] <= 24
+              assert structural["dimension_profile_bytes"] <= 24
+              assert structural["profile_section_count"] == 24
+              assert structural["repeated_resolutions_per_hot_sample"] == artifact["hot_reads"]
+              assert structural["resolve_once_resolutions_per_hot_sample"] == 1
+
+              assert len(artifact["cases"]) == 2
+              witness = []
+              for case in artifact["cases"]:
+                  assert case["semantic_equivalent"] is True
+                  assert case["chunk_count"] == case["side"] ** 2
+                  assert case["stale_rejections_per_lifecycle"] == case["chunk_count"]
+                  assert case["lifecycle_checksum"] != 0
+                  assert case["hot_checksum"] != 0
+                  assert len(case["lifecycle_samples_ns"]) == artifact["measured_rounds"]
+                  assert len(case["hot_pairs"]) == artifact["measured_rounds"]
+                  assert all(sample["elapsed_ns"] > 0 for sample in case["lifecycle_samples_ns"])
+                  assert all(sample["repeated_resolve_ns"] > 0 for sample in case["hot_pairs"])
+                  assert all(sample["resolve_once_ns"] > 0 for sample in case["hot_pairs"])
+                  validate_summary(case["lifecycle_summary_ns"])
+                  validate_summary(case["repeated_resolve_summary_ns"])
+                  validate_summary(case["resolve_once_summary_ns"])
+                  witness.append((case["name"], case["lifecycle_checksum"], case["hot_checksum"]))
+              semantic_witnesses.append(tuple(witness))
+
+          assert len(set(semantic_witnesses)) == 1
+          for run_index, artifact in enumerate(artifacts, start=1):
+              print(f"diagnostic run {run_index}")
+              for case in artifact["cases"]:
+                  repeated = case["repeated_resolve_summary_ns"]["p50"]
+                  resolve_once = case["resolve_once_summary_ns"]["p50"]
+                  ratio = repeated / resolve_once
+                  print(
+                      " ", case["name"],
+                      "chunks=", case["chunk_count"],
+                      "lifecycle_p50_ns=", case["lifecycle_summary_ns"]["p50"],
+                      "lifecycle_p99_ns=", case["lifecycle_summary_ns"]["p99"],
+                      "repeated_hot_p50_ns=", repeated,
+                      "resolve_once_hot_p50_ns=", resolve_once,
+                      "diagnostic_ratio=", f"{ratio:.3f}",
+                  )
+          PY
+
+      # Exercise every full-matrix case continuously without turning hosted CI into target-hardware
+      # qualification. Reduced sample counts keep this a semantic/shape test only.
+      - name: Run full resident matrix structural smoke
+        run: >-
+          taskset -c "${HELVE_R2C_BENCH_CPU}"
+          cargo run --release --locked
+          --package helve-world-access-qualification
+          --bin resident_world_lifecycle_bench --
+          --full
+          --warmup-rounds 1
+          --measured-rounds 2
+          --hot-reads 4096
+          --output target/helve-qualification/r2c-resident-world/full-matrix-structural.json
+
+      - name: Validate full resident matrix structural evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          artifact = json.loads(
+              Path("target/helve-qualification/r2c-resident-world/full-matrix-structural.json").read_text()
+          )
+          assert artifact["schema"] == 1
+          assert artifact["benchmark"] == "r2c-resident-world-lifecycle"
+          assert artifact["mode"] == "full"
+          assert artifact["hosted_ci_is_diagnostic_only"] is True
+          assert artifact["timing_threshold_selected"] is False
+          assert artifact["measured_rounds"] == 2
+          assert artifact["hot_reads"] == 4096
+
+          expected = {
+              "resident-1x1-positive": 1,
+              "resident-3x3-signed": 9,
+              "resident-5x5-mixed": 25,
+              "resident-9x9-negative": 81,
+          }
+          assert {case["name"] for case in artifact["cases"]} == set(expected)
+          for case in artifact["cases"]:
+              assert case["chunk_count"] == expected[case["name"]]
+              assert case["semantic_equivalent"] is True
+              assert case["stale_rejections_per_lifecycle"] == case["chunk_count"]
+              assert case["lifecycle_checksum"] != 0
+              assert case["hot_checksum"] != 0
+              assert len(case["lifecycle_samples_ns"]) == 2
+              assert len(case["hot_pairs"]) == 2
+          print("full R2C resident matrix structural smoke: PASS", expected)
+          PY
+
+      - name: Upload resident world diagnostic evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: helve-r2c-resident-world-diagnostics
+          path: target/helve-qualification/r2c-resident-world/*.json
+          if-no-files-found: error
+          retention-days: 7
