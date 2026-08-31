@@ -27,6 +27,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = discovery.DEFAULT_DB
 DEFAULT_SOURCE = discovery.DEFAULT_SOURCE
 DEFAULT_LOCK = discovery.DEFAULT_LOCK
+REQUIRED_ARCHIVE_MEMBERS = frozenset(
+    {
+        "discovery/discovery.json",
+        "world-state-review/review-pack.json",
+        "world-state-review/worksheet.json",
+        "world-state-review/manifest.json",
+    }
+)
 
 
 class BundleError(RuntimeError):
@@ -53,6 +61,20 @@ def _external_output(path: Path) -> Path:
     raise BundleError("source-rich R2C review bundle must live outside the repository")
 
 
+def _verify_archive(path: Path) -> int:
+    """Require the upload artifact to contain every review handoff before publication."""
+    try:
+        with tarfile.open(path, mode="r:gz") as archive:
+            regular_files = {member.name for member in archive.getmembers() if member.isfile()}
+    except (OSError, tarfile.TarError) as error:
+        raise BundleError(f"cannot reopen staged R2C review bundle: {error}") from error
+
+    missing = sorted(REQUIRED_ARCHIVE_MEMBERS - regular_files)
+    if missing:
+        raise BundleError(f"staged R2C review bundle is incomplete; missing members: {missing}")
+    return len(regular_files)
+
+
 def build_bundle(
     *,
     output: Path,
@@ -73,13 +95,23 @@ def build_bundle(
         discovery_result = discovery.prepare(discovery_dir, plan, db, source, lock)
         review_result = packer.build(discovery_dir / "discovery.json", source, lock, review_dir)
 
-        with tarfile.open(output, mode="x:gz") as archive:
-            archive.add(discovery_dir, arcname="discovery", recursive=True)
-            archive.add(review_dir, arcname="world-state-review", recursive=True)
+        # Never open the user-visible destination until a complete archive has been written and
+        # reopened successfully. A packaging failure must not leave behind a valid-looking empty
+        # gzip/tar that an operator can accidentally upload as evidence.
+        with tempfile.TemporaryDirectory(
+            prefix=f".{output.name}.staging-", dir=output.parent
+        ) as staging:
+            staged_archive = Path(staging) / output.name
+            with tarfile.open(staged_archive, mode="w:gz") as archive:
+                archive.add(discovery_dir, arcname="discovery", recursive=True)
+                archive.add(review_dir, arcname="world-state-review", recursive=True)
+            archive_members = _verify_archive(staged_archive)
+            staged_archive.replace(output)
 
     return {
         "output": str(output),
         "sha256": _sha256_file(output),
+        "archive_regular_files": archive_members,
         "discovery_sha256": discovery_result["discovery_sha256"],
         "review_pack_sha256": review_result["review_pack_sha256"],
         "worksheet_sha256": review_result["worksheet_sha256"],
