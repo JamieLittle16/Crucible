@@ -2,7 +2,7 @@
 
 Status: **normative engineering process**
 
-Crucible treats performance and parity work as an evidence-producing process. Source code is allowed to evolve aggressively; the reasoning that caused a mechanism to be introduced, retained, changed, or deleted must remain recoverable.
+Helve treats performance and parity work as an evidence-producing process. Source code is allowed to evolve aggressively; the reasoning that caused a mechanism to be introduced, retained, changed, or deleted must remain recoverable.
 
 The governing principle is:
 
@@ -12,7 +12,7 @@ A rejected implementation should normally be removed from the production build, 
 
 ## Record layers
 
-Crucible uses five complementary record types.
+Helve uses five complementary record types.
 
 ### 1. Semantic specification
 
@@ -71,6 +71,7 @@ Artifacts must record enough provenance to reproduce or invalidate the result, i
 - trace/workload/harness version and seed;
 - build profile/toolchain/target flags;
 - hardware/OS identity for performance runs;
+- CPU affinity and relevant frequency/governor/turbo context;
 - raw samples or sufficient underlying measurements.
 
 Committed prose links to artifact identifiers/digests rather than copying only headline numbers.
@@ -93,6 +94,57 @@ A decision record states:
 - requalification triggers.
 
 A production mechanism is not considered frozen until this record exists.
+
+## Performance evidence admission ladder
+
+Performance evidence is not binary. It moves through explicit states, and a lower state never acquires the authority of a higher state merely because its numbers look convincing.
+
+```text
+hosted diagnostic artifact
+        ↓ explicit controlled-run action
+qualified target-hardware artifact
+        ↓ independent repeated runs
+cross-process consistency report
+        ↓ human review
+accepted baseline / decision record
+```
+
+### Hosted diagnostic artifact
+
+Purpose:
+- prove the harness builds and runs;
+- continuously protect semantic/structural invariants;
+- detect catastrophic regressions or suspicious direction changes;
+- retain useful debugging samples.
+
+It may **not** select a production mechanism or freeze a timing threshold unless a subsystem specification explicitly establishes a stronger hosted-run policy.
+
+### Qualified target-hardware artifact
+
+A subsystem that uses target-hardware timing must define a deliberate operator path rather than relying on an ordinary benchmark invocation that happens to run on a suitable machine. Where practical, the artifact should carry an explicit witness that required controls such as CPU affinity were enforced.
+
+This prevents accidental promotion of:
+- GitHub-hosted runs;
+- ad-hoc local runs;
+- reduced smoke workloads;
+- runs with incomplete provenance.
+
+### Cross-process consistency report
+
+At least three independent processes are the default minimum for a new performance baseline unless the subsystem's qualification specification justifies another rule.
+
+Mechanical combination should fail closed on mismatched:
+- code/commit identity;
+- workload/schema identity;
+- stable hardware/toolchain identity;
+- semantic witness;
+- required controlled-run provenance.
+
+The combiner may compute medians, MAD/variation, tails and direction stability. It must not silently promote those calculations into a mechanism selection.
+
+### Accepted baseline / decision
+
+Human review remains required for machine quietness, outliers, frequency/governor context, whole-cost relevance and complexity trade-offs. A production mechanism is selected only by the relevant decision record.
 
 ## Status semantics
 
@@ -120,6 +172,12 @@ A production mechanism is not considered frozen until this record exists.
 
 Performance cannot compensate for semantic failure. A correctness-failing candidate is ineligible for performance selection until corrected and requalified.
 
+### Structural evidence is permanent when timing is not
+
+If two semantically identical paths differ in counted allocations, lookups, copies, queue operations or other deterministic structural work, those counts may form permanent CI evidence even when hosted timing is too noisy to be authoritative.
+
+This is preferred over turning a noisy timing ratio into a correctness threshold.
+
 ### Negative results are first-class results
 
 A dominated or broken design is valuable project knowledge. Its record should explain why it looked plausible and what evidence falsified the hypothesis. Future contributors should not have to rediscover the same dead end.
@@ -135,6 +193,10 @@ Prefer retaining raw samples/evidence artifacts and deriving tables from them. N
 ### Exact identity, not “latest”
 
 Records use immutable commit/artifact/digest identities. Statements such as “the latest benchmark” are not adequate decision evidence.
+
+### Never cherry-pick convenient processes
+
+When a protocol requires multiple independent runs, preserve and combine the complete declared run set. Do not discard an inconvenient process because another run looks cleaner. If a run is invalid because a documented environmental condition failed, record that invalidation explicitly and rerun the complete required set where the protocol requires it.
 
 ### Requalification is explicit
 
@@ -153,6 +215,8 @@ Issues and PRs are the discussion/audit trail. Committed records are the canonic
 
 A material experiment PR should update the relevant candidate registry and experiment log in the same change when practical. A production-selection PR must include the final decision record.
 
+A PR description may summarize current hosted timing for review convenience, but it must label that timing with its evidence class and must not make the PR text the only retained copy of material evidence.
+
 ## Anti-patterns
 
 Do not:
@@ -160,8 +224,11 @@ Do not:
 - delete a failed mechanism without recording why;
 - select a mechanism from one microbenchmark;
 - paste unqualified hosted-runner timing into a production decision;
+- call an ordinary local run “target-hardware evidence” without the subsystem's required provenance controls;
+- cherry-pick the best process from a multi-process protocol;
+- convert a diagnostic timing ratio into a correctness gate when deterministic structural evidence exists;
 - silently change thresholds after a decision record;
 - make prose the only copy of raw evidence;
 - treat an implementation name as a semantic contract.
 
-This process is intentionally strict. The objective is that, years later, a contributor can answer **what we tried, what happened, why the surviving design exists, and exactly what evidence would justify changing it**.
+This process is intentionally strict. The objective is that, years later, a contributor can answer **what we tried, what happened, why the surviving design exists, what evidence class supports each claim, and exactly what would justify changing it**.

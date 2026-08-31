@@ -13,6 +13,7 @@ helve-generated = { path = "../../data/helve-generated" }
 helve-types = { path = "../../helve-types" }
 helve-world-chunk = { path = "../../world/helve-world-chunk" }
 helve-world-reference = { path = "../../world/helve-world-reference" }
+helve-world-runtime = { path = "../../world/helve-world-runtime" }
 
 [lints]
 workspace = true
