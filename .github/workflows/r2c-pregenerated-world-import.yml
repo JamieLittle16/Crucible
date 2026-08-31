@@ -7,6 +7,9 @@ on:
     paths:
       - "crates/world/helve-world-import/**"
       - "docs/qualification/R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md"
+      - "docs/qualification/R2C_IMPORT_DIFFERENTIAL.md"
+      - "tools/r2c_import_differential.py"
+      - "tools/tests/test_r2c_import_differential.py"
       - "tools/stored_state_lookup.py"
       - "tools/tests/test_stored_state_lookup.py"
       - "tools/vanilla_section_extractor.py"
@@ -68,18 +71,32 @@ jobs:
       - name: Rust import qualification
         run: cargo test --package helve-world-import --locked
 
+      - name: Build production-import fact emitter
+        run: cargo build --package helve-world-import --bin r2c_import_section_facts --locked
+
+      - name: Differential fixture regressions
+        run: python3 -m unittest tools.tests.test_r2c_import_differential -v
+
+      - name: Independent synthetic semantic differential
+        run: |
+          python3 tools/r2c_import_differential.py \
+            --rust-emitter target/debug/r2c_import_section_facts \
+            --work-dir /tmp/helve-r2c-import-differential
+
       - name: Cold stored-state lookup generator regressions
         run: python3 -m unittest tools.tests.test_stored_state_lookup -v
 
       # This is intentionally independent implementation evidence. The Python extractor uses a
-      # transparent generic NBT oracle; production Rust uses a bounded schema cursor. Agreement will
-      # later be checked at the normalized semantic corpus boundary rather than by sharing parser code.
+      # transparent generic NBT oracle; production Rust uses a bounded schema cursor. Agreement is
+      # checked at all 4096 dense semantic cells per block-bearing section.
       - name: Existing vanilla-save oracle regression
         run: python3 -m unittest tools.tests.test_vanilla_section_extractor -v
 
       - name: Python syntax
         run: >-
           python3 -m py_compile
+          tools/r2c_import_differential.py
+          tools/tests/test_r2c_import_differential.py
           tools/stored_state_lookup.py
           tools/tests/test_stored_state_lookup.py
           tools/vanilla_section_extractor.py
