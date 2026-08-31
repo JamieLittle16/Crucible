@@ -24,11 +24,25 @@ impl R2bPlaySession {
     /// frame-law failure leaves the logical egress queue unchanged, so an R2C publication cursor may
     /// advance only after this method succeeds.
     ///
+    /// This raw-body seam is intentionally crate-visible only. Target/world composition inside
+    /// `helve-server` may use it, but the public [`R2bPlaySession`] API must not become an arbitrary
+    /// packet-injection surface.
+    ///
     /// # Errors
     ///
     /// Returns the existing fail-closed Play/driver error when the batch violates framing or egress
     /// bounds. Rejection does not partially append the batch.
-    pub fn admit_play_publication_batch<B>(&mut self, bodies: &[B]) -> Result<(), R2bPlayError>
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "R2C projector integration is source-admission blocked; remove when it becomes the production caller"
+        )
+    )]
+    pub(crate) fn admit_play_publication_batch<B>(
+        &mut self,
+        bodies: &[B],
+    ) -> Result<(), R2bPlayError>
     where
         B: AsRef<[u8]>,
     {
@@ -47,13 +61,21 @@ impl R2bPlaySession {
     ///
     /// This is the fairness-oriented path for a potentially large world publication. Atomic groups
     /// that genuinely require all-or-nothing egress admission may use
-    /// [`Self::admit_play_publication_batch`] instead.
+    /// [`Self::admit_play_publication_batch`] instead. Like the atomic raw-body seam, this method is
+    /// crate-visible only so external users cannot bypass target-owned packet semantics.
     ///
     /// # Errors
     ///
     /// Returns the existing fail-closed Play/driver error without advancing `cursor` when the next
     /// body violates framing or bounded-egress capacity.
-    pub fn service_play_publication_one<B>(
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "R2C projector integration is source-admission blocked; remove when it becomes the production caller"
+        )
+    )]
+    pub(crate) fn service_play_publication_one<B>(
         &mut self,
         publication: &[B],
         cursor: &mut PublicationCursor,
@@ -66,6 +88,13 @@ impl R2bPlaySession {
     }
 }
 
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "only the intentionally dormant internal R2C publication seams use this mapper"
+    )
+)]
 fn map_publication_driver_error(error: &DriverError<Infallible>) -> R2bPlayError {
     match error {
         DriverError::Buffer(error) => R2bPlayError::Buffer(*error),
