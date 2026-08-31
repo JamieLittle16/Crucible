@@ -1,0 +1,83 @@
+name: R2C World-State Admission Evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/r2c_world_state_admission_*.py"
+      - "tools/r2c_world_state_source_gate.py"
+      - "tools/r2c_world_state_source_review_*.py"
+      - "tools/tests/test_r2c_world_state_admission_*.py"
+      - "tools/tests/test_r2c_world_state_source_gate.py"
+      - "vanilla/records/network/r2/world-state/**"
+      - "vanilla/semantics/network/R2C_WORLD_STATE_SEMANTICS.md"
+      - "vanilla/gates/network/GATE-NET-R2C-WORLD-STATE-26_2-001.json"
+      - "vanilla/reports/r2c-world-state-source-admission-26.2.json"
+      - "vanilla/reports/r2c-world-state-admitted-bundle-manifest.json"
+      - "docs/qualification/R2C_WORLD_STATE_ADMISSION_PROMOTION.md"
+      - ".github/workflows/r2c-world-state-admission.yml"
+  pull_request:
+    paths:
+      - "tools/r2c_world_state_admission_*.py"
+      - "tools/r2c_world_state_source_gate.py"
+      - "tools/r2c_world_state_source_review_*.py"
+      - "tools/tests/test_r2c_world_state_admission_*.py"
+      - "tools/tests/test_r2c_world_state_source_gate.py"
+      - "vanilla/records/network/r2/world-state/**"
+      - "vanilla/semantics/network/R2C_WORLD_STATE_SEMANTICS.md"
+      - "vanilla/gates/network/GATE-NET-R2C-WORLD-STATE-26_2-001.json"
+      - "vanilla/reports/r2c-world-state-source-admission-26.2.json"
+      - "vanilla/reports/r2c-world-state-admitted-bundle-manifest.json"
+      - "docs/qualification/R2C_WORLD_STATE_ADMISSION_PROMOTION.md"
+      - ".github/workflows/r2c-world-state-admission.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: r2c-world-state-admission-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  source-free-evidence:
+    name: Source-free admission evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Doctor, bound gate, promotion, rollback, and verifier regressions
+        run: >-
+          python3 -m unittest
+          tools.tests.test_r2c_world_state_admission_doctor
+          tools.tests.test_r2c_world_state_source_gate
+          tools.tests.test_r2c_world_state_admission_promote
+          tools.tests.test_r2c_world_state_admission_atomicity
+          tools.tests.test_r2c_world_state_admission_verify
+          -v
+
+      - name: Python syntax
+        run: >-
+          python3 -m py_compile
+          tools/r2c_world_state_admission_doctor.py
+          tools/r2c_world_state_source_gate.py
+          tools/r2c_world_state_admission_promote.py
+          tools/r2c_world_state_admission_verify.py
+          tools/tests/test_r2c_world_state_admission_doctor.py
+          tools/tests/test_r2c_world_state_source_gate.py
+          tools/tests/test_r2c_world_state_admission_promote.py
+          tools/tests/test_r2c_world_state_admission_atomicity.py
+          tools/tests/test_r2c_world_state_admission_verify.py
+
+      - name: Verify committed admitted bundle when present
+        run: |
+          manifest="vanilla/reports/r2c-world-state-admitted-bundle-manifest.json"
+          if [[ -f "$manifest" ]]; then
+            python3 tools/r2c_world_state_admission_verify.py --repo-root .
+          else
+            echo "R2C world-state evidence is not yet source-admitted; no committed bundle to verify."
+          fi
