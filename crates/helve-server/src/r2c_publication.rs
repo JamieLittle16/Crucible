@@ -36,20 +36,20 @@ impl R2bPlaySession {
     {
         self.driver
             .queue_batch::<Infallible, B>(bodies)
-            .map_err(map_publication_driver_error)
+            .map_err(|error| map_publication_driver_error(&error))
     }
 }
 
-fn map_publication_driver_error(error: DriverError<Infallible>) -> R2bPlayError {
+fn map_publication_driver_error(error: &DriverError<Infallible>) -> R2bPlayError {
     match error {
-        DriverError::Buffer(error) => R2bPlayError::Buffer(error),
-        DriverError::Handler(never) => match never {},
+        DriverError::Buffer(error) => R2bPlayError::Buffer(*error),
+        DriverError::Handler(never) => match *never {},
         DriverError::RollbackFailed {
             operation,
             rollback,
         } => R2bPlayError::RollbackFailed {
-            operation,
-            rollback,
+            operation: *operation,
+            rollback: *rollback,
         },
         DriverError::AccountingOverflow => R2bPlayError::AccountingOverflow,
     }
