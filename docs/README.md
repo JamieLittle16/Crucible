@@ -22,13 +22,15 @@ If you are new to the project, do not try to read everything in repository order
 1. [`architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md`](architecture/R2C_WORLD_PROJECTION_IMPLEMENTATION.md) — normative R2C implementation contract: world import, dimension/chunk ownership, derived state, source-admitted 26.2 projection, bounded publication and production mechanism tournaments.
 2. [`execution/R2C_EXECUTION_PLAN.md`](execution/R2C_EXECUTION_PLAN.md) — concrete R2C.0–R2C.8 implementation sequence from source-law closure through the stock-client native-world gate.
 3. [`qualification/R2C_WORLD_PROJECTION_QUALIFICATION.md`](qualification/R2C_WORLD_PROJECTION_QUALIFICATION.md) — R2C correctness, differential, fuzz, backpressure, resource and controlled-hardware performance qualification programme.
-4. [`architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — parent architectural law and implementation order for R2 persistent world and R3 walkability.
-5. [`architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md`](architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md) — performance completeness review for regionization, scheduling, world layout, generated facts, dirty state, client projection, networking, persistence and hardware locality.
-6. [`architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md`](architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md) — unresolved choices that must not become permanent without representative semantic/performance evidence.
-7. [`architecture/OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) — authority, migration, staged effects and schedule-invariance law used by the regionized engine.
-8. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — world/section implementation and HOT-path constraints.
-9. [`qualification/CHUNK_PUBLICATION_REFERENCE.md`](qualification/CHUNK_PUBLICATION_REFERENCE.md) — full-copy immutable chunk publication correctness oracle that R2C production projection candidates must beat rather than silently adopt.
-10. [`qualification/section/SECTION_CANDIDATE_REGISTRY.md`](qualification/section/SECTION_CANDIDATE_REGISTRY.md) — current section-representation candidate state; production R2C must consume the eventual M0.3D decision rather than choosing a networking-specific second representation.
+4. [`qualification/R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md`](qualification/R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md) — bounded 26.2 Anvil/NBT/state import and independent genuine-save differential boundary.
+5. [`qualification/R2C_IMPORT_RESIDENT_QUALIFICATION.md`](qualification/R2C_IMPORT_RESIDENT_QUALIFICATION.md) — complete stored-block → final-section → resident-world hosted diagnostic, official-save identity gate and target-hardware follow-up boundary.
+6. [`architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md`](architecture/R2_R3_LIVE_ENGINE_ARCHITECTURE.md) — parent architectural law and implementation order for R2 persistent world and R3 walkability.
+7. [`architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md`](architecture/R2_R3_PERFORMANCE_SEARCH_PLAN.md) — performance completeness review for regionization, scheduling, world layout, generated facts, dirty state, client projection, networking, persistence and hardware locality.
+8. [`architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md`](architecture/R2_R3_PERFORMANCE_DECISION_REGISTER.md) — unresolved choices that must not become permanent without representative semantic/performance evidence.
+9. [`architecture/OWNERSHIP_SIMULATION_CONTRACT.md`](architecture/OWNERSHIP_SIMULATION_CONTRACT.md) — authority, migration, staged effects and schedule-invariance law used by the regionized engine.
+10. [`architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md`](architecture/WORLD_SECTION_IMPLEMENTATION_SLICE.md) — world/section implementation and HOT-path constraints.
+11. [`qualification/CHUNK_PUBLICATION_REFERENCE.md`](qualification/CHUNK_PUBLICATION_REFERENCE.md) — full-copy immutable chunk publication correctness oracle that R2C production projection candidates must beat rather than silently adopt.
+12. [`qualification/section/SECTION_CANDIDATE_REGISTRY.md`](qualification/section/SECTION_CANDIDATE_REGISTRY.md) — current section-representation candidate state; production R2C must consume the eventual M0.3D decision rather than choosing a networking-specific second representation.
 
 ### I want to understand how claims become evidence
 
@@ -73,6 +75,8 @@ Architecture documents should separate **semantic laws** from **replaceable mech
 | Document | Purpose |
 | --- | --- |
 | [`R2C_WORLD_PROJECTION_QUALIFICATION.md`](qualification/R2C_WORLD_PROJECTION_QUALIFICATION.md) | Current-milestone source, semantic-world, reference-projector, optimized-equivalence, backpressure/resource, performance and stock-client qualification programme. |
+| [`R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md`](qualification/R2C_PREGENERATED_WORLD_IMPORT_QUALIFICATION.md) | Bounded 26.2 stored-world block import, exact persisted-state resolution and independent genuine-save differential qualification. |
+| [`R2C_IMPORT_RESIDENT_QUALIFICATION.md`](qualification/R2C_IMPORT_RESIDENT_QUALIFICATION.md) | Genuine-save import-through-residency hosted diagnostics, steady-state scratch/accounting gates and controlled-hardware decision boundary. |
 | [`CHUNK_PUBLICATION_REFERENCE.md`](qualification/CHUNK_PUBLICATION_REFERENCE.md) | Immutable semantic chunk-publication correctness/freshness oracle and explicit non-decision on the production snapshot/projection mechanism. |
 | [`EVIDENCE_AND_EXPERIMENT_RECORDS.md`](qualification/EVIDENCE_AND_EXPERIMENT_RECORDS.md) | Evidence identity, experiment records and decision provenance. |
 | [`PERFORMANCE_QUALIFICATION_STANDARD.md`](qualification/PERFORMANCE_QUALIFICATION_STANDARD.md) | Normative machine-state, warm-up, topology/cache/counter, tail and whole-cost rules for performance claims. |
