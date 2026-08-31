@@ -16,6 +16,8 @@ use crate::{
 const BLOCK_SECTION_CELLS: usize = 4096;
 const MIN_PACKED_BITS: usize = 4;
 const PACKED_WORD_BITS: usize = u64::BITS as usize;
+const FOUR_BIT_VALUES_PER_WORD: usize = PACKED_WORD_BITS / MIN_PACKED_BITS;
+const FOUR_BIT_MASK: u64 = 0x0f;
 const MAX_WRITTEN_PALETTE_ENTRIES: usize = BLOCK_SECTION_CELLS;
 const HARD_MAX_PROPERTIES_PER_STATE: usize = 32;
 
@@ -532,26 +534,65 @@ where
         });
     }
 
+    decode_packed_states(
+        section_index,
+        &scratch.palette,
+        &scratch.packed_words,
+        bits_per_entry,
+        &mut scratch.states,
+    )?;
+    debug_assert_eq!(scratch.states.len(), BLOCK_SECTION_CELLS);
+    Ok(builder.build_states(&scratch.states))
+}
+
+fn decode_packed_states<S: Copy + Eq>(
+    section_index: usize,
+    palette: &[S],
+    packed_words: &[u64],
+    bits_per_entry: usize,
+    states: &mut Vec<S>,
+) -> Result<(), BlockSectionImportError> {
+    states.reserve(BLOCK_SECTION_CELLS);
+
+    if bits_per_entry == MIN_PACKED_BITS {
+        for cell in 0..BLOCK_SECTION_CELLS {
+            let word = packed_words[cell >> 4];
+            let shift = (cell & (FOUR_BIT_VALUES_PER_WORD - 1)) << 2;
+            let raw_palette_index = (word >> shift) & FOUR_BIT_MASK;
+            let palette_index = usize::try_from(raw_palette_index)
+                .map_err(|_| BlockSectionImportError::ArithmeticOverflow)?;
+            let state = palette.get(palette_index).copied().ok_or(
+                BlockSectionImportError::PaletteIndexOutOfRange {
+                    section_index,
+                    cell,
+                    palette_index,
+                    palette_entries: palette.len(),
+                },
+            )?;
+            states.push(state);
+        }
+        return Ok(());
+    }
+
+    let values_per_word = PACKED_WORD_BITS / bits_per_entry;
     let mask = (1_u64 << bits_per_entry) - 1;
-    scratch.states.reserve(BLOCK_SECTION_CELLS);
     for cell in 0..BLOCK_SECTION_CELLS {
-        let word = scratch.packed_words[cell / values_per_word];
+        let word = packed_words[cell / values_per_word];
         let shift = (cell % values_per_word) * bits_per_entry;
         let raw_palette_index = (word >> shift) & mask;
         let palette_index = usize::try_from(raw_palette_index)
             .map_err(|_| BlockSectionImportError::ArithmeticOverflow)?;
-        let state = scratch.palette.get(palette_index).copied().ok_or(
+        let state = palette.get(palette_index).copied().ok_or(
             BlockSectionImportError::PaletteIndexOutOfRange {
                 section_index,
                 cell,
                 palette_index,
-                palette_entries,
+                palette_entries: palette.len(),
             },
         )?;
-        scratch.states.push(state);
+        states.push(state);
     }
-    debug_assert_eq!(scratch.states.len(), BLOCK_SECTION_CELLS);
-    Ok(builder.build_states(&scratch.states))
+    Ok(())
 }
 
 fn decode_palette<R>(
@@ -1042,6 +1083,26 @@ mod tests {
         assert_eq!(result.sections[0].section.len(), BLOCK_SECTION_CELLS);
         for (cell, &state) in result.sections[0].section.iter().enumerate() {
             assert_eq!(usize::from(state), cell % 3);
+        }
+    }
+
+    #[test]
+    fn five_bit_generic_fallback_decodes_non_spanning_boundaries() {
+        let palette: Vec<u16> = (0_u16..17).collect();
+        let indices: Vec<usize> = (0..BLOCK_SECTION_CELLS).map(|cell| cell % 17).collect();
+        let packed: Vec<u64> = packed_words(&indices, palette.len())
+            .into_iter()
+            .map(|word| u64::from_be_bytes(word.to_be_bytes()))
+            .collect();
+        let bits = super::packed_bits(palette.len()).expect("five-bit palette width");
+        assert_eq!(bits, 5);
+
+        let mut states = Vec::new();
+        super::decode_packed_states(7, &palette, &packed, bits, &mut states)
+            .expect("valid five-bit fallback");
+        assert_eq!(states.len(), BLOCK_SECTION_CELLS);
+        for (cell, &state) in states.iter().enumerate() {
+            assert_eq!(usize::from(state), cell % 17);
         }
     }
 
