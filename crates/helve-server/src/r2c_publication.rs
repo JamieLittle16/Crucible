@@ -66,7 +66,7 @@ mod tests {
     use crate::r2b_server::{INITIAL_LIVENESS, R2bPlayError, R2bPlaySession};
 
     fn limits(max_egress: usize) -> ConnectionLimits {
-        ConnectionLimits::new(64, 128, max_egress).expect("valid test connection limits")
+        ConnectionLimits::new(8, 128, max_egress).expect("valid test connection limits")
     }
 
     fn session(max_egress: usize) -> R2bPlaySession {
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn publication_batch_backpressure_is_atomic_against_existing_egress() {
-        let mut session = session(8);
+        let mut session = session(12);
         let prefix = [vec![0x01, 0xAA]];
         session
             .admit_play_publication_batch(&prefix)
