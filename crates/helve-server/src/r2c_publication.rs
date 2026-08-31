@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn publication_batch_backpressure_is_atomic_against_existing_egress() {
-        let mut session = session(12);
+        let mut session = session(10);
         let prefix = [vec![0x01, 0xAA]];
         session
             .admit_play_publication_batch(&prefix)
