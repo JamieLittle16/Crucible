@@ -7,8 +7,11 @@ on:
       - "tools/r2c_world_state_admission_*.py"
       - "tools/r2c_world_state_source_gate.py"
       - "tools/r2c_world_state_source_review_*.py"
+      - "tools/r2c_world_state_delegate_closure_source_review.py"
       - "tools/tests/test_r2c_world_state_admission_*.py"
       - "tools/tests/test_r2c_world_state_source_gate.py"
+      - "tools/tests/test_r2c_world_state_delegate_closure_source_review.py"
+      - "vanilla/reviews/network/r2c-world-state-delegate-closure-plan.json"
       - "vanilla/records/network/r2/world-state/**"
       - "vanilla/semantics/network/R2C_WORLD_STATE_SEMANTICS.md"
       - "vanilla/gates/network/GATE-NET-R2C-WORLD-STATE-26_2-001.json"
@@ -21,8 +24,11 @@ on:
       - "tools/r2c_world_state_admission_*.py"
       - "tools/r2c_world_state_source_gate.py"
       - "tools/r2c_world_state_source_review_*.py"
+      - "tools/r2c_world_state_delegate_closure_source_review.py"
       - "tools/tests/test_r2c_world_state_admission_*.py"
       - "tools/tests/test_r2c_world_state_source_gate.py"
+      - "tools/tests/test_r2c_world_state_delegate_closure_source_review.py"
+      - "vanilla/reviews/network/r2c-world-state-delegate-closure-plan.json"
       - "vanilla/records/network/r2/world-state/**"
       - "vanilla/semantics/network/R2C_WORLD_STATE_SEMANTICS.md"
       - "vanilla/gates/network/GATE-NET-R2C-WORLD-STATE-26_2-001.json"
@@ -50,9 +56,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Doctor, bound gate, promotion, rollback, and verifier regressions
+      - name: Doctor, delegate closure, bound gate, promotion, rollback, and verifier regressions
         run: >-
           python3 -m unittest
+          tools.tests.test_r2c_world_state_delegate_closure_source_review
           tools.tests.test_r2c_world_state_admission_doctor
           tools.tests.test_r2c_world_state_source_gate
           tools.tests.test_r2c_world_state_admission_promote
@@ -63,10 +70,12 @@ jobs:
       - name: Python syntax
         run: >-
           python3 -m py_compile
+          tools/r2c_world_state_delegate_closure_source_review.py
           tools/r2c_world_state_admission_doctor.py
           tools/r2c_world_state_source_gate.py
           tools/r2c_world_state_admission_promote.py
           tools/r2c_world_state_admission_verify.py
+          tools/tests/test_r2c_world_state_delegate_closure_source_review.py
           tools/tests/test_r2c_world_state_admission_doctor.py
           tools/tests/test_r2c_world_state_source_gate.py
           tools/tests/test_r2c_world_state_admission_promote.py
