@@ -8,9 +8,11 @@ on:
       - "tools/r2c_world_state_source_gate.py"
       - "tools/r2c_world_state_source_review_*.py"
       - "tools/r2c_world_state_delegate_closure_source_review.py"
+      - "tools/r2c_world_state_parent_review_complete.py"
       - "tools/tests/test_r2c_world_state_admission_*.py"
       - "tools/tests/test_r2c_world_state_source_gate.py"
       - "tools/tests/test_r2c_world_state_delegate_closure_source_review.py"
+      - "tools/tests/test_r2c_world_state_parent_review_complete.py"
       - "vanilla/reviews/network/r2c-world-state-delegate-closure-plan.json"
       - "vanilla/records/network/r2/world-state/**"
       - "vanilla/semantics/network/R2C_WORLD_STATE_SEMANTICS.md"
@@ -25,9 +27,11 @@ on:
       - "tools/r2c_world_state_source_gate.py"
       - "tools/r2c_world_state_source_review_*.py"
       - "tools/r2c_world_state_delegate_closure_source_review.py"
+      - "tools/r2c_world_state_parent_review_complete.py"
       - "tools/tests/test_r2c_world_state_admission_*.py"
       - "tools/tests/test_r2c_world_state_source_gate.py"
       - "tools/tests/test_r2c_world_state_delegate_closure_source_review.py"
+      - "tools/tests/test_r2c_world_state_parent_review_complete.py"
       - "vanilla/reviews/network/r2c-world-state-delegate-closure-plan.json"
       - "vanilla/records/network/r2/world-state/**"
       - "vanilla/semantics/network/R2C_WORLD_STATE_SEMANTICS.md"
@@ -63,6 +67,7 @@ jobs:
           tools.tests.test_r2c_world_state_admission_delegate_finalize
           tools.tests.test_r2c_world_state_admission_delegate_bind
           tools.tests.test_r2c_world_state_admission_parent_review_apply
+          tools.tests.test_r2c_world_state_parent_review_complete
           tools.tests.test_r2c_world_state_admission_delegate_var_ids
           tools.tests.test_r2c_world_state_admission_doctor
           tools.tests.test_r2c_world_state_source_gate
@@ -78,6 +83,7 @@ jobs:
           tools/r2c_world_state_source_review_delegate_finalize.py
           tools/r2c_world_state_source_review_delegate_bind.py
           tools/r2c_world_state_source_review_parent_apply.py
+          tools/r2c_world_state_parent_review_complete.py
           tools/r2c_world_state_admission_prepare.py
           tools/r2c_world_state_admission_doctor.py
           tools/r2c_world_state_source_gate.py
@@ -87,6 +93,7 @@ jobs:
           tools/tests/test_r2c_world_state_admission_delegate_finalize.py
           tools/tests/test_r2c_world_state_admission_delegate_bind.py
           tools/tests/test_r2c_world_state_admission_parent_review_apply.py
+          tools/tests/test_r2c_world_state_parent_review_complete.py
           tools/tests/test_r2c_world_state_admission_delegate_var_ids.py
           tools/tests/test_r2c_world_state_admission_doctor.py
           tools/tests/test_r2c_world_state_source_gate.py
