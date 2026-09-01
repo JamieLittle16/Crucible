@@ -27,17 +27,17 @@
       "review_focus": "Block-state section palette/container encoding and packed storage rules used by initial chunk publication.",
       "root_types": [
         "net.minecraft.util.SimpleBitStorage",
+        "net.minecraft.world.level.chunk.Configuration",
         "net.minecraft.world.level.chunk.GlobalPalette",
         "net.minecraft.world.level.chunk.HashMapPalette",
         "net.minecraft.world.level.chunk.LevelChunkSection",
         "net.minecraft.world.level.chunk.LinearPalette",
         "net.minecraft.world.level.chunk.Palette",
         "net.minecraft.world.level.chunk.PalettedContainer",
-        "net.minecraft.world.level.chunk.PalettedContainer$Configuration",
         "net.minecraft.world.level.chunk.PalettedContainer$Data",
-        "net.minecraft.world.level.chunk.PalettedContainer$Strategy",
         "net.minecraft.world.level.chunk.PalettedContainerFactory",
-        "net.minecraft.world.level.chunk.SingleValuePalette"
+        "net.minecraft.world.level.chunk.SingleValuePalette",
+        "net.minecraft.world.level.chunk.Strategy"
       ]
     },
     {
@@ -45,17 +45,17 @@
       "review_focus": "Biome palette/container state carried by the initial section projection, including the exact selected container strategy and network palette/storage representation.",
       "root_types": [
         "net.minecraft.util.SimpleBitStorage",
+        "net.minecraft.world.level.chunk.Configuration",
         "net.minecraft.world.level.chunk.GlobalPalette",
         "net.minecraft.world.level.chunk.HashMapPalette",
         "net.minecraft.world.level.chunk.LevelChunkSection",
         "net.minecraft.world.level.chunk.LinearPalette",
         "net.minecraft.world.level.chunk.Palette",
         "net.minecraft.world.level.chunk.PalettedContainer",
-        "net.minecraft.world.level.chunk.PalettedContainer$Configuration",
         "net.minecraft.world.level.chunk.PalettedContainer$Data",
-        "net.minecraft.world.level.chunk.PalettedContainer$Strategy",
         "net.minecraft.world.level.chunk.PalettedContainerFactory",
-        "net.minecraft.world.level.chunk.SingleValuePalette"
+        "net.minecraft.world.level.chunk.SingleValuePalette",
+        "net.minecraft.world.level.chunk.Strategy"
       ]
     },
     {
