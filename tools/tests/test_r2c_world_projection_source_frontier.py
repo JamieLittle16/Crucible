@@ -43,7 +43,7 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
     def test_frontier_roots_are_unique_and_bounded_to_world_projection(self) -> None:
         data = json.loads(FRONTIER.read_text(encoding="utf-8"))
         roots = data["root_queries"]
-        self.assertEqual(len(roots), 10)
+        self.assertEqual(len(roots), 25)
         self.assertEqual(len(roots), len(set(roots)))
         self.assertTrue(all(root.startswith("net.minecraft.") for root in roots))
         joined = "\n".join(roots)
@@ -54,7 +54,20 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
             "ClientboundLightUpdatePacketData",
             "LevelChunkSection",
             "PalettedContainer",
+            "PalettedContainer$Data",
+            "PalettedContainer$Strategy",
+            "PalettedContainer$Configuration",
+            "PalettedContainerFactory",
+            "SingleValuePalette",
+            "LinearPalette",
+            "HashMapPalette",
+            "GlobalPalette",
+            "SimpleBitStorage",
             "Heightmap",
+            "Heightmap$Types",
+            "Heightmap$Usage",
+            "DataLayer",
+            "LayerLightEventListener",
             "LevelLightEngine",
             "SerializableChunkData",
         ):
@@ -78,6 +91,27 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
             for root in group["root_types"]
         }
         self.assertEqual(planned_roots, set(frontier["root_queries"]))
+        groups = {group["group_id"]: group for group in plan["groups"]}
+        self.assertIn(
+            "net.minecraft.world.level.chunk.PalettedContainer$Data",
+            groups["R2C-BIOMES"]["root_types"],
+        )
+        self.assertIn(
+            "net.minecraft.world.level.levelgen.Heightmap$Types",
+            groups["R2C-HEIGHTMAPS"]["root_types"],
+        )
+        self.assertIn(
+            "net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData",
+            groups["R2C-HEIGHTMAPS"]["root_types"],
+        )
+        self.assertIn(
+            "net.minecraft.world.level.chunk.DataLayer",
+            groups["R2C-LIGHT"]["root_types"],
+        )
+        self.assertIn(
+            "net.minecraft.world.level.chunk.storage.SerializableChunkData",
+            groups["R2C-LIGHT"]["root_types"],
+        )
         for group in plan["groups"]:
             self.assertTrue(group["review_focus"])
             self.assertTrue(group["root_types"])
