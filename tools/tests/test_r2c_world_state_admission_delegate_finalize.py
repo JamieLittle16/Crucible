@@ -101,16 +101,16 @@ def fixture_payloads() -> dict[str, bytes]:
         group["followup_dependencies"] = []
         group["semantic_observations"] = [f"Reviewed exact {group['group_id']} delegate law."]
         group["review_complete"] = True
-    worksheet_bytes = pretty(worksheet)
-    payloads["worksheet.json"] = worksheet_bytes
-
-    manifest = json.loads(payloads["manifest.json"])
-    for item in manifest["files"]:
-        if item["path"] == "worksheet.json":
-            item["sha256"] = hashlib.sha256(worksheet_bytes).hexdigest()
-            item["size"] = len(worksheet_bytes)
-    payloads["manifest.json"] = pretty(manifest)
+    payloads["worksheet.json"] = pretty(worksheet)
     return payloads
+
+
+def manifest_file(value: dict[str, object], path: str) -> dict[str, object]:
+    for raw in value["files"]:  # type: ignore[index]
+        item = raw  # type: ignore[assignment]
+        if item["path"] == path:  # type: ignore[index]
+            return item  # type: ignore[return-value]
+    raise AssertionError(f"missing manifest file {path}")
 
 
 class R2cWorldStateDelegateFinalizeTests(unittest.TestCase):
@@ -128,6 +128,10 @@ class R2cWorldStateDelegateFinalizeTests(unittest.TestCase):
     def test_complete_delegate_review_emits_source_free_result(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             pack, worksheet, manifest, output = self.write_fixture(Path(temporary))
+            original_manifest = json.loads(manifest.read_text())
+            original_worksheet = manifest_file(original_manifest, "worksheet.json")
+            completed_worksheet_sha = hashlib.sha256(worksheet.read_bytes()).hexdigest()
+
             summary = finalize.finalize(pack, worksheet, manifest, output)
             result = json.loads(output.read_text())
             text = output.read_text()
@@ -142,6 +146,10 @@ class R2cWorldStateDelegateFinalizeTests(unittest.TestCase):
             self.assertFalse(result["contains_official_source_text"])
             self.assertNotIn("source_excerpt", text)
             self.assertNotIn("SECRET_SOURCE", text)
+            self.assertEqual(result["generated_worksheet_sha256"], original_worksheet["sha256"])
+            self.assertEqual(result["generated_worksheet_size"], original_worksheet["size"])
+            self.assertEqual(result["worksheet_sha256"], completed_worksheet_sha)
+            self.assertNotEqual(result["worksheet_sha256"], result["generated_worksheet_sha256"])
             self.assertEqual(
                 [(group["group_id"], group["parent_group_id"]) for group in result["groups"]],
                 list(closure.EXPECTED_GROUPS),
@@ -154,6 +162,16 @@ class R2cWorldStateDelegateFinalizeTests(unittest.TestCase):
             value["files"][0]["sha256"] = "0" * 64
             manifest.write_bytes(pretty(value))
             with self.assertRaisesRegex(finalize.FinalizeError, "manifest metadata mismatch"):
+                finalize.finalize(pack, worksheet, manifest, output)
+
+    def test_generated_worksheet_manifest_tamper_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            pack, worksheet, manifest, output = self.write_fixture(Path(temporary))
+            value = json.loads(manifest.read_text())
+            item = manifest_file(value, "worksheet.json")
+            item["sha256"] = "0" * 64
+            manifest.write_bytes(pretty(value))
+            with self.assertRaisesRegex(finalize.FinalizeError, "manifest metadata mismatch for worksheet.json"):
                 finalize.finalize(pack, worksheet, manifest, output)
 
     def test_current_plan_provenance_drift_fails_closed(self) -> None:
@@ -170,14 +188,7 @@ class R2cWorldStateDelegateFinalizeTests(unittest.TestCase):
             pack, worksheet, manifest, output = self.write_fixture(Path(temporary))
             value = json.loads(worksheet.read_text())
             value["groups"][0]["followup_dependencies"] = ["third-order delegate"]
-            worksheet_bytes = pretty(value)
-            worksheet.write_bytes(worksheet_bytes)
-            manifest_value = json.loads(manifest.read_text())
-            for item in manifest_value["files"]:
-                if item["path"] == "worksheet.json":
-                    item["sha256"] = hashlib.sha256(worksheet_bytes).hexdigest()
-                    item["size"] = len(worksheet_bytes)
-            manifest.write_bytes(pretty(manifest_value))
+            worksheet.write_bytes(pretty(value))
             with self.assertRaisesRegex(finalize.FinalizeError, "unresolved followup"):
                 finalize.finalize(pack, worksheet, manifest, output)
 
@@ -186,14 +197,7 @@ class R2cWorldStateDelegateFinalizeTests(unittest.TestCase):
             pack, worksheet, manifest, output = self.write_fixture(Path(temporary))
             value = json.loads(worksheet.read_text())
             value["groups"][1]["hazards_reviewed"] = []
-            worksheet_bytes = pretty(value)
-            worksheet.write_bytes(worksheet_bytes)
-            manifest_value = json.loads(manifest.read_text())
-            for item in manifest_value["files"]:
-                if item["path"] == "worksheet.json":
-                    item["sha256"] = hashlib.sha256(worksheet_bytes).hexdigest()
-                    item["size"] = len(worksheet_bytes)
-            manifest.write_bytes(pretty(manifest_value))
+            worksheet.write_bytes(pretty(value))
             with self.assertRaisesRegex(finalize.FinalizeError, "hazards are not fully reviewed"):
                 finalize.finalize(pack, worksheet, manifest, output)
 
@@ -202,14 +206,7 @@ class R2cWorldStateDelegateFinalizeTests(unittest.TestCase):
             pack, worksheet, manifest, output = self.write_fixture(Path(temporary))
             value = json.loads(worksheet.read_text())
             value["groups"][0]["selected_source_identities"] = []
-            worksheet_bytes = pretty(value)
-            worksheet.write_bytes(worksheet_bytes)
-            manifest_value = json.loads(manifest.read_text())
-            for item in manifest_value["files"]:
-                if item["path"] == "worksheet.json":
-                    item["sha256"] = hashlib.sha256(worksheet_bytes).hexdigest()
-                    item["size"] = len(worksheet_bytes)
-            manifest.write_bytes(pretty(manifest_value))
+            worksheet.write_bytes(pretty(value))
             with self.assertRaisesRegex(finalize.FinalizeError, "must not be empty"):
                 finalize.finalize(pack, worksheet, manifest, output)
 
@@ -218,14 +215,7 @@ class R2cWorldStateDelegateFinalizeTests(unittest.TestCase):
             pack, worksheet, manifest, output = self.write_fixture(Path(temporary))
             value = json.loads(worksheet.read_text())
             value["groups"][0]["candidates"][0]["calls"]["call_sites"] = 2
-            worksheet_bytes = pretty(value)
-            worksheet.write_bytes(worksheet_bytes)
-            manifest_value = json.loads(manifest.read_text())
-            for item in manifest_value["files"]:
-                if item["path"] == "worksheet.json":
-                    item["sha256"] = hashlib.sha256(worksheet_bytes).hexdigest()
-                    item["size"] = len(worksheet_bytes)
-            manifest.write_bytes(pretty(manifest_value))
+            worksheet.write_bytes(pretty(value))
             with self.assertRaisesRegex(finalize.FinalizeError, "candidate metadata drift"):
                 finalize.finalize(pack, worksheet, manifest, output)
 
