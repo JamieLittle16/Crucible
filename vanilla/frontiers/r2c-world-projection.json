@@ -33,10 +33,25 @@
     "net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket",
     "net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData",
     "net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData",
+    "net.minecraft.util.SimpleBitStorage",
+    "net.minecraft.world.level.chunk.DataLayer",
+    "net.minecraft.world.level.chunk.GlobalPalette",
+    "net.minecraft.world.level.chunk.HashMapPalette",
     "net.minecraft.world.level.chunk.LevelChunkSection",
+    "net.minecraft.world.level.chunk.LinearPalette",
+    "net.minecraft.world.level.chunk.Palette",
     "net.minecraft.world.level.chunk.PalettedContainer",
+    "net.minecraft.world.level.chunk.PalettedContainer$Configuration",
+    "net.minecraft.world.level.chunk.PalettedContainer$Data",
+    "net.minecraft.world.level.chunk.PalettedContainer$Strategy",
+    "net.minecraft.world.level.chunk.PalettedContainerFactory",
+    "net.minecraft.world.level.chunk.SingleValuePalette",
+    "net.minecraft.world.level.chunk.storage.SerializableChunkData",
     "net.minecraft.world.level.levelgen.Heightmap",
-    "net.minecraft.world.level.lighting.LevelLightEngine",
-    "net.minecraft.world.level.chunk.storage.SerializableChunkData"
+    "net.minecraft.world.level.levelgen.Heightmap$Types",
+    "net.minecraft.world.level.levelgen.Heightmap$Usage",
+    "net.minecraft.world.level.lighting.LayerLightEventListener",
+    "net.minecraft.world.level.lighting.LayerLightEventListener$DummyLightLayerEventListener",
+    "net.minecraft.world.level.lighting.LevelLightEngine"
   ]
 }
