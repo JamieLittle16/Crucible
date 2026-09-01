@@ -29,6 +29,8 @@ ID = "ADMISSION-NET-R2C-WORLD-STATE-26_2-001"
 COMMIT_POLICY = "SOURCE_FREE_AUTHORING_NOT_ADMISSION"
 SEM_PREFIX = "SEM-NET-R2C-WORLD-"
 VAR_PREFIX = "VAR-NET-R2C-WORLD-"
+PRIMARY_CANDIDATE_PREFIX = "DISC-NET-R2C-WORLD-"
+DELEGATE_CANDIDATE_PREFIX = "DISC-NET-R2C-WORLD-DELEGATE-"
 
 
 class PrepareError(RuntimeError):
@@ -161,10 +163,15 @@ def _candidate(value: object, label: str) -> dict[str, object]:
 
 
 def _var_id(candidate_id: str) -> str:
-    prefix = "DISC-NET-R2C-WORLD-"
-    if not candidate_id.startswith(prefix):
+    if candidate_id.startswith(DELEGATE_CANDIDATE_PREFIX):
+        suffix = candidate_id.removeprefix(DELEGATE_CANDIDATE_PREFIX)
+        if len(suffix) != 4 or not suffix.isdigit():
+            raise PrepareError(f"delegate candidate id has non-canonical suffix: {candidate_id}")
+        return VAR_PREFIX + "DELEGATE-" + suffix
+
+    if not candidate_id.startswith(PRIMARY_CANDIDATE_PREFIX):
         raise PrepareError(f"cannot derive stable VAR id from candidate id: {candidate_id}")
-    suffix = candidate_id.removeprefix(prefix)
+    suffix = candidate_id.removeprefix(PRIMARY_CANDIDATE_PREFIX)
     if not suffix or not suffix.isdigit():
         raise PrepareError(f"candidate id has non-canonical suffix: {candidate_id}")
     return VAR_PREFIX + suffix
