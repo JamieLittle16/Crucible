@@ -44,7 +44,7 @@ def record(candidate_id: str, identity: str, group_id: str, focus: str) -> dict[
     }
 
 
-def fixture(root: Path) -> tuple[Path, Path, Path, Path]:
+def fixture(root: Path) -> tuple[Path, Path, Path, Path, Path]:
     plan = closure._load_plan()
     records = [
         record(
@@ -107,18 +107,20 @@ def fixture(root: Path) -> tuple[Path, Path, Path, Path]:
     worksheet = root / "worksheet.json"
     manifest = root / "manifest.json"
     decision_path = root / "decisions.json"
+    bundle = root / "delegate-review.tar.gz"
     pack.write_bytes(payloads["review-pack.json"])
     worksheet.write_bytes(payloads["worksheet.json"])
     manifest.write_bytes(payloads["manifest.json"])
     decision_path.write_bytes(pretty(decisions))
-    return pack, worksheet, manifest, decision_path
+    closure._write_archive(bundle, payloads)
+    return pack, worksheet, manifest, decision_path, bundle
 
 
 class R2cWorldStateDelegateReviewCompleteTests(unittest.TestCase):
     def test_completion_publishes_only_source_free_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            pack, worksheet, manifest, decisions = fixture(root)
+            pack, worksheet, manifest, decisions, _bundle = fixture(root)
             output = root / "completed-review"
             summary = complete_review.complete(pack, worksheet, manifest, decisions, output)
 
@@ -135,10 +137,49 @@ class R2cWorldStateDelegateReviewCompleteTests(unittest.TestCase):
             self.assertNotIn("source_excerpt", combined)
             self.assertNotIn("SECRET_SOURCE", combined)
 
+    def test_bundle_completion_extracts_ephemerally_and_publishes_source_free_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _pack, _worksheet, _manifest, decisions, bundle = fixture(root)
+            output = root / "completed-review"
+            summary = complete_review.complete_bundle(bundle, decisions, output)
+
+            self.assertEqual(summary["selected_sources"], 2)
+            self.assertFalse(summary["contains_official_source_text"])
+            self.assertEqual(
+                sorted(path.name for path in output.iterdir()),
+                sorted([complete_review.COMPLETED_WORKSHEET, complete_review.REVIEW_RESULT]),
+            )
+            combined = "\n".join(path.read_text() for path in output.iterdir())
+            self.assertNotIn("source_excerpt", combined)
+            self.assertNotIn("SECRET_SOURCE", combined)
+            self.assertFalse(any(path.name.startswith(".r2c-delegate-bundle-") for path in root.iterdir()))
+
+    def test_bundle_with_extra_member_is_rejected_without_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pack, worksheet, manifest, decisions, _bundle = fixture(root)
+            invalid = root / "invalid.tar.gz"
+            closure._write_archive(
+                invalid,
+                {
+                    "review-pack.json": pack.read_bytes(),
+                    "worksheet.json": worksheet.read_bytes(),
+                    "manifest.json": manifest.read_bytes(),
+                    "unexpected.json": b"{}\n",
+                },
+            )
+            output = root / "completed-review"
+
+            with self.assertRaisesRegex(complete_review.CompleteError, "contain exactly"):
+                complete_review.complete_bundle(invalid, decisions, output)
+            self.assertFalse(output.exists())
+            self.assertFalse(any(path.name.startswith(".r2c-delegate-bundle-") for path in root.iterdir()))
+
     def test_failed_finalization_leaves_no_partial_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            pack, worksheet, manifest, decisions = fixture(root)
+            pack, worksheet, manifest, decisions, _bundle = fixture(root)
             manifest_value = json.loads(manifest.read_text())
             manifest_value["files"][0]["sha256"] = "0" * 64
             manifest.write_bytes(pretty(manifest_value))
@@ -152,7 +193,7 @@ class R2cWorldStateDelegateReviewCompleteTests(unittest.TestCase):
     def test_existing_output_directory_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            pack, worksheet, manifest, decisions = fixture(root)
+            pack, worksheet, manifest, decisions, _bundle = fixture(root)
             output = root / "completed-review"
             output.mkdir()
             with self.assertRaisesRegex(complete_review.CompleteError, "must not already exist"):
