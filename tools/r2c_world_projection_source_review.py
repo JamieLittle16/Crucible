@@ -217,6 +217,12 @@ def _load_frontier(path: Path, plan: DiscoveryPlan) -> dict[str, object]:
     return value
 
 
+_TYPE_SELECT = """SELECT t.id,t.qualified_name,f.path
+                  FROM types t
+                  JOIN source_files f ON f.id=t.file_id
+                  WHERE t.qualified_name=?
+                  ORDER BY t.id"""
+
 _METHOD_SELECT = """SELECT m.id,t.qualified_name,m.name,m.signature,m.param_count,
                            m.start_line,m.end_line,f.path
                     FROM methods m
@@ -231,9 +237,15 @@ def _exact_type_methods(
     qualified_name: str,
     max_methods: int,
 ) -> list[sqlite3.Row]:
+    types = conn.execute(_TYPE_SELECT, (qualified_name,)).fetchall()
+    if not types:
+        raise DiscoveryError(f"R2C root type resolved zero Atlas types: {qualified_name}")
+    if len(types) != 1:
+        raise DiscoveryError(
+            f"R2C root type must resolve exactly once in Atlas: {qualified_name} matched {len(types)}"
+        )
+
     rows = conn.execute(_METHOD_SELECT, (qualified_name,)).fetchall()
-    if not rows:
-        raise DiscoveryError(f"R2C root type resolved zero Atlas methods: {qualified_name}")
     if len(rows) > max_methods:
         raise DiscoveryError(
             f"R2C root type is too broad for bounded discovery: {qualified_name} "
@@ -320,6 +332,7 @@ def _group_inventory(
         roots.append({
             "type": root_type,
             "method_count": len(rows),
+            "declaration_only": not rows,
             "source_identities": [_source_identity(row) for row in rows],
         })
         for row in rows:

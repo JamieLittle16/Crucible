@@ -128,6 +128,16 @@ def _status_admitted(status: str, minimum: str) -> bool:
     return atlas.REVIEW_RANK[status] >= atlas.REVIEW_RANK[minimum]
 
 
+def _exact_frontier_type_count(conn: Any, qualified_name: str) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) FROM types WHERE qualified_name=?",
+        (qualified_name,),
+    ).fetchone()
+    if row is None:
+        return 0
+    return int(row[0])
+
+
 def _require_each_frontier_root(
     conn: Any,
     config: dict[str, Any],
@@ -141,10 +151,22 @@ def _require_each_frontier_root(
             raise GateError(
                 f"frontier {frontier_name} root_queries[{index}] must be a non-empty string"
             )
-        if not atlas.resolve_methods(conn, value):
+        if atlas.resolve_methods(conn, value):
+            continue
+        exact_types = _exact_frontier_type_count(conn, value)
+        if exact_types == 1:
+            # Records/enums/value-holder declarations can legitimately own no explicit Java methods.
+            # They are exact contextual frontier anchors only: compute_frontier_method_ids contributes
+            # zero executable methods for them, while the required VAR/SEM gate remains method-backed.
+            continue
+        if exact_types == 0:
             raise GateError(
-                f"frontier {frontier_name} root query resolved zero methods: {value}"
+                f"frontier {frontier_name} root query resolved neither methods nor an exact type: {value}"
             )
+        raise GateError(
+            f"frontier {frontier_name} root query resolved an ambiguous exact type: "
+            f"{value} matched {exact_types}"
+        )
 
 
 def _frontier_identity(

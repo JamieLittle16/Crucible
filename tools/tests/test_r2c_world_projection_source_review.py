@@ -64,8 +64,10 @@ def atlas_fixture() -> sqlite3.Connection:
     )
     conn.execute("INSERT INTO source_files(id,path) VALUES(1,'src/A.java')")
     conn.execute("INSERT INTO source_files(id,path) VALUES(2,'src/AB.java')")
+    conn.execute("INSERT INTO source_files(id,path) VALUES(3,'src/Empty.java')")
     conn.execute("INSERT INTO types(id,file_id,qualified_name) VALUES(1,1,'net.minecraft.A')")
     conn.execute("INSERT INTO types(id,file_id,qualified_name) VALUES(2,2,'net.minecraft.AB')")
+    conn.execute("INSERT INTO types(id,file_id,qualified_name) VALUES(3,3,'net.minecraft.Empty')")
     conn.execute(
         """INSERT INTO methods(
                id,type_id,name,signature,param_count,start_line,end_line,normalized_sha256,body_sha256
@@ -112,14 +114,39 @@ class R2cWorldProjectionSourceReviewTests(unittest.TestCase):
         self.addCleanup(conn.close)
         rows = review._exact_type_methods(conn, "net.minecraft.A", 8)
         self.assertEqual([row["signature"] for row in rows], ["alpha()", "beta(int)"])
-        with self.assertRaisesRegex(review.DiscoveryError, "zero Atlas methods"):
+        with self.assertRaisesRegex(review.DiscoveryError, "zero Atlas types"):
             review._exact_type_methods(conn, "net.minecraft.Missing", 8)
+
+    def test_exact_declaration_only_type_is_a_valid_zero_method_root(self) -> None:
+        conn = atlas_fixture()
+        self.addCleanup(conn.close)
+        rows = review._exact_type_methods(conn, "net.minecraft.Empty", 8)
+        self.assertEqual(rows, [])
 
     def test_exact_type_resolution_enforces_bounded_method_cap(self) -> None:
         conn = atlas_fixture()
         self.addCleanup(conn.close)
         with self.assertRaisesRegex(review.DiscoveryError, "too broad"):
             review._exact_type_methods(conn, "net.minecraft.A", 1)
+
+    def test_group_inventory_marks_declaration_only_roots_without_candidate_methods(self) -> None:
+        conn = atlas_fixture()
+        self.addCleanup(conn.close)
+        group = review.ReviewGroup("R2C-BIOMES", "fixture", ("net.minecraft.Empty",))
+        inventory = review._group_inventory(conn, group, 8, {}, {})
+        self.assertEqual(inventory["candidate_method_count"], 0)
+        self.assertEqual(inventory["candidate_methods"], [])
+        self.assertEqual(
+            inventory["roots"],
+            [
+                {
+                    "type": "net.minecraft.Empty",
+                    "method_count": 0,
+                    "declaration_only": True,
+                    "source_identities": [],
+                }
+            ],
+        )
 
     def test_method_inventory_is_source_free_and_preserves_call_structure(self) -> None:
         conn = atlas_fixture()
