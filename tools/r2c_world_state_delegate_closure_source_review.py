@@ -19,6 +19,7 @@ import re
 import sqlite3
 import sys
 import tarfile
+import tempfile
 import zipfile
 from collections import Counter
 from dataclasses import dataclass
@@ -601,20 +602,28 @@ def _add_bytes(archive: tarfile.TarFile, name: str, data: bytes) -> None:
 
 def _write_archive(path: Path, payloads: Mapping[str, bytes]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tarfile.open(path, mode="w:gz") as archive:
-        for name in sorted(payloads):
-            _add_bytes(archive, name, payloads[name])
-    with tarfile.open(path, mode="r:gz") as archive:
-        members = archive.getmembers()
-        names = {member.name for member in members}
-        if names != set(payloads) or any(
-            not member.isfile() or member.issym() or member.islnk() for member in members
-        ):
-            raise ClosureError("delegate-closure archive member set/type mismatch")
-        for member in members:
-            stream = archive.extractfile(member)
-            if stream is None or stream.read() != payloads[member.name]:
-                raise ClosureError(f"delegate-closure archive verification failed: {member.name}")
+    with tempfile.TemporaryDirectory(
+        dir=path.parent,
+        prefix=".helve-r2c-delegate-closure-",
+    ) as temporary:
+        staged = Path(temporary) / path.name
+        with tarfile.open(staged, mode="w:gz") as archive:
+            for name in sorted(payloads):
+                _add_bytes(archive, name, payloads[name])
+        with tarfile.open(staged, mode="r:gz") as archive:
+            members = archive.getmembers()
+            names = {member.name for member in members}
+            if names != set(payloads) or any(
+                not member.isfile() or member.issym() or member.islnk() for member in members
+            ):
+                raise ClosureError("delegate-closure archive member set/type mismatch")
+            for member in members:
+                stream = archive.extractfile(member)
+                if stream is None or stream.read() != payloads[member.name]:
+                    raise ClosureError(
+                        f"delegate-closure archive verification failed: {member.name}"
+                    )
+        staged.replace(path)
 
 
 def build_bundle(
