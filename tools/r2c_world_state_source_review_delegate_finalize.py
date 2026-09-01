@@ -312,16 +312,31 @@ def _validate_pack(value: Mapping[str, object], pack_sha: str) -> tuple[dict[str
     return records, groups, provenance
 
 
+def _review_precursor_bytes(value: Mapping[str, object]) -> bytes:
+    """Reconstruct the exact source-free worksheet emitted before human review."""
+    precursor = json.loads(json.dumps(value, ensure_ascii=False))
+    groups = _array(precursor.get("groups"), "delegate worksheet groups")
+    for index, raw_group in enumerate(groups):
+        group = _object(raw_group, f"delegate worksheet groups[{index}]")
+        group["source_inspected"] = False
+        group["selected_source_identities"] = []
+        group["rejected_source_identities"] = []
+        group["hazards_reviewed"] = []
+        group["followup_dependencies"] = []
+        group["semantic_observations"] = []
+        group["review_complete"] = False
+    return _pretty_bytes(precursor)
+
+
 def _validate_manifest(
     value: Mapping[str, object],
     *,
     manifest_sha: str,
     pack_sha: str,
     pack_bytes: bytes,
-    worksheet_sha: str,
-    worksheet_bytes: bytes,
+    worksheet_value: Mapping[str, object],
     provenance: Mapping[str, str],
-) -> None:
+) -> tuple[str, int]:
     required = {
         "schema": SCHEMA,
         "kind": closure.MANIFEST_KIND,
@@ -340,12 +355,15 @@ def _validate_manifest(
     if mismatches:
         raise FinalizeError(f"delegate manifest identity/provenance mismatch: {json.dumps(mismatches, sort_keys=True)}")
     _digest(manifest_sha, "delegate manifest digest")
+
+    precursor_bytes = _review_precursor_bytes(worksheet_value)
+    precursor_sha = _sha256_bytes(precursor_bytes)
     files = _array(value.get("files"), "delegate manifest files")
     if len(files) != 2:
         raise FinalizeError("delegate manifest must bind exactly review-pack.json and worksheet.json")
     expected = {
         "review-pack.json": (pack_sha, len(pack_bytes), True),
-        "worksheet.json": (worksheet_sha, len(worksheet_bytes), False),
+        "worksheet.json": (precursor_sha, len(precursor_bytes), False),
     }
     seen: set[str] = set()
     for index, raw_file in enumerate(files):
@@ -361,6 +379,7 @@ def _validate_manifest(
         seen.add(path)
     if seen != set(expected):
         raise FinalizeError("delegate manifest file surface is incomplete")
+    return precursor_sha, len(precursor_bytes)
 
 
 def _validate_worksheet(
@@ -482,23 +501,22 @@ def _validate_worksheet(
 
 def finalize(review_pack: Path, worksheet: Path, manifest: Path, output: Path) -> dict[str, object]:
     pack_value, pack_bytes, pack_sha = _read_json(review_pack, "delegate review pack")
-    worksheet_value, worksheet_bytes, worksheet_sha = _read_json(worksheet, "delegate review worksheet")
+    worksheet_value, _worksheet_bytes, worksheet_sha = _read_json(worksheet, "delegate review worksheet")
     manifest_value, _manifest_bytes, manifest_sha = _read_json(manifest, "delegate review manifest")
     records, groups, provenance = _validate_pack(pack_value, pack_sha)
-    _validate_manifest(
-        manifest_value,
-        manifest_sha=manifest_sha,
-        pack_sha=pack_sha,
-        pack_bytes=pack_bytes,
-        worksheet_sha=worksheet_sha,
-        worksheet_bytes=worksheet_bytes,
-        provenance=provenance,
-    )
     finalized_groups = _validate_worksheet(
         worksheet_value,
         pack_sha=pack_sha,
         records=records,
         groups=groups,
+        provenance=provenance,
+    )
+    generated_worksheet_sha, generated_worksheet_size = _validate_manifest(
+        manifest_value,
+        manifest_sha=manifest_sha,
+        pack_sha=pack_sha,
+        pack_bytes=pack_bytes,
+        worksheet_value=worksheet_value,
         provenance=provenance,
     )
     result: dict[str, object] = {
@@ -513,6 +531,8 @@ def finalize(review_pack: Path, worksheet: Path, manifest: Path, output: Path) -
         "source_archive_sha256": closure.EXPECTED_SOURCE_SHA256,
         **provenance,
         "review_pack_sha256": pack_sha,
+        "generated_worksheet_sha256": generated_worksheet_sha,
+        "generated_worksheet_size": generated_worksheet_size,
         "worksheet_sha256": worksheet_sha,
         "manifest_sha256": manifest_sha,
         "groups": finalized_groups,
