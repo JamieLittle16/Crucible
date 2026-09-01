@@ -232,6 +232,23 @@ _METHOD_SELECT = """SELECT m.id,t.qualified_name,m.name,m.signature,m.param_coun
                     ORDER BY m.start_line,m.id"""
 
 
+def _validate_exact_root_types(
+    conn: sqlite3.Connection,
+    groups: Sequence[ReviewGroup],
+) -> None:
+    """Fail once with the complete exact-root mismatch set before building any group inventory."""
+    roots = sorted({root for group in groups for root in group.root_types})
+    failures: list[str] = []
+    for qualified_name in roots:
+        matches = conn.execute(_TYPE_SELECT, (qualified_name,)).fetchall()
+        if not matches:
+            failures.append(f"{qualified_name}: missing")
+        elif len(matches) != 1:
+            failures.append(f"{qualified_name}: matched {len(matches)} Atlas types")
+    if failures:
+        raise DiscoveryError("R2C exact root type validation failed: " + "; ".join(failures))
+
+
 def _exact_type_methods(
     conn: sqlite3.Connection,
     qualified_name: str,
@@ -386,6 +403,7 @@ def prepare(
         if source_sha != EXPECTED_SOURCE_SHA256:
             raise DiscoveryError(f"R2C source pin mismatch: {source_sha}")
 
+        _validate_exact_root_types(conn, plan.groups)
         meta = dict(conn.execute("SELECT key,value FROM meta"))
         method_cache: dict[int, dict[str, object]] = {}
         candidate_ids: dict[int, str] = {}

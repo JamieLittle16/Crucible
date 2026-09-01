@@ -55,8 +55,8 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
             "LevelChunkSection",
             "PalettedContainer",
             "PalettedContainer$Data",
-            "PalettedContainer$Strategy",
-            "PalettedContainer$Configuration",
+            "net.minecraft.world.level.chunk.Strategy",
+            "net.minecraft.world.level.chunk.Configuration",
             "PalettedContainerFactory",
             "SingleValuePalette",
             "LinearPalette",
@@ -72,7 +72,13 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
             "SerializableChunkData",
         ):
             self.assertIn(required, joined)
-        for excluded in ("ServerGamePacketListenerImpl", "ServerPlayerGameMode", "WorldGenRegion"):
+        for excluded in (
+            "ServerGamePacketListenerImpl",
+            "ServerPlayerGameMode",
+            "WorldGenRegion",
+            "PalettedContainer$Strategy",
+            "PalettedContainer$Configuration",
+        ):
             self.assertNotIn(excluded, joined)
 
     def test_discovery_plan_covers_every_frontier_root_and_group(self) -> None:
@@ -94,6 +100,22 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
         groups = {group["group_id"]: group for group in plan["groups"]}
         self.assertIn(
             "net.minecraft.world.level.chunk.PalettedContainer$Data",
+            groups["R2C-BIOMES"]["root_types"],
+        )
+        self.assertIn(
+            "net.minecraft.world.level.chunk.Strategy",
+            groups["R2C-BIOMES"]["root_types"],
+        )
+        self.assertIn(
+            "net.minecraft.world.level.chunk.Configuration",
+            groups["R2C-BIOMES"]["root_types"],
+        )
+        self.assertNotIn(
+            "net.minecraft.world.level.chunk.PalettedContainer$Strategy",
+            groups["R2C-BIOMES"]["root_types"],
+        )
+        self.assertNotIn(
+            "net.minecraft.world.level.chunk.PalettedContainer$Configuration",
             groups["R2C-BIOMES"]["root_types"],
         )
         self.assertIn(

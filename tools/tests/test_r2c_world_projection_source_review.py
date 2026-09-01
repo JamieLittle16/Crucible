@@ -117,6 +117,31 @@ class R2cWorldProjectionSourceReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(review.DiscoveryError, "zero Atlas types"):
             review._exact_type_methods(conn, "net.minecraft.Missing", 8)
 
+    def test_exact_root_preflight_reports_every_missing_or_ambiguous_type(self) -> None:
+        conn = atlas_fixture()
+        self.addCleanup(conn.close)
+        conn.execute("INSERT INTO source_files(id,path) VALUES(4,'src/A-copy.java')")
+        conn.execute("INSERT INTO types(id,file_id,qualified_name) VALUES(4,4,'net.minecraft.A')")
+        groups = (
+            review.ReviewGroup(
+                "R2C-BIOMES",
+                "fixture",
+                ("net.minecraft.A", "net.minecraft.MissingOne"),
+            ),
+            review.ReviewGroup(
+                "R2C-LIGHT",
+                "fixture",
+                ("net.minecraft.Empty", "net.minecraft.MissingTwo"),
+            ),
+        )
+        with self.assertRaises(review.DiscoveryError) as caught:
+            review._validate_exact_root_types(conn, groups)
+        message = str(caught.exception)
+        self.assertIn("net.minecraft.A: matched 2 Atlas types", message)
+        self.assertIn("net.minecraft.MissingOne: missing", message)
+        self.assertIn("net.minecraft.MissingTwo: missing", message)
+        self.assertNotIn("net.minecraft.Empty", message)
+
     def test_exact_declaration_only_type_is_a_valid_zero_method_root(self) -> None:
         conn = atlas_fixture()
         self.addCleanup(conn.close)
