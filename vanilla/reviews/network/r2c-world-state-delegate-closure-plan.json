@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "REVIEW-NET-R2C-WORLD-STATE-DELEGATE-CLOSURE-26_2-001",
+  "parent_review_id": "REVIEW-NET-R2C-WORLD-PROJECTION-DISCOVERY-26_2-001",
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "max_candidate_methods": 128,
+  "max_candidate_lines": 2048,
+  "max_source_bytes": 4194304,
+  "groups": [
+    {
+      "group_id": "R2C-BIOME-PALETTE-WIRE",
+      "parent_group_id": "R2C-BIOMES",
+      "review_focus": "Close only the exact delegated biome PalettedContainer network representation: Data writer/size law, strategy/configuration bit selection, and concrete palette read/write behavior. Do not reopen block-state semantics, world generation, or persisted chunk format.",
+      "selectors": [
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.PalettedContainer$Data", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.Configuration", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.Strategy", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.Palette", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.SingleValuePalette", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.LinearPalette", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.HashMapPalette", "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.GlobalPalette", "required": true}
+      ]
+    },
+    {
+      "group_id": "R2C-LIGHT-DATA-LAYER",
+      "parent_group_id": "R2C-LIGHT",
+      "review_focus": "Close only ClientboundLightUpdatePacketData.prepareSectionData delegates: DataLayer empty/copy/raw-byte semantics and the concrete getDataLayerData lookup path behind LayerLightEventListener. Do not reopen light propagation, world generation, or pacing.",
+      "selectors": [
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.chunk.DataLayer", "required": true},
+        {"mode": "type_names", "type_name": "net.minecraft.world.level.lighting.LayerLightEventListener", "names": ["getDataLayerData"], "required": true},
+        {"mode": "type_all", "type_name": "net.minecraft.world.level.lighting.LayerLightEventListener$DummyLightLayerEventListener", "required": true},
+        {"mode": "prefix_name_regex", "type_prefix": "net.minecraft.world.level.lighting.", "name_regex": "^getDataLayerData$", "required": true}
+      ]
+    }
+  ]
+}
