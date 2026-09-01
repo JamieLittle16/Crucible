@@ -176,7 +176,7 @@ class SourceAdmissionGateTests(unittest.TestCase):
 
             with working_directory(root), self.assertRaisesRegex(
                 gate.GateError,
-                r"frontier test root query resolved zero methods: net\.minecraft\.test\.DoesNotExist",
+                r"frontier test root query resolved neither methods nor an exact type: net\.minecraft\.test\.DoesNotExist",
             ):
                 gate.evaluate(db_path=db, gate_path=gate_path, records_dir=records)
 
