@@ -219,6 +219,7 @@ def _validate_parent_review(
 def _validate_delegate_review(
     value: Mapping[str, object], parent_provenance: Mapping[str, str]
 ) -> list[dict[str, object]]:
+    current_delegate_plan_sha = _sha256_file(closure.DEFAULT_PLAN)
     required = {
         "schema": SCHEMA,
         "kind": delegate_review.RESULT_KIND,
@@ -229,6 +230,7 @@ def _validate_delegate_review(
         "contains_official_source_text": False,
         "all_groups_review_complete": True,
         "production_admitted": False,
+        "plan_sha256": current_delegate_plan_sha,
         "parent_discovery_plan_sha256": parent_provenance["plan_sha256"],
         "frontier_sha256": parent_provenance["frontier_sha256"],
     }
@@ -240,7 +242,6 @@ def _validate_delegate_review(
     if mismatches:
         raise BindError(f"delegate review provenance mismatch: {json.dumps(mismatches, sort_keys=True)}")
     for field in (
-        "plan_sha256",
         "review_pack_sha256",
         "worksheet_sha256",
         "generated_worksheet_sha256",
@@ -333,7 +334,7 @@ def bind(
     delegate_value, delegate_sha = _read_json(delegate_review_result, "R2C delegate review result")
 
     provenance = _validate_parent_manifest(manifest_value)
-    parent_groups, parent_identities, parent_candidate_ids = _validate_parent_review(
+    _parent_groups, parent_identities, parent_candidate_ids = _validate_parent_review(
         parent_value, provenance
     )
     delegate_groups = _validate_delegate_review(delegate_value, provenance)
