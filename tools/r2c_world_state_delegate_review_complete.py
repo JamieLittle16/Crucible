@@ -3,8 +3,9 @@
 
 This is operator composition only. It applies the committed source-free human decisions to the exact
 untouched worksheet and then runs the independent delegate finalizer against the source-rich review
-pack plus immutable upload manifest. The output directory contains only source-free artifacts and is
-published atomically after both stages succeed.
+pack plus immutable upload manifest. The preferred operator path consumes the generated tar.gz
+bundle directly, extracts its exact three canonical members only into ephemeral storage, and
+atomically publishes a directory containing only source-free artifacts.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import json
 import os
 import shutil
 import sys
+import tarfile
 import tempfile
 from pathlib import Path
 from typing import Sequence
@@ -26,6 +28,8 @@ except ImportError:  # Direct `python3 tools/...` execution.
 
 COMPLETED_WORKSHEET = "completed-worksheet.json"
 REVIEW_RESULT = "delegate-review-result.json"
+BUNDLE_MEMBERS = ("manifest.json", "review-pack.json", "worksheet.json")
+MAX_BUNDLE_MEMBER_BYTES = 8 * 1024 * 1024
 
 
 class CompleteError(RuntimeError):
@@ -44,6 +48,46 @@ def _prepare_output_parent(output_dir: Path) -> tuple[Path, Path]:
         except OSError as error:
             raise CompleteError(f"cannot create output parent {parent}: {error}") from error
     return output_dir, parent
+
+
+def _materialize_bundle(bundle: Path, directory: Path) -> dict[str, Path]:
+    if bundle.is_symlink() or not bundle.is_file():
+        raise CompleteError(f"delegate review bundle must be a real non-symlink file: {bundle}")
+    try:
+        with tarfile.open(bundle, mode="r:gz") as archive:
+            members = archive.getmembers()
+            names = [member.name for member in members]
+            if len(names) != len(BUNDLE_MEMBERS) or set(names) != set(BUNDLE_MEMBERS):
+                raise CompleteError(
+                    "delegate review bundle must contain exactly " + ", ".join(BUNDLE_MEMBERS)
+                )
+            paths: dict[str, Path] = {}
+            for member in members:
+                if not member.isfile() or member.issym() or member.islnk():
+                    raise CompleteError(
+                        f"delegate review bundle member must be a regular file: {member.name}"
+                    )
+                if member.size < 0 or member.size > MAX_BUNDLE_MEMBER_BYTES:
+                    raise CompleteError(
+                        f"delegate review bundle member exceeds bounded size: {member.name}"
+                    )
+                stream = archive.extractfile(member)
+                if stream is None:
+                    raise CompleteError(
+                        f"delegate review bundle member cannot be read: {member.name}"
+                    )
+                raw = stream.read(MAX_BUNDLE_MEMBER_BYTES + 1)
+                if len(raw) != member.size or len(raw) > MAX_BUNDLE_MEMBER_BYTES:
+                    raise CompleteError(
+                        f"delegate review bundle member size mismatch: {member.name}"
+                    )
+                path = directory / member.name
+                path.write_bytes(raw)
+                path.chmod(0o600)
+                paths[member.name] = path
+            return paths
+    except (OSError, tarfile.TarError) as error:
+        raise CompleteError(f"cannot read delegate review bundle {bundle}: {error}") from error
 
 
 def complete(
@@ -88,26 +132,55 @@ def complete(
             shutil.rmtree(temporary, ignore_errors=True)
 
 
+def complete_bundle(bundle: Path, decisions: Path, output_dir: Path) -> dict[str, object]:
+    """Complete one delegate review directly from the canonical source-review bundle."""
+    output_dir, parent = _prepare_output_parent(output_dir)
+    with tempfile.TemporaryDirectory(prefix=".r2c-delegate-bundle-", dir=parent) as temporary:
+        paths = _materialize_bundle(bundle, Path(temporary))
+        return complete(
+            paths["review-pack.json"],
+            paths["worksheet.json"],
+            paths["manifest.json"],
+            decisions,
+            output_dir,
+        )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--review-pack", type=Path, required=True)
-    parser.add_argument("--worksheet", type=Path, required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--bundle", type=Path)
+    parser.add_argument("--review-pack", type=Path)
+    parser.add_argument("--worksheet", type=Path)
+    parser.add_argument("--manifest", type=Path)
     parser.add_argument("--decisions", type=Path, default=apply_review.DEFAULT_DECISIONS)
     parser.add_argument("--output-dir", type=Path, required=True)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    parser = _parser()
+    args = parser.parse_args(argv)
+    explicit = (args.review_pack, args.worksheet, args.manifest)
+    if args.bundle is not None:
+        if any(path is not None for path in explicit):
+            parser.error("--bundle cannot be combined with --review-pack/--worksheet/--manifest")
+    elif any(path is None for path in explicit):
+        parser.error("provide --bundle or all of --review-pack, --worksheet and --manifest")
+
     try:
-        summary = complete(
-            args.review_pack,
-            args.worksheet,
-            args.manifest,
-            args.decisions,
-            args.output_dir,
-        )
+        if args.bundle is not None:
+            summary = complete_bundle(args.bundle, args.decisions, args.output_dir)
+        else:
+            assert args.review_pack is not None
+            assert args.worksheet is not None
+            assert args.manifest is not None
+            summary = complete(
+                args.review_pack,
+                args.worksheet,
+                args.manifest,
+                args.decisions,
+                args.output_dir,
+            )
     except CompleteError as error:
         print(f"R2C delegate review completion failed: {error}", file=sys.stderr)
         return 2
