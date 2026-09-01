@@ -7,6 +7,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 from tools import r2c_world_state_delegate_closure_source_review as closure
 
@@ -177,6 +178,25 @@ class R2cWorldStateDelegateClosureTests(unittest.TestCase):
             worksheet["groups"][0]["candidates"][0]["source_identity"],
             "net.minecraft.Biome#write()",
         )
+
+    def test_packaging_failure_does_not_publish_partial_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "closure.tar.gz"
+            payloads = {
+                "review-pack.json": b'{"source":"rich"}\n',
+                "worksheet.json": b'{"source":"free"}\n',
+                "manifest.json": b'{"manifest":1}\n',
+            }
+            with (
+                mock.patch.object(
+                    tarfile.TarFile,
+                    "addfile",
+                    side_effect=OSError("synthetic archive failure"),
+                ),
+                self.assertRaisesRegex(OSError, "synthetic archive failure"),
+            ):
+                closure._write_archive(output, payloads)
+            self.assertFalse(output.exists())
 
     def test_archive_has_exact_regular_file_surface(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
