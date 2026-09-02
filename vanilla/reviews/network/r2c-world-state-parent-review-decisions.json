@@ -1,0 +1,109 @@
+{
+  "automatic_source_selection_forbidden": true,
+  "bundle_manifest_sha256": "f5fa006b9a3b7f9a5092632e9715977d30e3cb99903c03c14671228b1d2583b6",
+  "commit_policy": "SOURCE_FREE_HUMAN_REVIEW_DECISIONS_NOT_ADMISSION",
+  "contains_official_source_text": false,
+  "discovery_sha256": "167df6aa2d3ed0ff55faed2453faeb40faf8eda71e84965f5deca07e3da531f0",
+  "frontier_sha256": "140065b41e8e2fb8a1fe08f6ad9bc8bc2d2eefe393f77e56573a446ba52d192a",
+  "generated_worksheet_sha256": "4904f7537da7f20e6f46052535b6d0e48adc13f3121e444d8e0a012f83a2fa02",
+  "groups": [
+    {
+      "followup_dependencies": [],
+      "group_id": "R2C-BIOMES",
+      "hazards_reviewed": [
+        "REGISTRY"
+      ],
+      "selected_candidate_ids": [
+        "DISC-NET-R2C-WORLD-0206",
+        "DISC-NET-R2C-WORLD-0209",
+        "DISC-NET-R2C-WORLD-0211",
+        "DISC-NET-R2C-WORLD-0215",
+        "DISC-NET-R2C-WORLD-0265",
+        "DISC-NET-R2C-WORLD-0311",
+        "DISC-NET-R2C-WORLD-0326",
+        "DISC-NET-R2C-WORLD-0328"
+      ],
+      "semantic_observations": [
+        "A network section writes its two section summary counts first, followed by the block-state paletted container and then the biome paletted container; biome state is therefore part of every serialized section image rather than a separate chunk-side array.",
+        "The selected factory resolves the target biome registry, builds the biome strategy over the registry holder-id map, chooses Plains as the default biome, and creates biome containers from that frozen strategy/default pair.",
+        "PalettedContainer network writing delegates the concrete palette/storage body to the container data together with the strategy's global id map; the exact configuration and palette encodings remain intentionally owned by the separately reviewed R2C-BIOME-PALETTE-WIRE delegate closure.",
+        "For positive-width packed storage, the reviewed SimpleBitStorage constructor uses a value mask of 2^bits-1, packs floor(64/bits) values per 64-bit word, requires ceil(size/valuesPerLong) words, and rejects a supplied raw array of any other length.",
+        "Reviewed SimpleBitStorage mutation and unpacking keep values wholly inside individual 64-bit words: sequential logical values occupy successive low-to-high bit slots of each word, and the final word carries only the remaining logical values.",
+        "The reviewed packed-storage raw accessor exposes the backing word sequence directly. How the biome paletted-container data layer selects palette modes and emits those words remains intentionally owned by the separately reviewed R2C-BIOME-PALETTE-WIRE delegate closure."
+      ],
+      "source_inspected": true
+    },
+    {
+      "followup_dependencies": [],
+      "group_id": "R2C-HEIGHTMAPS",
+      "hazards_reviewed": [
+        "CLIENT_OBSERVABLE",
+        "CODEC"
+      ],
+      "selected_candidate_ids": [
+        "DISC-NET-R2C-WORLD-0192",
+        "DISC-NET-R2C-WORLD-0193",
+        "DISC-NET-R2C-WORLD-0195",
+        "DISC-NET-R2C-WORLD-0350",
+        "DISC-NET-R2C-WORLD-0351",
+        "DISC-NET-R2C-WORLD-0352",
+        "DISC-NET-R2C-WORLD-0356",
+        "DISC-NET-R2C-WORLD-0357",
+        "DISC-NET-R2C-WORLD-0359",
+        "DISC-NET-R2C-WORLD-0360",
+        "DISC-NET-R2C-WORLD-0362",
+        "DISC-NET-R2C-WORLD-0365",
+        "DISC-NET-R2C-WORLD-0367"
+      ],
+      "semantic_observations": [
+        "The initial chunk payload copies only heightmap entries whose type usage is CLIENT and clones each selected raw long array before publication.",
+        "For 26.2 the client-selected heightmap types are WORLD_SURFACE (wire id 1), MOTION_BLOCKING (wire id 4), and MOTION_BLOCKING_NO_LEAVES (wire id 5); WORLD_SURFACE uses non-air, MOTION_BLOCKING uses motion-blocking or non-empty fluid, and MOTION_BLOCKING_NO_LEAVES additionally excludes leaves.",
+        "A heightmap contains exactly 256 column values in a packed storage whose bit width is ceil(log2(chunkHeight+1)); local column (x,z) maps to index x + 16*z.",
+        "The stored heightmap value is relative to the chunk minimum Y: setHeight stores firstAvailableY-minY and lookup adds minY back. A zero packed value therefore denotes firstAvailableY == minY.",
+        "Priming examines each local x/z column from the highest available section downward and records y+1 at the first block satisfying each requested heightmap predicate; if no matching block is found, that type remains at its zero/minY value.",
+        "The chunk payload heightmap field is a map keyed by Heightmap.Types and carrying raw long arrays; it is encoded before the section byte buffer and block-entity list. The reviewed packet constructor snapshots the arrays rather than retaining mutable Heightmap storage."
+      ],
+      "source_inspected": true
+    },
+    {
+      "followup_dependencies": [],
+      "group_id": "R2C-LIGHT",
+      "hazards_reviewed": [
+        "CLIENT_OBSERVABLE",
+        "CODEC",
+        "PERSISTENCE",
+        "REGISTRY"
+      ],
+      "selected_candidate_ids": [
+        "DISC-NET-R2C-WORLD-0371",
+        "DISC-NET-R2C-WORLD-0384",
+        "DISC-NET-R2C-WORLD-0385",
+        "DISC-NET-R2C-WORLD-0387",
+        "DISC-NET-R2C-WORLD-0388",
+        "DISC-NET-R2C-WORLD-0435",
+        "DISC-NET-R2C-WORLD-0442",
+        "DISC-NET-R2C-WORLD-0443",
+        "DISC-NET-R2C-WORLD-0444"
+      ],
+      "semantic_observations": [
+        "The light publication lattice has dimensionSectionCount+2 entries, begins at minSectionY-1, and ends at minLightSection+lightSectionCount; packet section index i addresses light section minLightSection+i.",
+        "With null changed-section filters the initial light payload considers every light-section index for both SKY and BLOCK layers; a non-null filter limits preparation to its set indices.",
+        "For each considered section the packet asks the selected layer listener for nullable DataLayer state. A null result contributes neither a regular nor empty bit; a present empty layer sets the corresponding empty mask; a present non-empty layer sets the regular mask and contributes a copied byte payload.",
+        "The exact concrete getDataLayerData lookup and DataLayer empty/materialization semantics are deliberately not inferred by this parent review; they are owned by the independently reviewed R2C-LIGHT-DATA-LAYER delegate closure and must be bound before admission.",
+        "The light packet wire body writes sky-present, block-present, empty-sky and empty-block masks in that order, then the sky update collection followed by the block update collection. Individual update byte arrays use the reviewed 2048-byte-bounded codec.",
+        "LevelLightEngine selects the block or sky listener for the requested layer, falling back to the dummy listener only when that engine is absent; the production concrete listener choice remains subject to the delegate review rather than being defaulted here.",
+        "Stored chunk parsing treats isLightOn as an explicit persisted boolean defaulting false and treats BlockLight and SkyLight independently per section: a present byte array constructs a DataLayer while an absent tag produces no layer.",
+        "This parent closure admits only initial light state, span and packet mask/update classification. It does not admit light propagation, world-generation lighting, movement-driven updates, or publication pacing."
+      ],
+      "source_inspected": true
+    }
+  ],
+  "kind": "r2c-world-state-parent-human-review-decisions",
+  "plan_sha256": "7d5406cb9fe9fbac55ec3c7b1ce21498de2d90f6ac8766fd8786c17ba0e2a122",
+  "production_admitted": false,
+  "review_id": "REVIEW-NET-R2C-WORLD-PROJECTION-DISCOVERY-26_2-001",
+  "review_pack_sha256": "45dc40a1afb9290b9402e9029c875c80015461d68c0448a558f130f7f500889b",
+  "schema": 1,
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750",
+  "unselected_candidate_policy": "REJECT"
+}
