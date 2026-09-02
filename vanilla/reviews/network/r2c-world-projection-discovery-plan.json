@@ -76,9 +76,16 @@
         "net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData",
         "net.minecraft.world.level.chunk.DataLayer",
         "net.minecraft.world.level.chunk.storage.SerializableChunkData",
+        "net.minecraft.world.level.lighting.BlockLightEngine",
+        "net.minecraft.world.level.lighting.BlockLightSectionStorage",
+        "net.minecraft.world.level.lighting.DataLayerStorageMap",
         "net.minecraft.world.level.lighting.LayerLightEventListener",
         "net.minecraft.world.level.lighting.LayerLightEventListener$DummyLightLayerEventListener",
-        "net.minecraft.world.level.lighting.LevelLightEngine"
+        "net.minecraft.world.level.lighting.LayerLightSectionStorage",
+        "net.minecraft.world.level.lighting.LevelLightEngine",
+        "net.minecraft.world.level.lighting.LightEngine",
+        "net.minecraft.world.level.lighting.SkyLightEngine",
+        "net.minecraft.world.level.lighting.SkyLightSectionStorage"
       ]
     },
     {
