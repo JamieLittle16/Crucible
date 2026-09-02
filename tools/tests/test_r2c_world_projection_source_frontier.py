@@ -43,7 +43,7 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
     def test_frontier_roots_are_unique_and_bounded_to_world_projection(self) -> None:
         data = json.loads(FRONTIER.read_text(encoding="utf-8"))
         roots = data["root_queries"]
-        self.assertEqual(len(roots), 25)
+        self.assertEqual(len(roots), 32)
         self.assertEqual(len(roots), len(set(roots)))
         self.assertTrue(all(root.startswith("net.minecraft.") for root in roots))
         joined = "\n".join(roots)
@@ -67,8 +67,15 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
             "Heightmap$Types",
             "Heightmap$Usage",
             "DataLayer",
+            "BlockLightEngine",
+            "BlockLightSectionStorage",
+            "DataLayerStorageMap",
             "LayerLightEventListener",
+            "LayerLightSectionStorage",
             "LevelLightEngine",
+            "net.minecraft.world.level.lighting.LightEngine",
+            "SkyLightEngine",
+            "SkyLightSectionStorage",
             "SerializableChunkData",
         ):
             self.assertIn(required, joined)
@@ -134,6 +141,16 @@ class R2cWorldProjectionSourceFrontierTests(unittest.TestCase):
             "net.minecraft.world.level.chunk.storage.SerializableChunkData",
             groups["R2C-LIGHT"]["root_types"],
         )
+        for root in (
+            "net.minecraft.world.level.lighting.BlockLightEngine",
+            "net.minecraft.world.level.lighting.BlockLightSectionStorage",
+            "net.minecraft.world.level.lighting.DataLayerStorageMap",
+            "net.minecraft.world.level.lighting.LayerLightSectionStorage",
+            "net.minecraft.world.level.lighting.LightEngine",
+            "net.minecraft.world.level.lighting.SkyLightEngine",
+            "net.minecraft.world.level.lighting.SkyLightSectionStorage",
+        ):
+            self.assertIn(root, groups["R2C-LIGHT"]["root_types"])
         for group in plan["groups"]:
             self.assertTrue(group["review_focus"])
             self.assertTrue(group["root_types"])
