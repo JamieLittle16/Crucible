@@ -50,8 +50,15 @@
     "net.minecraft.world.level.levelgen.Heightmap",
     "net.minecraft.world.level.levelgen.Heightmap$Types",
     "net.minecraft.world.level.levelgen.Heightmap$Usage",
+    "net.minecraft.world.level.lighting.BlockLightEngine",
+    "net.minecraft.world.level.lighting.BlockLightSectionStorage",
+    "net.minecraft.world.level.lighting.DataLayerStorageMap",
     "net.minecraft.world.level.lighting.LayerLightEventListener",
     "net.minecraft.world.level.lighting.LayerLightEventListener$DummyLightLayerEventListener",
-    "net.minecraft.world.level.lighting.LevelLightEngine"
+    "net.minecraft.world.level.lighting.LayerLightSectionStorage",
+    "net.minecraft.world.level.lighting.LevelLightEngine",
+    "net.minecraft.world.level.lighting.LightEngine",
+    "net.minecraft.world.level.lighting.SkyLightEngine",
+    "net.minecraft.world.level.lighting.SkyLightSectionStorage"
   ]
 }
