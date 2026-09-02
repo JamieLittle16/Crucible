@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from tools import r2c_world_state_admission_apply as apply_semantics
+from tools import r2c_world_state_admission_materialize as materialize
 from tools import r2c_world_state_admission_prepare as prepare
 
 
@@ -179,6 +180,36 @@ class SemanticAdmissionApplyTests(unittest.TestCase):
                 "example.Light1#selected()",
                 groups[2]["semantic_rules"][0]["source_identities"],
             )
+
+    def test_completed_output_is_accepted_by_existing_materializer_validator(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            worksheet, decisions, output = self._stage(Path(temporary))
+            apply_semantics.apply(worksheet=worksheet, decisions=decisions, output=output)
+            raw = output.read_bytes()
+            completed = json.loads(raw.decode("utf-8"))
+
+            candidates_by_identity = {
+                str(entry["source_identity"]): entry["candidate"]
+                for entry in completed["selected_sources"]
+            }
+            reviewed_sources: dict[str, dict[str, object]] = {}
+            for group in completed["groups"]:
+                group_id = str(group["group_id"])
+                for identity in group["selected_source_identities"]:
+                    reviewed_sources[str(identity)] = {
+                        "candidate": candidates_by_identity[str(identity)],
+                        "groups": [group_id],
+                        "hazards_reviewed": set(),
+                    }
+
+            rules, rules_by_source = materialize._validate_worksheet(
+                completed,
+                worksheet_sha=hashlib.sha256(raw).hexdigest(),
+                review_sha=str(completed["review_result_sha256"]),
+                reviewed_sources=reviewed_sources,
+            )
+            self.assertEqual(len(rules), 3)
+            self.assertTrue(all(rules_by_source[identity] for identity in reviewed_sources))
 
     def test_rejects_stale_prepared_worksheet_digest(self) -> None:
         def mutate(decisions: dict[str, object]) -> None:
