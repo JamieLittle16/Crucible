@@ -105,6 +105,13 @@ class R2cWorldStateLocalAdmissionTests(unittest.TestCase):
         with self.assertRaises(admission.LocalAdmissionError):
             admission._fresh_external_output(output)
 
+    def test_source_free_guard_rejects_excerpt_field(self) -> None:
+        with self.assertRaisesRegex(admission.LocalAdmissionError, "excerpt field leaked"):
+            admission._require_source_free_utf8(
+                b'{"source_excerpt":"forbidden"}\n',
+                "synthetic report",
+            )
+
     def test_complete_run_publishes_only_source_free_upload_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -186,6 +193,37 @@ class R2cWorldStateLocalAdmissionTests(unittest.TestCase):
                     side_effect=admission.source_bundle.BundleError("synthetic failure"),
                 ),
                 self.assertRaisesRegex(admission.source_bundle.BundleError, "synthetic failure"),
+            ):
+                admission.run(
+                    output=output,
+                    db=root / "atlas.sqlite",
+                    source=root / "mc-src.zip",
+                    lock=root / "vanilla.lock.toml",
+                    plan=root / "plan.json",
+                    parent_decisions=parent_decisions,
+                    semantic_decisions=semantic_decisions,
+                )
+            self.assertFalse(output.exists())
+
+    def test_packaging_failure_leaves_no_final_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "failed-packaging.tar.gz"
+            parent_decisions, semantic_decisions, patches = self._fake_pipeline(root)
+
+            def failing_add(self: tarfile.TarFile, *args: object, **kwargs: object) -> None:
+                del self, args, kwargs
+                raise OSError("synthetic packaging failure")
+
+            with (
+                patches[0],
+                patches[1],
+                patches[2],
+                patches[3],
+                patches[4],
+                patches[5],
+                mock.patch.object(tarfile.TarFile, "add", new=failing_add),
+                self.assertRaisesRegex(OSError, "synthetic packaging failure"),
             ):
                 admission.run(
                     output=output,
