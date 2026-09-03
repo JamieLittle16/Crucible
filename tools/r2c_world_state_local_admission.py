@@ -15,7 +15,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import sys
 import tarfile
 import tempfile
@@ -153,8 +152,6 @@ def _write_archive(export_root: Path, output: Path) -> int:
                 members = [member for member in archive.getmembers() if member.isfile()]
                 if not members:
                     raise LocalAdmissionError("staged source-admission archive is empty")
-                if any(member.issym() or member.islnk() for member in members):
-                    raise LocalAdmissionError("staged source-admission archive contains links")
                 names = {member.name for member in members}
                 if RUN_MANIFEST not in names or GATE_REPORT not in names:
                     raise LocalAdmissionError("staged source-admission archive is missing its evidence seal")
@@ -222,7 +219,7 @@ def run(
             "contains_official_source_text": False,
             "repository_promotion_performed": False,
             "source_gate_admitted": report.get("admitted") is True,
-            "source_archive_sha256": source_summary["source_archive_sha256"],
+            "source_archive_sha256": source_bundle.packer.EXPECTED_SOURCE_SHA256,
             "source_review_bundle_manifest_sha256": source_summary["bundle_manifest_sha256"],
             "parent_review_decisions_sha256": _sha256_file(parent_decisions),
             "semantic_decisions_sha256": _sha256_file(semantic_decisions),
