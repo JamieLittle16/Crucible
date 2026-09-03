@@ -90,16 +90,21 @@ def _fresh_external_output(path: Path) -> Path:
     return resolved
 
 
+def _require_source_free_utf8(raw: bytes, label: str) -> str:
+    try:
+        text = raw.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise LocalAdmissionError(f"source-free handoff is not UTF-8: {label}") from error
+    if "source_excerpt" in text:
+        raise LocalAdmissionError(f"official-source excerpt field leaked into upload evidence: {label}")
+    return text
+
+
 def _copy_source_free(source: Path, destination: Path) -> None:
     if source.is_symlink() or not source.is_file():
         raise LocalAdmissionError(f"source-free handoff must be a real file: {source}")
     raw = source.read_bytes()
-    try:
-        text = raw.decode("utf-8", errors="strict")
-    except UnicodeDecodeError as error:
-        raise LocalAdmissionError(f"source-free handoff is not UTF-8: {source}") from error
-    if "source_excerpt" in text:
-        raise LocalAdmissionError(f"official-source excerpt field leaked into upload evidence: {source}")
+    _require_source_free_utf8(raw, str(source))
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(raw)
 
@@ -205,6 +210,7 @@ def run(
         materialize_summary = materialize.materialize(parent_result, completed, staging)
         report = bound_gate.evaluate_bound(db_path=db, staging_dir=staging)
         report_raw = _pretty_bytes(report)
+        _require_source_free_utf8(report_raw, "bound gate report")
 
         _copy_source_free(parent_result, export_root / PARENT_REVIEW_RESULT)
         _copy_source_free(prepared, export_root / PREPARED_WORKSHEET)
