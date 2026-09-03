@@ -1,0 +1,132 @@
+{
+  "automatic_semantic_inference_forbidden": true,
+  "commit_policy": "SOURCE_FREE_HUMAN_SEMANTIC_DECISIONS_NOT_ADMISSION",
+  "contains_official_source_text": false,
+  "groups": [
+    {
+      "admission_complete": true,
+      "group_id": "R2C-BIOMES",
+      "semantic_rules": [
+        {
+          "id": "SEM-NET-R2C-WORLD-BIOME-SECTION-PLACEMENT",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0265"],
+          "statement": "A serialized LevelChunkSection writes nonEmptyBlockCount, fluidCount, the block-state paletted container, and then the biome paletted container in that order."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-BIOME-REGISTRY-FACTORY",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0326", "DISC-NET-R2C-WORLD-0328"],
+          "statement": "The 26.2 biome container is built over the BIOME registry holder-id map; the factory derives the biome strategy from that global id map and uses Plains as the default biome for a new biome container."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-BIOME-LATTICE",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0340", "DISC-NET-R2C-WORLD-0342", "DISC-NET-R2C-WORLD-0344"],
+          "statement": "The biome strategy uses two bits per spatial axis, contains 64 logical entries, and maps local quart coordinates to index ((y << 2) | z) << 2 | x."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-BIOME-PALETTE-MODES",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0339", "DISC-NET-R2C-WORLD-0342", "DISC-NET-R2C-WORLD-0348", "DISC-NET-R2C-WORLD-0349", "DISC-NET-R2C-WORLD-0221", "DISC-NET-R2C-WORLD-0222"],
+          "statement": "For biome containers, the required palette width is ceil(log2(distinct palette values)): width 0 uses the single-value configuration, widths 1 through 3 use linear local palettes, and larger widths use the registry-backed global configuration; hash-map palette modes are not selected by the biome strategy."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-BIOME-PALETTE-WIRE",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0335", "DISC-NET-R2C-WORLD-0278", "DISC-NET-R2C-WORLD-0274", "DISC-NET-R2C-WORLD-0228", "DISC-NET-R2C-WORLD-0224", "DISC-NET-R2C-WORLD-0226"],
+          "statement": "A single-value biome palette writes one global-registry id VarInt; a linear biome palette writes its cardinality VarInt followed by that many global-registry id VarInts; a global palette writes no palette bytes and uses registry ids as palette indices."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-BIOME-CONTAINER-WIRE",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0311", "DISC-NET-R2C-WORLD-0324"],
+          "statement": "PalettedContainer network output delegates to its current data; the data writes one storage-bit-width byte, then the selected palette representation, then the raw storage words as a fixed-size long array using the strategy global id map."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-BIOME-PACKED-STORAGE",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0206", "DISC-NET-R2C-WORLD-0209", "DISC-NET-R2C-WORLD-0211"],
+          "statement": "Positive-width SimpleBitStorage packs floor(64/bits) non-spanning values per 64-bit word; logical index i occupies bit offset (i mod valuesPerLong)*bits in word floor(i/valuesPerLong), the required raw length is ceil(size/valuesPerLong), and the raw accessor exposes those words directly."
+        }
+      ]
+    },
+    {
+      "admission_complete": true,
+      "group_id": "R2C-HEIGHTMAPS",
+      "semantic_rules": [
+        {
+          "id": "SEM-NET-R2C-WORLD-HEIGHTMAP-CLIENT-TYPES",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0362", "DISC-NET-R2C-WORLD-0365"],
+          "statement": "The 26.2 clientbound heightmap set is exactly WORLD_SURFACE (id 1), MOTION_BLOCKING (id 4), and MOTION_BLOCKING_NO_LEAVES (id 5), because those are the Heightmap.Types entries with CLIENT usage and sendToClient returns true only for CLIENT usage."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-HEIGHTMAP-PREDICATES",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0350", "DISC-NET-R2C-WORLD-0362", "DISC-NET-R2C-WORLD-0367"],
+          "statement": "WORLD_SURFACE accepts non-air blocks; MOTION_BLOCKING accepts a state that blocks motion or has non-empty fluid; MOTION_BLOCKING_NO_LEAVES applies the same test and additionally excludes leaves."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-HEIGHTMAP-STORAGE",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0351", "DISC-NET-R2C-WORLD-0360", "DISC-NET-R2C-WORLD-0357", "DISC-NET-R2C-WORLD-0356", "DISC-NET-R2C-WORLD-0359"],
+          "statement": "Each heightmap contains 256 local columns with index x + 16*z and packed width ceil(log2(chunkHeight+1)); stored values are first-available Y relative to chunk minY, and getFirstAvailable adds minY back."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-HEIGHTMAP-PRIMING",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0352", "DISC-NET-R2C-WORLD-0357", "DISC-NET-R2C-WORLD-0356"],
+          "statement": "Heightmap priming scans each local x/z column downward from the highest available section and stores y+1 for each requested type at the first state satisfying that type predicate; a type with no matching state remains at its zero value, corresponding to minY."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-HEIGHTMAP-WIRE",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0192", "DISC-NET-R2C-WORLD-0193", "DISC-NET-R2C-WORLD-0195"],
+          "statement": "ClientboundLevelChunkPacketData snapshots only sendToClient heightmaps by cloning each raw long array; its heightmap field is encoded as a Heightmap.Types-to-long-array map before the section byte buffer and block-entity list."
+        }
+      ]
+    },
+    {
+      "admission_complete": true,
+      "group_id": "R2C-LIGHT",
+      "semantic_rules": [
+        {
+          "id": "SEM-NET-R2C-WORLD-LIGHT-PERSISTED-IMPORT",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0371", "DISC-NET-R2C-WORLD-0398"],
+          "statement": "Persisted chunk parsing reads isLightOn as a boolean defaulting false and independently reads optional BlockLight and SkyLight section byte arrays; a present array constructs a DataLayer and an absent tag yields no layer."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-LIGHT-RECONSTRUCTION",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0372"],
+          "statement": "Chunk reconstruction queues every present block-light DataLayer and, only when the dimension has sky light, every present sky-light DataLayer into the light engine, then copies the persisted lightCorrect value into the chunk."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-LIGHT-LATTICE",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0497", "DISC-NET-R2C-WORLD-0498", "DISC-NET-R2C-WORLD-0499", "DISC-NET-R2C-WORLD-0385", "DISC-NET-R2C-WORLD-0388"],
+          "statement": "The light lattice has dimension section count plus two entries. getMinLightSection is minSectionY-1, getMaxLightSection is the exclusive end, and clientbound light section index i addresses section minLightSection+i."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-LIGHT-LAYER-LOOKUP",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0490", "DISC-NET-R2C-WORLD-0527", "DISC-NET-R2C-WORLD-0460"],
+          "statement": "LevelLightEngine chooses the block or sky listener for the requested LightLayer; the concrete LightEngine converts SectionPos to its packed section key and LayerLightSectionStorage returns queued data when present, otherwise visible stored layer data."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-LIGHT-DATALAYER",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0398", "DISC-NET-R2C-WORLD-0399", "DISC-NET-R2C-WORLD-0400", "DISC-NET-R2C-WORLD-0401", "DISC-NET-R2C-WORLD-0405", "DISC-NET-R2C-WORLD-0404"],
+          "statement": "A DataLayer represents 4096 four-bit cells in exactly 2048 raw bytes. Logical index is y*256 + z*16 + x; even indices occupy the low nibble and odd indices the high nibble. Raw construction rejects any byte length other than 2048."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-LIGHT-HOMOGENEOUS-LAYER",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0397", "DISC-NET-R2C-WORLD-0414", "DISC-NET-R2C-WORLD-0409", "DISC-NET-R2C-WORLD-0408", "DISC-NET-R2C-WORLD-0407"],
+          "statement": "A homogeneous DataLayer may remain unmaterialized as a default nibble; it is empty exactly when unmaterialized with default zero. Copying preserves an unmaterialized default, while getData materializes 2048 bytes and repeats a nonzero default into both nibbles of each byte."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-LIGHT-MASK-CLASSIFICATION",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0385", "DISC-NET-R2C-WORLD-0388", "DISC-NET-R2C-WORLD-0414", "DISC-NET-R2C-WORLD-0409", "DISC-NET-R2C-WORLD-0408"],
+          "statement": "For each considered light section, a null DataLayer contributes no data or empty bit; an empty present layer sets the corresponding empty mask; a non-empty present layer sets the corresponding data mask and appends a copied 2048-byte layer update. Null changed-section filters consider every light-section index."
+        },
+        {
+          "id": "SEM-NET-R2C-WORLD-LIGHT-WIRE",
+          "source_candidate_ids": ["DISC-NET-R2C-WORLD-0384", "DISC-NET-R2C-WORLD-0387"],
+          "statement": "Clientbound light data writes sky-present mask, block-present mask, empty-sky mask, empty-block mask, then the sky update collection and block update collection; each layer update uses the 2048-byte-bounded data-layer codec."
+        }
+      ]
+    }
+  ],
+  "id": "ADMISSION-DECISIONS-NET-R2C-WORLD-STATE-26_2-001",
+  "kind": "r2c-world-state-semantic-admission-decisions",
+  "prepared_worksheet_sha256": "9065ebf087d2398dab1c8f47d0be2956086ed72130b18d8641248847a9a3dc18",
+  "production_admitted": false,
+  "review_result_sha256": "fafe5d26777ce238326702dc64c1348b7a43c4b979ae94219fce62b3b88c6353",
+  "schema": 1,
+  "source_archive_sha256": "1e9bca3dff83cd83e7905f8810f1ec9899361fa2dc83fe893bb48beeb04df750"
+}
