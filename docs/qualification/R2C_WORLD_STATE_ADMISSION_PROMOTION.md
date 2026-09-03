@@ -1,12 +1,12 @@
 # R2C World-State Admission Promotion
 
-Status: **promotion mechanism implemented; no biome/heightmap/light semantics are admitted by this document**  
+Status: **human source review complete; independent local Atlas admission and repository promotion pending**  
 Target: **Minecraft: Java Edition 26.2 / protocol 776 / DataVersion 4903**  
 Parent: `R2C_WORLD_PROJECTION_QUALIFICATION.md`
 
 ## Purpose
 
-This document defines the final source-free transition from the external R2C world-state admission bundle to committed repository evidence.
+This document defines the final source-free transition from the reviewed R2C biome/heightmap/light decisions to committed repository evidence.
 
 The relevant semantic groups are:
 
@@ -14,39 +14,34 @@ The relevant semantic groups are:
 - `R2C-HEIGHTMAPS`;
 - `R2C-LIGHT`.
 
-The promotion step performs **no Minecraft semantic inference**. It cannot turn an unfinished review into admission, cannot regenerate human-authored SEM text, and cannot run without a successful independent Vanilla Atlas gate result.
+The current source-free human decisions are committed under `vanilla/reviews/network/`. They still grant **no production admission** by themselves. The independent Vanilla Atlas gate remains mandatory before promotion or runtime reliance.
+
+The promotion step performs **no Minecraft semantic inference**. It cannot turn an unfinished or stale review into admission, cannot regenerate human-authored SEM decisions, and cannot run without a successful independently bound gate result.
 
 ## Evidence chain
 
-The intended chain is:
+The current chain is:
 
 ```text
-local official 26.2 source archive
+local official 26.2 source archive + pinned Atlas
         ↓
-focused source review
+r2c_world_state_local_admission.py
+        ├─ regenerate exact bounded source dossier in temporary storage
+        ├─ bind committed human source-review decisions
+        ├─ prepare + bind committed human SEM decisions
+        ├─ materialize source-free VAR / SEM / gate staging
+        └─ run independent Atlas gate against exact staging manifest
         ↓
-source-free completed review result
+source-free upload artifact + gate report
         ↓
-human-authored semantic admission worksheet
-        ↓
-r2c_world_state_admission_materialize.py
-        ↓
-external source-free staging bundle + content-addressed manifest
-        ↓
-r2c_world_state_source_gate.py against pinned Atlas
-        ↓
-generic Vanilla source gate + exact staging-manifest binding
-        ↓
-JSON report with admitted=true
-        ↓
-r2c_world_state_admission_promote.py
+explicit r2c_world_state_admission_promote.py
         ↓
 canonical committed VAR / SEM / gate / report / admitted-bundle manifest
 ```
 
-The source archive remains outside the repository throughout. Promotion consumes only source identities, fingerprints, reviewed hazards, authored semantic rules and the independently bound gate result.
+Official source excerpts exist only inside temporary local storage owned by the local runner. The published local admission artifact contains only source-free review/admission evidence and may be uploaded for inspection.
 
-The R2C-specific source-gate wrapper is required because the generic Vanilla source gate directly binds the candidate gate and every VAR record, while the #220 materialization manifest additionally content-addresses the staged SEM Markdown. `r2c_world_state_source_gate.py` hashes that exact manifest into the source-gate report, so the complete source-free staging bundle—including SEM text—is inside the admitted cryptographic envelope.
+The R2C-specific source-gate wrapper is required because the generic Vanilla source gate directly binds the candidate gate and every VAR record, while the materialization manifest additionally content-addresses the staged SEM Markdown. `r2c_world_state_source_gate.py` hashes that exact manifest into the source-gate report, so the complete source-free staging bundle—including SEM text—is inside the admitted cryptographic envelope.
 
 ## Canonical promotion destinations
 
@@ -111,43 +106,69 @@ Because the manifest hashes the staged SEM Markdown as well as the VAR/gate file
 
 The tool deliberately refuses overwrite/update semantics. A later change to admitted evidence must be a new reviewed/requalified repository change, not an in-place convenience rewrite hidden inside promotion.
 
-## Operator sequence
+## Canonical local admission command
 
-After the review result and human-authored worksheet are complete:
+The human source-review and semantic-decision records are already committed. On a machine that owns the pinned source archive and Atlas database, run:
+
+```bash
+cd ~/Helve
+git switch main
+git pull --ff-only
+
+STAMP="$(date +%s)"
+OUT="$HOME/Downloads/helve-r2c-world-state-admission-$STAMP.tar.gz"
+
+python3 tools/r2c_world_state_local_admission.py \
+  --db .crucible/vanilla/atlas.sqlite \
+  --source "$HOME/Documents/mc-source/mc-src.zip" \
+  --output "$OUT"
+
+echo
+echo "SOURCE-FREE ADMISSION ARTIFACT:"
+echo "$OUT"
+sha256sum "$OUT"
+tar -tzf "$OUT"
+```
+
+The command regenerates and validates the exact current dossier rather than trusting an old local bundle. It fails closed if the source archive, plan/frontier, generated worksheet, committed review decisions, semantic decisions, materialized records or Atlas observations drift.
+
+The resulting tar contains only source-free evidence:
+
+```text
+admission-run-manifest.json
+gate-report.json
+review/parent-review-result.json
+review/prepared-admission-worksheet.json
+review/completed-admission-worksheet.json
+staging/manifest.json
+staging/gate.json
+staging/semantics/R2C_WORLD_STATE_SEMANTICS.md
+staging/records/*.json
+```
+
+The local runner intentionally performs **no repository promotion**. A non-admitted Atlas result still produces this source-free artifact for diagnosis and exits nonzero.
+
+## Explicit promotion after a green gate
+
+Only after `gate-report.json` says `admitted=true`, unpack the exact source-free artifact and run promotion explicitly:
 
 ```bash
 cd ~/Helve
 
-SRC="$HOME/Documents/mc-source/mc-src.zip"
-DB=".crucible/vanilla/atlas.sqlite"
-STAGE="/tmp/helve-r2c-world-state-admission"
-REPORT="/tmp/helve-r2c-world-state-source-gate.json"
-
-rm -rf "$STAGE"
-rm -f "$REPORT"
-
-python3 tools/r2c_world_state_admission_materialize.py \
-  --review-result /path/to/review-result.json \
-  --worksheet /path/to/completed-admission-worksheet.json \
-  --output-dir "$STAGE"
-
-python3 tools/vanilla_atlas.py \
-  --db "$DB" \
-  verify-source "$SRC" \
-  --lock vanilla/vanilla.lock.toml
-
-python3 tools/r2c_world_state_source_gate.py \
-  --db "$DB" \
-  --staging-dir "$STAGE" \
-  --output "$REPORT"
+EVIDENCE="/tmp/helve-r2c-world-state-admitted-evidence"
+rm -rf "$EVIDENCE"
+mkdir -p "$EVIDENCE"
+tar -xzf /path/to/helve-r2c-world-state-admission-*.tar.gz -C "$EVIDENCE"
 
 python3 tools/r2c_world_state_admission_promote.py \
-  --staging-dir "$STAGE" \
-  --gate-report "$REPORT" \
+  --staging-dir "$EVIDENCE/staging" \
+  --gate-report "$EVIDENCE/gate-report.json" \
   --repo-root .
 ```
 
-`.crucible/vanilla/atlas.sqlite` is the repository's stable historical local-cache path and remains intentionally uncommitted despite the Helve rename. The example source/Atlas paths are operator-local. They are not repository dependencies and must not be embedded in runtime code or committed evidence.
+Promotion revalidates the complete staging/gate relationship independently; merely placing an `admitted=true` field in a report cannot bypass its digest, source, frontier, VAR, SEM or hazard checks.
+
+`.crucible/vanilla/atlas.sqlite` is the repository's stable historical local-cache path and remains intentionally uncommitted despite the Helve rename. The source/Atlas paths are operator-local. They are not repository dependencies and must not be embedded in runtime code or committed evidence.
 
 ## Durable committed-evidence verification
 
@@ -175,23 +196,24 @@ runtime_behavior_implemented = false
 
 Once real admitted artifacts are committed, R2C.4 still requires separate implementation and qualification:
 
-1. implement Helve-native biome semantic state;
-2. implement the admitted heightmap state/derivation contract;
-3. implement the admitted light semantic state and lifecycle boundary;
-4. compare imported state with independent official-save/oracle evidence;
-5. preserve exact source/admission identities in the qualification record;
-6. benchmark allocation, retained bytes and import/derived-state cost without weakening semantics;
-7. only then allow the reference projector and later production projector to consume the new state.
+1. retain the existing Helve-native 4×4×4 biome semantic substrate and bind target resolution only at projection;
+2. derive the three admitted client heightmaps from Helve-authoritative block state rather than treating persisted Heightmaps NBT as live truth;
+3. import sky/block nibble layers with an explicit light-correctness boundary; false/missing persisted `isLightOn` fails closed until relighting exists;
+4. compose biome/heightmap/light state with resident chunk freshness without importing Mojang object topology;
+5. compare imported/derived state with independent official-save/oracle evidence;
+6. preserve exact source/admission identities in the qualification record;
+7. benchmark allocation, retained bytes and import/derived-state cost without weakening semantics;
+8. only then allow the reference projector and later production projector to consume the new state.
 
 ## Non-claims
 
-This promotion mechanism does **not** establish that:
+The completed human review and this promotion mechanism do **not** establish that:
 
-- any biome, heightmap or light rule is currently admitted;
-- the existing human-authored worksheet is complete;
-- Helve has implemented those semantics;
+- the source gate has passed until a real local Atlas report says `admitted=true`;
+- Helve has implemented the reviewed biome/heightmap/light semantics;
 - Mojang's internal representation should be copied;
 - source admission alone is client-visible parity;
-- hosted CI is performance admission.
+- hosted CI is performance admission;
+- world-entry, packet-id, pacing, block-entity or the remaining world-projection groups are admitted by this three-group gate.
 
-It establishes only that, once the exact local source review and independent gate succeed, repository promotion is deterministic, source-free, byte-bound and fail-closed.
+They establish that the BIOMES/HEIGHTMAPS/LIGHT review is explicit and source-free, and that a successful local Atlas result can be promoted deterministically, byte-bound and fail-closed.
